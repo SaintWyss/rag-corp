@@ -6,3 +6,30 @@ dist
 __pycache__
 *.pyc
 .DS_Store
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+.pnpm-store/
+dist/
+.next/
+.turbo/
+npm-debug.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Docker / local
+*.log
