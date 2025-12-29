@@ -21,8 +21,8 @@ services:
       context: ./services/rag-api
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
-      EMBED_DIM: "1536"
-      EMBED_PROVIDER: "dummy"
+      # Pasamos la variable del host al contenedor
+      GOOGLE_API_KEY: 
     volumes:
       - ./:/repo
     working_dir: /repo/services/rag-api

@@ -48,6 +48,11 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+export interface AskRes {
+  answer: string;
+  sources: string[];
+}
+
 
 
 /**
@@ -96,6 +101,36 @@ export const getQueryV1QueryPostUrl = () => {
 
 export const queryV1QueryPost = async (queryReq: QueryReq, options?: RequestInit): Promise<queryV1QueryPostResponse> => {
   const res = await fetch(getQueryV1QueryPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    body: JSON.stringify(
+      queryReq,)
+  }
+
+  )
+  const data = await res.json()
+
+  return { status: res.status, data }
+}
+
+
+/**
+ * @summary Ask
+ */
+export type askV1AskPostResponse = {
+  data: AskRes;
+  status: number;
+}
+
+export const getAskV1AskPostUrl = () => {
+
+
+  return `/v1/ask`
+}
+
+export const askV1AskPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askV1AskPostResponse> => {
+  const res = await fetch(getAskV1AskPostUrl(),
   {      
     ...options,
     method: 'POST',

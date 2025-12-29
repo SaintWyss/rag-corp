@@ -1,83 +1,104 @@
 "use client";
 
 import { useState } from "react";
-// Importamos el cliente generado automáticamente
-import { queryV1QueryPost as query } from "@contracts/src/generated";
-
-// Definimos el tipo de la respuesta para usarlo en el estado
-// (Podríamos importarlo también, pero para el MVP lo inferimos o definimos simple)
-type Match = {
-  content: string;
-  score: number;
-};
+// Importamos la función con el nombre correcto que confirmaste
+// @ts-ignore
+import { askV1AskPost as ask } from "@contracts/src/generated";
 
 export default function Home() {
   const [text, setText] = useState("");
-  const [results, setResults] = useState<Match[]>([]);
+  const [answer, setAnswer] = useState("");
+  const [sources, setSources] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAnswer("");
+    setSources([]);
+    setError("");
+
     try {
-      // LLAMADA AL BACKEND:
-      // Usamos la función generada. Como configuramos el proxy en next.config.mjs,
-      // la llamada va a /v1/query (relativo) y Next la manda al Python.
-      const res = await query({ query: text, top_k: 3 });
-      
-      // Orval con fetch devuelve la respuesta cruda, necesitamos el JSON.
-      // NOTA: Si usáramos axios con Orval, esto sería directo 'res.data'.
-      // Con fetch nativo, 'query' hace el fetch y devuelve la Promise<Response>.
-      // Sin embargo, el tipo generado por Orval en modo 'fetch' suele devolver la Promise<Response>.
-      // Vamos a asumir comportamiento estándar de fetch generado.
-      
-      // Ajuste: Orval fetch mode a veces genera una función que devuelve el DTO directo 
-      // O devuelve el Response. Depende de la config.
-      // Vamos a probar asumiendo que devuelve el objeto Response de fetch.
-      // Si falla, ajustamos.
-      
+      // Llamada al Backend (RAG)
+      // @ts-ignore
+      const res = await ask({ query: text, top_k: 3 });
+
       if (res.status === 200) {
           const data = await res.json();
-          setResults(data.matches || []);
+          setAnswer(data.answer);
+          setSources(data.sources || []);
+      } else {
+          setError("Error en el servidor: " + res.status);
       }
     } catch (err) {
       console.error(err);
-      alert("Error buscando");
+      setError("Error de conexión. ¿Está prendido el backend?");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-24 bg-slate-950 text-white">
-      <h1 className="text-4xl font-bold mb-8">RAG Corp Search</h1>
-      
-      <form onSubmit={handleSearch} className="w-full max-w-md flex gap-2">
-        <input
-          className="flex-1 p-3 rounded text-black"
-          placeholder="Preguntale a tus documentos..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button 
-          disabled={loading}
-          className="bg-blue-600 px-6 py-3 rounded hover:bg-blue-500 disabled:opacity-50"
-        >
-          {loading ? "..." : "Buscar"}
-        </button>
-      </form>
+    <div className="min-h-screen bg-black text-white p-8 font-sans">
+      <div className="max-w-3xl mx-auto">
 
-      <div className="mt-10 w-full max-w-2xl space-y-4">
-        {results.map((r, i) => (
-          <div key={i} className="p-4 border border-slate-700 rounded bg-slate-900">
-            <p className="text-gray-300">{r.content}</p>
-            <div className="mt-2 text-xs text-blue-400">Score: {r.score.toFixed(4)}</div>
+        {/* TÍTULO */}
+        <h1 className="text-4xl font-bold mb-8 text-yellow-400 border-b border-gray-700 pb-4">
+          RAG Corp v1.0
+        </h1>
+
+        {/* FORMULARIO */}
+        <form onSubmit={handleSearch} className="flex gap-4 mb-8">
+          <input
+            className="flex-1 p-4 text-lg rounded bg-white text-black border-4 border-gray-600 focus:border-yellow-400 outline-none placeholder-gray-500 font-medium"
+            placeholder="Escribí tu pregunta acá..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button
+            disabled={loading}
+            className="bg-yellow-500 text-black font-extrabold px-8 py-4 rounded hover:bg-yellow-400 disabled:opacity-50 text-xl tracking-wide uppercase"
+          >
+            {loading ? "Pensando..." : "Preguntar"}
+          </button>
+        </form>
+
+        {/* MENSAJE DE ERROR */}
+        {error && (
+          <div className="bg-red-600 text-white p-4 rounded mb-8 font-bold border-2 border-red-400 text-lg">
+            ⚠️ {error}
           </div>
-        ))}
-        {results.length === 0 && !loading && (
-          <p className="text-gray-500 text-center">Sin resultados aún.</p>
+        )}
+
+        {/* RESPUESTA DE LA IA */}
+        {answer && (
+          <div className="bg-gray-900 border-2 border-yellow-600 p-8 rounded-lg mb-8 shadow-lg shadow-yellow-900/20">
+            <h3 className="text-yellow-400 font-bold mb-4 uppercase text-sm tracking-widest border-b border-gray-700 pb-2">
+              Respuesta Generada:
+            </h3>
+            <p className="text-2xl leading-relaxed text-white font-light">
+              {answer}
+            </p>
+          </div>
+        )}
+
+        {/* FUENTES */}
+        {sources.length > 0 && (
+          <div className="bg-gray-950 border border-gray-800 p-6 rounded">
+            <h4 className="text-gray-400 font-bold mb-4 text-xs uppercase tracking-wider">
+              Basado en estos fragmentos:
+            </h4>
+            <ul className="space-y-3">
+              {sources.map((src, i) => (
+                <li key={i} className="text-base text-gray-300 bg-gray-900 p-3 rounded border border-gray-800 font-mono">
+                  "{src}"
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

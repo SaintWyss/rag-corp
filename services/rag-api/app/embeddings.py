@@ -1,21 +1,44 @@
 import os
-import hashlib
-import math
+import google.generativeai as genai
+import time
 
-EMBED_DIM = int(os.getenv("EMBED_DIM", "1536"))
-PROVIDER = os.getenv("EMBED_PROVIDER", "dummy")
+API_KEY = os.getenv("GOOGLE_API_KEY")
+if API_KEY:
+    genai.configure(api_key=API_KEY)
 
-def _dummy_vec(s: str) -> list[float]:
-    h = hashlib.sha256(s.encode("utf-8")).digest()
-    vals = []
-    for i in range(EMBED_DIM):
-        b = h[i % len(h)]
-        vals.append((b / 255.0) - 0.5)
-    norm = math.sqrt(sum(v * v for v in vals)) or 1.0
-    return [v / norm for v in vals]
+# Google embedding-004 usa 768 dimensiones
+EMBED_DIM = 768
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    return [_dummy_vec(t) for t in texts]
+    if not API_KEY:
+        raise ValueError("GOOGLE_API_KEY no configurada en el entorno")
+    
+    results = []
+    # Procesamos en lotes de a 10 para respetar límites
+    for i in range(0, len(texts), 10):
+        batch = texts[i:i+10]
+        try:
+            # Task type retrieval_document es optimizado para guardar en DB
+            resp = genai.embed_content(
+                model="models/text-embedding-004",
+                content=batch,
+                task_type="retrieval_document"
+            )
+            # La respuesta 'embedding' es una lista de listas
+            results.extend(resp['embedding'])
+        except Exception as e:
+            print(f"Error embedding batch: {e}")
+            raise e
+    return results
 
 def embed_query(query: str) -> list[float]:
-    return _dummy_vec(query)
+    if not API_KEY:
+        raise ValueError("GOOGLE_API_KEY no configurada")
+        
+    # Task type retrieval_query es optimizado para buscar
+    resp = genai.embed_content(
+        model="models/text-embedding-004",
+        content=query,
+        task_type="retrieval_query"
+    )
+    return resp['embedding']
