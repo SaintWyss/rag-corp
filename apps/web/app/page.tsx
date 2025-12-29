@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 // Importamos el cliente generado automáticamente
-import { query } from "@contracts/src/generated";
+import { queryV1QueryPost as query } from "@contracts/src/generated";
 
 // Definimos el tipo de la respuesta para usarlo en el estado
 // (Podríamos importarlo también, pero para el MVP lo inferimos o definimos simple)
