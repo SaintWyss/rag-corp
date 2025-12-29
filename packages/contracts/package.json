@@ -1,0 +1,10 @@
+{
+  "name": "@contracts",
+  "private": true,
+  "devDependencies": {
+    "orval": "^6.0.0"
+  },
+  "scripts": {
+    "gen": "orval --config orval.config.ts"
+  }
+}

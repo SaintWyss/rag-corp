@@ -1,0 +1,17 @@
+{
+  "name": "rag-corp",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down -v",
+    "contracts:export": "docker compose run --rm rag-api python scripts/export_openapi.py --out /repo/packages/contracts/openapi.json",
+    "contracts:gen": "pnpm --filter @contracts gen"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}
