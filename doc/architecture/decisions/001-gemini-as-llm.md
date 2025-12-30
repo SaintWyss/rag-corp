@@ -105,7 +105,7 @@ The RAG Corp system requires an LLM (Large Language Model) provider to generate 
 # services/rag-api/app/llm.py
 import google.generativeai as genai
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
+genai.configure(api_key=settings.GOOGLE_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 ```
 

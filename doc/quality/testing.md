@@ -466,13 +466,13 @@ def test_query_endpoint():
 
 ```bash
 # Start test database
-docker-compose -f docker-compose.test.yml up -d postgres
+docker compose -f compose.test.yaml up -d postgres
 
 # Run integration tests
 pytest tests/integration/ -v
 
 # Stop test database
-docker-compose -f docker-compose.test.yml down
+docker compose -f compose.test.yaml down
 ```
 
 ---
@@ -541,7 +541,7 @@ pip install playwright
 playwright install
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 cd apps/web && npm run dev &
 cd services/rag-api && uvicorn app.main:app &
 
@@ -549,7 +549,7 @@ cd services/rag-api && uvicorn app.main:app &
 pytest tests/e2e/ -v --headed  # With visible browser
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 ---
@@ -558,7 +558,7 @@ docker-compose down
 
 ### Test Database
 
-**docker-compose.test.yml:**
+**compose.test.yaml:**
 ```yaml
 services:
   postgres-test:

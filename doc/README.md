@@ -2,6 +2,26 @@
 
 Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada por áreas de interés.
 
+---
+
+## 🚀 Start Here
+
+**¿Primera vez en el proyecto?**
+
+1. 📖 [README Principal (Quickstart)](../README.md) - Overview y setup rápido
+2. 🛠️ [Runbook de Desarrollo Local](runbook/local-dev.md) - Comandos y flujo de trabajo
+3. 🏛️ [Arquitectura del Sistema](architecture/overview.md) - Entender capas y responsabilidades
+4. 🧪 [Test Suite](../services/rag-api/tests/README.md) - 29 tests implementados ✅
+
+**¿Buscas algo específico?**
+- 🔌 [API Endpoints](api/http-api.md)
+- 💾 [Schema de PostgreSQL](data/postgres-schema.md)
+- 🎨 [Patrones de Diseño](design/patterns.md)
+- 📊 [Diagramas](diagrams/README.md) (Mermaid)
+- 📝 [ADRs](architecture/decisions/README.md) (Decisiones arquitectónicas)
+
+---
+
 ## 📖 Guías por Rol
 
 ### Para Desarrolladores
@@ -24,7 +44,7 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 ## 🏗️ Arquitectura
 
 - **[Overview](architecture/overview.md)** - Capas, responsabilidades, flujo de datos
-- **[Decisiones de Arquitectura (ADRs)](architecture/decisions/)** - Registro de decisiones clave
+- **[Decisiones de Arquitectura (ADRs)](architecture/decisions/README.md)** - Registro de decisiones clave + template
   - [ADR-001: Elección de Google Gemini como LLM](architecture/decisions/001-gemini-as-llm.md)
   - [ADR-002: Estrategia de Chunking](architecture/decisions/002-chunking-strategy.md)
   - [ADR-003: PostgreSQL + pgvector vs Pinecone](architecture/decisions/003-pgvector-storage.md)
@@ -56,6 +76,7 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 
 ## 📊 Diagramas
 
+- **[Diagrams Index](diagrams/README.md)** - Guía y convenciones para diagramas Mermaid
 - **[Diagrama de Componentes](diagrams/components.md)** - Visión general del sistema
 - **[Secuencia: Flujo RAG Completo](diagrams/sequence-rag-flow.md)** - /ask endpoint
 - **[Arquitectura de Capas](diagrams/layers.md)** - Domain/Application/Infrastructure
@@ -76,6 +97,32 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 - **[Runbook Local](runbook/local-dev.md)** - Desarrollo día a día
 - TODO: **[Troubleshooting](runbook/troubleshooting.md)** - Problemas comunes
 - TODO: **[Monitoreo](runbook/monitoring.md)** - Logs, métricas, alertas
+
+---
+
+## 🤝 Contribuir a la Documentación
+
+### Agregar un Nuevo Diagrama
+
+1. Crear archivo en `doc/diagrams/nombre-descriptivo.md`
+2. Usar sintaxis Mermaid (ver [diagrams/README.md](diagrams/README.md))
+3. Agregar metadatos: `**Last Updated:** YYYY-MM-DD`
+4. Indexar en [diagrams/README.md](diagrams/README.md)
+
+### Registrar una Decisión Arquitectónica (ADR)
+
+1. Copiar template desde [architecture/decisions/000-template.md](architecture/decisions/000-template.md)
+2. Nombrar archivo: `NNN-titulo-decision.md` (ej: `004-redis-caching.md`)
+3. Rellenar secciones: Context, Decision, Consequences
+4. Listar en [architecture/decisions/README.md](architecture/decisions/README.md)
+5. Referenciar desde el código si aplica
+
+### Actualizar Documentación Existente
+
+- **Modificar docs:** Actualizar `Last Updated` al final del archivo
+- **Cambios mayores:** Registrar en [CHANGELOG.md](../CHANGELOG.md) si aplica
+- **Deprecar secciones:** Marcar con `⚠️ DEPRECATED` y fecha
+- **TODOs:** Usar `TODO: [descripción]` para features pendientes
 
 ---
 

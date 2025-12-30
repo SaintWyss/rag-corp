@@ -140,11 +140,11 @@ def get_document_repository() -> DocumentRepository:
 
 @lru_cache
 def get_embedding_service() -> EmbeddingService:
-    return GoogleEmbeddingService(settings.GEMINI_API_KEY)
+    return GoogleEmbeddingService(settings.GOOGLE_API_KEY)
 
 @lru_cache
 def get_llm_service() -> LLMService:
-    return GoogleLLMService(settings.GEMINI_API_KEY)
+    return GoogleLLMService(settings.GOOGLE_API_KEY)
 
 def get_answer_query_use_case(
     repository: DocumentRepository = Depends(get_document_repository),

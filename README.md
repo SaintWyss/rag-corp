@@ -6,6 +6,16 @@
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
 
+---
+
+## 📚 Documentación Completa
+
+**👉 [Ir a la Documentación Técnica Completa](doc/README.md)**
+
+Arquitectura, API, diagramas, ADRs, testing strategy, runbooks, y más.
+
+---
+
 ## 🎯 ¿Qué es RAG Corp?
 
 RAG Corp es un sistema de búsqueda semántica y generación de respuestas que permite:

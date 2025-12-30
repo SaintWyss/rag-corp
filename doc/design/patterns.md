@@ -370,7 +370,7 @@ def get_llm_service() -> LLMService:
     provider = settings.LLM_PROVIDER  # "gemini" | "openai" | "anthropic"
     
     if provider == "gemini":
-        return GoogleLLMService(settings.GEMINI_API_KEY)
+        return GoogleLLMService(settings.GOOGLE_API_KEY)
     elif provider == "openai":
         return OpenAILLMService(settings.OPENAI_API_KEY)
     elif provider == "anthropic":
@@ -417,13 +417,13 @@ def get_document_repository() -> DocumentRepository:
 def get_embedding_service() -> EmbeddingService:
     """R: Create singleton embedding service."""
     settings = get_settings()
-    return GoogleEmbeddingService(settings.GEMINI_API_KEY)
+    return GoogleEmbeddingService(settings.GOOGLE_API_KEY)
 
 @lru_cache
 def get_llm_service() -> LLMService:
     """R: Create singleton LLM service."""
     settings = get_settings()
-    return GoogleLLMService(settings.GEMINI_API_KEY)
+    return GoogleLLMService(settings.GOOGLE_API_KEY)
 
 def get_answer_query_use_case(
     repository: DocumentRepository = Depends(get_document_repository),
@@ -586,7 +586,7 @@ class ServiceFactory:
         """Factory method: create embedding service based on provider."""
         if provider == "gemini":
             return GoogleEmbeddingService(
-                api_key=settings.GEMINI_API_KEY,
+                api_key=settings.GOOGLE_API_KEY,
                 model="text-embedding-004"
             )
         elif provider == "openai":

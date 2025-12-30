@@ -283,7 +283,7 @@ conn = psycopg.connect("postgresql://postgres:postgres@localhost:5432/rag_db")
 ```python
 # Backend Gemini integration
 import google.generativeai as genai
-genai.configure(api_key=settings.GEMINI_API_KEY)
+genai.configure(api_key=settings.GOOGLE_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 ```
 
