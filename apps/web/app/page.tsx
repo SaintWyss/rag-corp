@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-// Importamos la función con el nombre correcto que confirmaste
-// @ts-ignore
-import { askV1AskPost as ask } from "@contracts/src/generated";
+import { askV1AskPost } from "@contracts/src/generated";
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -21,13 +19,16 @@ export default function Home() {
 
     try {
       // Llamada al Backend (RAG)
-      // @ts-ignore
-      const res = await ask({ query: text, top_k: 3 });
+      const res = await askV1AskPost(
+        { query: text, top_k: 3 },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
 
       if (res.status === 200) {
-          const data = await res.json();
-          setAnswer(data.answer);
-          setSources(data.sources || []);
+          setAnswer(res.data.answer);
+          setSources(res.data.sources || []);
       } else {
           setError("Error en el servidor: " + res.status);
       }

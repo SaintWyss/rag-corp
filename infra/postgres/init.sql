@@ -17,3 +17,9 @@ CREATE TABLE IF NOT EXISTS chunks (
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Índice para búsquedas vectoriales eficientes
+-- ivfflat es apropiado para datasets medianos/grandes
+CREATE INDEX IF NOT EXISTS chunks_embedding_idx 
+  ON chunks USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 100);
