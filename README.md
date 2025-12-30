@@ -193,7 +193,7 @@ rag-corp/
 
 ## 📚 Documentación Completa
 
-La documentación está organizada en [`/doc`](doc/INDEX.md):
+La documentación está organizada en [`/doc`](doc/README.md):
 
 - **[Arquitectura](doc/architecture/overview.md)**: Capas, flujo de datos, decisiones de diseño
 - **[API HTTP](doc/api/http-api.md)**: Endpoints, contratos, ejemplos, errores

@@ -43,7 +43,7 @@ cp .env.example .env
 # Edit .env and add your GOOGLE_API_KEY
 
 # 3. Start PostgreSQL
-docker compose up -d postgres
+docker compose up -d db
 
 # 4. Install backend dependencies
 cd services/rag-api
@@ -153,16 +153,16 @@ pnpm install
 
 ```bash
 # Start PostgreSQL
-docker compose up -d postgres
+docker compose up -d db
 
 # Stop PostgreSQL
-docker compose stop postgres
+docker compose stop db
 
 # Remove PostgreSQL (deletes data!)
-docker compose down -v postgres
+docker compose down -v db
 
 # View logs
-docker compose logs -f postgres
+docker compose logs -f db
 
 # Check status
 docker compose ps
@@ -172,11 +172,11 @@ docker compose ps
 
 ```bash
 # Using psql (from host)
-psql -h localhost -U postgres -d rag_db
+psql -h localhost -U postgres -d rag
 # Password: postgres
 
 # Using psql (from Docker)
-docker compose exec postgres psql -U postgres -d rag_db
+docker compose exec db psql -U postgres -d rag
 
 # Using pgAdmin (GUI)
 # Download from: https://www.pgadmin.org/
@@ -236,31 +236,31 @@ LIMIT 5;
 
 ```bash
 # Drop and recreate database
-docker compose exec postgres psql -U postgres -c "DROP DATABASE rag_db;"
-docker compose exec postgres psql -U postgres -c "CREATE DATABASE rag_db;"
+docker compose exec db psql -U postgres -c "DROP DATABASE rag;"
+docker compose exec db psql -U postgres -c "CREATE DATABASE rag;"
 
 # Re-run init script
-docker compose exec postgres psql -U postgres -d rag_db -f /docker-entrypoint-initdb.d/init.sql
+docker compose exec db psql -U postgres -d rag -f /docker-entrypoint-initdb.d/00-init.sql
 
 # OR: Restart container (runs init.sql automatically)
-docker compose down postgres
-docker compose up -d postgres
+docker compose down db
+docker compose up -d db
 ```
 
 ### Backup and Restore
 
 ```bash
 # Backup database
-docker compose exec postgres pg_dump -U postgres rag_db > backup_$(date +%Y%m%d).sql
+docker compose exec db pg_dump -U postgres rag > backup_$(date +%Y%m%d).sql
 
 # Restore database
-docker compose exec -T postgres psql -U postgres -d rag_db < backup_20251230.sql
+docker compose exec -T db psql -U postgres -d rag < backup_20251230.sql
 
 # Backup with compression
-docker compose exec postgres pg_dump -U postgres rag_db | gzip > backup_$(date +%Y%m%d).sql.gz
+docker compose exec db pg_dump -U postgres rag | gzip > backup_$(date +%Y%m%d).sql.gz
 
 # Restore compressed backup
-gunzip -c backup_20251230.sql.gz | docker compose exec -T postgres psql -U postgres -d rag_db
+gunzip -c backup_20251230.sql.gz | docker compose exec -T db psql -U postgres -d rag
 ```
 
 ---
@@ -292,16 +292,16 @@ python -m uvicorn app.main:app --reload
 **Solution:**
 ```bash
 # Check if PostgreSQL is running
-docker compose ps postgres
+docker compose ps db
 
 # Start PostgreSQL if not running
-docker compose up -d postgres
+docker compose up -d db
 
 # Check connection string in .env
-# Should be: DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag_db
+# Should be: DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
 
 # Test connection manually
-psql -h localhost -U postgres -d rag_db
+psql -h localhost -U postgres -d rag
 ```
 
 #### "google.generativeai.types.generation_types.StopCandidateException"
@@ -527,7 +527,7 @@ repos:
 **.env.example:**
 ```bash
 # Backend
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag_db
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
 GOOGLE_API_KEY=your-google-api-key-here
 
 # Optional

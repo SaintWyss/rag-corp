@@ -465,14 +465,15 @@ def test_query_endpoint():
 ### Running Integration Tests
 
 ```bash
+# TODO: Create compose.test.yaml first
 # Start test database
-docker compose -f compose.test.yaml up -d postgres
+# docker compose -f compose.test.yaml up -d db-test
 
 # Run integration tests
 pytest tests/integration/ -v
 
 # Stop test database
-docker compose -f compose.test.yaml down
+# docker compose -f compose.test.yaml down
 ```
 
 ---
@@ -490,7 +491,7 @@ Test complete user workflows from frontend to backend to database.
 
 ### Framework
 
-**Tool:** Playwright (Python or TypeScript)
+**Tool:** TODO/Planned - Playwright (Python or TypeScript)
 
 ### Example: E2E Test
 
@@ -536,17 +537,17 @@ def test_complete_rag_workflow():
 ### Running E2E Tests
 
 ```bash
-# Install Playwright
-pip install playwright
-playwright install
+# TODO: Install Playwright first
+# pip install playwright
+# playwright install
 
 # Start all services
 docker compose up -d
 cd apps/web && npm run dev &
 cd services/rag-api && uvicorn app.main:app &
 
-# Run E2E tests
-pytest tests/e2e/ -v --headed  # With visible browser
+# TODO: Create E2E tests
+# pytest tests/e2e/ -v --headed
 
 # Stop services
 docker compose down
@@ -558,19 +559,21 @@ docker compose down
 
 ### Test Database
 
-**compose.test.yaml:**
+**TODO:** Create `compose.test.yaml` with test database configuration
+
 ```yaml
+# Example structure (not yet implemented)
 services:
-  postgres-test:
-    image: pgvector/pgvector:pg16
+  db-test:
+    image: pgvector/pgvector:0.8.1-pg16-trixie
     environment:
-      POSTGRES_DB: rag_test_db
+      POSTGRES_DB: rag_test
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"  # Different port to avoid conflict
+      - "5433:5432"
     volumes:
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
 ```
 
 ### Mocking External Services
