@@ -11,4 +11,9 @@
     Name, Responsibilities, Collaborators, Notes/Constraints.
   - Evitar comentarios redundantes; priorizar intención y arquitectura.
 - Generar documentación en doc/ y mantener README root como “portal” (Quickstart + links).
-- Siempre que sea posible, incluir diagramas Mermaid dentro de doc/diagrams/.
+- Siempre que sea posible, incluir diagramas Mermaid dentro de doc/diagrams/.md para ilustrar arquitectura y flujos.
+- Asegurar cobertura de tests adecuada:
+- Incluir tests automatizados para nuevas funcionalidades y cambios.
+- Realizar revisiones de código (code reviews) para cambios significativos.
+- Mantener consistencia con el estilo y convenciones del proyecto.
+- Cada vez que se realicen cambios significativos en la arquitectura o diseño hacer git add . y git commit -m "especificar cambios realizados".

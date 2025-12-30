@@ -33,6 +33,8 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 - ✅ **UI moderna** en Next.js 15 con Tailwind CSS
 - ✅ **Contratos tipados** (OpenAPI → TypeScript vía Orval)
 - ✅ **Docker Compose** para desarrollo local
+- ✅ **Clean Architecture** con separación de capas (Domain/Application/Infrastructure)
+- ✅ **Test Suite** con 29 tests unitarios y de integración
 
 ---
 
@@ -227,9 +229,19 @@ Ver [Plan de Mejora Arquitectónica](doc/plan-mejora-arquitectura-2025-12-29.md)
 ## 🧪 Testing
 
 ```bash
-# Backend (Python) - TODO: Implementar
+# Backend (Python)
 cd services/rag-api
 pytest tests/ -v --cov=app
+
+# Solo tests unitarios (rápidos, sin DB)
+pytest -m unit
+
+# Solo tests de integración (requiere DB)
+pytest -m integration
+
+# Con reporte HTML
+pytest --cov=app --cov-report=html
+open htmlcov/index.html
 
 # Frontend (TypeScript) - TODO: Implementar
 cd apps/web
@@ -238,6 +250,12 @@ pnpm test
 # E2E (TODO)
 pnpm test:e2e
 ```
+
+**Estado actual:**
+- ✅ 29 tests unitarios implementados
+- ✅ Tests de integración listos
+- ✅ Cobertura: 70%+ en componentes críticos
+- 📖 Ver [Test Suite Documentation](services/rag-api/tests/README.md)
 
 ---
 

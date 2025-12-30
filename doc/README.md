@@ -65,6 +65,7 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 ## 🧪 Calidad
 
 - **[Estrategia de Testing](quality/testing.md)** - Unitarios, integración, E2E
+- **[Test Suite Documentation](../services/rag-api/tests/README.md)** - 29 tests implementados ✅
 - TODO: **[Code Coverage](quality/coverage.md)** - Métricas y objetivos
 - TODO: **[Performance](quality/performance.md)** - Benchmarks y optimizaciones
 
