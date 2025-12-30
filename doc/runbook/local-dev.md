@@ -381,9 +381,9 @@ curl http://localhost:8000/healthz
 **Solution:**
 ```bash
 # Use pgvector image (not plain postgres)
-# In docker-compose.yml:
+# In compose.yaml:
 services:
-  postgres:
+  db:
     image: pgvector/pgvector:pg16  # ✅ Correct
     # NOT: postgres:16             # ❌ Wrong
 ```
@@ -441,16 +441,18 @@ pytest tests/e2e/ -v --headed
 
 ### Test Database
 
-```bash
-# Start test database (different port)
-docker-compose -f docker-compose.test.yml up -d
+> **TODO/Planned:** `compose.test.yaml` no existe aún. Por ahora usar la DB principal.
 
-# Run integration tests with test DB
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/rag_test_db \
+```bash
+# TODO: Start test database (different port) - compose.test.yaml pendiente
+# docker compose -f compose.test.yaml up -d
+
+# Run integration tests with main DB (development)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag \
 pytest tests/integration/
 
-# Stop test database
-docker-compose -f docker-compose.test.yml down -v
+# TODO: Stop test database
+# docker compose -f compose.test.yaml down -v
 ```
 
 ---
@@ -658,10 +660,10 @@ cd services/rag-api
 uvicorn app.main:app --reload --log-level debug
 
 # PostgreSQL logs
-docker-compose logs -f postgres
+docker compose -f compose.yaml logs -f db
 
 # Tail all logs
-docker-compose logs -f
+docker compose -f compose.yaml logs -f
 ```
 
 ---
@@ -671,7 +673,7 @@ docker-compose logs -f
 ### Starting Development
 
 - [ ] Pull latest changes: `git pull`
-- [ ] Start PostgreSQL: `docker-compose up -d postgres`
+- [ ] Start PostgreSQL: `docker compose -f compose.yaml up -d db`
 - [ ] Start backend: `cd services/rag-api && uvicorn app.main:app --reload`
 - [ ] Start frontend: `cd apps/web && pnpm dev`
 - [ ] Verify API: `curl http://localhost:8000/healthz`
@@ -688,7 +690,7 @@ docker-compose logs -f
 
 - [ ] Run all tests: `pytest tests/`
 - [ ] Build production: `pnpm build`
-- [ ] Check Docker build: `docker-compose build`
+- [ ] Check Docker build: `docker compose -f compose.yaml build`
 - [ ] Update CHANGELOG.md
 - [ ] Create pull request
 

@@ -349,20 +349,20 @@ Run after bulk inserts to update query planner statistics.
 
 ```bash
 # Full backup (includes pgvector extension)
-pg_dump -h localhost -U postgres rag_db > backup.sql
+pg_dump -h localhost -U postgres rag > backup.sql
 
 # Compressed backup
-pg_dump -h localhost -U postgres rag_db | gzip > backup.sql.gz
+pg_dump -h localhost -U postgres rag | gzip > backup.sql.gz
 ```
 
 ### Restore Database
 
 ```bash
 # Restore from backup
-psql -h localhost -U postgres -d rag_db < backup.sql
+psql -h localhost -U postgres -d rag < backup.sql
 
 # Restore compressed
-gunzip -c backup.sql.gz | psql -h localhost -U postgres -d rag_db
+gunzip -c backup.sql.gz | psql -h localhost -U postgres -d rag
 ```
 
 ### Vacuum and Analyze
@@ -439,21 +439,21 @@ WITH (lists = 100);
 
 ```bash
 # Environment variable
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rag_db"
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rag"
 
 # psycopg (Python)
 import psycopg
-conn = psycopg.connect("postgresql://postgres:postgres@localhost:5432/rag_db")
+conn = psycopg.connect("postgresql://postgres:postgres@localhost:5432/rag")
 ```
 
 ### Docker Compose
 
 ```yaml
 services:
-  postgres:
+  db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: rag_db
+      POSTGRES_DB: rag
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:

@@ -271,7 +271,7 @@ const data = await response.json();
 ```python
 # Backend DB connection
 import psycopg
-conn = psycopg.connect("postgresql://postgres:postgres@localhost:5432/rag_db")
+conn = psycopg.connect("postgresql://postgres:postgres@localhost:5432/rag")
 ```
 
 ### 3. Backend ↔ Gemini API
