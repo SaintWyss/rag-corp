@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { askV1AskPost } from "@contracts/src/generated";
+import { useState } from "react";
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -26,16 +26,23 @@ export default function Home() {
         }
       );
 
+      // R: Check if request was successful
       if (res.status === 200) {
-          setAnswer(res.data.answer);
-          setSources(res.data.sources || []);
+        // R: Update state with generated answer
+        setAnswer(res.data.answer);
+        // R: Update state with source chunks (fallback to empty array)
+        setSources(res.data.sources || []);
       } else {
-          setError("Error en el servidor: " + res.status);
+        // R: Handle non-200 status codes
+        setError("Error en el servidor: " + res.status);
       }
     } catch (err) {
+      // R: Log error for debugging
       console.error(err);
+      // R: Display user-friendly connection error
       setError("Error de conexión. ¿Está prendido el backend?");
     } finally {
+      // R: Always reset loading state
       setLoading(false);
     }
   };
@@ -44,12 +51,12 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white p-8 font-sans">
       <div className="max-w-3xl mx-auto">
 
-        {/* TÍTULO */}
+        {/* R: Main title with cyberpunk styling */}
         <h1 className="text-4xl font-bold mb-8 text-yellow-400 border-b border-gray-700 pb-4">
           RAG Corp v1.0
         </h1>
 
-        {/* FORMULARIO */}
+        {/* R: Search form with input and submit button */}
         <form onSubmit={handleSearch} className="flex gap-4 mb-8">
           <input
             className="flex-1 p-4 text-lg rounded bg-white text-black border-4 border-gray-600 focus:border-yellow-400 outline-none placeholder-gray-500 font-medium"
