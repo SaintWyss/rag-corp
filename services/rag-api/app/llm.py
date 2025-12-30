@@ -32,6 +32,8 @@ Performance:
 """
 import os
 import google.generativeai as genai
+from .logger import logger
+from .exceptions import LLMError
 
 # R: Load Google API key from environment (shared with embeddings)
 API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -54,9 +56,13 @@ def generate_rag_answer(query: str, context_chunks: list[str]) -> str:
         - If context_chunks is empty, returns "not found" message
         - Prompt includes instructions to avoid answering outside context
         - Response format: professional, concise, in Spanish
+    
+    Raises:
+        LLMError: If API key not configured or generation fails
     """
     if not API_KEY:
-        return "Error: API Key not configured."
+        logger.error("GOOGLE_API_KEY not configured for LLM")
+        raise LLMError("API Key not configured")
 
     # R: Concatenate retrieved chunks into single context string
     context_text = "\n\n".join(context_chunks)
@@ -85,9 +91,12 @@ def generate_rag_answer(query: str, context_chunks: list[str]) -> str:
         
         # R: Generate response using constructed prompt
         response = model.generate_content(prompt)
+        logger.info("LLM response generated successfully")
         
         # R: Return cleaned response text
         return response.text.strip()
+    except LLMError:
+        raise
     except Exception as e:
-        # R: Fallback error message if generation fails
-        return f"Error generating response: {str(e)}"
+        logger.error(f"LLM generation failed: {e}")
+        raise LLMError(f"Failed to generate response: {e}")

@@ -26,6 +26,9 @@ import os
 from typing import List
 import google.generativeai as genai
 
+from ...logger import logger
+from ...exceptions import EmbeddingError
+
 
 class GoogleEmbeddingService:
     """
@@ -41,21 +44,29 @@ class GoogleEmbeddingService:
         
         Args:
             api_key: Google API key (defaults to GOOGLE_API_KEY env var)
+        
+        Raises:
+            EmbeddingError: If API key not configured
         """
         # R: Use provided key or fall back to environment variable
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         
         if not self.api_key:
-            raise ValueError("GOOGLE_API_KEY not configured")
+            logger.error("GoogleEmbeddingService: GOOGLE_API_KEY not configured")
+            raise EmbeddingError("GOOGLE_API_KEY not configured")
         
         # R: Configure Google API client
         genai.configure(api_key=self.api_key)
+        logger.info("GoogleEmbeddingService initialized")
     
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
         """
         R: Generate embeddings for multiple texts (document ingestion mode).
         
         Implements EmbeddingService.embed_batch()
+        
+        Raises:
+            EmbeddingError: If embedding generation fails
         """
         results = []
         
@@ -71,10 +82,10 @@ class GoogleEmbeddingService:
                 )
                 # R: Extract embeddings from response (list of lists)
                 results.extend(resp['embedding'])
+                logger.info(f"GoogleEmbeddingService: Embedded batch of {len(batch)} texts")
             except Exception as e:
-                # TODO: Replace print with structured logger
-                print(f"Error embedding batch: {e}")
-                raise e
+                logger.error(f"GoogleEmbeddingService: Embedding batch failed: {e}")
+                raise EmbeddingError(f"Failed to generate embeddings: {e}")
         
         return results
     
@@ -83,11 +94,19 @@ class GoogleEmbeddingService:
         R: Generate embedding for a single query (search mode).
         
         Implements EmbeddingService.embed_query()
+        
+        Raises:
+            EmbeddingError: If embedding generation fails
         """
-        # R: Call Google Embedding API with retrieval_query task type
-        resp = genai.embed_content(
-            model="models/text-embedding-004",
-            content=query,
-            task_type="retrieval_query"  # R: Optimized for search
-        )
-        return resp['embedding']
+        try:
+            # R: Call Google Embedding API with retrieval_query task type
+            resp = genai.embed_content(
+                model="models/text-embedding-004",
+                content=query,
+                task_type="retrieval_query"  # R: Optimized for search
+            )
+            logger.info("GoogleEmbeddingService: Query embedded successfully")
+            return resp['embedding']
+        except Exception as e:
+            logger.error(f"GoogleEmbeddingService: Query embedding failed: {e}")
+            raise EmbeddingError(f"Failed to embed query: {e}")

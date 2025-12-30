@@ -33,6 +33,8 @@ Performance:
 import os
 import google.generativeai as genai
 import time
+from .logger import logger
+from .exceptions import EmbeddingError
 
 # R: Load Google API key from environment
 API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -78,10 +80,10 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
             )
             # R: Extract embeddings from response (list of lists)
             results.extend(resp['embedding'])
+            logger.info(f"Embedded batch of {len(batch)} texts")
         except Exception as e:
-            # TODO: Replace print with structured logger
-            print(f"Error embedding batch: {e}")
-            raise e
+            logger.error(f"Embedding batch failed: {e}")
+            raise EmbeddingError(f"Failed to generate embeddings: {e}")
     return results
 
 def embed_query(query: str) -> list[float]:
@@ -102,12 +104,20 @@ def embed_query(query: str) -> list[float]:
         - Single query, no batching needed
     """
     if not API_KEY:
-        raise ValueError("GOOGLE_API_KEY not configured")
-        
-    # R: Call Google Embedding API with retrieval_query task type
-    resp = genai.embed_content(
-        model="models/text-embedding-004",
-        content=query,
-        task_type="retrieval_query"
-    )
-    return resp['embedding']
+        logger.error("GOOGLE_API_KEY not configured for embed_query")
+        raise EmbeddingError("GOOGLE_API_KEY not configured")
+
+    try:
+        # R: Call Google Embedding API with retrieval_query task type
+        resp = genai.embed_content(
+            model="models/text-embedding-004",
+            content=query,
+            task_type="retrieval_query"
+        )
+        logger.info("Query embedded successfully")
+        return resp['embedding']
+    except EmbeddingError:
+        raise
+    except Exception as e:
+        logger.error(f"Query embedding failed: {e}")
+        raise EmbeddingError(f"Failed to embed query: {e}")

@@ -31,6 +31,8 @@ from uuid import UUID, uuid4
 import psycopg
 from pgvector.psycopg import register_vector
 from psycopg.types.json import Json
+from .logger import logger
+from .exceptions import DatabaseError
 
 # R: Database connection string from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/rag")
@@ -45,14 +47,21 @@ class Store:
         
         Returns:
             psycopg.Connection: Connection configured for vector operations
+        
+        Raises:
+            DatabaseError: If connection fails
         """
-        # R: Establish connection with autocommit (no manual transaction management)
-        conn = psycopg.connect(DATABASE_URL, autocommit=True)
-        
-        # R: Register pgvector type for embedding operations
-        register_vector(conn)
-        
-        return conn
+        try:
+            # R: Establish connection with autocommit (no manual transaction management)
+            conn = psycopg.connect(DATABASE_URL, autocommit=True)
+            
+            # R: Register pgvector type for embedding operations
+            register_vector(conn)
+            
+            return conn
+        except Exception as e:
+            logger.error(f"Database connection failed: {e}")
+            raise DatabaseError(f"Cannot connect to database: {e}")
 
     def upsert_document(self, document_id: UUID, title: str, source: str | None, metadata: dict):
         """
@@ -63,20 +72,30 @@ class Store:
             title: Document title
             source: Optional source URL or identifier
             metadata: Additional custom metadata (stored as JSONB)
+        
+        Raises:
+            DatabaseError: If database operation fails
         """
-        with self._conn() as conn:
-            # R: Upsert document (insert or update if exists)
-            conn.execute(
-                """
-                INSERT INTO documents (id, title, source, metadata)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE
-                SET title = EXCLUDED.title,
-                    source = EXCLUDED.source,
-                    metadata = EXCLUDED.metadata
-                """,
-                (document_id, title, source, Json(metadata)),
-            )
+        try:
+            with self._conn() as conn:
+                # R: Upsert document (insert or update if exists)
+                conn.execute(
+                    """
+                    INSERT INTO documents (id, title, source, metadata)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE
+                    SET title = EXCLUDED.title,
+                        source = EXCLUDED.source,
+                        metadata = EXCLUDED.metadata
+                    """,
+                    (document_id, title, source, Json(metadata)),
+                )
+            logger.info(f"Document upserted: {document_id}")
+        except DatabaseError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to upsert document {document_id}: {e}")
+            raise DatabaseError(f"Failed to upsert document: {e}")
 
     def insert_chunks(self, document_id: UUID, chunks: list[str], vectors: list[list[float]]):
         """
@@ -87,24 +106,34 @@ class Store:
             chunks: List of text fragments
             vectors: List of 768-dimensional embeddings (parallel to chunks)
         
+        Raises:
+            DatabaseError: If database operation fails
+        
         Notes:
             - Uses loop with execute (sufficient for MVP)
             - Could be optimized with executemany for bulk inserts
         """
-        with self._conn() as conn:
-            # R: Insert each chunk with its embedding
-            for idx, (content, emb) in enumerate(zip(chunks, vectors)):
-                # R: Generate unique chunk ID
-                cid = uuid4()
-                
-                # R: Store chunk with embedding vector
-                conn.execute(
-                    """
-                    INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (cid, document_id, idx, content, emb),
-                )
+        try:
+            with self._conn() as conn:
+                # R: Insert each chunk with its embedding
+                for idx, (content, emb) in enumerate(zip(chunks, vectors)):
+                    # R: Generate unique chunk ID
+                    cid = uuid4()
+                    
+                    # R: Store chunk with embedding vector
+                    conn.execute(
+                        """
+                        INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (cid, document_id, idx, content, emb),
+                    )
+            logger.info(f"Inserted {len(chunks)} chunks for document {document_id}")
+        except DatabaseError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to insert chunks for {document_id}: {e}")
+            raise DatabaseError(f"Failed to insert chunks: {e}")
 
     def search(self, query_vec: list[float], top_k: int = 5):
         """
@@ -118,26 +147,36 @@ class Store:
             List of dicts with keys: chunk_id, document_id, content, score
             Score is 0-1, higher means more similar (1 - cosine_distance)
         
+        Raises:
+            DatabaseError: If search query fails
+        
         Notes:
             - Uses <=> operator for cosine distance (pgvector)
             - Explicit ::vector cast required for query parameter
             - IVFFlat index accelerates search
         """
-        with self._conn() as conn:
-            # R: Execute vector similarity search using cosine distance
-            rows = conn.execute(
-                """
-                SELECT
-                  id as chunk_id,
-                  document_id,
-                  content,
-                  (1 - (embedding <=> %s::vector)) as score
-                FROM chunks
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-                """,
-                (query_vec, query_vec, top_k),
-            ).fetchall()
+        try:
+            with self._conn() as conn:
+                # R: Execute vector similarity search using cosine distance
+                rows = conn.execute(
+                    """
+                    SELECT
+                      id as chunk_id,
+                      document_id,
+                      content,
+                      (1 - (embedding <=> %s::vector)) as score
+                    FROM chunks
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    (query_vec, query_vec, top_k),
+                ).fetchall()
+            logger.info(f"Search returned {len(rows)} results")
+        except DatabaseError:
+            raise
+        except Exception as e:
+            logger.error(f"Search failed: {e}")
+            raise DatabaseError(f"Search query failed: {e}")
 
         # R: Convert database rows to dictionaries
         return [

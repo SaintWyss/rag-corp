@@ -26,6 +26,9 @@ Notes:
 import os
 import google.generativeai as genai
 
+from ...logger import logger
+from ...exceptions import LLMError
+
 
 class GoogleLLMService:
     """
@@ -41,24 +44,32 @@ class GoogleLLMService:
         
         Args:
             api_key: Google API key (defaults to GOOGLE_API_KEY env var)
+        
+        Raises:
+            LLMError: If API key not configured
         """
         # R: Use provided key or fall back to environment variable
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         
         if not self.api_key:
-            raise ValueError("GOOGLE_API_KEY not configured")
+            logger.error("GoogleLLMService: GOOGLE_API_KEY not configured")
+            raise LLMError("GOOGLE_API_KEY not configured")
         
         # R: Configure Google API client
         genai.configure(api_key=self.api_key)
         
         # R: Initialize model
         self.model = genai.GenerativeModel('gemini-1.5-flash')
+        logger.info("GoogleLLMService initialized")
     
     def generate_answer(self, query: str, context: str) -> str:
         """
         R: Generate answer based on query and retrieved context.
         
         Implements LLMService.generate_answer()
+        
+        Raises:
+            LLMError: If response generation fails
         """
         # R: Construct prompt with business rules
         prompt = f"""
@@ -81,9 +92,12 @@ class GoogleLLMService:
         try:
             # R: Generate response using Gemini
             response = self.model.generate_content(prompt)
+            logger.info("GoogleLLMService: Response generated successfully")
             
             # R: Return cleaned response text
             return response.text.strip()
+        except LLMError:
+            raise
         except Exception as e:
-            # R: Fallback error message if generation fails
-            return f"Error generating response: {str(e)}"
+            logger.error(f"GoogleLLMService: Generation failed: {e}")
+            raise LLMError(f"Failed to generate response: {e}")

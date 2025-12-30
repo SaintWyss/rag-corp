@@ -24,12 +24,15 @@ Notes:
 
 Production Readiness:
   - TODO: Read ALLOWED_ORIGINS from .env (Issue #4 tech debt)
-  - TODO: Add detailed health check (verify DB + Google API)
   - TODO: Add authentication middleware (API Key or JWT)
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
+from .logger import logger
+from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
+from .store import Store
 
 # R: Create FastAPI application instance with API metadata
 app = FastAPI(title="RAG Corp API", version="0.1.0")
@@ -46,7 +49,69 @@ app.add_middleware(
 # R: Register API routes under /v1 prefix for versioning
 app.include_router(router, prefix="/v1")
 
+
+# R: Exception handlers for structured error responses
+@app.exception_handler(DatabaseError)
+async def database_error_handler(request: Request, exc: DatabaseError):
+    """Handle database errors with structured response."""
+    logger.error(f"Database error: {exc.message} | error_id={exc.error_id} | path={request.url.path}")
+    return JSONResponse(
+        status_code=503,
+        content=exc.to_response().to_dict(),
+    )
+
+
+@app.exception_handler(EmbeddingError)
+async def embedding_error_handler(request: Request, exc: EmbeddingError):
+    """Handle embedding service errors."""
+    logger.error(f"Embedding error: {exc.message} | error_id={exc.error_id} | path={request.url.path}")
+    return JSONResponse(
+        status_code=503,
+        content=exc.to_response().to_dict(),
+    )
+
+
+@app.exception_handler(LLMError)
+async def llm_error_handler(request: Request, exc: LLMError):
+    """Handle LLM service errors."""
+    logger.error(f"LLM error: {exc.message} | error_id={exc.error_id} | path={request.url.path}")
+    return JSONResponse(
+        status_code=503,
+        content=exc.to_response().to_dict(),
+    )
+
+
+@app.exception_handler(RAGError)
+async def rag_error_handler(request: Request, exc: RAGError):
+    """Handle generic RAG errors."""
+    logger.error(f"RAG error: {exc.message} | error_id={exc.error_id} | path={request.url.path}")
+    return JSONResponse(
+        status_code=500,
+        content=exc.to_response().to_dict(),
+    )
+
+
 # R: Health check endpoint for monitoring/orchestration (Kubernetes, Docker)
 @app.get("/healthz")
 def healthz():
-    return {"ok": True}
+    """
+    R: Enhanced health check that verifies database connectivity.
+
+    Returns:
+        ok: True if all systems operational
+        db: "connected" or "disconnected"
+    """
+    db_status = "disconnected"
+    try:
+        store = Store()
+        with store._conn() as conn:
+            conn.execute("SELECT 1")
+        db_status = "connected"
+        logger.info(f"Health check passed | db={db_status}")
+    except Exception as e:
+        logger.warning(f"Health check: DB unavailable - {e}")
+
+    return {
+        "ok": db_status == "connected",
+        "db": db_status,
+    }
