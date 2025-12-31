@@ -38,20 +38,20 @@ class DocumentRepository(Protocol):
     Collaborators: Document, Chunk entities
     """
     
-    def save(self, document: Document) -> None:
-        """Persist a document with its chunks and embeddings."""
+    def save_document(self, document: Document) -> None:
+        """Persist a document's metadata."""
         ...
     
-    def search_similar(
+    def save_chunks(self, document_id: UUID, chunks: list[Chunk]) -> None:
+        """Persist chunks and embeddings for a document."""
+        ...
+    
+    def find_similar_chunks(
         self, 
         embedding: list[float], 
-        limit: int = 5
+        top_k: int = 5
     ) -> list[Chunk]:
         """Find chunks with embeddings similar to query embedding."""
-        ...
-    
-    def get_by_id(self, doc_id: str) -> Document | None:
-        """Retrieve document by ID."""
         ...
 ```
 
@@ -60,7 +60,9 @@ class DocumentRepository(Protocol):
 ```python
 # Infrastructure layer: Concrete implementation
 import psycopg
+from uuid import UUID
 from psycopg.rows import dict_row
+from psycopg.types.json import Json
 
 class PostgresDocumentRepository:
     """
@@ -75,53 +77,69 @@ class PostgresDocumentRepository:
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
     
-    def save(self, document: Document) -> None:
-        """R: Persist document chunks with embeddings to PostgreSQL."""
+    def save_document(self, document: Document) -> None:
+        """R: Persist document metadata to PostgreSQL."""
         with psycopg.connect(self.connection_string) as conn:
             with conn.cursor() as cur:
-                for chunk in document.chunks:
+                cur.execute(
+                    """
+                    INSERT INTO documents (id, title, source, metadata)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE
+                    SET title = EXCLUDED.title,
+                        source = EXCLUDED.source,
+                        metadata = EXCLUDED.metadata
+                    """,
+                    (document.id, document.title, document.source, Json(document.metadata))
+                )
+                conn.commit()
+
+    def save_chunks(self, document_id: UUID, chunks: list[Chunk]) -> None:
+        """R: Persist chunks with embeddings to PostgreSQL."""
+        with psycopg.connect(self.connection_string) as conn:
+            with conn.cursor() as cur:
+                for chunk in chunks:
                     cur.execute(
                         """
-                        INSERT INTO chunks (doc_id, chunk_index, content, embedding)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
+                        VALUES (%s, %s, %s, %s, %s)
                         """,
                         (
-                            document.id,
-                            chunk.index,
+                            chunk.chunk_id,
+                            document_id,
+                            chunk.chunk_index,
                             chunk.content,
                             chunk.embedding
                         )
                     )
                 conn.commit()
     
-    def search_similar(
+    def find_similar_chunks(
         self, 
         embedding: list[float], 
-        limit: int = 5
+        top_k: int = 5
     ) -> list[Chunk]:
         """R: Use pgvector cosine similarity to find top-N chunks."""
         with psycopg.connect(self.connection_string) as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, doc_id, chunk_index, content, embedding,
-                           1 - (embedding <=> %s::vector) AS similarity
+                    SELECT id, document_id, chunk_index, content, embedding
                     FROM chunks
                     ORDER BY embedding <=> %s::vector
                     LIMIT %s
                     """,
-                    (embedding, embedding, limit)
+                    (embedding, embedding, top_k)
                 )
                 rows = cur.fetchall()
                 
                 return [
                     Chunk(
-                        id=row["id"],
-                        doc_id=row["doc_id"],
-                        index=row["chunk_index"],
+                        chunk_id=row["id"],
+                        document_id=row["document_id"],
+                        chunk_index=row["chunk_index"],
                         content=row["content"],
-                        embedding=row["embedding"],
-                        similarity=row["similarity"]
+                        embedding=row["embedding"]
                     )
                     for row in rows
                 ]
@@ -136,10 +154,10 @@ class FakeDocumentRepository:
     def __init__(self):
         self.documents = {}
     
-    def save(self, document: Document) -> None:
+    def save_document(self, document: Document) -> None:
         self.documents[document.id] = document
     
-    def search_similar(self, embedding, limit=5):
+    def find_similar_chunks(self, embedding, top_k=5):
         # Return test fixtures
         return [...]
 ```
@@ -170,7 +188,7 @@ from dataclasses import dataclass
 class AnswerQueryInput:
     """Immutable input for AnswerQuery use case."""
     query: str
-    limit: int = 5
+    top_k: int = 5
 
 # Output is already defined (QueryResult entity)
 
@@ -203,24 +221,23 @@ class AnswerQueryUseCase:
     def execute(self, input: AnswerQueryInput) -> QueryResult:
         """Execute RAG workflow."""
         # 1. Embed query
-        query_embedding = self.embedding_service.embed(input.query)
+        query_embedding = self.embedding_service.embed_query(input.query)
         
         # 2. Retrieve similar chunks
-        chunks = self.repository.search_similar(
-            query_embedding, 
-            limit=input.limit
+        chunks = self.repository.find_similar_chunks(
+            embedding=query_embedding,
+            top_k=input.top_k
         )
         
         if not chunks:
             return QueryResult(
-                query=input.query,
-                answer="No relevant documents found.",
+                answer="No encontré documentos relacionados a tu pregunta.",
                 chunks=[]
             )
         
         # 3. Build context from retrieved chunks
         context = "\n\n".join(
-            f"[Document {chunk.doc_id}, Part {chunk.index}]\n{chunk.content}"
+            f"[Document {chunk.document_id}, Part {chunk.chunk_index}]\n{chunk.content}"
             for chunk in chunks
         )
         
@@ -234,10 +251,9 @@ Question: {input.query}
 
 Answer:"""
         
-        answer = self.llm_service.generate(prompt)
+        answer = self.llm_service.generate_answer(input.query, context)
         
         return QueryResult(
-            query=input.query,
             answer=answer,
             chunks=chunks
         )
@@ -252,32 +268,24 @@ from fastapi import APIRouter, Depends
 router = APIRouter()
 
 @router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,
+def answer_query(
+    request: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
-) -> AnswerQueryResponse:
+) -> AskRes:
     """
     R: HTTP endpoint adapter for AnswerQueryUseCase.
     Converts HTTP request → Input DTO → Use Case → HTTP response.
     """
     # Convert HTTP request to domain input
-    input_dto = AnswerQueryInput(query=request.query)
+    input_dto = AnswerQueryInput(query=request.query, top_k=3)
     
     # Execute business logic
     result = use_case.execute(input_dto)
     
     # Convert domain output to HTTP response
-    return AnswerQueryResponse(
+    return AskRes(
         answer=result.answer,
-        sources=[
-            SourceReference(
-                doc_id=chunk.doc_id,
-                chunk_index=chunk.index,
-                content=chunk.content[:200],
-                similarity=chunk.similarity
-            )
-            for chunk in result.chunks
-        ]
+        sources=[chunk.content for chunk in result.chunks]
     )
 ```
 
@@ -304,8 +312,8 @@ from typing import Protocol
 class LLMService(Protocol):
     """Strategy interface for LLM providers."""
     
-    def generate(self, prompt: str, max_tokens: int = 500) -> str:
-        """Generate text from prompt."""
+    def generate_answer(self, query: str, context: str) -> str:
+        """Generate answer from query + context."""
         ...
 
 # Infrastructure layer: Multiple strategies
@@ -318,11 +326,17 @@ class GoogleLLMService:
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model)
     
-    def generate(self, prompt: str, max_tokens: int = 500) -> str:
-        response = self.model.generate_content(
-            prompt,
-            generation_config={"max_output_tokens": max_tokens}
-        )
+    def generate_answer(self, query: str, context: str) -> str:
+        prompt = f"""
+        Answer the question using only the context.
+
+        Context:
+        {context}
+
+        Question: {query}
+        Answer:
+        """
+        response = self.model.generate_content(prompt)
         return response.text
 
 class OpenAILLMService:
@@ -333,11 +347,13 @@ class OpenAILLMService:
         self.client = OpenAI(api_key=api_key)
         self.model = model
     
-    def generate(self, prompt: str, max_tokens: int = 500) -> str:
+    def generate_answer(self, query: str, context: str) -> str:
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens
+            messages=[
+                {"role": "system", "content": "Answer using only the provided context."},
+                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
+            ]
         )
         return response.choices[0].message.content
 
@@ -349,11 +365,11 @@ class AnthropicLLMService:
         self.client = Anthropic(api_key=api_key)
         self.model = model
     
-    def generate(self, prompt: str, max_tokens: int = 500) -> str:
+    def generate_answer(self, query: str, context: str) -> str:
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}]
+            max_tokens=500,
+            messages=[{"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}]
         )
         return response.content[0].text
 ```
@@ -398,40 +414,36 @@ Invert control: components receive dependencies instead of creating them.
 ```python
 # container.py
 from functools import lru_cache
-from app.settings import get_settings
-
-# Singleton instances via @lru_cache
-
-@lru_cache
-def get_settings():
-    """Load configuration once."""
-    return Settings()
+from app.infrastructure.repositories import PostgresDocumentRepository
+from app.infrastructure.services import GoogleEmbeddingService, GoogleLLMService
+from app.application.use_cases import AnswerQueryUseCase
 
 @lru_cache
 def get_document_repository() -> DocumentRepository:
     """R: Create singleton repository instance."""
-    settings = get_settings()
-    return PostgresDocumentRepository(settings.DATABASE_URL)
+    return PostgresDocumentRepository()
 
 @lru_cache
 def get_embedding_service() -> EmbeddingService:
     """R: Create singleton embedding service."""
-    settings = get_settings()
-    return GoogleEmbeddingService(settings.GOOGLE_API_KEY)
+    return GoogleEmbeddingService()
 
 @lru_cache
 def get_llm_service() -> LLMService:
     """R: Create singleton LLM service."""
-    settings = get_settings()
-    return GoogleLLMService(settings.GOOGLE_API_KEY)
+    return GoogleLLMService()
 
 def get_answer_query_use_case(
-    repository: DocumentRepository = Depends(get_document_repository),
-    embedding_service: EmbeddingService = Depends(get_embedding_service),
-    llm_service: LLMService = Depends(get_llm_service)
+    repository: DocumentRepository = None,
+    embedding_service: EmbeddingService = None,
+    llm_service: LLMService = None
 ) -> AnswerQueryUseCase:
     """R: Compose use case with injected dependencies."""
-    return AnswerQueryUseCase(repository, embedding_service, llm_service)
+    return AnswerQueryUseCase(
+        repository=repository or get_document_repository(),
+        embedding_service=embedding_service or get_embedding_service(),
+        llm_service=llm_service or get_llm_service()
+    )
 ```
 
 ### Usage with FastAPI Depends
@@ -441,13 +453,13 @@ def get_answer_query_use_case(
 from fastapi import Depends
 
 @router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,
+def answer_query(
+    request: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
 ):
     """FastAPI automatically injects dependencies."""
-    result = use_case.execute(AnswerQueryInput(query=request.query))
-    return AnswerQueryResponse(answer=result.answer)
+    result = use_case.execute(AnswerQueryInput(query=request.query, top_k=3))
+    return AskRes(answer=result.answer, sources=[c.content for c in result.chunks])
 ```
 
 ### Testing with DI
@@ -456,19 +468,26 @@ async def answer_query(
 # test_answer_query.py
 import pytest
 from unittest.mock import Mock
+from uuid import uuid4
 
 def test_answer_query_use_case():
     # Arrange: Create mocks
     mock_repository = Mock(spec=DocumentRepository)
-    mock_repository.search_similar.return_value = [
-        Chunk(id=1, doc_id="doc1", index=0, content="Python is great")
+    mock_repository.find_similar_chunks.return_value = [
+        Chunk(
+            chunk_id=uuid4(),
+            document_id=uuid4(),
+            chunk_index=0,
+            content="Python is great",
+            embedding=[0.1] * 768
+        )
     ]
     
     mock_embedding = Mock(spec=EmbeddingService)
-    mock_embedding.embed.return_value = [0.1, 0.2, ...]
+    mock_embedding.embed_query.return_value = [0.1] * 768
     
     mock_llm = Mock(spec=LLMService)
-    mock_llm.generate.return_value = "Python is a programming language."
+    mock_llm.generate_answer.return_value = "Python is a programming language."
     
     # Act: Inject mocks
     use_case = AnswerQueryUseCase(mock_repository, mock_embedding, mock_llm)
@@ -476,8 +495,8 @@ def test_answer_query_use_case():
     
     # Assert
     assert "Python" in result.answer
-    mock_repository.search_similar.assert_called_once()
-    mock_llm.generate.assert_called_once()
+    mock_repository.find_similar_chunks.assert_called_once()
+    mock_llm.generate_answer.assert_called_once()
 ```
 
 ### Benefits
@@ -506,23 +525,23 @@ class EmbeddingService(Protocol):
     No inheritance required.
     """
     
-    def embed(self, text: str) -> list[float]:
-        """Convert text to embedding vector."""
-        ...
-    
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Batch embedding for efficiency."""
+        ...
+
+    def embed_query(self, query: str) -> list[float]:
+        """Convert query text to embedding vector."""
         ...
 
 # Implementation 1: Google Gemini
 class GoogleEmbeddingService:
     """Satisfies EmbeddingService protocol."""
     
-    def embed(self, text: str) -> list[float]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         # Implementation
         ...
-    
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
+
+    def embed_query(self, query: str) -> list[float]:
         # Implementation
         ...
 
@@ -530,25 +549,25 @@ class GoogleEmbeddingService:
 class OpenAIEmbeddingService:
     """Also satisfies EmbeddingService protocol (no inheritance)."""
     
-    def embed(self, text: str) -> list[float]:
-        # Different implementation
-        ...
-    
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         # Different implementation
         ...
 
+    def embed_query(self, query: str) -> list[float]:
+        # Different implementation
+        ...
+
 # Type checker verifies protocol compatibility
-def process_text(text: str, service: EmbeddingService) -> list[float]:
-    """Accepts any object with embed() method."""
-    return service.embed(text)
+def process_query(query: str, service: EmbeddingService) -> list[float]:
+    """Accepts any object with embed_query() method."""
+    return service.embed_query(query)
 
 # Both work!
 google_service = GoogleEmbeddingService(...)
 openai_service = OpenAIEmbeddingService(...)
 
-process_text("hello", google_service)  # ✅ Type-safe
-process_text("hello", openai_service)  # ✅ Type-safe
+process_query("hello", google_service)  # ✅ Type-safe
+process_query("hello", openai_service)  # ✅ Type-safe
 ```
 
 ### Benefits
@@ -626,7 +645,7 @@ RAG Corp combines these patterns for maximum flexibility:
 
 # 1. Protocol defines interface (Protocol Pattern)
 class DocumentRepository(Protocol):
-    def search_similar(self, embedding, limit) -> list[Chunk]: ...
+    def find_similar_chunks(self, embedding, top_k) -> list[Chunk]: ...
 
 # 2. Strategy implementations
 class PostgresDocumentRepository: ...  # Strategy 1

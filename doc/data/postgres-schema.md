@@ -31,6 +31,7 @@ RAG Corp uses PostgreSQL with the `pgvector` extension to store document chunks 
 
 | Table | Purpose | Records |
 |-------|---------|---------|
+| `documents` | Document metadata | 1K-1M |
 | `chunks` | Document chunks with embeddings | 10K-1M |
 
 ---
@@ -49,21 +50,17 @@ CREATE EXTENSION IF NOT EXISTS vector;
 - Vector distance operators (`<=>`, `<->`, `<#>`)
 - Vector indexes (IVFFlat, HNSW)
 
-### Table: chunks
+### Table: documents
 
-Stores text chunks with their vector embeddings.
+Stores document metadata only.
 
 ```sql
-CREATE TABLE chunks (
-    id SERIAL PRIMARY KEY,
-    doc_id VARCHAR(255) NOT NULL,
-    chunk_index INTEGER NOT NULL,
-    content TEXT NOT NULL,
-    embedding vector(768),  -- Gemini text-embedding-004 produces 768D vectors
-    created_at TIMESTAMP DEFAULT NOW(),
-    
-    -- Composite unique constraint (one document can have multiple chunks)
-    UNIQUE(doc_id, chunk_index)
+CREATE TABLE documents (
+    id UUID PRIMARY KEY,
+    title TEXT NOT NULL,
+    source TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
@@ -71,19 +68,45 @@ CREATE TABLE chunks (
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
-| `id` | SERIAL | NO | Auto-incrementing primary key |
-| `doc_id` | VARCHAR(255) | NO | Document identifier (user-defined) |
+| `id` | UUID | NO | Document identifier |
+| `title` | TEXT | NO | Document title |
+| `source` | TEXT | YES | Optional source URL/identifier |
+| `metadata` | JSONB | NO | Custom metadata |
+| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+
+### Table: chunks
+
+Stores text chunks with their vector embeddings.
+
+```sql
+CREATE TABLE chunks (
+    id UUID PRIMARY KEY,
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    embedding vector(768) NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+**Column Details:**
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Chunk identifier |
+| `document_id` | UUID | NO | Parent document |
 | `chunk_index` | INTEGER | NO | Chunk position in document (0-based) |
 | `content` | TEXT | NO | Chunk text content (typically 900 chars) |
-| `embedding` | vector(768) | YES | 768-dimensional embedding vector |
-| `created_at` | TIMESTAMP | NO | Insertion timestamp (default: now) |
+| `embedding` | vector(768) | NO | 768-dimensional embedding vector |
+| `metadata` | JSONB | NO | Chunk metadata |
+| `created_at` | TIMESTAMPTZ | NO | Insertion timestamp |
 
 **Design Decisions:**
 
 - **768 dimensions:** Matches Gemini text-embedding-004 output
-- **UNIQUE(doc_id, chunk_index):** Prevent duplicate chunks
-- **TEXT content:** No length limit (supports large chunks)
-- **Nullable embedding:** Allows ingestion before embedding generation
+- **UUID IDs:** Consistent with API models
+- **Cascade delete:** Deleting a document removes its chunks
 
 ---
 
@@ -93,12 +116,13 @@ CREATE TABLE chunks (
 
 ```sql
 -- Automatically created with PRIMARY KEY
+CREATE INDEX documents_pkey ON documents (id);
 CREATE INDEX chunks_pkey ON chunks (id);
 ```
 
 **Purpose:** Fast lookup by ID  
 **Type:** B-tree  
-**Usage:** `SELECT * FROM chunks WHERE id = 123`
+**Usage:** `SELECT * FROM documents WHERE id = '...'`
 
 ### Vector Similarity Index (IVFFlat)
 
@@ -129,21 +153,21 @@ WITH (lists = 100);
 
 ```sql
 -- For filtering by document ID
-CREATE INDEX chunks_doc_id_idx ON chunks (doc_id);
+CREATE INDEX chunks_document_id_idx ON chunks (document_id);
 ```
 
 **Purpose:** Fast lookup by document  
-**Usage:** `SELECT * FROM chunks WHERE doc_id = 'user-guide-2024'`
+**Usage:** `SELECT * FROM chunks WHERE document_id = '...'`
 
 ### Composite Index (Optional)
 
 ```sql
 -- For pagination within a document
-CREATE INDEX chunks_doc_chunk_idx ON chunks (doc_id, chunk_index);
+CREATE INDEX chunks_document_chunk_idx ON chunks (document_id, chunk_index);
 ```
 
 **Purpose:** Retrieve all chunks for a document in order  
-**Usage:** `SELECT * FROM chunks WHERE doc_id = 'doc1' ORDER BY chunk_index`
+**Usage:** `SELECT * FROM chunks WHERE document_id = '...' ORDER BY chunk_index`
 
 ---
 
@@ -186,12 +210,22 @@ LIMIT 5;
 
 ## Query Examples
 
-### 1. Insert Chunk with Embedding
+### 1. Insert Document + Chunk
 
 ```sql
-INSERT INTO chunks (doc_id, chunk_index, content, embedding)
+INSERT INTO documents (id, title, source, metadata)
 VALUES (
-    'user-guide-2024',
+    '3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d',
+    'User Guide 2024',
+    'https://example.com/docs/user-guide',
+    '{}'::jsonb
+);
+```
+
+```sql
+INSERT INTO chunks (document_id, chunk_index, content, embedding)
+VALUES (
+    '3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d',
     0,
     'RAG Corp is a retrieval-augmented generation system...',
     '[0.123, -0.456, 0.789, ...]'::vector  -- 768 values
@@ -205,7 +239,7 @@ Find top-5 most similar chunks to a query embedding:
 ```sql
 SELECT 
     id,
-    doc_id,
+    document_id,
     chunk_index,
     content,
     1 - (embedding <=> '[0.1, 0.2, 0.3, ...]'::vector) AS similarity
@@ -228,7 +262,7 @@ SELECT
     content,
     1 - (embedding <=> $1::vector) AS similarity
 FROM chunks
-WHERE doc_id = 'user-guide-2024'  -- Filter by metadata
+WHERE document_id = '3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d'
   AND embedding IS NOT NULL
 ORDER BY embedding <=> $1::vector  -- Vector similarity
 LIMIT 5;
@@ -239,24 +273,24 @@ LIMIT 5;
 ```sql
 SELECT chunk_index, content
 FROM chunks
-WHERE doc_id = 'company-policy'
+WHERE document_id = '3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d'
 ORDER BY chunk_index;
 ```
 
 ### 5. Count Chunks per Document
 
 ```sql
-SELECT doc_id, COUNT(*) AS num_chunks
+SELECT document_id, COUNT(*) AS num_chunks
 FROM chunks
-GROUP BY doc_id
+GROUP BY document_id
 ORDER BY num_chunks DESC;
 ```
 
 ### 6. Delete Document
 
 ```sql
-DELETE FROM chunks
-WHERE doc_id = 'old-document';
+DELETE FROM documents
+WHERE id = '3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d';
 ```
 
 ### 7. Exact Nearest Neighbor (No Index)

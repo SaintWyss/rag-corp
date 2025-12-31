@@ -10,8 +10,9 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 
 1. 📖 [README Principal (Quickstart)](../README.md) - Overview y setup rápido
 2. 🛠️ [Runbook de Desarrollo Local](runbook/local-dev.md) - Comandos y flujo de trabajo
-3. 🏛️ [Arquitectura del Sistema](architecture/overview.md) - Entender capas y responsabilidades
-4. 🧪 [Test Suite](../services/rag-api/tests/README.md) - 29 tests implementados ✅
+3. 🧭 [Partes del Proyecto](partes-proyecto.md) - Mapa de componentes y responsabilidades
+4. 🏛️ [Arquitectura del Sistema](architecture/overview.md) - Capas y responsabilidades
+5. 🧪 [Test Suite](../services/rag-api/tests/README.md) - Cómo ejecutar y estructura
 
 **¿Buscas algo específico?**
 - 🔌 [API Endpoints](api/http-api.md)
@@ -29,6 +30,7 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 - [Arquitectura del Sistema](architecture/overview.md) - Entender las capas y flujos
 - [Patrones de Diseño](design/patterns.md) - Por qué y dónde aplicamos patrones
 - [API HTTP](api/http-api.md) - Endpoints, contratos, ejemplos
+- [Partes del Proyecto](partes-proyecto.md) - Divisiones y responsabilidades
 
 ### Para DevOps/SRE
 - [Base de Datos](data/postgres-schema.md) - Schema, índices, pgvector
@@ -86,7 +88,7 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 ## 🧪 Calidad
 
 - **[Estrategia de Testing](quality/testing.md)** - Unitarios, integración, E2E
-- **[Test Suite Documentation](../services/rag-api/tests/README.md)** - 29 tests implementados ✅
+- **[Test Suite Documentation](../services/rag-api/tests/README.md)** - Estructura y comandos
 - TODO: **[Code Coverage](quality/coverage.md)** - Métricas y objetivos
 - TODO: **[Performance](quality/performance.md)** - Benchmarks y optimizaciones
 
@@ -128,9 +130,9 @@ Bienvenido a la documentación técnica de RAG Corp. Esta guía está organizada
 
 ## 📝 Referencias Adicionales
 
-- [Plan de Mejora Arquitectónica](plan-mejora-arquitectura-2025-12-29.md) - Roadmap técnico
-- [Auditoría del Sistema](auditoria-2025-12-29.md) - Estado inicial y deuda técnica
-- [Implementación CRC Cards](crc-documentation-implementation-2025-12-29.md) - Documentación en código
+- [Plan de Mejora Arquitectónica](plan-mejora-arquitectura-2025-12-29.md) - Roadmap técnico (histórico)
+- [Auditoría del Sistema](auditoria-2025-12-29.md) - Estado inicial y deuda técnica (histórico)
+- [Implementación CRC Cards](crc-documentation-implementation-2025-12-29.md) - Documentación en código (histórico)
 - [FIXES.md](../FIXES.md) - Histórico de fixes críticos
 - [README Principal](../README.md) - Quickstart y overview
 

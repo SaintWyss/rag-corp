@@ -1,111 +1,35 @@
 "use client";
 
-import { askV1AskPost } from "@contracts/src/generated";
-import { useState } from "react";
+import { AnswerCard } from "./components/AnswerCard";
+import { PageHeader } from "./components/PageHeader";
+import { QueryForm } from "./components/QueryForm";
+import { SourcesList } from "./components/SourcesList";
+import { StatusBanner } from "./components/StatusBanner";
+import { useRagAsk } from "./hooks/useRagAsk";
 
 export default function Home() {
-  const [text, setText] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [sources, setSources] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setAnswer("");
-    setSources([]);
-    setError("");
-
-    try {
-      // Llamada al Backend (RAG)
-      const res = await askV1AskPost(
-        { query: text, top_k: 3 },
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-
-      // R: Check if request was successful
-      if (res.status === 200) {
-        // R: Update state with generated answer
-        setAnswer(res.data.answer);
-        // R: Update state with source chunks (fallback to empty array)
-        setSources(res.data.sources || []);
-      } else {
-        // R: Handle non-200 status codes
-        setError("Error en el servidor: " + res.status);
-      }
-    } catch (err) {
-      // R: Log error for debugging
-      console.error(err);
-      // R: Display user-friendly connection error
-      setError("Error de conexión. ¿Está prendido el backend?");
-    } finally {
-      // R: Always reset loading state
-      setLoading(false);
-    }
-  };
+  const { query, answer, sources, loading, error, setQuery, submit } =
+    useRagAsk();
 
   return (
-    <div className="min-h-screen bg-black text-white p-8 font-sans">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,_rgba(14,116,144,0.2),_transparent_45%)]" />
+        <div className="relative mx-auto flex max-w-5xl flex-col gap-8 px-6 py-16 sm:px-10">
+          <PageHeader />
 
-        {/* R: Main title with cyberpunk styling */}
-        <h1 className="text-4xl font-bold mb-8 text-yellow-400 border-b border-gray-700 pb-4">
-          RAG Corp v1.0
-        </h1>
-
-        {/* R: Search form with input and submit button */}
-        <form onSubmit={handleSearch} className="flex gap-4 mb-8">
-          <input
-            className="flex-1 p-4 text-lg rounded bg-white text-black border-4 border-gray-600 focus:border-yellow-400 outline-none placeholder-gray-500 font-medium"
-            placeholder="Escribí tu pregunta acá..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+          <QueryForm
+            query={query}
+            onQueryChange={setQuery}
+            onSubmit={submit}
+            loading={loading}
           />
-          <button
-            disabled={loading}
-            className="bg-yellow-500 text-black font-extrabold px-8 py-4 rounded hover:bg-yellow-400 disabled:opacity-50 text-xl tracking-wide uppercase"
-          >
-            {loading ? "Pensando..." : "Preguntar"}
-          </button>
-        </form>
 
-        {/* MENSAJE DE ERROR */}
-        {error && (
-          <div className="bg-red-600 text-white p-4 rounded mb-8 font-bold border-2 border-red-400 text-lg">
-            ⚠️ {error}
-          </div>
-        )}
-
-        {/* RESPUESTA DE LA IA */}
-        {answer && (
-          <div className="bg-gray-900 border-2 border-yellow-600 p-8 rounded-lg mb-8 shadow-lg shadow-yellow-900/20">
-            <h3 className="text-yellow-400 font-bold mb-4 uppercase text-sm tracking-widest border-b border-gray-700 pb-2">
-              Respuesta Generada:
-            </h3>
-            <p className="text-2xl leading-relaxed text-white font-light">
-              {answer}
-            </p>
-          </div>
-        )}
-
-        {/* FUENTES */}
-        {sources.length > 0 && (
-          <div className="bg-gray-950 border border-gray-800 p-6 rounded">
-            <h4 className="text-gray-400 font-bold mb-4 text-xs uppercase tracking-wider">
-              Basado en estos fragmentos:
-            </h4>
-            <ul className="space-y-3">
-              {sources.map((src, i) => (
-                <li key={i} className="text-base text-gray-300 bg-gray-900 p-3 rounded border border-gray-800 font-mono">
-                  "{src}"
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          <StatusBanner message={error} />
+          <AnswerCard answer={answer} />
+          <SourcesList sources={sources} />
+        </div>
       </div>
     </div>
   );

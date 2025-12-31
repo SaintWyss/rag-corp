@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black.svg)](https://nextjs.org/)
 
 ---
 
@@ -40,11 +40,11 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 - ✅ **Embeddings de 768 dimensiones** (Google text-embedding-004)
 - ✅ **Búsqueda vectorial** con PostgreSQL + pgvector (IVFFlat index)
 - ✅ **Generación RAG** con Gemini 1.5 Flash
-- ✅ **UI moderna** en Next.js 15 con Tailwind CSS
+- ✅ **UI moderna** en Next.js 16 con Tailwind CSS
 - ✅ **Contratos tipados** (OpenAPI → TypeScript vía Orval)
 - ✅ **Docker Compose** para desarrollo local
-- ✅ **Clean Architecture** con separación de capas (Domain/Application/Infrastructure)
-- ✅ **Test Suite** con 29 tests unitarios y de integración
+- ✅ **Clean Architecture** parcial (Use Case en `/ask`)
+- ✅ **Test Suite** documentada (ver `services/rag-api/tests`)
 
 ---
 
@@ -57,7 +57,7 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 - **psycopg 3.2** - Driver PostgreSQL moderno
 
 ### Frontend
-- **Next.js 15** (App Router) - Framework React con SSR
+- **Next.js 16.1.1** (App Router) - Framework React con SSR
 - **Tailwind CSS 4** - Utilidades de estilo
 - **TypeScript 5** - Tipado estático
 - **Orval** - Generador de cliente HTTP desde OpenAPI
@@ -73,7 +73,7 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 
 ### Requisitos Previos
 
-- [Node.js 20+](https://nodejs.org/) y [pnpm 10+](https://pnpm.io/)
+- [Node.js 20.9+](https://nodejs.org/) y [pnpm 10+](https://pnpm.io/)
 - [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/)
 - Cuenta de [Google Cloud](https://console.cloud.google.com/) con Gemini API habilitada
 
@@ -135,7 +135,7 @@ pnpm dev
 ```
 rag-corp/
 ├── apps/
-│   └── web/                    # Frontend Next.js 15
+│   └── web/                    # Frontend Next.js 16
 │       ├── app/                # App Router (page.tsx = UI principal)
 │       ├── next.config.ts      # Proxy /v1/* → backend
 │       └── package.json
@@ -199,7 +199,7 @@ La documentación está organizada en [`/doc`](doc/README.md):
 - **[API HTTP](doc/api/http-api.md)**: Endpoints, contratos, ejemplos, errores
 - **[Base de Datos](doc/data/postgres-schema.md)**: Schema, índices, pgvector, migraciones
 - **[Runbook Local](doc/runbook/local-dev.md)**: Cómo correr, troubleshooting, comandos útiles
-- **[Testing](doc/quality/testing.md)**: Estrategia de tests (TODO: implementar)
+- **[Testing](doc/quality/testing.md)**: Estrategia de tests y ejecución
 - **[Patrones de Diseño](doc/design/patterns.md)**: Repository, Use Cases, DI
 - **[Diagramas](doc/diagrams/)**: Secuencia, componentes, arquitectura
 
@@ -216,12 +216,13 @@ La documentación está organizada en [`/doc`](doc/README.md):
 - [x] Contratos tipados (OpenAPI → TypeScript)
 - [x] Documentación CRC Cards en código
 - [x] Clean Architecture (Fase 1): Domain, Application, Infrastructure layers
+- [x] Exception handlers base (Database/Embedding/LLM)
+- [x] Logging estructurado en backend
 
 ### 🚧 En Progreso
 - [ ] **Clean Architecture** (Fase 2): Refactorizar endpoints restantes
-- [ ] **Tests Unitarios**: Cobertura >80% en backend
-- [ ] **Manejo de Errores**: Exception handlers estructurados
-- [ ] **Logging**: Structured logging con JSON
+- [ ] **Tests Unitarios**: Alinear tests con contratos actuales
+- [ ] **Observabilidad**: Métricas y tracing
 
 ### 📋 Planificado
 - [ ] **Autenticación**: API Keys o JWT
@@ -253,18 +254,13 @@ pytest -m integration
 pytest --cov=app --cov-report=html
 open htmlcov/index.html
 
-# Frontend (TypeScript) - TODO: Implementar
-cd apps/web
-pnpm test
-
-# E2E (TODO)
-pnpm test:e2e
+# Frontend (TypeScript) - TODO: Implementar tests
+# (No hay scripts de test en apps/web por ahora)
 ```
 
 **Estado actual:**
-- ✅ 29 tests unitarios implementados
-- ✅ Tests de integración listos
-- ✅ Cobertura: 70%+ en componentes críticos
+- ✅ Suite de tests backend presente (unit + integration)
+- ✅ Cobertura objetivo definida en `services/rag-api/pytest.ini`
 - 📖 Ver [Test Suite Documentation](services/rag-api/tests/README.md)
 
 ---

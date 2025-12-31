@@ -57,7 +57,7 @@ async def answer_query(request):
 ```python
 # Domain layer defines interface
 class DocumentRepository(Protocol):
-    def search_similar(self, embedding, limit) -> list[Chunk]: ...
+    def find_similar_chunks(self, embedding, top_k) -> list[Chunk]: ...
 
 # Use case depends on abstraction
 class AnswerQueryUseCase:
@@ -66,7 +66,7 @@ class AnswerQueryUseCase:
 
 # Infrastructure layer implements
 class PostgresDocumentRepository:  # Satisfies protocol
-    def search_similar(self, embedding, limit):
+    def find_similar_chunks(self, embedding, top_k):
         # PostgreSQL-specific code
 ```
 
@@ -79,7 +79,7 @@ Each component has ONE reason to change:
 | `Document` entity | Represent document data | Business rules change |
 | `PostgresDocumentRepository` | Persist to PostgreSQL | Database schema changes |
 | `AnswerQueryUseCase` | Orchestrate RAG workflow | Business process changes |
-| `/ask` endpoint | Handle HTTP requests | API contract changes |
+| `/v1/ask` endpoint | Handle HTTP requests | API contract changes |
 
 ### 3. Open/Closed Principle (OCP)
 
@@ -138,13 +138,14 @@ domain/
 ```python
 # entities.py
 from dataclasses import dataclass
+from uuid import UUID
 
 @dataclass
 class Document:
     """Pure business entity (no framework coupling)."""
-    id: str
-    content: str
-    chunks: list["Chunk"]
+    id: UUID
+    title: str
+    source: str | None
     metadata: dict
 
 # repositories.py
@@ -152,7 +153,9 @@ from typing import Protocol
 
 class DocumentRepository(Protocol):
     """Contract for persistence (not implementation)."""
-    def save(self, document: Document) -> None: ...
+    def save_document(self, document: Document) -> None: ...
+    def save_chunks(self, document_id: UUID, chunks: list[Chunk]) -> None: ...
+    def find_similar_chunks(self, embedding: list[float], top_k: int) -> list[Chunk]: ...
 ```
 
 ### Layer 2: Application
@@ -191,11 +194,14 @@ class AnswerQueryUseCase:
     
     def execute(self, input: AnswerQueryInput) -> QueryResult:
         # Pure business logic (framework-agnostic)
-        query_embedding = self.embedding_service.embed(input.query)
-        chunks = self.repository.search_similar(query_embedding, limit=5)
+        query_embedding = self.embedding_service.embed_query(input.query)
+        chunks = self.repository.find_similar_chunks(
+            embedding=query_embedding,
+            top_k=5
+        )
         context = self._build_context(chunks)
-        answer = self.llm_service.generate(prompt, context)
-        return QueryResult(query=input.query, answer=answer, chunks=chunks)
+        answer = self.llm_service.generate_answer(input.query, context)
+        return QueryResult(answer=answer, chunks=chunks)
 ```
 
 ### Layer 3: Infrastructure
@@ -231,8 +237,9 @@ class GoogleLLMService:
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel("gemini-1.5-flash")
     
-    def generate(self, prompt: str) -> str:
+    def generate_answer(self, query: str, context: str) -> str:
         """Satisfy LLMService protocol."""
+        prompt = f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
         response = self.model.generate_content(prompt)
         return response.text
 ```
@@ -252,24 +259,24 @@ from app.container import get_answer_query_use_case
 router = APIRouter()
 
 @router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,
+def answer_query(
+    request: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
-) -> AnswerQueryResponse:
+) -> AskRes:
     """
     R: HTTP adapter for AnswerQueryUseCase.
     Converts HTTP request → domain input → domain output → HTTP response.
     """
     # 1. Convert HTTP to domain
-    input_dto = AnswerQueryInput(query=request.query)
+    input_dto = AnswerQueryInput(query=request.query, top_k=3)
     
     # 2. Execute business logic (framework-agnostic)
     result = use_case.execute(input_dto)
     
     # 3. Convert domain to HTTP
-    return AnswerQueryResponse(
+    return AskRes(
         answer=result.answer,
-        sources=[...]
+        sources=[chunk.content for chunk in result.chunks]
     )
 ```
 
@@ -335,23 +342,26 @@ class Document:
 
 ### Complete Flow Example
 
-Let's trace a `/ask` request through all layers:
+Let's trace a `/v1/ask` request through all layers:
 
 ```python
 # 4. API Layer: HTTP entry point
-@router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,  # HTTP DTO
+@router.post("/ask", response_model=AskRes)
+def answer_query(
+    request: QueryReq,  # HTTP DTO
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
 ):
     # Convert HTTP request to domain input
-    input_dto = AnswerQueryInput(query=request.query)
+    input_dto = AnswerQueryInput(query=request.query, top_k=3)
     
     # Delegate to application layer
     result = use_case.execute(input_dto)
     
     # Convert domain output to HTTP response
-    return AnswerQueryResponse(answer=result.answer, ...)
+    return AskRes(
+        answer=result.answer,
+        sources=[chunk.content for chunk in result.chunks]
+    )
 
 # 3. Application Layer: Business workflow
 class AnswerQueryUseCase:
@@ -367,30 +377,33 @@ class AnswerQueryUseCase:
     
     def execute(self, input: AnswerQueryInput) -> QueryResult:  # Domain entities
         # 3a. Call domain service (via protocol)
-        query_embedding = self.embedding_service.embed(input.query)
+        query_embedding = self.embedding_service.embed_query(input.query)
         
         # 3b. Call domain repository (via protocol)
-        chunks = self.repository.search_similar(query_embedding, limit=5)
+        chunks = self.repository.find_similar_chunks(
+            embedding=query_embedding,
+            top_k=5
+        )
         
         # 3c. Business logic
         context = self._build_context(chunks)
         
         # 3d. Call domain service (via protocol)
-        answer = self.llm_service.generate(prompt, context)
+        answer = self.llm_service.generate_answer(input.query, context)
         
         # 3e. Return domain entity
-        return QueryResult(query=input.query, answer=answer, chunks=chunks)
+        return QueryResult(answer=answer, chunks=chunks)
 
 # 2. Infrastructure Layer: Concrete implementations
 class PostgresDocumentRepository:
     """Implements DocumentRepository protocol."""
-    def search_similar(self, embedding, limit):
+    def find_similar_chunks(self, embedding, top_k):
         # PostgreSQL-specific code (psycopg, SQL)
         ...
 
 class GoogleLLMService:
     """Implements LLMService protocol."""
-    def generate(self, prompt):
+    def generate_answer(self, query, context):
         # Gemini API-specific code
         ...
 
@@ -398,13 +411,12 @@ class GoogleLLMService:
 @dataclass
 class QueryResult:
     """Business entity (framework-agnostic)."""
-    query: str
     answer: str
     chunks: list[Chunk]
 
 class DocumentRepository(Protocol):
     """Contract for persistence (no implementation)."""
-    def search_similar(self, embedding, limit) -> list[Chunk]: ...
+    def find_similar_chunks(self, embedding, top_k) -> list[Chunk]: ...
 ```
 
 ### Dependency Injection Wiring
@@ -416,25 +428,29 @@ from functools import lru_cache
 @lru_cache
 def get_document_repository() -> DocumentRepository:
     """Factory: Create infrastructure implementation."""
-    return PostgresDocumentRepository(settings.DATABASE_URL)
+    return PostgresDocumentRepository()
 
 @lru_cache
 def get_embedding_service() -> EmbeddingService:
     """Factory: Create infrastructure implementation."""
-    return GoogleEmbeddingService(settings.GOOGLE_API_KEY)
+    return GoogleEmbeddingService()
 
 @lru_cache
 def get_llm_service() -> LLMService:
     """Factory: Create infrastructure implementation."""
-    return GoogleLLMService(settings.GOOGLE_API_KEY)
+    return GoogleLLMService()
 
 def get_answer_query_use_case(
-    repository: DocumentRepository = Depends(get_document_repository),
-    embedding_service: EmbeddingService = Depends(get_embedding_service),
-    llm_service: LLMService = Depends(get_llm_service)
+    repository: DocumentRepository = None,
+    embedding_service: EmbeddingService = None,
+    llm_service: LLMService = None
 ) -> AnswerQueryUseCase:
     """Compose use case with dependencies."""
-    return AnswerQueryUseCase(repository, embedding_service, llm_service)
+    return AnswerQueryUseCase(
+        repository=repository or get_document_repository(),
+        embedding_service=embedding_service or get_embedding_service(),
+        llm_service=llm_service or get_llm_service()
+    )
 ```
 
 ---
@@ -449,7 +465,7 @@ Test business logic WITHOUT starting PostgreSQL or calling Gemini API:
 # test_answer_query.py
 def test_answer_query_with_no_results():
     # Arrange: Create fake implementations
-    fake_repository = FakeDocumentRepository(documents=[])
+    fake_repository = FakeDocumentRepository()
     fake_embedding = FakeEmbeddingService()
     fake_llm = FakeLLMService()
     
@@ -458,7 +474,7 @@ def test_answer_query_with_no_results():
     result = use_case.execute(AnswerQueryInput(query="test"))
     
     # Assert
-    assert result.answer == "No relevant documents found."
+    assert result.answer == "No encontré documentos relacionados a tu pregunta."
 ```
 
 **Result:** Tests run in milliseconds, not seconds.
@@ -501,11 +517,13 @@ use_case = AnswerQueryUseCase(repository, ...)
 A/B test LLM providers:
 
 ```python
-# Production: Gemini
-llm_service = GoogleLLMService(settings.GEMINI_API_KEY)
+import os
 
-# Experiment: OpenAI
-llm_service = OpenAILLMService(settings.OPENAI_API_KEY)
+# Production: Gemini
+llm_service = GoogleLLMService()  # lee GOOGLE_API_KEY del entorno
+
+# Experiment: OpenAI (planned)
+llm_service = OpenAILLMService(os.getenv("OPENAI_API_KEY"))
 
 # Use case unchanged
 use_case = AnswerQueryUseCase(..., llm_service)
@@ -520,10 +538,10 @@ use_case = AnswerQueryUseCase(..., llm_service)
 - ✅ Create domain layer (entities, protocols)
 - ✅ Create infrastructure implementations
 - ✅ Create one use case (`AnswerQueryUseCase`)
-- ✅ Refactor one endpoint (`/ask`) to use Clean Architecture
+- ✅ Refactor one endpoint (`/v1/ask`) to use Clean Architecture
 - ✅ Keep legacy endpoints for comparison
 
-**Result:** New `/ask` endpoint uses Clean Architecture, old `/query` still works.
+**Result:** New `/v1/ask` endpoint uses Clean Architecture, old `/v1/query` still works.
 
 ### Phase 2: Expand Use Cases (🔄 In Progress)
 
@@ -563,9 +581,9 @@ The overhead is ~3 extra files (entities, protocols, use case) but saves weeks i
 ```python
 # Django model (violates Clean Architecture)
 class Document(models.Model):  # Inherits from Django
-    content = models.TextField()  # Database-specific
+    title = models.TextField()  # Database-specific
     
-    def search_similar(self, query):
+    def find_similar_chunks(self, query):
         # Business logic mixed with database queries ❌
 ```
 
@@ -574,11 +592,12 @@ RAG Corp separates concerns:
 # Domain entity (framework-independent)
 @dataclass
 class Document:  # Pure Python
-    content: str
+    id: UUID
+    title: str
     
 # Repository (infrastructure layer)
 class PostgresDocumentRepository:
-    def search_similar(self, query):
+    def find_similar_chunks(self, query):
         # Database code isolated ✅
 ```
 

@@ -1,5 +1,5 @@
 """Infrastructure text utilities"""
 
-from .chunker import chunk_text
+from .chunker import chunk_text, SimpleTextChunker
 
-__all__ = ["chunk_text"]
+__all__ = ["chunk_text", "SimpleTextChunker"]

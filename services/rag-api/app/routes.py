@@ -26,31 +26,23 @@ Notes:
 """
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from uuid import uuid4, UUID
-from .store import Store
-from .infrastructure.text import chunk_text
-from .infrastructure.repositories import PostgresDocumentRepository
-from .infrastructure.services import GoogleEmbeddingService, GoogleLLMService
-from .domain.entities import Document, Chunk
-from .application.use_cases import AnswerQueryUseCase, AnswerQueryInput
-from .container import get_answer_query_use_case
-from .embeddings import embed_texts, embed_query
-from .llm import generate_rag_answer
+from uuid import UUID
+from .application.use_cases import (
+    AnswerQueryUseCase,
+    AnswerQueryInput,
+    IngestDocumentUseCase,
+    IngestDocumentInput,
+    SearchChunksUseCase,
+    SearchChunksInput,
+)
+from .container import (
+    get_answer_query_use_case,
+    get_ingest_document_use_case,
+    get_search_chunks_use_case,
+)
 
 # R: Create API router for RAG endpoints
 router = APIRouter()
-
-# R: Initialize legacy store (will be replaced by new repository)
-store = Store()
-
-# R: Initialize new document repository (Clean Architecture)
-repo = PostgresDocumentRepository()
-
-# R: Initialize embedding service (Clean Architecture)
-embedding_service = GoogleEmbeddingService()
-
-# R: Initialize LLM service (Clean Architecture)
-llm_service = GoogleLLMService()
 
 # R: Request model for text ingestion (document metadata + content)
 class IngestTextReq(BaseModel):
@@ -66,28 +58,22 @@ class IngestTextRes(BaseModel):
 
 # R: Endpoint to ingest documents into the RAG system
 @router.post("/ingest/text", response_model=IngestTextRes)
-def ingest_text(req: IngestTextReq):
-    # R: Generate unique document ID
-    doc_id = uuid4()
-    
-    # R: Split document into chunks with overlap
-    chunks = chunk_text(req.text)
-    
-    # R: Generate embeddings for all chunks (Google text-embedding-004)
-    vectors = embed_texts(chunks)
-
-    # R: Store document metadata in PostgreSQL
-    store.upsert_document(
-        document_id=doc_id,
-        title=req.title,
-        source=req.source,
-        metadata=req.metadata,
+def ingest_text(
+    req: IngestTextReq,
+    use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+):
+    result = use_case.execute(
+        IngestDocumentInput(
+            title=req.title,
+            text=req.text,
+            source=req.source,
+            metadata=req.metadata,
+        )
     )
-    
-    # R: Store chunks with their embeddings in vector database
-    store.insert_chunks(doc_id, chunks, vectors)
-
-    return IngestTextRes(document_id=doc_id, chunks=len(chunks))
+    return IngestTextRes(
+        document_id=result.document_id,
+        chunks=result.chunks_created,
+    )
 
 # R: Request model for queries (shared by /query and /ask endpoints)
 class QueryReq(BaseModel):
@@ -107,23 +93,23 @@ class QueryRes(BaseModel):
 
 # R: Endpoint for semantic search (retrieval without generation)
 @router.post("/query", response_model=QueryRes)
-def query(req: QueryReq):
-    # R: Generate query embedding
-    qvec = embed_query(req.query)
-    
-    # R: Search similar chunks using vector similarity (cosine distance)
-    rows = store.search(qvec, top_k=req.top_k)
-
-    # R: Convert database rows to Match models
-    matches = [
-        Match(
-            chunk_id=r["chunk_id"],
-            document_id=r["document_id"],
-            content=r["content"],
-            score=float(r["score"]),
+def query(
+    req: QueryReq,
+    use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
+):
+    result = use_case.execute(SearchChunksInput(query=req.query, top_k=req.top_k))
+    matches = []
+    for chunk in result.matches:
+        if chunk.chunk_id is None or chunk.document_id is None:
+            raise ValueError("Missing identifiers in search result")
+        matches.append(
+            Match(
+                chunk_id=chunk.chunk_id,
+                document_id=chunk.document_id,
+                content=chunk.content,
+                score=float(chunk.similarity or 0.0),
+            )
         )
-        for r in rows
-    ]
     return QueryRes(matches=matches)
 
 # R: Response model for RAG (retrieval + generation)

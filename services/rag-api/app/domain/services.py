@@ -80,3 +80,25 @@ class LLMService(Protocol):
             Generated answer (should be based on context only)
         """
         ...
+
+
+class TextChunkerService(Protocol):
+    """
+    R: Interface for text chunking.
+    
+    Implementations must provide:
+      - Consistent chunking strategy
+      - Deterministic output for same input
+    """
+    
+    def chunk(self, text: str) -> List[str]:
+        """
+        R: Split text into chunks.
+        
+        Args:
+            text: Document text
+        
+        Returns:
+            List of chunk strings
+        """
+        ...

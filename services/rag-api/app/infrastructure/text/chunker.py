@@ -80,3 +80,16 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str
     
     # R: Clean and filter empty chunks
     return [c.strip() for c in chunks if c.strip()]
+
+
+class SimpleTextChunker:
+    """
+    R: Default chunker implementation using chunk_text.
+    """
+
+    def __init__(self, chunk_size: int = 900, overlap: int = 120):
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+
+    def chunk(self, text: str) -> list[str]:
+        return chunk_text(text, chunk_size=self.chunk_size, overlap=self.overlap)

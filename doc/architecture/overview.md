@@ -65,7 +65,7 @@ graph TB
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| **Frontend** | Next.js 15 | User interface for document upload and Q&A |
+| **Frontend** | Next.js 16.1.1 | User interface for document upload and Q&A |
 | **Backend** | FastAPI | REST API for ingestion, search, and RAG |
 | **Vector DB** | PostgreSQL 16 + pgvector | Store embeddings + metadata |
 | **LLM** | Google Gemini Flash | Generate natural language answers |
@@ -139,14 +139,17 @@ infrastructure/
 **Dependencies:** Application layer (uses use cases)
 
 ```python
-@router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,
+@router.post("/ask", response_model=AskRes)
+def ask(
+    req: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
-) -> AnswerQueryResponse:
+) -> AskRes:
     # Framework layer only handles HTTP concerns
-    result = use_case.execute(AnswerQueryInput(query=request.query))
-    return AnswerQueryResponse(answer=result.answer, sources=result.sources)
+    result = use_case.execute(AnswerQueryInput(query=req.query, top_k=3))
+    return AskRes(
+        answer=result.answer,
+        sources=[chunk.content for chunk in result.chunks]
+    )
 ```
 
 ---
@@ -159,8 +162,9 @@ async def answer_query(
 
 ```python
 class DocumentRepository(Protocol):
-    def save(self, document: Document) -> None: ...
-    def search_similar(self, embedding: list[float], limit: int) -> list[Chunk]: ...
+    def save_document(self, document: Document) -> None: ...
+    def save_chunks(self, document_id: UUID, chunks: list[Chunk]) -> None: ...
+    def find_similar_chunks(self, embedding: list[float], top_k: int) -> list[Chunk]: ...
 ```
 
 **Implementation:** `PostgresDocumentRepository` (uses pgvector)
@@ -171,8 +175,8 @@ class DocumentRepository(Protocol):
 
 ```python
 class EmbeddingService(Protocol):
-    def embed(self, text: str) -> list[float]: ...
     def embed_batch(self, texts: list[str]) -> list[list[float]]: ...
+    def embed_query(self, query: str) -> list[float]: ...
 ```
 
 **Implementation:** `GoogleEmbeddingService` (Gemini text-embedding-004)
@@ -183,7 +187,7 @@ class EmbeddingService(Protocol):
 
 ```python
 class LLMService(Protocol):
-    def generate(self, prompt: str, context: str | None = None) -> str: ...
+    def generate_answer(self, query: str, context: str) -> str: ...
 ```
 
 **Implementation:** `GoogleLLMService` (Gemini 1.5 Flash)
@@ -196,16 +200,19 @@ class LLMService(Protocol):
 class AnswerQueryUseCase:
     def execute(self, input: AnswerQueryInput) -> QueryResult:
         # 1. Embed query
-        query_embedding = self.embedding_service.embed(input.query)
+        query_embedding = self.embedding_service.embed_query(input.query)
         
         # 2. Retrieve similar chunks
-        chunks = self.repository.search_similar(query_embedding, limit=5)
+        chunks = self.repository.find_similar_chunks(
+            embedding=query_embedding,
+            top_k=5
+        )
         
         # 3. Build context
         context = "\n\n".join(chunk.content for chunk in chunks)
         
         # 4. Generate answer
-        answer = self.llm_service.generate(prompt, context)
+        answer = self.llm_service.generate_answer(input.query, context)
         
         return QueryResult(answer=answer, chunks=chunks)
 ```
@@ -224,15 +231,13 @@ sequenceDiagram
     participant Embeddings as Gemini Embeddings
     participant DB as PostgreSQL
 
-    User->>API: POST /ingest/text
+    User->>API: POST /v1/ingest/text
     API->>Chunker: chunk_text(document)
     Chunker-->>API: chunks[]
     
-    loop For each chunk
-        API->>Embeddings: embed(chunk)
-        Embeddings-->>API: vector[768]
-        API->>DB: INSERT chunk + embedding
-    end
+    API->>Embeddings: embed_texts(chunks)
+    Embeddings-->>API: vectors[768]
+    API->>DB: INSERT chunks + embeddings
     
     API-->>User: 201 Created
 ```
@@ -255,17 +260,17 @@ sequenceDiagram
     participant Repo as DocumentRepository
     participant LLM as LLMService
 
-    User->>API: POST /ask {query}
+    User->>API: POST /v1/ask {query}
     API->>UseCase: execute(AnswerQueryInput)
     
-    UseCase->>Embeddings: embed(query)
+    UseCase->>Embeddings: embed_query(query)
     Embeddings-->>UseCase: query_vector[768]
     
-    UseCase->>Repo: search_similar(vector, limit=5)
+    UseCase->>Repo: find_similar_chunks(vector, top_k=5)
     Repo-->>UseCase: chunks[]
     
     UseCase->>UseCase: build_context(chunks)
-    UseCase->>LLM: generate(prompt, context)
+    UseCase->>LLM: generate_answer(query, context)
     LLM-->>UseCase: answer_text
     
     UseCase-->>API: QueryResult
@@ -273,12 +278,12 @@ sequenceDiagram
 ```
 
 **Steps:**
-1. User sends query to `/ask` endpoint
+1. User sends query to `/v1/ask` endpoint
 2. FastAPI delegates to `AnswerQueryUseCase`
-3. Use case embeds query via `EmbeddingService`
+3. Use case embeds query via `EmbeddingService.embed_query`
 4. Use case retrieves top-5 similar chunks via `DocumentRepository`
 5. Use case builds context from retrieved chunks
-6. Use case generates answer via `LLMService`
+6. Use case generates answer via `LLMService.generate_answer`
 7. Use case returns `QueryResult` to API layer
 8. API converts to HTTP response
 
@@ -302,9 +307,9 @@ sequenceDiagram
 
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
-| **Framework** | Next.js | 15 | React with App Router |
+| **Framework** | Next.js | 16.1.1 | React with App Router |
 | **Language** | TypeScript | 5+ | Type safety |
-| **Styling** | Tailwind CSS | 3+ | Utility-first CSS |
+| **Styling** | Tailwind CSS | 4 | Utility-first CSS |
 | **API Client** | fetch | native | HTTP requests |
 
 ### DevOps
@@ -326,11 +331,13 @@ sequenceDiagram
 ```python
 # Domain layer defines interface
 class DocumentRepository(Protocol):
-    def save(self, document: Document) -> None: ...
+    def save_document(self, document: Document) -> None: ...
+    def save_chunks(self, document_id: UUID, chunks: list[Chunk]) -> None: ...
+    def find_similar_chunks(self, embedding: list[float], top_k: int) -> list[Chunk]: ...
 
 # Infrastructure layer implements
 class PostgresDocumentRepository:
-    def save(self, document: Document) -> None:
+    def save_document(self, document: Document) -> None:
         # PostgreSQL-specific implementation
 ```
 
@@ -376,7 +383,7 @@ class AnthropicLLMService: ...
 
 # All implement the same interface
 class LLMService(Protocol):
-    def generate(self, prompt: str) -> str: ...
+    def generate_answer(self, query: str, context: str) -> str: ...
 ```
 
 **Benefits:**
@@ -421,7 +428,7 @@ async def answer_query(
 - GoogleEmbeddingService, GoogleLLMService
 - AnswerQueryUseCase (RAG workflow)
 - Dependency injection container
-- `/ask` endpoint refactored to use Clean Architecture
+- `/v1/ask` endpoint refactored to use Clean Architecture
 
 ❌ **Legacy Code (still exists):**
 - `/ingest/text` endpoint uses old `Store` class
@@ -446,7 +453,7 @@ Phase 1 (✅ Complete): Domain + Infrastructure
 ├── Domain layer with protocols
 ├── Infrastructure implementations
 ├── AnswerQueryUseCase (star use case)
-└── /ask endpoint refactored
+└── /v1/ask endpoint refactored
 
 Phase 2 (🔄 In Progress):
 │

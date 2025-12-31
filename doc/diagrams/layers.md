@@ -21,7 +21,7 @@ graph TB
     
     subgraph "2. Application Layer (Use Cases)"
         direction TB
-        UseCases[<b>Use Cases</b><br/>AnswerQueryUseCase<br/>IngestDocumentUseCase<br/>SearchChunksUseCase]
+        UseCases[<b>Use Cases</b><br/>AnswerQueryUseCase<br/>IngestDocumentUseCase (planned)<br/>SearchChunksUseCase (planned)]
         InputDTOs[<b>Input DTOs</b><br/>AnswerQueryInput]
         
         UseCases -.uses.- InputDTOs
@@ -39,8 +39,8 @@ graph TB
     
     subgraph "4. API Layer (Framework)"
         direction TB
-        Routes[<b>HTTP Routes</b><br/>POST /ask<br/>POST /ingest/text<br/>POST /query]
-        DTOs[<b>Request/Response</b><br/>AnswerQueryRequest<br/>AnswerQueryResponse]
+        Routes[<b>HTTP Routes</b><br/>POST /v1/ask<br/>POST /v1/ingest/text<br/>POST /v1/query]
+        DTOs[<b>Request/Response</b><br/>QueryReq, AskRes,<br/>IngestTextReq/Res]
         Container[<b>DI Container</b><br/>Dependency factories]
         
         Routes -.uses.- DTOs
@@ -155,15 +155,15 @@ domain/
 @dataclass
 class Document:
     """Business entity (no framework coupling)."""
-    id: str
-    content: str
-    chunks: list["Chunk"]
+    id: UUID
+    title: str
+    source: str | None
     metadata: dict
 
 # repositories.py
 class DocumentRepository(Protocol):
     """Contract (not implementation)."""
-    def search_similar(self, embedding, limit) -> list[Chunk]: ...
+    def find_similar_chunks(self, embedding, top_k) -> list[Chunk]: ...
 ```
 
 **Key Principles:**
@@ -206,11 +206,14 @@ class AnswerQueryUseCase:
     
     def execute(self, input: AnswerQueryInput) -> QueryResult:
         # Business logic (framework-agnostic)
-        query_embedding = self.embedding_service.embed(input.query)
-        chunks = self.repository.search_similar(query_embedding, limit=5)
+        query_embedding = self.embedding_service.embed_query(input.query)
+        chunks = self.repository.find_similar_chunks(
+            embedding=query_embedding,
+            top_k=5
+        )
         context = self._build_context(chunks)
-        answer = self.llm_service.generate(prompt, context)
-        return QueryResult(query=input.query, answer=answer, chunks=chunks)
+        answer = self.llm_service.generate_answer(input.query, context)
+        return QueryResult(answer=answer, chunks=chunks)
 ```
 
 **Key Principles:**
@@ -252,10 +255,10 @@ class PostgresDocumentRepository:
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
     
-    def search_similar(
+    def find_similar_chunks(
         self, 
         embedding: list[float], 
-        limit: int
+        top_k: int
     ) -> list[Chunk]:
         """Implement protocol method."""
         with psycopg.connect(self.connection_string) as conn:
@@ -296,24 +299,24 @@ from app.container import get_answer_query_use_case
 router = APIRouter()
 
 @router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,  # HTTP DTO
+def answer_query(
+    request: QueryReq,  # HTTP DTO
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
-) -> AnswerQueryResponse:
+) -> AskRes:
     """
     HTTP adapter for AnswerQueryUseCase.
     Converts HTTP request → domain input → domain output → HTTP response.
     """
     # 1. Convert HTTP to domain
-    input_dto = AnswerQueryInput(query=request.query)
+    input_dto = AnswerQueryInput(query=request.query, top_k=3)
     
     # 2. Execute business logic (framework-agnostic)
     result = use_case.execute(input_dto)
     
     # 3. Convert domain to HTTP
-    return AnswerQueryResponse(
+    return AskRes(
         answer=result.answer,
-        sources=[...]
+        sources=[chunk.content for chunk in result.chunks]
     )
 ```
 
@@ -474,11 +477,11 @@ Layers communicate via protocols (Python typing.Protocol):
 ```python
 # Domain layer defines contract
 class DocumentRepository(Protocol):
-    def search_similar(self, embedding, limit) -> list[Chunk]: ...
+    def find_similar_chunks(self, embedding, top_k) -> list[Chunk]: ...
 
 # Infrastructure implements contract
 class PostgresDocumentRepository:
-    def search_similar(self, embedding, limit) -> list[Chunk]:
+    def find_similar_chunks(self, embedding, top_k) -> list[Chunk]:
         # Implementation
         ...
 
@@ -503,7 +506,7 @@ from app.infrastructure.repositories.postgres_document_repo import PostgresDocum
 class Document:
     def save(self):
         repo = PostgresDocumentRepository()  # ❌ Tight coupling
-        repo.save(self)
+        repo.save_document(self)
 ```
 
 ### ❌ Application Depending on API

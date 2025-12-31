@@ -104,7 +104,7 @@ RAG systems require efficient storage and retrieval of document embeddings (high
 5. **Query Flexibility:**
    ```sql
    -- Hybrid queries: vector + metadata filtering
-   SELECT doc_id, content, 1 - (embedding <=> query_embedding) AS similarity
+   SELECT document_id, content, 1 - (embedding <=> query_embedding) AS similarity
    FROM chunks
    WHERE user_id = 'abc123'  -- Filter by metadata
    ORDER BY embedding <=> query_embedding  -- Vector similarity
@@ -123,12 +123,12 @@ RAG systems require efficient storage and retrieval of document embeddings (high
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE chunks (
-    id SERIAL PRIMARY KEY,
-    doc_id VARCHAR(255),
+    id UUID PRIMARY KEY,
+    document_id UUID NOT NULL,
     chunk_index INTEGER,
     content TEXT,
     embedding vector(768),  -- Gemini embedding dimension
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- IVFFlat index for approximate nearest neighbor search
@@ -177,7 +177,7 @@ WITH (lists = 100);  -- Tuned for 10K-100K vectors
    - Consider HNSW index if latency degrades
 
 2. **Horizontal Scaling (future):**
-   - Shard by user_id or doc_id if needed
+- Shard by user_id or document_id if needed
    - Use Citus extension for distributed queries
 
 3. **Hybrid Approach (future):**

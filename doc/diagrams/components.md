@@ -105,7 +105,7 @@ graph TB
 
 | Component | Technology | Description |
 |-----------|------------|-------------|
-| **Next.js App** | Next.js 15, TypeScript | React-based web application with App Router |
+| **Next.js App** | Next.js 16.1.1, TypeScript | React-based web application with App Router |
 | **UI Components** | React, Tailwind CSS | Reusable UI components (forms, results, etc.) |
 | **API Client** | fetch API | HTTP client for backend communication |
 
@@ -116,7 +116,7 @@ graph TB
 | Component | Technology | Description |
 |-----------|------------|-------------|
 | **FastAPI Server** | FastAPI, Uvicorn | ASGI web server handling HTTP requests |
-| **HTTP Routes** | FastAPI Router | Endpoint definitions (`/ask`, `/ingest/text`, etc.) |
+| **HTTP Routes** | FastAPI Router | Endpoint definitions (`/v1/ask`, `/v1/ingest/text`, `/v1/query`) |
 | **DI Container** | functools.lru_cache | Dependency injection factory functions |
 
 #### Application Layer (Business Logic)
@@ -125,8 +125,8 @@ graph TB
 |-----------|-------|-------------|
 | **Use Cases** | `application/use_cases/` | Orchestrate business workflows |
 | - AnswerQuery | `answer_query.py` | RAG Q&A workflow (embed → retrieve → generate) |
-| - IngestDocument | `ingest_document.py` | Document ingestion (chunk → embed → store) |
-| - SearchChunks | `search_chunks.py` | Semantic search without LLM generation |
+| - IngestDocument | `ingest_document.py` | Document ingestion (planned) |
+| - SearchChunks | `search_chunks.py` | Semantic search (planned) |
 
 #### Domain Layer (Core Business)
 
@@ -177,15 +177,15 @@ sequenceDiagram
     participant Gemini
 
     User->>WebApp: Enter query
-    WebApp->>API: POST /ask {query}
+    WebApp->>API: POST /v1/ask {query}
     API->>UseCase: execute(input)
-    UseCase->>Gemini: embed(query)
+    UseCase->>Gemini: embed_query(query)
     Gemini-->>UseCase: embedding[768]
-    UseCase->>Repo: search_similar(embedding)
+    UseCase->>Repo: find_similar_chunks(embedding)
     Repo->>DB: SELECT ... ORDER BY embedding <=> ...
     DB-->>Repo: chunks[]
     Repo-->>UseCase: chunks[]
-    UseCase->>Gemini: generate(prompt, context)
+    UseCase->>Gemini: generate_answer(query, context)
     Gemini-->>UseCase: answer_text
     UseCase-->>API: QueryResult
     API-->>WebApp: JSON response
@@ -234,7 +234,7 @@ graph LR
 
 | Layer | Components | Technologies |
 |-------|------------|--------------|
-| **Frontend** | Web UI | Next.js 15, React, TypeScript, Tailwind CSS |
+| **Frontend** | Web UI | Next.js 16.1.1, React, TypeScript, Tailwind CSS |
 | **Backend** | API Server | FastAPI, Python 3.11, Uvicorn (ASGI) |
 | **Business Logic** | Use Cases | Pure Python (framework-agnostic) |
 | **Data Access** | Repositories | psycopg3, PostgreSQL driver |
@@ -254,7 +254,7 @@ graph LR
 
 ```typescript
 // Frontend API call
-const response = await fetch('http://localhost:8000/ask', {
+const response = await fetch('http://localhost:8000/v1/ask', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ query: 'How does it work?' })

@@ -62,14 +62,11 @@ pytest -k test_answer_query
 
 ## Cobertura
 
-Objetivo de cobertura: **>70%** para componentes críticos
+Objetivo de cobertura: **>=70%** para componentes críticos (configurado en `pytest.ini`)
 
 ### Cobertura Actual
 
-- **Domain Layer**: 100% (entidades puras, fáciles de testear)
-- **Application Layer**: 95% (use cases con mocks)
-- **Infrastructure Layer**: 60% (requiere integración)
-- **Presentation Layer**: 70% (endpoints API)
+TODO: generar reporte y actualizar métricas reales.
 
 ## Fixtures Principales
 

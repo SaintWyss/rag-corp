@@ -181,6 +181,7 @@ class PostgresDocumentRepository:
                 chunk_index=r[2],
                 content=r[3],
                 embedding=r[4],
+                similarity=float(r[5]) if r[5] is not None else None,
             )
             for r in rows
         ]

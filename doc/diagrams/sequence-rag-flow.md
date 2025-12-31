@@ -29,7 +29,7 @@ sequenceDiagram
     Browser->>NextJS: Submit form
     
     %% Frontend to Backend
-    NextJS->>FastAPI: POST /ask<br/>{query: "How does RAG work?"}
+    NextJS->>FastAPI: POST /v1/ask<br/>{query: "How does RAG work?"}
     Note over FastAPI: HTTP request arrives<br/>at endpoint
     
     %% Dependency Injection
@@ -47,14 +47,14 @@ sequenceDiagram
     Note over UseCase: Business logic starts<br/>(framework-agnostic)
     
     %% Step 1: Embed query
-    UseCase->>EmbedSvc: embed(query_text)
+    UseCase->>EmbedSvc: embed_query(query_text)
     EmbedSvc->>Gemini: POST /embed<br/>{text: "How does..."}
     Note over Gemini: Generate 768D vector<br/>(text-embedding-004)
     Gemini-->>EmbedSvc: embedding[768]
     EmbedSvc-->>UseCase: query_embedding
     
     %% Step 2: Retrieve similar chunks
-    UseCase->>Repo: search_similar(embedding, limit=5)
+    UseCase->>Repo: find_similar_chunks(embedding, top_k=5)
     Repo->>DB: SELECT * FROM chunks<br/>ORDER BY embedding <=> query_embedding<br/>LIMIT 5
     Note over DB: IVFFlat index search<br/>(cosine similarity)
     DB-->>Repo: rows[] (5 chunks)
@@ -66,7 +66,7 @@ sequenceDiagram
     Note over UseCase: Concatenate chunk contents<br/>with document references
     
     %% Step 4: Generate answer
-    UseCase->>LLMSvc: generate(prompt, context)
+    UseCase->>LLMSvc: generate_answer(query, context)
     Note over LLMSvc: Construct full prompt:<br/>context + question
     LLMSvc->>Gemini: POST /generate<br/>{prompt: "Answer based on...", model: "gemini-1.5-flash"}
     Note over Gemini: Generate natural language<br/>(1M context window)
@@ -75,10 +75,10 @@ sequenceDiagram
     
     %% Step 5: Return result
     UseCase->>UseCase: Create QueryResult entity
-    UseCase-->>FastAPI: QueryResult<br/>(answer, chunks, query)
+    UseCase-->>FastAPI: QueryResult<br/>(answer, chunks)
     
     %% Convert domain to HTTP
-    FastAPI->>FastAPI: Convert to AnswerQueryResponse DTO
+    FastAPI->>FastAPI: Convert to AskRes DTO
     FastAPI-->>NextJS: 200 OK<br/>{answer, sources[]}
     
     %% Display to user
@@ -96,7 +96,7 @@ sequenceDiagram
 ```typescript
 // User submits query via Next.js form
 const handleSubmit = async (query: string) => {
-  const response = await fetch('http://localhost:8000/ask', {
+  const response = await fetch('http://localhost:8000/v1/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query })
@@ -111,22 +111,21 @@ const handleSubmit = async (query: string) => {
 
 ```python
 # routes.py
-@router.post("/ask")
-async def answer_query(
-    request: AnswerQueryRequest,  # HTTP DTO
+@router.post("/ask", response_model=AskRes)
+def answer_query(
+    request: QueryReq,  # HTTP DTO
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
 ):
     # Convert HTTP to domain
-    input_dto = AnswerQueryInput(query=request.query)
+    input_dto = AnswerQueryInput(query=request.query, top_k=3)
     
     # Execute business logic
     result = use_case.execute(input_dto)
     
     # Convert domain to HTTP
-    return AnswerQueryResponse(
+    return AskRes(
         answer=result.answer,
-        sources=[...],
-        confidence="high" if result.chunks else "low"
+        sources=[chunk.content for chunk in result.chunks]
     )
 ```
 
@@ -136,22 +135,26 @@ async def answer_query(
 # container.py
 @lru_cache
 def get_document_repository() -> DocumentRepository:
-    return PostgresDocumentRepository(settings.DATABASE_URL)
+    return PostgresDocumentRepository()
 
 @lru_cache
 def get_embedding_service() -> EmbeddingService:
-    return GoogleEmbeddingService(settings.GOOGLE_API_KEY)
+    return GoogleEmbeddingService()
 
 @lru_cache
 def get_llm_service() -> LLMService:
-    return GoogleLLMService(settings.GOOGLE_API_KEY)
+    return GoogleLLMService()
 
 def get_answer_query_use_case(
-    repository: DocumentRepository = Depends(get_document_repository),
-    embedding_service: EmbeddingService = Depends(get_embedding_service),
-    llm_service: LLMService = Depends(get_llm_service)
+    repository: DocumentRepository = None,
+    embedding_service: EmbeddingService = None,
+    llm_service: LLMService = None
 ) -> AnswerQueryUseCase:
-    return AnswerQueryUseCase(repository, embedding_service, llm_service)
+    return AnswerQueryUseCase(
+        repository=repository or get_document_repository(),
+        embedding_service=embedding_service or get_embedding_service(),
+        llm_service=llm_service or get_llm_service()
+    )
 ```
 
 ### 4. Use Case Execution (Application Layer)
@@ -161,24 +164,22 @@ def get_answer_query_use_case(
 class AnswerQueryUseCase:
     def execute(self, input: AnswerQueryInput) -> QueryResult:
         # 4a. Embed query
-        query_embedding = self.embedding_service.embed(input.query)
+        query_embedding = self.embedding_service.embed_query(input.query)
         
         # 4b. Retrieve similar chunks
-        chunks = self.repository.search_similar(
-            query_embedding, 
-            limit=input.limit or 5
+        chunks = self.repository.find_similar_chunks(
+            embedding=query_embedding,
+            top_k=input.top_k or 5
         )
         
         # 4c. Build context
         context = self._build_context(chunks)
         
         # 4d. Generate answer
-        prompt = self._build_prompt(input.query, context)
-        answer = self.llm_service.generate(prompt)
+        answer = self.llm_service.generate_answer(input.query, context)
         
         # 4e. Return result
         return QueryResult(
-            query=input.query,
             answer=answer,
             chunks=chunks
         )
@@ -189,10 +190,10 @@ class AnswerQueryUseCase:
 ```python
 # google_embedding_service.py
 class GoogleEmbeddingService:
-    def embed(self, text: str) -> list[float]:
+    def embed_query(self, query: str) -> list[float]:
         result = genai.embed_content(
             model="models/text-embedding-004",
-            content=text,
+            content=query,
             task_type="retrieval_query"
         )
         return result['embedding']  # 768 dimensions
@@ -203,25 +204,33 @@ class GoogleEmbeddingService:
 ```python
 # postgres_document_repo.py
 class PostgresDocumentRepository:
-    def search_similar(
+    def find_similar_chunks(
         self, 
         embedding: list[float], 
-        limit: int
+        top_k: int
     ) -> list[Chunk]:
         with psycopg.connect(self.connection_string) as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute("""
                     SELECT 
-                        id, doc_id, chunk_index, content, embedding,
+                        id, document_id, chunk_index, content, embedding,
                         1 - (embedding <=> %s::vector) AS similarity
                     FROM chunks
-                    WHERE embedding IS NOT NULL
                     ORDER BY embedding <=> %s::vector
                     LIMIT %s
-                """, (embedding, embedding, limit))
+                """, (embedding, embedding, top_k))
                 
                 rows = cur.fetchall()
-                return [Chunk(**row) for row in rows]
+                return [
+                    Chunk(
+                        chunk_id=row["id"],
+                        document_id=row["document_id"],
+                        chunk_index=row["chunk_index"],
+                        content=row["content"],
+                        embedding=row["embedding"]
+                    )
+                    for row in rows
+                ]
 ```
 
 **PostgreSQL Query:**
@@ -234,27 +243,16 @@ class PostgresDocumentRepository:
 ```python
 # answer_query.py
 def _build_context(self, chunks: list[Chunk]) -> str:
-    """Concatenate chunk contents with source references."""
-    context_parts = []
-    
-    for chunk in chunks:
-        context_parts.append(
-            f"[Source: {chunk.doc_id}, Part {chunk.index}]\n"
-            f"{chunk.content}\n"
-        )
-    
-    return "\n".join(context_parts)
+    """Concatenate chunk contents."""
+    return "\n\n".join(chunk.content for chunk in chunks)
 ```
 
 **Example Context:**
 ```
-[Source: user-guide, Part 0]
 RAG Corp is a retrieval-augmented generation system...
 
-[Source: architecture-doc, Part 2]
 The system uses Google Gemini for embeddings...
 
-[Source: user-guide, Part 1]
 Documents are chunked into 900-character segments...
 ```
 
@@ -263,14 +261,24 @@ Documents are chunked into 900-character segments...
 ```python
 # google_llm_service.py
 class GoogleLLMService:
-    def generate(self, prompt: str) -> str:
-        response = self.model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.7,
-                "max_output_tokens": 500
-            }
-        )
+    def generate_answer(self, query: str, context: str) -> str:
+        prompt = f"""
+        Act as an expert assistant for RAG Corp company.
+        Your mission is to answer the user's question based EXCLUSIVELY on the context provided below.
+        
+        Rules:
+        1. If the answer is not in the context, say "I don't have enough information in my documents".
+        2. Be concise and professional.
+        3. Always respond in Spanish.
+
+        --- CONTEXT ---
+        {context}
+        ----------------
+        
+        Question: {query}
+        Answer:
+        """
+        response = self.model.generate_content(prompt)
         return response.text
 ```
 
@@ -302,18 +310,9 @@ those chunks as context to generate a natural language answer with Gemini.
 
 ```python
 # Convert domain entity to HTTP response
-return AnswerQueryResponse(
+return AskRes(
     answer=result.answer,
-    sources=[
-        SourceReference(
-            doc_id=chunk.doc_id,
-            chunk_index=chunk.index,
-            content=chunk.content[:200],  # Truncate
-            similarity=chunk.similarity
-        )
-        for chunk in result.chunks
-    ],
-    confidence="high" if any(c.similarity > 0.8 for c in result.chunks) else "medium"
+    sources=[chunk.content for chunk in result.chunks]
 )
 ```
 
@@ -351,18 +350,18 @@ sequenceDiagram
     participant Gemini as Gemini API
     participant FastAPI
 
-    UseCase->>EmbedSvc: embed(query)
+    UseCase->>EmbedSvc: embed_query(query)
     EmbedSvc->>Gemini: POST /embed
     
     alt API Error
         Gemini-->>EmbedSvc: 503 Service Unavailable
         EmbedSvc-->>UseCase: raise EmbeddingError
-        UseCase-->>FastAPI: raise HTTPException(503)
-        FastAPI-->>Client: {"detail": "Embedding service unavailable"}
+        UseCase-->>FastAPI: raise EmbeddingError
+        FastAPI-->>Client: {"error_code": "EMBEDDING_ERROR", "message": "...", "error_id": "..."}
     else No Documents Found
         UseCase->>UseCase: Check if chunks is empty
-        UseCase-->>FastAPI: Return QueryResult(answer="No docs found")
-        FastAPI-->>Client: {"answer": "No relevant documents..."}
+        UseCase-->>FastAPI: Return QueryResult(answer="No encontré documentos...", chunks=[])
+        FastAPI-->>Client: {"answer": "No encontré documentos...", "sources": []}
     else Success
         UseCase-->>FastAPI: QueryResult with answer
         FastAPI-->>Client: 200 OK
@@ -381,23 +380,21 @@ sequenceDiagram
     participant Repo as DocumentRepository
     participant DB as PostgreSQL
 
-    UseCase->>Repo: search_similar(embedding, limit=5)
+    UseCase->>Repo: find_similar_chunks(embedding, top_k=5)
     Repo->>DB: SELECT ... ORDER BY similarity LIMIT 5
     DB-->>Repo: [] (empty result)
     Repo-->>UseCase: [] (no chunks)
     
     UseCase->>UseCase: Check len(chunks) == 0
     UseCase->>UseCase: Return early with default answer
-    UseCase-->>FastAPI: QueryResult(<br/>answer="No relevant documents found",<br/>chunks=[]<br/>)
+    UseCase-->>FastAPI: QueryResult(<br/>answer="No encontré documentos...",<br/>chunks=[]<br/>)
 ```
 
 **Response:**
 ```json
 {
-  "query": "What is quantum computing?",
-  "answer": "No relevant documents found for your query. Please try a different question or ensure documents have been ingested.",
-  "sources": [],
-  "confidence": "low"
+  "answer": "No encontré documentos relacionados a tu pregunta.",
+  "sources": []
 }
 ```
 

@@ -27,7 +27,7 @@ This runbook covers common development tasks, troubleshooting, and operational p
 Ensure you have:
 - **Docker + Docker Compose:** For PostgreSQL
 - **Python 3.11+:** For backend
-- **Node.js 18+:** For frontend
+- **Node.js 20.9+:** For frontend
 - **pnpm:** Package manager (`npm install -g pnpm`)
 - **Google Gemini API Key:** [Get one here](https://makersuite.google.com/app/apikey)
 
@@ -199,13 +199,13 @@ docker compose exec db psql -U postgres -d rag
 SELECT COUNT(*) FROM chunks;
 
 -- Count chunks by document
-SELECT doc_id, COUNT(*) AS num_chunks
+SELECT document_id, COUNT(*) AS num_chunks
 FROM chunks
-GROUP BY doc_id
+GROUP BY document_id
 ORDER BY num_chunks DESC;
 
 -- View recent chunks
-SELECT id, doc_id, chunk_index, LEFT(content, 50) AS preview
+SELECT id, document_id, chunk_index, LEFT(content, 50) AS preview
 FROM chunks
 ORDER BY created_at DESC
 LIMIT 10;
@@ -222,7 +222,7 @@ WHERE tablename = 'chunks';
 -- Similarity search (test query)
 SELECT
     id,
-    doc_id,
+    document_id,
     chunk_index,
     LEFT(content, 50) AS preview,
     1 - (embedding <=> '[0.1, 0.2, ...]'::vector) AS similarity
@@ -356,7 +356,7 @@ kill -9 <PID>
 PORT=3001 pnpm dev
 ```
 
-#### "Failed to fetch: http://localhost:8000/ask"
+#### "Failed to fetch: http://localhost:8000/v1/ask"
 
 **Problem:** Frontend can't reach backend.
 
@@ -368,8 +368,8 @@ curl http://localhost:8000/healthz
 # Check CORS configuration in backend (main.py)
 # Ensure http://localhost:3000 is allowed
 
-# Check environment variables in Next.js
-# NEXT_PUBLIC_API_URL=http://localhost:8000
+# Check Next.js rewrites in apps/web/next.config.ts
+# It proxies /v1/* to http://127.0.0.1:8000
 ```
 
 ### Database Issues
@@ -605,14 +605,14 @@ LIMIT 10;
 
 ```bash
 # Time a single request
-time curl -X POST http://localhost:8000/ask \
+time curl -X POST http://localhost:8000/v1/ask \
   -H "Content-Type: application/json" \
   -d '{"query": "What is RAG Corp?"}'
 
 # Benchmark with wrk (install: brew install wrk)
 wrk -t4 -c100 -d30s --latency \
   -s post.lua \
-  http://localhost:8000/ask
+  http://localhost:8000/v1/ask
 ```
 
 **post.lua:**
@@ -630,10 +630,10 @@ wrk.headers["Content-Type"] = "application/json"
 
 ```bash
 # Ingest sample document
-curl -X POST http://localhost:8000/ingest/text \
+curl -X POST http://localhost:8000/v1/ingest/text \
   -H "Content-Type: application/json" \
   -d '{
-    "doc_id": "test-doc",
+    "title": "Test Doc",
     "text": "RAG Corp is a retrieval-augmented generation system for corporate documents. It uses Google Gemini for embeddings and text generation. Documents are chunked into 900-character segments with 120-character overlap."
   }'
 ```
@@ -642,12 +642,12 @@ curl -X POST http://localhost:8000/ingest/text \
 
 ```bash
 # Semantic search
-curl -X POST http://localhost:8000/query \
+curl -X POST http://localhost:8000/v1/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "How does chunking work?", "limit": 3}'
+  -d '{"query": "How does chunking work?", "top_k": 3}'
 
 # RAG Q&A
-curl -X POST http://localhost:8000/ask \
+curl -X POST http://localhost:8000/v1/ask \
   -H "Content-Type: application/json" \
   -d '{"query": "What LLM does RAG Corp use?"}'
 ```

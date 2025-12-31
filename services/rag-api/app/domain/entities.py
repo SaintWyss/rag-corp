@@ -53,12 +53,14 @@ class Chunk:
         document_id: Parent document UUID
         chunk_index: Position in original document (0-based)
         chunk_id: Unique chunk identifier (optional, assigned by DB)
+        similarity: Optional similarity score for search results
     """
     content: str
     embedding: List[float]
     document_id: Optional[UUID] = None
     chunk_index: Optional[int] = None
     chunk_id: Optional[UUID] = None
+    similarity: Optional[float] = None
     
     def similarity_score(self, other_embedding: List[float]) -> float:
         """
