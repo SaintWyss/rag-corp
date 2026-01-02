@@ -42,24 +42,24 @@ graph TB
 
 ## Architecture Layers
 
-### Domain (`services/rag-api/app/domain`)
+### Domain (`backend/app/domain`)
 
 - Entities: `Document`, `Chunk`, `QueryResult`
 - Protocols: `DocumentRepository`, `EmbeddingService`, `LLMService`, `TextChunkerService`
 - Pure Python contracts, no framework dependencies
 
-### Application (`services/rag-api/app/application/use_cases`)
+### Application (`backend/app/application/use_cases`)
 
 - Use cases: `IngestDocumentUseCase`, `SearchChunksUseCase`, `AnswerQueryUseCase`
 - Orchestrates domain protocols with explicit input/output DTOs
 
-### Infrastructure (`services/rag-api/app/infrastructure`)
+### Infrastructure (`backend/app/infrastructure`)
 
 - `PostgresDocumentRepository`
 - `GoogleEmbeddingService`, `GoogleLLMService`
 - `SimpleTextChunker` (defaults: 900 chars, 120 overlap)
 
-### API Layer (`services/rag-api/app/main.py`, `services/rag-api/app/routes.py`)
+### API Layer (`backend/app/main.py`, `backend/app/routes.py`)
 
 - FastAPI routing and request/response models
 - Dependency injection via `container.py`
@@ -94,5 +94,5 @@ graph TB
 
 ## Source of Truth
 
-- API contract: `packages/contracts/openapi.json` (exported from FastAPI)
+- API contract: `shared/contracts/openapi.json` (exported from FastAPI)
 - Database schema: `infra/postgres/init.sql`

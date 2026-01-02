@@ -36,7 +36,7 @@ pnpm dev
 ## Backend (FastAPI)
 
 ```bash
-cd services/rag-api
+cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -44,8 +44,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 Export OpenAPI locally:
 
 ```bash
-cd services/rag-api
-python3 scripts/export_openapi.py --out ../../packages/contracts/openapi.json
+cd backend
+python3 scripts/export_openapi.py --out ../shared/contracts/openapi.json
 ```
 
 ---
@@ -53,7 +53,7 @@ python3 scripts/export_openapi.py --out ../../packages/contracts/openapi.json
 ## Frontend (Next.js)
 
 ```bash
-cd apps/web
+cd frontend
 pnpm dev
 ```
 
@@ -91,7 +91,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ```bash
 # Unit tests (offline)
-cd services/rag-api
+cd backend
 pytest -m unit
 
 # Integration tests (requires DB + GOOGLE_API_KEY)
