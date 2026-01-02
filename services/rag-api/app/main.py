@@ -13,7 +13,7 @@ Collaborators:
   - routes.router: Business logic endpoints (ingest, query, ask)
 
 Constraints:
-  - CORS hardcoded to localhost:3000 (change to env var for production)
+  - CORS configurable via ALLOWED_ORIGINS env var (comma-separated)
   - No rate limiting or authentication
   - Health check validates DB only (doesn't verify Google API connectivity)
 
@@ -23,9 +23,10 @@ Notes:
   - /healthz follows Kubernetes health check convention
 
 Production Readiness:
-  - TODO: Read ALLOWED_ORIGINS from .env (Issue #4 tech debt)
+  - Env validation enforced at startup
   - TODO: Add authentication middleware (API Key or JWT)
 """
+import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,13 +35,31 @@ from .logger import logger
 from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
 from .container import get_document_repository
 
+_REQUIRED_ENV_VARS = ("DATABASE_URL", "GOOGLE_API_KEY")
+
+
+def _validate_env_vars() -> None:
+    """Fail fast when critical environment variables are missing."""
+    missing = [var for var in _REQUIRED_ENV_VARS if not os.getenv(var)]
+    if missing:
+        raise RuntimeError(f"Missing required env vars: {', '.join(missing)}")
+
+
+_validate_env_vars()
+
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+
 # R: Create FastAPI application instance with API metadata
 app = FastAPI(title="RAG Corp API", version="0.1.0")
 
 # R: Configure CORS for development (allows frontend at localhost:3000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # R: Allowed origins for CORS
+    allow_origins=ALLOWED_ORIGINS,  # R: Allowed origins for CORS
     allow_credentials=True,  # R: Allow cookies/auth headers
     allow_methods=["*"],  # R: Allow all HTTP methods
     allow_headers=["*"],  # R: Allow all headers
