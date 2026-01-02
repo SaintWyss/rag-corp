@@ -88,58 +88,35 @@ def get_text_chunker() -> TextChunkerService:
 
 
 # R: AnswerQuery use case factory (creates new instance per request)
-def get_answer_query_use_case(
-    repository: DocumentRepository = None,
-    embedding_service: EmbeddingService = None,
-    llm_service: LLMService = None
-) -> AnswerQueryUseCase:
+def get_answer_query_use_case() -> AnswerQueryUseCase:
     """
     R: Create AnswerQueryUseCase with injected dependencies.
-    
-    Args:
-        repository: Document repository (defaults to singleton)
-        embedding_service: Embedding service (defaults to singleton)
-        llm_service: LLM service (defaults to singleton)
-    
-    Returns:
-        Configured AnswerQueryUseCase instance
-    
-    Notes:
-        - Allows dependency injection for testing (pass mocks)
-        - Uses singletons by default for production
     """
     return AnswerQueryUseCase(
-        repository=repository or get_document_repository(),
-        embedding_service=embedding_service or get_embedding_service(),
-        llm_service=llm_service or get_llm_service()
+        repository=get_document_repository(),
+        embedding_service=get_embedding_service(),
+        llm_service=get_llm_service()
     )
 
 
 # R: IngestDocument use case factory
-def get_ingest_document_use_case(
-    repository: DocumentRepository = None,
-    embedding_service: EmbeddingService = None,
-    chunker: TextChunkerService = None,
-) -> IngestDocumentUseCase:
+def get_ingest_document_use_case() -> IngestDocumentUseCase:
     """
     R: Create IngestDocumentUseCase with injected dependencies.
     """
     return IngestDocumentUseCase(
-        repository=repository or get_document_repository(),
-        embedding_service=embedding_service or get_embedding_service(),
-        chunker=chunker or get_text_chunker(),
+        repository=get_document_repository(),
+        embedding_service=get_embedding_service(),
+        chunker=get_text_chunker(),
     )
 
 
 # R: SearchChunks use case factory
-def get_search_chunks_use_case(
-    repository: DocumentRepository = None,
-    embedding_service: EmbeddingService = None,
-) -> SearchChunksUseCase:
+def get_search_chunks_use_case() -> SearchChunksUseCase:
     """
     R: Create SearchChunksUseCase with injected dependencies.
     """
     return SearchChunksUseCase(
-        repository=repository or get_document_repository(),
-        embedding_service=embedding_service or get_embedding_service(),
+        repository=get_document_repository(),
+        embedding_service=get_embedding_service(),
     )

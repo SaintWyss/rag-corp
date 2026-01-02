@@ -23,6 +23,8 @@
  */
 import type { NextConfig } from "next";
 
+const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+
 const nextConfig: NextConfig = {
   // R: Configure URL rewrites for development proxy
   async rewrites() {
@@ -30,7 +32,7 @@ const nextConfig: NextConfig = {
       {
         // R: Proxy all /v1/* requests to backend
         source: "/v1/:path*",  // R: Match pattern (greedy)
-        destination: "http://127.0.0.1:8000/v1/:path*",  // R: Backend URL
+        destination: `${backendUrl}/v1/:path*`,  // R: Backend URL
       },
     ];
   },

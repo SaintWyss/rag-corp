@@ -15,7 +15,7 @@ Collaborators:
 Constraints:
   - CORS hardcoded to localhost:3000 (change to env var for production)
   - No rate limiting or authentication
-  - Simplified health check (doesn't verify DB or Google API connectivity)
+  - Health check validates DB only (doesn't verify Google API connectivity)
 
 Notes:
   - allow_credentials=True enables cookie sending (not currently used)
@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
 from .logger import logger
 from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
-from .store import Store
+from .container import get_document_repository
 
 # R: Create FastAPI application instance with API metadata
 app = FastAPI(title="RAG Corp API", version="0.1.0")
@@ -103,8 +103,8 @@ def healthz():
     """
     db_status = "disconnected"
     try:
-        store = Store()
-        with store._conn() as conn:
+        repo = get_document_repository()
+        with repo._conn() as conn:
             conn.execute("SELECT 1")
         db_status = "connected"
         logger.info(f"Health check passed | db={db_status}")

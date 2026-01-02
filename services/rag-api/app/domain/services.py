@@ -4,14 +4,14 @@ Name: Domain Service Interfaces
 Responsibilities:
   - Define contracts for external services (embeddings, LLM)
   - Provide abstraction over AI providers
-  - Enable dependency inversion (business logic doesn't depend on Google Gemini)
+  - Enable dependency inversion (business logic doesn't depend on any provider)
 
 Collaborators:
   - Implementations in infrastructure.services
 
 Constraints:
   - Pure interfaces (Protocol), no implementation
-  - Provider-agnostic (could be Google, OpenAI, or local models)
+  - Provider-agnostic (could be cloud or local models)
   - Must not leak provider-specific details
 
 Notes:
@@ -30,7 +30,7 @@ class EmbeddingService(Protocol):
     Implementations must provide:
       - Batch embedding for documents
       - Single embedding for queries
-      - Consistent dimensionality (e.g., 768 for Google embedding-004)
+      - Consistent dimensionality across embed_batch and embed_query
     """
     
     def embed_batch(self, texts: List[str]) -> List[List[float]]:

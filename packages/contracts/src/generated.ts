@@ -116,6 +116,14 @@ export const queryV1QueryPost = async (queryReq: QueryReq, options?: RequestInit
 
 
 /**
+ * R: RAG endpoint using Clean Architecture (Use Case pattern).
+
+This endpoint demonstrates the architecture improvement:
+- Business logic in use case (testable, framework-independent)
+- Dependency injection via FastAPI Depends
+- Separation of concerns (HTTP ↔ Business Logic)
+
+Uses the same query contract as /query with a generation step.
  * @summary Ask
  */
 export type askV1AskPostResponse = {
@@ -146,6 +154,11 @@ export const askV1AskPost = async (queryReq: QueryReq, options?: RequestInit): P
 
 
 /**
+ * R: Enhanced health check that verifies database connectivity.
+
+Returns:
+    ok: True if all systems operational
+    db: "connected" or "disconnected"
  * @summary Healthz
  */
 export type healthzHealthzGetResponse = {

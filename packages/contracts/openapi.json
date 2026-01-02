@@ -84,6 +84,7 @@
     "/v1/ask": {
       "post": {
         "summary": "Ask",
+        "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.",
         "operationId": "ask_v1_ask_post",
         "requestBody": {
           "content": {
@@ -122,6 +123,7 @@
     "/healthz": {
       "get": {
         "summary": "Healthz",
+        "description": "R: Enhanced health check that verifies database connectivity.\n\nReturns:\n    ok: True if all systems operational\n    db: \"connected\" or \"disconnected\"",
         "operationId": "healthz_healthz_get",
         "responses": {
           "200": {

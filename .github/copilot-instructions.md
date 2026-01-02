@@ -14,9 +14,9 @@
 - Editar archivos con diff/patch. En el chat: solo **archivos tocados + resumen (≤10 bullets) + comandos de validación**.
 
 ## Documentación
-- `README.md` raíz como portal y `doc/README.md` como índice.
-- ADRs en `doc/architecture/decisions/` (usar template 000).
-- Diagramas Mermaid en `doc/diagrams/*.md` cuando cambie el flujo/arquitectura.
+- `README.md` raiz como portal y `doc/README.md` como indice.
+- Arquitectura en `doc/architecture/overview.md`.
+- API en `doc/api/http-api.md`, data en `doc/data/postgres-schema.md`, runbook en `doc/runbook/local-dev.md`.
 
 ## Git (seguro)
 - No ejecutar git automáticamente.

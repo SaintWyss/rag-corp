@@ -12,7 +12,7 @@
 
 **👉 [Ir a la Documentación Técnica Completa](doc/README.md)**
 
-Arquitectura, API, diagramas, ADRs, testing strategy, runbooks, y más.
+Arquitectura, API, runbook local y schema de base de datos.
 
 ---
 
@@ -43,7 +43,7 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 - ✅ **UI moderna** en Next.js 16 con Tailwind CSS
 - ✅ **Contratos tipados** (OpenAPI → TypeScript vía Orval)
 - ✅ **Docker Compose** para desarrollo local
-- ✅ **Clean Architecture** parcial (Use Case en `/ask`)
+- ✅ **Clean Architecture** (use cases para `/ingest`, `/query`, `/ask`)
 - ✅ **Test Suite** documentada (ver `services/rag-api/tests`)
 
 ---
@@ -65,7 +65,7 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 ### DevOps
 - **pnpm + Turbo** - Monorepo con caché de builds
 - **Docker Compose** - Orquestación local
-- **OpenAPI 3.0** - Documentación de API
+- **OpenAPI 3.1** - Documentación de API
 
 ---
 
@@ -144,14 +144,11 @@ rag-corp/
 │       ├── app/
 │       │   ├── main.py         # Entry point + CORS
 │       │   ├── routes.py       # Controllers (endpoints HTTP)
-│       │   ├── store.py        # Repository (PostgreSQL + pgvector) [LEGACY]
-│       │   ├── embeddings.py   # Google Embeddings Service [LEGACY]
-│       │   ├── llm.py          # Google Gemini LLM Service [LEGACY]
-│       │   ├── text.py         # Text Chunking Utility [LEGACY]
-│       │   ├── domain/         # ✨ Entidades y reglas de negocio
-│       │   ├── application/    # ✨ Use Cases (Clean Architecture)
-│       │   ├── infrastructure/ # ✨ Adapters (DB, APIs externas)
-│       │   └── container.py    # ✨ Dependency Injection
+│       │   ├── domain/         # Entidades y contratos del core
+│       │   ├── application/    # Use cases (ingest/query/ask)
+│       │   ├── infrastructure/ # Adapters (DB, APIs externas, chunking)
+│       │   ├── container.py    # Dependency Injection
+│       │   └── logger.py
 │       ├── scripts/
 │       │   └── export_openapi.py
 │       ├── Dockerfile
@@ -166,13 +163,10 @@ rag-corp/
 │       └── init.sql            # Schema inicial (documents + chunks + índice)
 ├── doc/                        # 📖 Documentación detallada
 │   ├── README.md               # Índice de documentación
-│   ├── architecture/           # Arquitectura y ADRs
+│   ├── architecture/           # Arquitectura (overview)
 │   ├── api/                    # Documentación de API
 │   ├── data/                   # Schema y base de datos
-│   ├── design/                 # Patrones y decisiones
-│   ├── diagrams/               # Diagramas Mermaid
-│   ├── quality/                # Testing y calidad
-│   └── runbook/                # Guías operacionales
+│   └── runbook/                # Guía de desarrollo local
 ├── compose.yaml                # Docker Compose (db + rag-api)
 ├── pnpm-workspace.yaml         # Configuración monorepo
 ├── turbo.json                  # Tareas Turbo (dev, build, lint)
@@ -187,7 +181,7 @@ rag-corp/
 - **`services/rag-api`**: Servidor Python con lógica RAG (ingesta, búsqueda, generación).
 - **`packages/contracts`**: Single source of truth de tipos compartidos (OpenAPI → TypeScript).
 - **`infra/postgres`**: DDL y configuración de base de datos vectorial.
-- **`doc/`**: Documentación técnica detallada (arquitectura, API, runbooks, ADRs).
+- **`doc/`**: Documentación técnica detallada (arquitectura, API, runbook, data).
 
 ---
 
@@ -195,13 +189,11 @@ rag-corp/
 
 La documentación está organizada en [`/doc`](doc/README.md):
 
-- **[Arquitectura](doc/architecture/overview.md)**: Capas, flujo de datos, decisiones de diseño
+- **[Arquitectura](doc/architecture/overview.md)**: Capas, flujo de datos, componentes
 - **[API HTTP](doc/api/http-api.md)**: Endpoints, contratos, ejemplos, errores
-- **[Base de Datos](doc/data/postgres-schema.md)**: Schema, índices, pgvector, migraciones
-- **[Runbook Local](doc/runbook/local-dev.md)**: Cómo correr, troubleshooting, comandos útiles
-- **[Testing](doc/quality/testing.md)**: Estrategia de tests y ejecución
-- **[Patrones de Diseño](doc/design/patterns.md)**: Repository, Use Cases, DI
-- **[Diagramas](doc/diagrams/)**: Secuencia, componentes, arquitectura
+- **[Base de Datos](doc/data/postgres-schema.md)**: Schema e índices pgvector
+- **[Runbook Local](doc/runbook/local-dev.md)**: Cómo correr y comandos útiles
+- **[Tests](services/rag-api/tests/README.md)**: Suite de tests y ejecución
 
 ---
 
@@ -212,16 +204,14 @@ La documentación está organizada en [`/doc`](doc/README.md):
 - [x] Embeddings con Google text-embedding-004
 - [x] Búsqueda vectorial con pgvector
 - [x] Generación RAG con Gemini 1.5 Flash
-- [x] UI cyberpunk en Next.js
+- [x] UI en Next.js 16
 - [x] Contratos tipados (OpenAPI → TypeScript)
 - [x] Documentación CRC Cards en código
-- [x] Clean Architecture (Fase 1): Domain, Application, Infrastructure layers
+- [x] Clean Architecture: Domain, Application, Infrastructure + use cases
 - [x] Exception handlers base (Database/Embedding/LLM)
 - [x] Logging estructurado en backend
 
 ### 🚧 En Progreso
-- [ ] **Clean Architecture** (Fase 2): Refactorizar endpoints restantes
-- [ ] **Tests Unitarios**: Alinear tests con contratos actuales
 - [ ] **Observabilidad**: Métricas y tracing
 
 ### 📋 Planificado
@@ -233,7 +223,7 @@ La documentación está organizada en [`/doc`](doc/README.md):
 - [ ] **Admin UI**: CRUD de documentos
 - [ ] **Deployment**: Kubernetes + Helm charts
 
-Ver [Plan de Mejora Arquitectónica](doc/plan-mejora-arquitectura-2025-12-29.md) para detalles.
+Ver [Arquitectura](doc/architecture/overview.md) para el estado actual.
 
 ---
 
@@ -247,8 +237,8 @@ pytest tests/ -v --cov=app
 # Solo tests unitarios (rápidos, sin DB)
 pytest -m unit
 
-# Solo tests de integración (requiere DB)
-pytest -m integration
+# Solo tests de integración (requiere DB + GOOGLE_API_KEY)
+RUN_INTEGRATION=1 GOOGLE_API_KEY=tu_clave pytest -m integration
 
 # Con reporte HTML
 pytest --cov=app --cov-report=html
@@ -298,6 +288,4 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 
 ## 📞 Soporte
 
-- 📧 Email: santiago@ragcorp.example
-- 💬 Discord: TODO
 - 🐛 Issues: [GitHub Issues](https://github.com/SaintWyss/rag-corp/issues)

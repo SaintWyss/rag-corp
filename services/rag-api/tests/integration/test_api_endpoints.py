@@ -23,11 +23,21 @@ Setup:
   TestClient provides a test environment without running actual server
 """
 
+import os
 import pytest
 from fastapi.testclient import TestClient
 from uuid import uuid4
 
 from app.main import app
+
+
+if os.getenv("RUN_INTEGRATION") != "1":
+    pytest.skip("Set RUN_INTEGRATION=1 to run integration tests", allow_module_level=True)
+
+if not os.getenv("GOOGLE_API_KEY"):
+    pytest.skip("Set GOOGLE_API_KEY to run API integration tests", allow_module_level=True)
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="module")
@@ -52,7 +62,9 @@ class TestHealthEndpoint:
         
         # Assert
         assert response.status_code == 200
-        assert response.json() == {"ok": True}
+        data = response.json()
+        assert data["ok"] is True
+        assert data["db"] == "connected"
 
 
 @pytest.mark.api
@@ -75,8 +87,8 @@ class TestIngestTextEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert "document_id" in data
-        assert "chunks_created" in data
-        assert data["chunks_created"] > 0
+        assert "chunks" in data
+        assert data["chunks"] > 0
     
     def test_ingest_text_without_source(self, client):
         """R: Should accept document without source field."""
@@ -106,7 +118,7 @@ class TestIngestTextEndpoint:
         # Assert
         assert response.status_code == 200
         data = response.json()
-        assert data["chunks_created"] >= 1
+        assert data["chunks"] >= 1
     
     def test_ingest_text_missing_required_field(self, client):
         """R: Should return 422 for missing required fields."""
@@ -146,8 +158,8 @@ class TestQueryEndpoint:
         # Assert
         assert response.status_code == 200
         data = response.json()
-        assert "results" in data
-        assert isinstance(data["results"], list)
+        assert "matches" in data
+        assert isinstance(data["matches"], list)
     
     def test_query_with_default_top_k(self, client):
         """R: Should use default top_k if not provided."""
@@ -162,7 +174,7 @@ class TestQueryEndpoint:
         # Assert
         assert response.status_code == 200
         data = response.json()
-        assert len(data["results"]) <= 5  # Default top_k
+        assert len(data["matches"]) <= 5  # Default top_k
     
     def test_query_with_custom_top_k(self, client):
         """R: Should respect custom top_k parameter."""
@@ -178,7 +190,7 @@ class TestQueryEndpoint:
         # Assert
         assert response.status_code == 200
         data = response.json()
-        assert len(data["results"]) <= 2
+        assert len(data["matches"]) <= 2
 
 
 @pytest.mark.api
@@ -208,11 +220,10 @@ class TestAskEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert "answer" in data
-        assert "chunks" in data
-        assert "metadata" in data
+        assert "sources" in data
         assert isinstance(data["answer"], str)
         assert len(data["answer"]) > 0
-        assert isinstance(data["chunks"], list)
+        assert isinstance(data["sources"], list)
     
     def test_ask_with_no_relevant_context(self, client):
         """R: Should return fallback message when no chunks found."""
@@ -244,7 +255,7 @@ class TestAskEndpoint:
         # Assert
         assert response.status_code == 200
         data = response.json()
-        assert data["metadata"]["top_k"] == 5
+        assert len(data["sources"]) <= 5
     
     def test_ask_includes_sources(self, client):
         """R: Should include source chunks in response."""
@@ -260,11 +271,9 @@ class TestAskEndpoint:
         
         # Assert
         data = response.json()
-        if data["metadata"]["chunks_found"] > 0:
-            assert len(data["chunks"]) > 0
-            # Verify chunk structure
-            first_chunk = data["chunks"][0]
-            assert "content" in first_chunk
+        if data["sources"]:
+            first_source = data["sources"][0]
+            assert isinstance(first_source, str)
 
 
 @pytest.mark.api

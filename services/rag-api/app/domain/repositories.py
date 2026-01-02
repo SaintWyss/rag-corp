@@ -64,7 +64,7 @@ class DocumentRepository(Protocol):
         R: Search for similar chunks using vector similarity.
         
         Args:
-            embedding: Query embedding (768 dimensions)
+            embedding: Query embedding vector
             top_k: Number of most similar chunks to return
         
         Returns:

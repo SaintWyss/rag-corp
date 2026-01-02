@@ -4,7 +4,7 @@
 **Base URL:** `http://localhost:8000`  
 **API Prefix:** `/v1`  
 **Version:** 0.1.0  
-**Last Updated:** 2025-12-30
+**Last Updated:** 2026-01-02
 
 ---
 
@@ -157,7 +157,7 @@ Content-Type: application/json
 }
 ```
 
-**Note:** The endpoint currently uses a fixed `top_k=3` internally.
+**Note:** The endpoint uses the provided `top_k` (default: 5).
 
 #### Response
 
@@ -219,15 +219,16 @@ Custom exceptions return a structured payload:
 
 ## OpenAPI Specification
 
-Generate OpenAPI JSON schema:
+Generate OpenAPI JSON schema (source of truth):
 
 ```bash
-# Opcion 1: desde root con Docker
+# Desde root con Docker (oficial)
 pnpm contracts:export
+pnpm contracts:gen
 
-# Opcion 2: desde backend (ruta absoluta)
+# Desde backend (local)
 cd services/rag-api
-python scripts/export_openapi.py --out /repo/packages/contracts/openapi.json
+python3 scripts/export_openapi.py --out ../../packages/contracts/openapi.json
 ```
 
 View interactive docs:
@@ -244,5 +245,5 @@ View interactive docs:
 
 ---
 
-**Last Updated:** 2025-12-30  
+**Last Updated:** 2026-01-02  
 **Maintainer:** Engineering Team

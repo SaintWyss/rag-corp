@@ -40,6 +40,8 @@ class SearchChunksUseCase:
         self.embedding_service = embedding_service
 
     def execute(self, input_data: SearchChunksInput) -> SearchChunksOutput:
+        if input_data.top_k <= 0:
+            return SearchChunksOutput(matches=[])
         query_embedding = self.embedding_service.embed_query(input_data.query)
         chunks = self.repository.find_similar_chunks(
             embedding=query_embedding,

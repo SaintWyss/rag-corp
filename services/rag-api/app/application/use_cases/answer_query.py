@@ -89,6 +89,13 @@ class AnswerQueryUseCase:
             2. Context is assembled by concatenating chunk contents
             3. LLM must answer based only on provided context
         """
+        if input_data.top_k <= 0:
+            return QueryResult(
+                answer="No encontré documentos relacionados a tu pregunta.",
+                chunks=[],
+                query=input_data.query,
+                metadata={"top_k": input_data.top_k, "chunks_found": 0}
+            )
         # R: STEP 1 - Generate query embedding
         query_embedding = self.embedding_service.embed_query(input_data.query)
         
@@ -104,6 +111,7 @@ class AnswerQueryUseCase:
             return QueryResult(
                 answer="No encontré documentos relacionados a tu pregunta.",
                 chunks=[],
+                query=input_data.query,
                 metadata={"top_k": input_data.top_k, "chunks_found": 0}
             )
         
@@ -120,6 +128,7 @@ class AnswerQueryUseCase:
         return QueryResult(
             answer=answer,
             chunks=chunks,
+            query=input_data.query,
             metadata={
                 "top_k": input_data.top_k,
                 "chunks_found": len(chunks)

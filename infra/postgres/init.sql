@@ -8,8 +8,8 @@
  *   - Create IVFFlat index for efficient similarity searches
  * 
  * Collaborators:
- *   - pgvector extension (version 0.5.0+)
- *   - PostgreSQL 12+ (VECTOR type support)
+ *   - pgvector extension (tested with 0.8.1)
+ *   - PostgreSQL 16 (pgvector image uses PG16)
  * 
  * Constraints:
  *   - Fixed 768-dimensional embeddings (Google embedding-004)

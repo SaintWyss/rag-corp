@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Database:** PostgreSQL 16  
 **Extension:** pgvector 0.8.1  
-**Last Updated:** 2025-12-30
+**Last Updated:** 2026-01-02
 
 ---
 
@@ -112,12 +112,12 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-### Primary Key Index
+Note: `infra/postgres/init.sql` creates only `chunks_embedding_idx`. Primary key indexes are implicit, and the optional indexes below are not created by default.
+
+### Primary Key Indexes (Implicit)
 
 ```sql
--- Automatically created with PRIMARY KEY
-CREATE INDEX documents_pkey ON documents (id);
-CREATE INDEX chunks_pkey ON chunks (id);
+-- Automatically created by PRIMARY KEY constraints; no manual DDL in init.sql
 ```
 
 **Purpose:** Fast lookup by ID  
@@ -156,7 +156,7 @@ WITH (lists = 100);
 CREATE INDEX chunks_document_id_idx ON chunks (document_id);
 ```
 
-**Purpose:** Fast lookup by document  
+**Purpose:** Fast lookup by document (not created in `init.sql`)  
 **Usage:** `SELECT * FROM chunks WHERE document_id = '...'`
 
 ### Composite Index (Optional)
@@ -166,7 +166,7 @@ CREATE INDEX chunks_document_id_idx ON chunks (document_id);
 CREATE INDEX chunks_document_chunk_idx ON chunks (document_id, chunk_index);
 ```
 
-**Purpose:** Retrieve all chunks for a document in order  
+**Purpose:** Retrieve all chunks for a document in order (not created in `init.sql`)  
 **Usage:** `SELECT * FROM chunks WHERE document_id = '...' ORDER BY chunk_index`
 
 ---
@@ -505,5 +505,5 @@ services:
 
 ---
 
-**Last Updated:** 2025-12-30  
+**Last Updated:** 2026-01-02  
 **Maintainer:** Engineering Team

@@ -28,7 +28,7 @@ export default function Home() {
 
           <StatusBanner message={error} />
           <AnswerCard answer={answer} />
-          <SourcesList sources={sources} />
+          {sources.length > 0 ? <SourcesList sources={sources} /> : null}
         </div>
       </div>
     </div>

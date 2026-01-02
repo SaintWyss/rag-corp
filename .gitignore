@@ -1,14 +1,10 @@
-node_modules
-dist
-.next
-.env
-.venv
-__pycache__
-*.pyc
-.DS_Store
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.idea/
+*.iml
 
 # Node
 node_modules/

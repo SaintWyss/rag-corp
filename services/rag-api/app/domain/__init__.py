@@ -2,7 +2,7 @@
 
 from .entities import Document, Chunk, QueryResult
 from .repositories import DocumentRepository
-from .services import EmbeddingService, LLMService
+from .services import EmbeddingService, LLMService, TextChunkerService
 
 __all__ = [
     "Document",
@@ -11,4 +11,5 @@ __all__ = [
     "DocumentRepository",
     "EmbeddingService",
     "LLMService",
+    "TextChunkerService",
 ]

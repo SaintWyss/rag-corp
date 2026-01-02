@@ -3,25 +3,21 @@ Name: RAG API Controllers
 
 Responsibilities:
   - Expose HTTP endpoints for document ingestion and querying
-  - Orchestrate complete RAG flow (chunking → embedding → storage → retrieval → generation)
+  - Delegate business logic to application use cases (Clean Architecture)
   - Validate requests and serialize responses using Pydantic models
-  - Coordinate dependencies between Store, Embeddings, LLM, and Text modules
+  - Wire dependencies via FastAPI DI container
 
 Collaborators:
-  - Store: Persistence in PostgreSQL + pgvector
-  - embed_texts/embed_query: Generate embeddings with Google API
-  - generate_rag_answer: Generate responses with Gemini
-  - chunk_text: Split documents into fragments
+  - application.use_cases: IngestDocumentUseCase, SearchChunksUseCase, AnswerQueryUseCase
+  - container: Dependency providers for repositories and services
 
 Constraints:
-  - No structured error handling (TODO: add exception handlers)
-  - Direct instantiation of Store (violates DIP, refactor to DI in Phase 1)
   - Synchronous endpoints, no streaming response support
   - No authentication or rate limiting (development only)
 
 Notes:
-  - This module is a candidate for refactoring in Architecture Improvement Plan
-  - Should be split into: presentation layer (controllers) + application layer (use cases)
+  - This module stays thin (controllers only)
+  - Business logic lives in application/use_cases
   - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 from fastapi import APIRouter, Depends
@@ -131,13 +127,13 @@ def ask(
     - Dependency injection via FastAPI Depends
     - Separation of concerns (HTTP ↔ Business Logic)
     
-    Compare with /query endpoint (legacy) to see the difference.
+    Uses the same query contract as /query with a generation step.
     """
     # R: Execute use case with input data
     result = use_case.execute(
         AnswerQueryInput(
             query=req.query,
-            top_k=3  # R: Fixed to 3 for RAG (vs configurable top_k in /query)
+            top_k=req.top_k
         )
     )
     

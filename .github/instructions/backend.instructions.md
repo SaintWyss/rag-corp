@@ -2,7 +2,7 @@
 applyTo: "services/rag-api/**"
 ---
 
-- Python 3.11 + FastAPI: preferir estructura por módulos claros (routes / services / store / utils).
+- Python 3.11 + FastAPI: mantener Clean Architecture (domain/application/infrastructure) + API layer (routes/main) + DI en container.
 - Manejo de errores: usar HTTPException y/o exception handlers, sin stack traces crudos.
 - Logging: usar `logging` (no `print`).
 - Validación: Pydantic para requests/responses.

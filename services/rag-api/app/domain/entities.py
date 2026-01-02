@@ -11,7 +11,7 @@ Collaborators:
 
 Constraints:
   - No dependencies on infrastructure or frameworks
-  - Immutable data structures (using dataclass frozen=True where appropriate)
+  - Simple dataclasses (mutability not enforced)
   - Must remain framework-agnostic
 
 Notes:
@@ -34,7 +34,7 @@ class Document:
         id: Unique document identifier
         title: Document title
         source: Optional source URL or identifier
-        metadata: Additional custom metadata (JSONB in DB)
+        metadata: Additional custom metadata
     """
     id: UUID
     title: str
@@ -49,7 +49,7 @@ class Chunk:
     
     Attributes:
         content: Text fragment content
-        embedding: 768-dimensional vector from text-embedding-004
+        embedding: Vector representation of the chunk
         document_id: Parent document UUID
         chunk_index: Position in original document (0-based)
         chunk_id: Unique chunk identifier (optional, assigned by DB)
@@ -66,7 +66,7 @@ class Chunk:
         """
         R: Calculate similarity score (placeholder).
         
-        Note: Actual similarity computation is done in PostgreSQL using pgvector.
+        Note: Actual similarity computation is done in the repository layer.
         This method is for future use or testing purposes.
         """
         raise NotImplementedError("Use repository for similarity search")
@@ -80,8 +80,10 @@ class QueryResult:
     Attributes:
         answer: Generated answer from LLM
         chunks: Retrieved chunks used as context
+        query: Original user query (optional)
         metadata: Additional response metadata (top_k, latency, etc.)
     """
     answer: str
     chunks: List[Chunk]
+    query: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)

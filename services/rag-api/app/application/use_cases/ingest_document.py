@@ -57,6 +57,13 @@ class IngestDocumentUseCase:
         )
 
         chunks = self.chunker.chunk(input_data.text)
+        if not chunks:
+            self.repository.save_document(document)
+            return IngestDocumentOutput(
+                document_id=doc_id,
+                chunks_created=0,
+            )
+
         embeddings = self.embedding_service.embed_batch(chunks)
 
         chunk_entities: List[Chunk] = [

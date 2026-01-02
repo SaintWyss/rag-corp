@@ -19,7 +19,7 @@ tests/
 
 ## Ejecutar Tests
 
-### Todos los tests
+### Todos los tests (unit + integration si RUN_INTEGRATION=1)
 ```bash
 pytest
 ```
@@ -31,7 +31,7 @@ pytest -m unit
 
 ### Solo tests de integración
 ```bash
-pytest -m integration
+RUN_INTEGRATION=1 pytest -m integration
 ```
 
 ### Con reporte de cobertura
@@ -58,7 +58,8 @@ pytest -k test_answer_query
   docker compose up -d db
   ```
 - Requieren `DATABASE_URL` configurado (default: localhost:5432)
-- Requieren `GOOGLE_API_KEY` (pueden mockearse para tests offline)
+- Requieren `GOOGLE_API_KEY`
+- Se ejecutan solo si `RUN_INTEGRATION=1`
 
 ## Cobertura
 
