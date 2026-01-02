@@ -15,7 +15,7 @@ Constraints:
 
 Notes:
   - Used by command: pnpm contracts:export
-  - Output to packages/contracts/openapi.json
+  - Output to shared/contracts/openapi.json
   - Orval consumes this file to generate TypeScript client
 """
 import argparse
