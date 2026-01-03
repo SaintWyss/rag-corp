@@ -55,6 +55,19 @@ class DocumentRepository(Protocol):
         """
         ...
     
+    def save_document_with_chunks(self, document: Document, chunks: List[Chunk]) -> None:
+        """
+        R: Atomically save document and its chunks in a single transaction.
+        
+        This is the preferred method for ingestion - ensures no orphan
+        documents or partial chunk sets exist.
+        
+        Args:
+            document: Document entity to save
+            chunks: List of Chunk entities with embeddings
+        """
+        ...
+    
     def find_similar_chunks(
         self,
         embedding: List[float],
@@ -69,6 +82,30 @@ class DocumentRepository(Protocol):
         
         Returns:
             List of Chunk entities ordered by similarity (descending)
+        """
+        ...
+
+    def soft_delete_document(self, document_id: UUID) -> bool:
+        """
+        R: Soft delete a document by setting deleted_at timestamp.
+        
+        Args:
+            document_id: Document UUID to soft delete
+        
+        Returns:
+            True if document was found and deleted, False otherwise
+        """
+        ...
+    
+    def restore_document(self, document_id: UUID) -> bool:
+        """
+        R: Restore a soft-deleted document.
+        
+        Args:
+            document_id: Document UUID to restore
+        
+        Returns:
+            True if document was found and restored, False otherwise
         """
         ...
 

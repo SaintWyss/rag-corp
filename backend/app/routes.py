@@ -21,8 +21,10 @@ Notes:
   - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
+from .config import get_settings
+from .auth import require_scope
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
@@ -41,22 +43,60 @@ from .container import (
 router = APIRouter()
 
 # R: Request model for text ingestion (document metadata + content)
+# R: Limits are loaded from Settings at module load time for Pydantic schema
+_settings = get_settings()
+
 class IngestTextReq(BaseModel):
-    title: str  # R: Document title
-    text: str  # R: Full document text to be chunked
-    source: str | None = None  # R: Optional source URL or identifier
-    metadata: dict = Field(default_factory=dict)  # R: Additional custom metadata (JSONB)
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_title_chars,
+        description="Document title (1-200 chars)"
+    )
+    text: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_ingest_chars,
+        description="Full document text to be chunked (1-100,000 chars)"
+    )
+    source: str | None = Field(
+        default=None,
+        max_length=_settings.max_source_chars,
+        description="Optional source URL or identifier (max 500 chars)"
+    )
+    metadata: dict = Field(default_factory=dict, description="Additional custom metadata (JSONB)")
+
+    @field_validator("title", "text")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        """Trim leading/trailing whitespace."""
+        return v.strip()
 
 # R: Response model for text ingestion (confirmation)
 class IngestTextRes(BaseModel):
     document_id: UUID  # R: Unique identifier of stored document
     chunks: int  # R: Number of chunks created from document
 
+# R: Response model for batch ingestion
+class IngestBatchRes(BaseModel):
+    documents: list[IngestTextRes]  # R: List of ingested documents
+    total_chunks: int  # R: Total chunks created across all documents
+
+# R: Request model for batch ingestion
+class IngestBatchReq(BaseModel):
+    documents: list[IngestTextReq] = Field(
+        ...,
+        min_length=1,
+        max_length=10,
+        description="List of documents to ingest (1-10)"
+    )
+
 # R: Endpoint to ingest documents into the RAG system
-@router.post("/ingest/text", response_model=IngestTextRes)
+@router.post("/ingest/text", response_model=IngestTextRes, tags=["ingest"])
 def ingest_text(
     req: IngestTextReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+    _auth: None = Depends(require_scope("ingest")),
 ):
     result = use_case.execute(
         IngestDocumentInput(
@@ -71,10 +111,59 @@ def ingest_text(
         chunks=result.chunks_created,
     )
 
+# R: Endpoint for batch document ingestion
+@router.post("/ingest/batch", response_model=IngestBatchRes, tags=["ingest"])
+def ingest_batch(
+    req: IngestBatchReq,
+    use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+    _auth: None = Depends(require_scope("ingest")),
+):
+    """
+    Ingest multiple documents in a single request.
+    
+    Processes up to 10 documents sequentially.
+    Returns results for all successfully ingested documents.
+    """
+    results = []
+    total_chunks = 0
+    
+    for doc in req.documents:
+        result = use_case.execute(
+            IngestDocumentInput(
+                title=doc.title,
+                text=doc.text,
+                source=doc.source,
+                metadata=doc.metadata,
+            )
+        )
+        results.append(IngestTextRes(
+            document_id=result.document_id,
+            chunks=result.chunks_created,
+        ))
+        total_chunks += result.chunks_created
+    
+    return IngestBatchRes(documents=results, total_chunks=total_chunks)
+
 # R: Request model for queries (shared by /query and /ask endpoints)
 class QueryReq(BaseModel):
-    query: str  # R: User's natural language question
-    top_k: int = 5  # R: Number of similar chunks to retrieve
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_query_chars,
+        description="User's natural language question (1-2,000 chars)"
+    )
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=_settings.max_top_k,
+        description="Number of similar chunks to retrieve (1-20)"
+    )
+
+    @field_validator("query")
+    @classmethod
+    def strip_query_whitespace(cls, v: str) -> str:
+        """Trim leading/trailing whitespace from query."""
+        return v.strip()
 
 # R: Match model representing a single similar chunk
 class Match(BaseModel):
@@ -88,10 +177,11 @@ class QueryRes(BaseModel):
     matches: list[Match]  # R: List of similar chunks ordered by relevance
 
 # R: Endpoint for semantic search (retrieval without generation)
-@router.post("/query", response_model=QueryRes)
+@router.post("/query", response_model=QueryRes, tags=["query"])
 def query(
     req: QueryReq,
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
+    _auth: None = Depends(require_scope("ask")),
 ):
     result = use_case.execute(SearchChunksInput(query=req.query, top_k=req.top_k))
     matches = []
@@ -114,10 +204,11 @@ class AskRes(BaseModel):
     sources: list[str]  # R: Retrieved chunks used as context
 
 # R: Endpoint for complete RAG flow (retrieval + generation) - REFACTORED with Use Case
-@router.post("/ask", response_model=AskRes)
+@router.post("/ask", response_model=AskRes, tags=["query"])
 def ask(
     req: QueryReq,
-    use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
+    use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
+    _auth: None = Depends(require_scope("ask")),
 ):
     """
     R: RAG endpoint using Clean Architecture (Use Case pattern).

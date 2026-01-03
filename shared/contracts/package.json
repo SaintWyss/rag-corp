@@ -2,7 +2,7 @@
   "name": "@contracts",
   "private": true,
   "devDependencies": {
-    "orval": "^6.0.0"
+    "orval": "^7.17.2"
   },
   "scripts": {
     "gen": "orval --config orval.config.ts"

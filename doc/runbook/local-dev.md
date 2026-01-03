@@ -33,64 +33,6 @@ pnpm dev
 
 ---
 
-## Comandos Útiles (Cheat Sheet)
-
-### Docker Compose
-
-```bash
-# Solo base de datos (sin API)
-docker compose up -d db
-
-# Ver logs del backend en tiempo real
-docker compose logs -f rag-api
-
-# Reset completo (borra datos de DB)
-docker compose down -v && docker compose up -d
-
-# Ver estado de servicios
-docker compose ps
-
-# Reconstruir imágenes (después de cambios en Dockerfile)
-docker compose up -d --build
-```
-
-### Testing
-
-```bash
-# Tests unitarios (rápidos, sin Docker)
-cd backend && pytest -m unit
-
-# Tests de integración (requiere DB corriendo)
-cd backend && RUN_INTEGRATION=1 GOOGLE_API_KEY=tu_clave pytest -m integration
-
-# Tests con cobertura HTML
-cd backend && pytest --cov=app --cov-report=html
-open htmlcov/index.html
-```
-
-### Base de Datos
-
-```bash
-# Conectar a PostgreSQL vía psql
-docker compose exec db psql -U postgres -d rag
-
-# Ver tablas
-\dt
-
-# Ver chunks almacenados
-SELECT id, document_id, chunk_index, LEFT(content, 50) FROM chunks LIMIT 10;
-```
-
-### Contratos API
-
-```bash
-# Regenerar cliente TypeScript desde OpenAPI
-pnpm contracts:export   # FastAPI → openapi.json
-pnpm contracts:gen      # openapi.json → generated.ts
-```
-
----
-
 ## Backend (FastAPI)
 
 ```bash
@@ -99,7 +41,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Export OpenAPI locally (sin Docker):
+Export OpenAPI locally:
 
 ```bash
 cd backend
@@ -117,36 +59,165 @@ pnpm dev
 
 ---
 
-## Environment Variables
+## Database
 
-| Variable | Requerida | Descripción |
-|----------|-----------|-------------|
-| `GOOGLE_API_KEY` | ✅ | API Key de Google Gemini |
-| `DATABASE_URL` | ✅ | Connection string PostgreSQL |
-| `ALLOWED_ORIGINS` | ❌ | CORS origins (default: localhost:3000) |
+```bash
+# Start only DB
+docker compose up -d db
 
-Ver [`.env.example`](../../.env.example) para valores de ejemplo.
+# Stop DB
+docker compose stop db
+
+# Reset DB (data loss)
+docker compose down -v
+
+# Connect via psql
+docker compose exec db psql -U postgres -d rag
+```
 
 ---
 
-## Troubleshooting
+## Environment Variables
 
-### "Connection refused" al correr tests de integración
-```bash
-# Verificar que PostgreSQL esté corriendo
-docker compose ps
-docker compose up -d db
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
+GOOGLE_API_KEY=your-google-api-key-here
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### "GOOGLE_API_KEY not set"
+---
+
+## Testing
+
+### Backend Tests
+
 ```bash
-# Verificar que .env existe y tiene la variable
-cat .env | grep GOOGLE_API_KEY
+# Unit tests (offline)
+cd backend
+pytest -m unit
+
+# Integration tests (requires DB + GOOGLE_API_KEY)
+RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
+
+# All tests (integration skipped unless RUN_INTEGRATION=1)
+pytest
 ```
 
-### Frontend no conecta con API
+### Frontend Tests
+
 ```bash
-# Verificar que el proxy en next.config.ts apunta a localhost:8000
-# Verificar que el backend está corriendo
-curl http://localhost:8000/healthz
+cd frontend
+
+# Run all tests
+pnpm test
+
+# Run tests in watch mode (for development)
+pnpm test:watch
+
+# Run with coverage report
+pnpm test:coverage
+```
+
+**Test structure:**
+- `__tests__/page.test.tsx` - Page component render tests
+- `__tests__/error.test.tsx` - Error boundary behavior tests
+- `__tests__/hooks/useRagAsk.test.tsx` - Hook logic tests (API mocking)
+
+**Writing tests:**
+- Use `@testing-library/react` for component tests
+- Mock API calls with `jest.mock("@contracts/src/generated")`
+- Mock `next/navigation` is pre-configured in `jest.setup.ts`
+
+---
+
+## Observability
+
+### Logs Estructurados (JSON)
+
+Los logs del backend son JSON con campos automáticos:
+
+```json
+{
+  "timestamp": "2026-01-03T12:00:00.000Z",
+  "level": "INFO",
+  "message": "query answered",
+  "request_id": "abc-123-def-456",
+  "method": "POST",
+  "path": "/v1/ask",
+  "embed_ms": 45.2,
+  "retrieve_ms": 12.3,
+  "llm_ms": 234.5,
+  "total_ms": 291.9,
+  "chunks_found": 3
+}
+```
+
+**Campos de contexto:**
+
+| Campo | Descripción |
+|-------|-------------|
+| `request_id` | UUID único por request (correlación) |
+| `trace_id` | OpenTelemetry trace ID (si habilitado) |
+| `span_id` | OpenTelemetry span ID (si habilitado) |
+| `method` | HTTP method (GET, POST, etc.) |
+| `path` | Request path (/v1/ask, etc.) |
+
+**Campos de timing (RAG):**
+
+| Campo | Descripción |
+|-------|-------------|
+| `embed_ms` | Tiempo de generación de embedding |
+| `retrieve_ms` | Tiempo de búsqueda en DB |
+| `llm_ms` | Tiempo de generación LLM |
+| `total_ms` | Tiempo total del use case |
+
+### Métricas Prometheus
+
+Endpoint: `GET /metrics`
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+**Métricas disponibles:**
+
+| Métrica | Tipo | Descripción |
+|---------|------|-------------|
+| `rag_requests_total` | Counter | Total de requests por endpoint/status |
+| `rag_request_latency_seconds` | Histogram | Latencia de requests |
+| `rag_embed_latency_seconds` | Histogram | Latencia de embedding |
+| `rag_retrieve_latency_seconds` | Histogram | Latencia de retrieval |
+| `rag_llm_latency_seconds` | Histogram | Latencia de LLM |
+
+**Ejemplo de uso con Prometheus:**
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'rag-corp'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: /metrics
+```
+
+### Tracing con OpenTelemetry (Opcional)
+
+Para habilitar tracing distribuido:
+
+```bash
+# En .env
+OTEL_ENABLED=1
+```
+
+Los traces se exportan a consola por defecto. Para producción, configurar OTLP:
+
+```bash
+OTEL_ENABLED=1
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+```
+
+**Dependencias adicionales (instalar si usás tracing):**
+
+```bash
+pip install opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-fastapi
 ```

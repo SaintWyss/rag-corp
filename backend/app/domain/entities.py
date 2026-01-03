@@ -21,6 +21,7 @@ Notes:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import UUID
 from typing import Optional, Dict, Any, List
 
@@ -35,11 +36,20 @@ class Document:
         title: Document title
         source: Optional source URL or identifier
         metadata: Additional custom metadata
+        created_at: Creation timestamp
+        deleted_at: Soft delete timestamp (None if active)
     """
     id: UUID
     title: str
     source: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+    
+    @property
+    def is_deleted(self) -> bool:
+        """Check if document is soft-deleted."""
+        return self.deleted_at is not None
 
 
 @dataclass

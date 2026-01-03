@@ -403,9 +403,194 @@ class TestPostgresDocumentRepositoryEdgeCases:
         assert retrieved[3]["boolean"] is True
 
 
-# Note: Add more integration tests for:
-# - Connection failure scenarios
-# - Transaction rollback
-# - Concurrent operations
-# - Large batch operations
+@pytest.mark.integration
+class TestPostgresDocumentRepositoryAtomicOperations:
+    """Test atomic transaction behavior for document + chunks."""
+
+    def test_save_document_with_chunks_atomic_success(
+        self,
+        db_repository,
+        db_conn,
+        cleanup_test_data
+    ):
+        """R: Should save document and chunks atomically."""
+        # Arrange
+        doc_id = uuid4()
+        cleanup_test_data.append(doc_id)
+        
+        doc = Document(id=doc_id, title="Atomic Test", source="https://test.com")
+        chunks = [
+            Chunk(
+                content=f"Atomic chunk {i}",
+                embedding=[0.1 * (i + 1)] * 768,
+                document_id=doc_id,
+                chunk_index=i
+            )
+            for i in range(3)
+        ]
+        
+        # Act
+        db_repository.save_document_with_chunks(doc, chunks)
+        
+        # Assert - both document and chunks should exist
+        doc_row = _fetch_document(db_conn, doc_id)
+        assert doc_row is not None
+        assert doc_row[1] == "Atomic Test"
+        
+        chunk_count = db_conn.execute(
+            "SELECT COUNT(*) FROM chunks WHERE document_id = %s",
+            (doc_id,),
+        ).fetchone()[0]
+        assert chunk_count == 3
+
+    def test_save_document_with_chunks_rollback_on_invalid_embedding(
+        self,
+        db_repository,
+        db_conn,
+        cleanup_test_data
+    ):
+        """R: Should rollback document if chunk validation fails."""
+        # Arrange
+        doc_id = uuid4()
+        # Note: Don't add to cleanup - document should not exist after rollback
+        
+        doc = Document(id=doc_id, title="Rollback Test", source="https://test.com")
+        chunks = [
+            Chunk(
+                content="Valid chunk",
+                embedding=[0.1] * 768,
+                document_id=doc_id,
+                chunk_index=0
+            ),
+            Chunk(
+                content="Invalid chunk - wrong dimension",
+                embedding=[0.1] * 100,  # Wrong dimension - should cause validation failure
+                document_id=doc_id,
+                chunk_index=1
+            ),
+        ]
+        
+        # Act & Assert
+        with pytest.raises(ValueError, match="768"):
+            db_repository.save_document_with_chunks(doc, chunks)
+        
+        # Assert - document should NOT exist (validation fails before transaction)
+        doc_row = _fetch_document(db_conn, doc_id)
+        assert doc_row is None
+
+    def test_save_document_with_chunks_uses_batch_insert(
+        self,
+        db_repository,
+        db_conn,
+        cleanup_test_data
+    ):
+        """R: Should efficiently insert many chunks via batch."""
+        # Arrange
+        doc_id = uuid4()
+        cleanup_test_data.append(doc_id)
+        
+        doc = Document(id=doc_id, title="Batch Test")
+        
+        # Create many chunks to test batch behavior
+        chunks = [
+            Chunk(
+                content=f"Batch chunk {i}",
+                embedding=[float(i) / 100] * 768,
+                document_id=doc_id,
+                chunk_index=i
+            )
+            for i in range(50)  # 50 chunks in batch
+        ]
+        
+        # Act
+        db_repository.save_document_with_chunks(doc, chunks)
+        
+        # Assert
+        chunk_count = db_conn.execute(
+            "SELECT COUNT(*) FROM chunks WHERE document_id = %s",
+            (doc_id,),
+        ).fetchone()[0]
+        assert chunk_count == 50
+
+    def test_save_document_with_chunks_empty_chunks_list(
+        self,
+        db_repository,
+        db_conn,
+        cleanup_test_data
+    ):
+        """R: Should save document even with empty chunks list."""
+        # Arrange
+        doc_id = uuid4()
+        cleanup_test_data.append(doc_id)
+        
+        doc = Document(id=doc_id, title="No Chunks Doc")
+        
+        # Act
+        db_repository.save_document_with_chunks(doc, [])
+        
+        # Assert - document should exist
+        doc_row = _fetch_document(db_conn, doc_id)
+        assert doc_row is not None
+        assert doc_row[1] == "No Chunks Doc"
+
+
+@pytest.mark.integration
+class TestPostgresDocumentRepositoryPoolIntegration:
+    """Test connection pool usage in repository."""
+
+    def test_repository_uses_pool_connections(
+        self,
+        db_repository,
+        cleanup_test_data
+    ):
+        """R: Multiple operations should reuse pool connections."""
+        # Arrange
+        doc_ids = [uuid4() for _ in range(5)]
+        cleanup_test_data.extend(doc_ids)
+        
+        # Act - multiple sequential operations
+        for i, doc_id in enumerate(doc_ids):
+            doc = Document(id=doc_id, title=f"Pool Test {i}")
+            db_repository.save_document(doc)
+        
+        # Assert - all documents saved successfully
+        # (no connection exhaustion errors)
+        # Note: Pool behavior verified by successful completion
+
+    def test_find_similar_chunks_uses_pool(
+        self,
+        db_repository,
+        cleanup_test_data
+    ):
+        """R: Vector search should use pool connections."""
+        # Arrange
+        doc_id = uuid4()
+        cleanup_test_data.append(doc_id)
+        
+        doc = Document(id=doc_id, title="Pool Search Test")
+        chunks = [
+            Chunk(
+                content=f"Pool search chunk {i}",
+                embedding=[0.1 * (i + 1)] * 768,
+                document_id=doc_id,
+                chunk_index=i
+            )
+            for i in range(3)
+        ]
+        db_repository.save_document_with_chunks(doc, chunks)
+        
+        # Act - multiple search operations
+        for _ in range(10):
+            results = db_repository.find_similar_chunks(
+                embedding=[0.2] * 768,
+                top_k=3
+            )
+        
+        # Assert - all searches completed (pool working)
+        assert len(results) <= 3
+
+
+# Note: Additional tests for:
+# - Statement timeout behavior (requires long-running query simulation)
+# - Connection recovery after pool exhaustion
 # - Performance benchmarks

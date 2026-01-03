@@ -145,6 +145,9 @@ def mock_llm_service() -> Mock:
     # Default RAG generation (can be overridden in tests)
     mock.generate_answer.return_value = "Generated answer"
     
+    # Add prompt_version attribute for observability
+    mock.prompt_version = "v1"
+    
     return mock
 
 
