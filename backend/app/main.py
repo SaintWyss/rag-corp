@@ -35,31 +35,28 @@ from .routes import router
 from .logger import logger
 from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
 from .container import get_document_repository
-
-_REQUIRED_ENV_VARS = ("DATABASE_URL", "GOOGLE_API_KEY")
-
-
-def _validate_env_vars() -> None:
-    """Fail fast when critical environment variables are missing."""
-    missing = [var for var in _REQUIRED_ENV_VARS if not os.getenv(var)]
-    if missing:
-        raise RuntimeError(f"Missing required env vars: {', '.join(missing)}")
+from .config import get_settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown lifecycle. Validates env vars at startup, not import time."""
-    _validate_env_vars()
-    logger.info("RAG Corp API starting up")
+    """Startup/shutdown lifecycle. Validates settings at startup."""
+    # This will raise ValidationError if env vars are missing/invalid
+    settings = get_settings()
+    logger.info(f"RAG Corp API starting up (chunk_size={settings.chunk_size}, overlap={settings.chunk_overlap})")
     yield
     logger.info("RAG Corp API shutting down")
 
 
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-    if origin.strip()
-]
+# R: Get settings for CORS configuration (safe at module level after env is loaded)
+def _get_allowed_origins() -> list[str]:
+    """Get CORS origins from settings, with fallback for import-time errors."""
+    try:
+        return get_settings().get_allowed_origins_list()
+    except Exception:
+        # Fallback for tests that don't set env vars
+        return ["http://localhost:3000"]
+
 
 # R: Create FastAPI application instance with API metadata
 app = FastAPI(title="RAG Corp API", version="0.1.0", lifespan=lifespan)
@@ -67,7 +64,7 @@ app = FastAPI(title="RAG Corp API", version="0.1.0", lifespan=lifespan)
 # R: Configure CORS for development (allows frontend at localhost:3000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,  # R: Allowed origins for CORS
+    allow_origins=_get_allowed_origins(),  # R: Allowed origins from Settings
     allow_credentials=True,  # R: Allow cookies/auth headers
     allow_methods=["*"],  # R: Allow all HTTP methods
     allow_headers=["*"],  # R: Allow all headers

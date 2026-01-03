@@ -80,6 +80,17 @@ Content-Type: application/json
 }
 ```
 
+**Constraints:**
+
+| Field | Type | Required | Limits | Default |
+|-------|------|----------|--------|--------|
+| `title` | string | ✅ | 1-200 chars (trimmed) | - |
+| `text` | string | ✅ | 1-100,000 chars (trimmed) | - |
+| `source` | string | ❌ | max 500 chars | `null` |
+| `metadata` | object | ❌ | - | `{}` |
+
+> Limits configurable via `MAX_TITLE_CHARS`, `MAX_INGEST_CHARS`, `MAX_SOURCE_CHARS` env vars.
+
 #### Response
 
 **Status:** `200 OK`
@@ -114,6 +125,15 @@ Content-Type: application/json
   "top_k": 5
 }
 ```
+
+**Constraints:**
+
+| Field | Type | Required | Limits | Default |
+|-------|------|----------|--------|--------|
+| `query` | string | ✅ | 1-2,000 chars (trimmed) | - |
+| `top_k` | integer | ❌ | 1-20 | `5` |
+
+> Limits configurable via `MAX_QUERY_CHARS`, `MAX_TOP_K` env vars.
 
 #### Response
 
@@ -157,7 +177,12 @@ Content-Type: application/json
 }
 ```
 
-**Note:** The endpoint uses the provided `top_k` (default: 5).
+**Constraints:** Same as `/v1/query` (see above).
+
+| Field | Type | Required | Limits | Default |
+|-------|------|----------|--------|--------|
+| `query` | string | ✅ | 1-2,000 chars (trimmed) | - |
+| `top_k` | integer | ❌ | 1-20 | `5` |
 
 #### Response
 
