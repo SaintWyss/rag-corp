@@ -1,7 +1,7 @@
 # Local Development Runbook
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-02
+**Last Updated:** 2026-01-03
 
 ---
 
@@ -99,4 +99,98 @@ RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
 
 # All tests (integration skipped unless RUN_INTEGRATION=1)
 pytest
+```
+
+---
+
+## Observability
+
+### Logs Estructurados (JSON)
+
+Los logs del backend son JSON con campos automáticos:
+
+```json
+{
+  "timestamp": "2026-01-03T12:00:00.000Z",
+  "level": "INFO",
+  "message": "query answered",
+  "request_id": "abc-123-def-456",
+  "method": "POST",
+  "path": "/v1/ask",
+  "embed_ms": 45.2,
+  "retrieve_ms": 12.3,
+  "llm_ms": 234.5,
+  "total_ms": 291.9,
+  "chunks_found": 3
+}
+```
+
+**Campos de contexto:**
+
+| Campo | Descripción |
+|-------|-------------|
+| `request_id` | UUID único por request (correlación) |
+| `trace_id` | OpenTelemetry trace ID (si habilitado) |
+| `span_id` | OpenTelemetry span ID (si habilitado) |
+| `method` | HTTP method (GET, POST, etc.) |
+| `path` | Request path (/v1/ask, etc.) |
+
+**Campos de timing (RAG):**
+
+| Campo | Descripción |
+|-------|-------------|
+| `embed_ms` | Tiempo de generación de embedding |
+| `retrieve_ms` | Tiempo de búsqueda en DB |
+| `llm_ms` | Tiempo de generación LLM |
+| `total_ms` | Tiempo total del use case |
+
+### Métricas Prometheus
+
+Endpoint: `GET /metrics`
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+**Métricas disponibles:**
+
+| Métrica | Tipo | Descripción |
+|---------|------|-------------|
+| `rag_requests_total` | Counter | Total de requests por endpoint/status |
+| `rag_request_latency_seconds` | Histogram | Latencia de requests |
+| `rag_embed_latency_seconds` | Histogram | Latencia de embedding |
+| `rag_retrieve_latency_seconds` | Histogram | Latencia de retrieval |
+| `rag_llm_latency_seconds` | Histogram | Latencia de LLM |
+
+**Ejemplo de uso con Prometheus:**
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'rag-corp'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: /metrics
+```
+
+### Tracing con OpenTelemetry (Opcional)
+
+Para habilitar tracing distribuido:
+
+```bash
+# En .env
+OTEL_ENABLED=1
+```
+
+Los traces se exportan a consola por defecto. Para producción, configurar OTLP:
+
+```bash
+OTEL_ENABLED=1
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+```
+
+**Dependencias adicionales (instalar si usás tracing):**
+
+```bash
+pip install opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-fastapi
 ```

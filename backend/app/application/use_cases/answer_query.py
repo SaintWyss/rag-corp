@@ -6,12 +6,14 @@ Responsibilities:
   - Coordinate repository, embedding service, and LLM service
   - Apply business logic (top_k, context assembly, error handling)
   - Return QueryResult with answer and sources
+  - Measure and report stage timings
 
 Collaborators:
   - domain.repositories.DocumentRepository: Chunk retrieval
   - domain.services.EmbeddingService: Query embedding generation
   - domain.services.LLMService: Answer generation
   - domain.entities.QueryResult: Response encapsulation
+  - timing.StageTimings: Performance measurement
 
 Constraints:
   - No HTTP concerns (that's the presentation layer's job)
@@ -25,6 +27,7 @@ Notes:
     * Independent of frameworks
     * Swappable implementations (change providers without touching this)
   - Follows Single Responsibility Principle
+  - Timings recorded in metadata for observability
 """
 
 from dataclasses import dataclass
@@ -33,6 +36,8 @@ from typing import List
 from ...domain.entities import QueryResult, Chunk
 from ...domain.repositories import DocumentRepository
 from ...domain.services import EmbeddingService, LLMService
+from ...timing import StageTimings
+from ...logger import logger
 
 
 @dataclass
@@ -89,40 +94,73 @@ class AnswerQueryUseCase:
             2. Context is assembled by concatenating chunk contents
             3. LLM must answer based only on provided context
         """
+        # R: Initialize timing measurement
+        timings = StageTimings()
+        
         if input_data.top_k <= 0:
+            timing_data = timings.to_dict()
             return QueryResult(
                 answer="No encontré documentos relacionados a tu pregunta.",
                 chunks=[],
                 query=input_data.query,
-                metadata={"top_k": input_data.top_k, "chunks_found": 0}
+                metadata={"top_k": input_data.top_k, "chunks_found": 0, **timing_data}
             )
+        
         # R: STEP 1 - Generate query embedding
-        query_embedding = self.embedding_service.embed_query(input_data.query)
+        with timings.measure("embed"):
+            query_embedding = self.embedding_service.embed_query(input_data.query)
         
         # R: STEP 2 - Retrieve similar chunks from repository
-        chunks = self.repository.find_similar_chunks(
-            embedding=query_embedding,
-            top_k=input_data.top_k
-        )
+        with timings.measure("retrieve"):
+            chunks = self.repository.find_similar_chunks(
+                embedding=query_embedding,
+                top_k=input_data.top_k
+            )
         
         # R: STEP 3 - Assemble context from retrieved chunks
         if not chunks:
             # R: Business rule: If no relevant chunks, return fallback message
+            timing_data = timings.to_dict()
+            logger.info("no chunks found for query", extra=timing_data)
             return QueryResult(
                 answer="No encontré documentos relacionados a tu pregunta.",
                 chunks=[],
                 query=input_data.query,
-                metadata={"top_k": input_data.top_k, "chunks_found": 0}
+                metadata={"top_k": input_data.top_k, "chunks_found": 0, **timing_data}
             )
         
         # R: Concatenate chunk contents to form context
         context = "\n\n".join([chunk.content for chunk in chunks])
         
         # R: STEP 4 - Generate answer using LLM
-        answer = self.llm_service.generate_answer(
-            query=input_data.query,
-            context=context
+        with timings.measure("llm"):
+            answer = self.llm_service.generate_answer(
+                query=input_data.query,
+                context=context
+            )
+        
+        # R: Get final timing data
+        timing_data = timings.to_dict()
+        
+        # R: Log successful query with timings
+        logger.info(
+            "query answered",
+            extra={
+                "chunks_found": len(chunks),
+                **timing_data,
+            }
         )
+        
+        # R: Record metrics (optional, lazy import)
+        try:
+            from ...metrics import record_stage_metrics
+            record_stage_metrics(
+                embed_seconds=timing_data.get("embed_ms", 0) / 1000,
+                retrieve_seconds=timing_data.get("retrieve_ms", 0) / 1000,
+                llm_seconds=timing_data.get("llm_ms", 0) / 1000,
+            )
+        except ImportError:
+            pass
         
         # R: Return structured result with answer and sources
         return QueryResult(
@@ -131,6 +169,7 @@ class AnswerQueryUseCase:
             query=input_data.query,
             metadata={
                 "top_k": input_data.top_k,
-                "chunks_found": len(chunks)
+                "chunks_found": len(chunks),
+                **timing_data,
             }
         )
