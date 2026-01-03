@@ -89,6 +89,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Testing
 
+### Backend Tests
+
 ```bash
 # Unit tests (offline)
 cd backend
@@ -100,6 +102,31 @@ RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
 # All tests (integration skipped unless RUN_INTEGRATION=1)
 pytest
 ```
+
+### Frontend Tests
+
+```bash
+cd frontend
+
+# Run all tests
+pnpm test
+
+# Run tests in watch mode (for development)
+pnpm test:watch
+
+# Run with coverage report
+pnpm test:coverage
+```
+
+**Test structure:**
+- `__tests__/page.test.tsx` - Page component render tests
+- `__tests__/error.test.tsx` - Error boundary behavior tests
+- `__tests__/hooks/useRagAsk.test.tsx` - Hook logic tests (API mocking)
+
+**Writing tests:**
+- Use `@testing-library/react` for component tests
+- Mock API calls with `jest.mock("@contracts/src/generated")`
+- Mock `next/navigation` is pre-configured in `jest.setup.ts`
 
 ---
 
