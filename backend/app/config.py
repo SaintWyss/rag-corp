@@ -92,6 +92,11 @@ class Settings(BaseSettings):
     prompt_version: str = "v1"
     max_context_chars: int = 12000
 
+    # Retry/Resilience
+    retry_max_attempts: int = 3
+    retry_base_delay_seconds: float = 1.0
+    retry_max_delay_seconds: float = 30.0
+
     @field_validator("chunk_size")
     @classmethod
     def chunk_size_must_be_positive(cls, v: int) -> int:
