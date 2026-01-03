@@ -56,8 +56,8 @@ class DocumentRepository(Protocol):
         ...
     
     def find_similar_chunks(
-        self, 
-        embedding: List[float], 
+        self,
+        embedding: List[float],
         top_k: int
     ) -> List[Chunk]:
         """
@@ -69,5 +69,14 @@ class DocumentRepository(Protocol):
         
         Returns:
             List of Chunk entities ordered by similarity (descending)
+        """
+        ...
+
+    def ping(self) -> bool:
+        """
+        R: Check repository connectivity/availability.
+
+        Returns:
+            True if the underlying data store is reachable.
         """
         ...

@@ -23,9 +23,9 @@
 ### Por qué se hizo
 
 El monorepo usaba una estructura heredada de templates genéricos:
-- `apps/` para frontends
-- `services/` para backends
-- `packages/` para librerías compartidas
+- carpeta `apps` para frontends
+- carpeta `services` para backends
+- carpeta `packages` para librerías compartidas
 
 Con un solo frontend y un solo backend, esta estructura agregaba niveles innecesarios de anidamiento y confusión.
 
@@ -33,13 +33,13 @@ Con un solo frontend y un solo backend, esta estructura agregaba niveles inneces
 
 | Problema | Impacto |
 |----------|---------|
-| Paths largos (`services/rag-api/app/...`) | Difícil de navegar y recordar |
+| Paths largos (services ▸ rag-api ▸ app ▸ …) | Difícil de navegar y recordar |
 | Nomenclatura genérica (`web`, `rag-api`) | No comunica propósito |
 | Estructura para escala que no existe | Overhead cognitivo innecesario |
 
 ### Decisión
 
-**Option A**: Aplanar a `frontend/`, `backend/`, `shared/contracts/`
+**Option A**: Aplanar a `frontend`, `backend`, `shared/contracts`
 
 ---
 
@@ -49,36 +49,36 @@ Con un solo frontend y un solo backend, esta estructura agregaba niveles inneces
 
 ```
 rag-corp/
-├── apps/
-│   └── web/                  # Next.js frontend
-│       ├── app/
+├── apps (legacy)
+│   └── web (Next.js)
+│       ├── app
 │       └── package.json
-├── services/
-│   └── rag-api/              # FastAPI backend
-│       ├── app/
+├── services (legacy)
+│   └── rag-api (FastAPI)
+│       ├── app
 │       └── requirements.txt
-├── packages/
-│   └── contracts/            # OpenAPI → TypeScript
+├── packages (legacy)
+│   └── contracts (OpenAPI → TypeScript)
 │       └── src/generated.ts
-├── pnpm-workspace.yaml       # apps/*, services/*, packages/*
-└── compose.yaml              # context: ./services/rag-api
+├── pnpm-workspace.yaml       # patterns: apps, services, packages
+└── compose.yaml              # context antiguo: backend dentro de services
 ```
 
 ### DESPUÉS
 
 ```
 rag-corp/
-├── frontend/                 # Next.js (antes apps/web)
-│   ├── app/
+├── frontend                  # Next.js (antes en apps → web)
+│   ├── app
 │   └── package.json
-├── backend/                  # FastAPI (antes services/rag-api)
-│   ├── app/
+├── backend                   # FastAPI (antes en services → rag-api)
+│   ├── app
 │   └── requirements.txt
-├── shared/
-│   └── contracts/            # OpenAPI → TypeScript
+├── shared
+│   └── contracts             # OpenAPI → TypeScript
 │       └── src/generated.ts
-├── pnpm-workspace.yaml       # frontend, shared/*
-└── compose.yaml              # context: ./backend
+├── pnpm-workspace.yaml       # incluye frontend y shared/*
+└── compose.yaml              # context actualizado: ./backend
 ```
 
 ---
@@ -87,40 +87,22 @@ rag-corp/
 
 ### Fase 1: Mover estructura (`git mv`)
 
-```bash
-git mv apps/web frontend
-git mv services/rag-api backend
-mkdir -p shared
-git mv packages/contracts shared/contracts
-rmdir apps services packages
-```
+- mover web (antes en carpeta apps) a `frontend`
+- mover rag-api (antes bajo services) a `backend`
+- crear carpeta `shared`
+- mover contratos compartidos a `shared/contracts`
+- eliminar las carpetas de nivel superior legacy
 
-**Commit:** `chore(structure): move frontend/backend/contracts`  
+**Commit:** `chore(structure): move frontend/backend/contracts`
 **Archivos:** 64 renombrados
 
 ---
 
 ### Fase 2: Actualizar pnpm-workspace + scripts
 
-**pnpm-workspace.yaml:**
-```yaml
-# Antes
-packages:
-  - "apps/*"
-  - "services/*"
-  - "packages/*"
+**pnpm-workspace.yaml:** se redujo a dos entradas (`frontend` y `shared/*`) en lugar de los patrones legacy.
 
-# Después
-packages:
-  - "frontend"
-  - "shared/*"
-```
-
-**package.json (root):**
-```diff
-- "contracts:export": "... --out /repo/packages/contracts/openapi.json"
-+ "contracts:export": "... --out /repo/shared/contracts/openapi.json"
-```
+**package.json (root):** el script `contracts:export` ahora escribe en `shared/contracts/openapi.json`.
 
 **Commit:** `chore(workspace): update pnpm-workspace + root scripts`
 
@@ -128,14 +110,7 @@ packages:
 
 ### Fase 3: Actualizar compose.yaml
 
-```diff
-  rag-api:
-    build:
--     context: ./services/rag-api
-+     context: ./backend
--   working_dir: /repo/services/rag-api
-+   working_dir: /repo/backend
-```
+El servicio `rag-api` ahora build-ea desde `./backend` y trabaja en `/repo/backend`.
 
 **Commit:** `chore(compose): update compose paths`
 
@@ -143,11 +118,7 @@ packages:
 
 ### Fase 4: Actualizar contracts pipeline
 
-**backend/scripts/export_openapi.py:**
-```diff
-- # Output to packages/contracts/openapi.json
-+ # Output to shared/contracts/openapi.json
-```
+**backend/scripts/export_openapi.py:** el comentario de salida apunta a `shared/contracts/openapi.json`.
 
 **Commit:** `chore(contracts): update export/gen paths`
 
@@ -169,17 +140,9 @@ Archivos modificados:
 
 ### Fase 6: Actualizar .github
 
-**.github/instructions/backend.instructions.md:**
-```diff
-- applyTo: "services/rag-api/**"
-+ applyTo: "backend/**"
-```
+**.github/instructions/backend.instructions.md:** patrón `applyTo` actualizado a `backend/**`.
 
-**.github/instructions/frontend.instructions.md:**
-```diff
-- applyTo: "apps/web/**"
-+ applyTo: "frontend/**"
-```
+**.github/instructions/frontend.instructions.md:** patrón `applyTo` actualizado a `frontend/**`.
 
 **Commit:** `chore(github): update .github instruction paths`
 
@@ -241,19 +204,17 @@ cd frontend && pnpm exec tsc --noEmit
 
 ### Path Smoke Test
 
-Verificar que NO quedan referencias viejas en código activo:
+Verificar que NO quedan referencias a rutas legacy (`apps`, `services`, `packages`) en código activo:
 
 ```bash
 # Debe retornar 0 matches (excluyendo _legacy_candidates/)
-rg "apps/web|services/rag-api|packages/contracts" \
+rg "(apps|services|packages)" \
    --glob '!_legacy_candidates/**' \
    --glob '!node_modules/**' \
    --glob '!pnpm-lock.yaml'
 ```
 
 **Resultado esperado:** 0 matches
-
-**Excepción aceptada:** `_legacy_candidates/auditoria.md` (documento histórico pre-migración)
 
 ---
 

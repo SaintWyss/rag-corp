@@ -131,10 +131,9 @@ def healthz():
     db_status = "disconnected"
     try:
         repo = get_document_repository()
-        with repo._conn() as conn:
-            conn.execute("SELECT 1")
-        db_status = "connected"
-        logger.info(f"Health check passed | db={db_status}")
+        if repo.ping():
+            db_status = "connected"
+            logger.info(f"Health check passed | db={db_status}")
     except Exception as e:
         logger.warning(f"Health check: DB unavailable - {e}")
 
