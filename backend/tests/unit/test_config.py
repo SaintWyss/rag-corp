@@ -265,3 +265,46 @@ class TestChunkerValidation:
         chunker = SimpleTextChunker(chunk_size=500, overlap=0)
         
         assert chunker.overlap == 0
+
+
+@pytest.mark.unit
+class TestDatabasePoolSettings:
+    """Test database pool configuration settings."""
+
+    def test_default_pool_settings(self, monkeypatch):
+        """Default pool settings should have sensible values."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        
+        from app.config import Settings
+        settings = Settings()
+        
+        assert settings.db_pool_min_size == 2
+        assert settings.db_pool_max_size == 10
+        assert settings.db_statement_timeout_ms == 30000
+
+    def test_custom_pool_settings(self, monkeypatch):
+        """Pool settings should be configurable via env vars."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("DB_POOL_MIN_SIZE", "5")
+        monkeypatch.setenv("DB_POOL_MAX_SIZE", "20")
+        monkeypatch.setenv("DB_STATEMENT_TIMEOUT_MS", "60000")
+        
+        from app.config import Settings
+        settings = Settings()
+        
+        assert settings.db_pool_min_size == 5
+        assert settings.db_pool_max_size == 20
+        assert settings.db_statement_timeout_ms == 60000
+
+    def test_zero_timeout_disables_timeout(self, monkeypatch):
+        """Statement timeout of 0 should disable the timeout."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("DB_STATEMENT_TIMEOUT_MS", "0")
+        
+        from app.config import Settings
+        settings = Settings()
+        
+        assert settings.db_statement_timeout_ms == 0

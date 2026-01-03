@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Database:** PostgreSQL 16  
 **Extension:** pgvector 0.8.1  
-**Last Updated:** 2026-01-02
+**Last Updated:** 2026-01-03
 
 ---
 
@@ -16,6 +16,9 @@
 5. [Query Examples](#query-examples)
 6. [Performance Tuning](#performance-tuning)
 7. [Backup and Maintenance](#backup-and-maintenance)
+8. [Connection Pooling](#connection-pooling)
+9. [Statement Timeout](#statement-timeout)
+10. [pgvector Index Reindexing](#pgvector-index-reindexing)
 
 ---
 
@@ -496,6 +499,187 @@ services:
 
 ---
 
+## Connection Pooling
+
+RAG Corp uses `psycopg_pool` for connection pooling. This reduces connection overhead and improves performance under load.
+
+### Configuration
+
+Pool settings are controlled via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_POOL_MIN_SIZE` | 2 | Minimum idle connections |
+| `DB_POOL_MAX_SIZE` | 10 | Maximum connections |
+| `DB_STATEMENT_TIMEOUT_MS` | 30000 | Query timeout (ms) |
+
+### Pool Initialization
+
+The pool is initialized in `app/main.py` lifespan:
+
+```python
+from app.infrastructure.db.pool import init_pool, close_pool
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_pool(
+        db_url=settings.database_url,
+        min_size=settings.db_pool_min_size,
+        max_size=settings.db_pool_max_size
+    )
+    yield
+    close_pool()
+```
+
+### Pool Usage in Repository
+
+```python
+from app.infrastructure.db.pool import get_pool
+
+pool = get_pool()
+with pool.connection() as conn:
+    result = conn.execute("SELECT ...")
+```
+
+### Sizing Guidelines
+
+| Workload | Min Size | Max Size | Notes |
+|----------|----------|----------|-------|
+| Development | 2 | 10 | Default settings |
+| Light production | 5 | 20 | Small instance |
+| Heavy production | 10 | 50 | High concurrency |
+
+**Formula:** `max_size = num_workers * 2` (for sync workers)
+
+### Troubleshooting
+
+**Pool exhaustion:**
+```
+psycopg_pool.PoolTimeout: getconn timeout
+```
+- Increase `DB_POOL_MAX_SIZE`
+- Check for connection leaks (unclosed connections)
+
+**Connection refused:**
+```
+psycopg.OperationalError: could not connect
+```
+- Verify PostgreSQL is running
+- Check `DATABASE_URL` is correct
+
+---
+
+## Statement Timeout
+
+Protects against long-running queries that could block resources.
+
+### Configuration
+
+Set via environment variable:
+
+```bash
+# 30 seconds (default)
+export DB_STATEMENT_TIMEOUT_MS=30000
+
+# Disable timeout (not recommended for production)
+export DB_STATEMENT_TIMEOUT_MS=0
+```
+
+### How It Works
+
+Timeout is set per session via pool configure callback:
+
+```python
+def _configure_connection(conn):
+    register_vector(conn)
+    if timeout_ms > 0:
+        conn.execute(f"SET statement_timeout = {timeout_ms}")
+```
+
+### Error Handling
+
+When timeout is exceeded:
+
+```
+psycopg.errors.QueryCanceled: canceling statement due to statement timeout
+```
+
+Handle in application code:
+
+```python
+from psycopg.errors import QueryCanceled
+
+try:
+    result = conn.execute(slow_query)
+except QueryCanceled:
+    logger.warning("Query cancelled due to timeout")
+    raise HTTPException(504, "Query timeout")
+```
+
+---
+
+## pgvector Index Reindexing
+
+When to rebuild the IVFFlat index:
+
+### Signs You Need Reindexing
+
+1. **Query performance degraded** after many inserts/deletes
+2. **Recall dropped** (relevant results not appearing)
+3. **Index bloat** (index size > 2x expected)
+
+### Reindex Procedure
+
+```sql
+-- 1. Check current index status
+SELECT 
+    indexname,
+    pg_size_pretty(pg_relation_size(indexname::regclass)) AS size
+FROM pg_indexes
+WHERE tablename = 'chunks';
+
+-- 2. Drop old index
+DROP INDEX chunks_embedding_idx;
+
+-- 3. Calculate optimal lists based on row count
+SELECT COUNT(*) AS row_count, 
+       SQRT(COUNT(*))::int AS recommended_lists 
+FROM chunks;
+
+-- 4. Rebuild with optimal settings
+CREATE INDEX chunks_embedding_idx 
+ON chunks 
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);  -- Adjust based on row count
+
+-- 5. Update statistics
+ANALYZE chunks;
+```
+
+### Concurrent Reindexing (Production)
+
+```sql
+-- Avoid locking the table
+CREATE INDEX CONCURRENTLY chunks_embedding_idx_new
+ON chunks 
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- Swap indexes
+DROP INDEX chunks_embedding_idx;
+ALTER INDEX chunks_embedding_idx_new RENAME TO chunks_embedding_idx;
+```
+
+### Scheduling
+
+| Data Growth | Reindex Frequency |
+|-------------|-------------------|
+| < 10% monthly | Quarterly |
+| 10-50% monthly | Monthly |
+| > 50% monthly | Weekly |
+
+---
+
 ## References
 
 - **pgvector GitHub:** https://github.com/pgvector/pgvector
@@ -505,5 +689,5 @@ services:
 
 ---
 
-**Last Updated:** 2026-01-02  
+**Last Updated:** 2026-01-03  
 **Maintainer:** Engineering Team

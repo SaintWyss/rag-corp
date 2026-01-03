@@ -3,33 +3,32 @@ Name: PostgreSQL Document Repository Implementation
 
 Responsibilities:
   - Implement DocumentRepository interface for PostgreSQL + pgvector
-  - Manage database connections with vector support
-  - Perform vector similarity searches using cosine distance
-  - Map between domain entities and database rows
+  - Use connection pool for efficient connection reuse
+  - Atomic operations with transactions
+  - Batch insert for performance
+  - Vector similarity searches using cosine distance
 
 Collaborators:
   - domain.repositories.DocumentRepository: Interface implementation
   - domain.entities: Document, Chunk
-  - psycopg: PostgreSQL driver
+  - infrastructure.db.pool: Connection pool
   - pgvector: Vector extension
 
 Constraints:
-  - Non-pooled connections (creates new connection per operation)
-  - Fixed 768-dimensional embeddings
-  - No retry logic for transient failures
+  - 768-dimensional embeddings (validated)
+  - Statement timeout configured per session
 
 Notes:
   - Implements Repository pattern from domain layer
   - Uses dependency inversion (domain doesn't depend on this)
-  - Can be swapped with other implementations (e.g., Pinecone)
+  - Pool must be initialized before use
 """
 
-import os
 from uuid import UUID, uuid4
-from typing import List
-import psycopg
-from pgvector.psycopg import register_vector
+from typing import List, Optional
+
 from psycopg.types.json import Json
+from psycopg_pool import ConnectionPool
 
 from ...domain.entities import Document, Chunk
 from ...domain.repositories import DocumentRepository
@@ -37,52 +36,61 @@ from ...logger import logger
 from ...exceptions import DatabaseError
 
 
-# R: Database connection string from environment
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/rag")
+# R: Expected embedding dimension (Google Gemini)
+EMBEDDING_DIMENSION = 768
 
 
 class PostgresDocumentRepository:
     """
     R: PostgreSQL implementation of DocumentRepository.
     
-    Implements domain.repositories.DocumentRepository interface
-    using PostgreSQL with pgvector extension.
+    Uses connection pool for efficient connection reuse.
+    All write operations use transactions for atomicity.
     """
     
-    def _conn(self):
+    def __init__(self, pool: Optional[ConnectionPool] = None):
         """
-        R: Create PostgreSQL connection with autocommit and vector type registration.
+        R: Initialize repository with connection pool.
         
-        Returns:
-            psycopg.Connection: Connection configured for vector operations
+        Args:
+            pool: Connection pool (if None, uses global pool)
+        """
+        self._pool = pool
+    
+    def _get_pool(self) -> ConnectionPool:
+        """R: Get pool, falling back to global if not injected."""
+        if self._pool is not None:
+            return self._pool
+        
+        from ..db.pool import get_pool
+        return get_pool()
+    
+    def _validate_embeddings(self, chunks: List[Chunk]) -> None:
+        """
+        R: Validate all chunks have correct embedding dimension.
         
         Raises:
-            DatabaseError: If connection fails
+            ValueError: If any embedding has wrong dimension
         """
-        try:
-            # R: Establish connection with autocommit (no manual transaction management)
-            conn = psycopg.connect(DATABASE_URL, autocommit=True)
-            
-            # R: Register pgvector type for embedding operations
-            register_vector(conn)
-            
-            return conn
-        except Exception as e:
-            logger.error(f"PostgresDocumentRepository: Database connection failed: {e}")
-            raise DatabaseError(f"Cannot connect to database: {e}")
+        for i, chunk in enumerate(chunks):
+            if chunk.embedding is None:
+                raise ValueError(f"Chunk {i} has no embedding")
+            if len(chunk.embedding) != EMBEDDING_DIMENSION:
+                raise ValueError(
+                    f"Chunk {i} embedding has {len(chunk.embedding)} dimensions, "
+                    f"expected {EMBEDDING_DIMENSION}"
+                )
     
     def save_document(self, document: Document) -> None:
         """
         R: Persist document metadata to PostgreSQL.
         
-        Implements DocumentRepository.save_document()
-        
         Raises:
             DatabaseError: If database operation fails
         """
         try:
-            with self._conn() as conn:
-                # R: Upsert document (insert or update if exists)
+            pool = self._get_pool()
+            with pool.connection() as conn:
                 conn.execute(
                     """
                     INSERT INTO documents (id, title, source, metadata)
@@ -95,42 +103,124 @@ class PostgresDocumentRepository:
                     (document.id, document.title, document.source, Json(document.metadata)),
                 )
             logger.info(f"PostgresDocumentRepository: Document saved: {document.id}")
-        except DatabaseError:
-            raise
         except Exception as e:
             logger.error(f"PostgresDocumentRepository: Failed to save document {document.id}: {e}")
             raise DatabaseError(f"Failed to save document: {e}")
     
     def save_chunks(self, document_id: UUID, chunks: List[Chunk]) -> None:
         """
-        R: Persist chunks with embeddings to PostgreSQL.
-        
-        Implements DocumentRepository.save_chunks()
+        R: Persist chunks with embeddings to PostgreSQL (batch insert).
         
         Raises:
             DatabaseError: If database operation fails
+            ValueError: If embedding dimension is invalid
         """
+        if not chunks:
+            return
+        
+        self._validate_embeddings(chunks)
+        
         try:
-            with self._conn() as conn:
-                # R: Insert each chunk with its embedding
-                for chunk in chunks:
-                    # R: Generate unique chunk ID if not provided
-                    cid = chunk.chunk_id or uuid4()
-                    
-                    # R: Store chunk with embedding vector
-                    conn.execute(
-                        """
-                        INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
-                        VALUES (%s, %s, %s, %s, %s)
-                        """,
-                        (cid, document_id, chunk.chunk_index or 0, chunk.content, chunk.embedding),
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                # R: Prepare batch data
+                batch_data = [
+                    (
+                        chunk.chunk_id or uuid4(),
+                        document_id,
+                        chunk.chunk_index or idx,
+                        chunk.content,
+                        chunk.embedding,
                     )
+                    for idx, chunk in enumerate(chunks)
+                ]
+                
+                # R: Batch insert using executemany
+                conn.executemany(
+                    """
+                    INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    batch_data,
+                )
             logger.info(f"PostgresDocumentRepository: Saved {len(chunks)} chunks for document {document_id}")
-        except DatabaseError:
+        except ValueError:
             raise
         except Exception as e:
             logger.error(f"PostgresDocumentRepository: Failed to save chunks for {document_id}: {e}")
             raise DatabaseError(f"Failed to save chunks: {e}")
+    
+    def save_document_with_chunks(self, document: Document, chunks: List[Chunk]) -> None:
+        """
+        R: Atomically save document and its chunks in a single transaction.
+        
+        This is the preferred method for ingestion - ensures no orphan
+        documents or partial chunk sets exist.
+        
+        Args:
+            document: Document entity to save
+            chunks: List of Chunk entities with embeddings
+        
+        Raises:
+            DatabaseError: If any operation fails (entire transaction rolls back)
+            ValueError: If embedding dimension is invalid
+        """
+        if chunks:
+            self._validate_embeddings(chunks)
+        
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                # R: Use explicit transaction for atomicity
+                with conn.transaction():
+                    # R: Insert document
+                    conn.execute(
+                        """
+                        INSERT INTO documents (id, title, source, metadata)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (id) DO UPDATE
+                        SET title = EXCLUDED.title,
+                            source = EXCLUDED.source,
+                            metadata = EXCLUDED.metadata
+                        """,
+                        (document.id, document.title, document.source, Json(document.metadata)),
+                    )
+                    
+                    # R: Batch insert chunks if any
+                    if chunks:
+                        batch_data = [
+                            (
+                                chunk.chunk_id or uuid4(),
+                                document.id,
+                                chunk.chunk_index or idx,
+                                chunk.content,
+                                chunk.embedding,
+                            )
+                            for idx, chunk in enumerate(chunks)
+                        ]
+                        
+                        conn.executemany(
+                            """
+                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
+                            VALUES (%s, %s, %s, %s, %s)
+                            """,
+                            batch_data,
+                        )
+                    
+                    # R: Transaction commits here if no exception
+            
+            logger.info(
+                f"PostgresDocumentRepository: Atomic save completed",
+                extra={"document_id": str(document.id), "chunks": len(chunks)}
+            )
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"PostgresDocumentRepository: Atomic save failed, rolled back",
+                extra={"document_id": str(document.id), "error": str(e)}
+            )
+            raise DatabaseError(f"Failed to save document with chunks: {e}")
     
     def find_similar_chunks(
         self,
@@ -140,8 +230,6 @@ class PostgresDocumentRepository:
         """
         R: Search for similar chunks using vector cosine similarity.
         
-        Implements DocumentRepository.find_similar_chunks()
-        
         Returns:
             List of Chunk entities ordered by similarity (descending)
         
@@ -149,8 +237,8 @@ class PostgresDocumentRepository:
             DatabaseError: If search query fails
         """
         try:
-            with self._conn() as conn:
-                # R: Execute vector similarity search using cosine distance
+            pool = self._get_pool()
+            with pool.connection() as conn:
                 rows = conn.execute(
                     """
                     SELECT
@@ -167,13 +255,10 @@ class PostgresDocumentRepository:
                     (embedding, embedding, top_k),
                 ).fetchall()
             logger.info(f"PostgresDocumentRepository: Found {len(rows)} similar chunks")
-        except DatabaseError:
-            raise
         except Exception as e:
             logger.error(f"PostgresDocumentRepository: Search failed: {e}")
             raise DatabaseError(f"Search query failed: {e}")
         
-        # R: Convert database rows to Chunk entities
         return [
             Chunk(
                 chunk_id=r[0],
@@ -188,17 +273,16 @@ class PostgresDocumentRepository:
 
     def ping(self) -> bool:
         """
-        R: Verify database connectivity.
+        R: Verify database connectivity via pool.
 
         Returns:
             True if a trivial query succeeds.
         """
         try:
-            with self._conn() as conn:
+            pool = self._get_pool()
+            with pool.connection() as conn:
                 conn.execute("SELECT 1")
             return True
-        except DatabaseError:
-            raise
         except Exception as e:
             logger.warning(f"PostgresDocumentRepository: ping failed: {e}")
             raise DatabaseError(f"Ping failed: {e}")

@@ -58,7 +58,8 @@ class IngestDocumentUseCase:
 
         chunks = self.chunker.chunk(input_data.text)
         if not chunks:
-            self.repository.save_document(document)
+            # R: No chunks - save document only (atomic with empty chunks list)
+            self.repository.save_document_with_chunks(document, [])
             return IngestDocumentOutput(
                 document_id=doc_id,
                 chunks_created=0,
@@ -76,8 +77,8 @@ class IngestDocumentUseCase:
             for index, (content, embedding) in enumerate(zip(chunks, embeddings))
         ]
 
-        self.repository.save_document(document)
-        self.repository.save_chunks(doc_id, chunk_entities)
+        # R: Atomic save - document and chunks in single transaction
+        self.repository.save_document_with_chunks(document, chunk_entities)
 
         return IngestDocumentOutput(
             document_id=doc_id,

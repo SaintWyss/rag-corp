@@ -78,8 +78,8 @@ class TestIngestDocumentUseCase:
         # Verify flow
         mock_chunker.chunk.assert_called_once_with("Some long text to chunk")
         mock_embedding_service.embed_batch.assert_called_once_with(["Chunk 1", "Chunk 2"])
-        mock_repository.save_document.assert_called_once()
-        mock_repository.save_chunks.assert_called_once()
+        # Uses atomic save_document_with_chunks
+        mock_repository.save_document_with_chunks.assert_called_once()
 
     def test_execute_with_empty_text(
         self,
@@ -107,9 +107,9 @@ class TestIngestDocumentUseCase:
 
         # Assert
         assert result.chunks_created == 0
-        mock_repository.save_document.assert_called_once()
+        # Still calls atomic save (with empty chunks)
+        mock_repository.save_document_with_chunks.assert_called_once()
         mock_embedding_service.embed_batch.assert_not_called()
-        mock_repository.save_chunks.assert_not_called()
 
     def test_execute_preserves_metadata(
         self,
@@ -141,7 +141,7 @@ class TestIngestDocumentUseCase:
         # Assert
         assert result.chunks_created == 1
         # Verify document was saved with metadata
-        saved_doc = mock_repository.save_document.call_args[0][0]
+        saved_doc = mock_repository.save_document_with_chunks.call_args[0][0]
         assert isinstance(saved_doc, Document)
         assert saved_doc.metadata == custom_metadata
 
@@ -172,7 +172,7 @@ class TestIngestDocumentUseCase:
         use_case.execute(input_data)
 
         # Assert
-        saved_doc = mock_repository.save_document.call_args[0][0]
+        saved_doc = mock_repository.save_document_with_chunks.call_args[0][0]
         assert saved_doc.source == "https://docs.example.com/api-guide.pdf"
 
 
