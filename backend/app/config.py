@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     metrics_require_auth: bool = False
     cors_allow_credentials: bool = False
 
+    # Database - Connection Pool
+    db_pool_min_size: int = 2
+    db_pool_max_size: int = 10
+    db_statement_timeout_ms: int = 30000  # 30 seconds
+
     @field_validator("chunk_size")
     @classmethod
     def chunk_size_must_be_positive(cls, v: int) -> int:

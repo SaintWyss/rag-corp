@@ -55,6 +55,19 @@ class DocumentRepository(Protocol):
         """
         ...
     
+    def save_document_with_chunks(self, document: Document, chunks: List[Chunk]) -> None:
+        """
+        R: Atomically save document and its chunks in a single transaction.
+        
+        This is the preferred method for ingestion - ensures no orphan
+        documents or partial chunk sets exist.
+        
+        Args:
+            document: Document entity to save
+            chunks: List of Chunk entities with embeddings
+        """
+        ...
+    
     def find_similar_chunks(
         self,
         embedding: List[float],
