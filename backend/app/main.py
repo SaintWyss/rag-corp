@@ -23,10 +23,11 @@ Notes:
   - /healthz follows Kubernetes health check convention
 
 Production Readiness:
-  - Env validation enforced at startup
+  - Env validation enforced at startup (via lifespan, not import time)
   - TODO: Add authentication middleware (API Key or JWT)
 """
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,7 +46,14 @@ def _validate_env_vars() -> None:
         raise RuntimeError(f"Missing required env vars: {', '.join(missing)}")
 
 
-_validate_env_vars()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown lifecycle. Validates env vars at startup, not import time."""
+    _validate_env_vars()
+    logger.info("RAG Corp API starting up")
+    yield
+    logger.info("RAG Corp API shutting down")
+
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -54,7 +62,7 @@ ALLOWED_ORIGINS = [
 ]
 
 # R: Create FastAPI application instance with API metadata
-app = FastAPI(title="RAG Corp API", version="0.1.0")
+app = FastAPI(title="RAG Corp API", version="0.1.0", lifespan=lifespan)
 
 # R: Configure CORS for development (allows frontend at localhost:3000)
 app.add_middleware(
