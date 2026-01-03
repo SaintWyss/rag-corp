@@ -45,7 +45,11 @@ class JSONFormatter(logging.Formatter):
     """
 
     # R: Fields that should never be logged (security)
-    SENSITIVE_KEYS = {"password", "api_key", "secret", "token", "authorization", "google_api_key"}
+    SENSITIVE_KEYS = {
+        "password", "api_key", "secret", "token", "authorization",
+        "google_api_key", "x-api-key", "apikey", "api_keys_config",
+        "credential", "private_key", "access_token", "refresh_token",
+    }
 
     def format(self, record: logging.LogRecord) -> str:
         # R: Build base log object

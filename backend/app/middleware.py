@@ -6,11 +6,13 @@ Responsibilities:
   - Set request context for logging
   - Add X-Request-Id response header
   - Record request metrics (latency, count)
+  - Enforce body size limits (413 Payload Too Large)
 
 Collaborators:
   - context.py: ContextVars for request-scoped data
   - metrics.py: Prometheus counters and histograms
   - logger.py: Structured logging
+  - config.py: MAX_BODY_BYTES setting
 
 Constraints:
   - Must be first middleware (before CORS, auth, etc.)
@@ -25,7 +27,7 @@ import time
 import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, JSONResponse
 
 from .context import (
     request_id_var,
@@ -104,3 +106,39 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         finally:
             # R: Clear context to prevent leaks
             clear_context()
+
+
+class BodyLimitMiddleware(BaseHTTPMiddleware):
+    """
+    R: Middleware that enforces request body size limits.
+    
+    Returns 413 Payload Too Large if Content-Length exceeds MAX_BODY_BYTES.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        from .config import get_settings
+        
+        max_bytes = get_settings().max_body_bytes
+        content_length = request.headers.get("content-length")
+        
+        if content_length:
+            try:
+                if int(content_length) > max_bytes:
+                    logger.warning(
+                        "Request body too large",
+                        extra={
+                            "content_length": content_length,
+                            "max_bytes": max_bytes,
+                            "path": request.url.path,
+                        }
+                    )
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "detail": f"Request body too large. Maximum size: {max_bytes} bytes"
+                        },
+                    )
+            except ValueError:
+                pass  # Invalid content-length, let it through
+        
+        return await call_next(request)

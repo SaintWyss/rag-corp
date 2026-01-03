@@ -42,6 +42,12 @@ class Settings(BaseSettings):
         max_title_chars: Maximum title length (default: 200)
         max_source_chars: Maximum source length (default: 500)
         otel_enabled: Enable OpenTelemetry tracing (default: False)
+        api_keys_config: JSON with API keys and scopes
+        rate_limit_rps: Requests per second (default: 10)
+        rate_limit_burst: Max burst tokens (default: 20)
+        max_body_bytes: Max request body size (default: 10MB)
+        metrics_require_auth: Require auth for /metrics (default: False)
+        cors_allow_credentials: Allow cookies cross-origin (default: False)
     """
     
     # Required (no defaults)
@@ -64,6 +70,18 @@ class Settings(BaseSettings):
     
     # Observability
     otel_enabled: bool = False
+
+    # Security - API Keys (JSON: {"key": ["scope1", "scope2"], ...})
+    api_keys_config: str = ""
+    
+    # Security - Rate Limiting
+    rate_limit_rps: float = 10.0
+    rate_limit_burst: int = 20
+    
+    # Security - Hardening
+    max_body_bytes: int = 10 * 1024 * 1024  # 10MB
+    metrics_require_auth: bool = False
+    cors_allow_credentials: bool = False
 
     @field_validator("chunk_size")
     @classmethod
