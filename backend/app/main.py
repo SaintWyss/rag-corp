@@ -209,13 +209,17 @@ async def rag_error_handler(request: Request, exc: RAGError):
 
 # R: Health check endpoint for monitoring/orchestration (Kubernetes, Docker)
 @app.get("/healthz")
-def healthz(request: Request):
+def healthz(request: Request, full: bool = False):
     """
-    R: Enhanced health check that verifies database connectivity.
+    R: Enhanced health check that verifies system dependencies.
+
+    Args:
+        full: If True, also check Google API connectivity (slower)
 
     Returns:
-        ok: True if all systems operational
+        ok: True if all checked systems operational
         db: "connected" or "disconnected"
+        google: "available", "unavailable", or "disabled" (only with full=true)
         request_id: Correlation ID for this request
     """
     db_status = "disconnected"
@@ -226,11 +230,56 @@ def healthz(request: Request):
     except Exception as e:
         logger.warning("Health check: DB unavailable", extra={"error": str(e)})
 
-    return {
+    result = {
         "ok": db_status == "connected",
         "db": db_status,
         "request_id": getattr(request.state, "request_id", None),
     }
+    
+    # R: Full mode: also verify Google API connectivity
+    if full:
+        google_status = _check_google_api()
+        result["google"] = google_status
+        # R: Overall health requires all checked services to be OK
+        if google_status == "unavailable":
+            result["ok"] = False
+
+    return result
+
+
+def _check_google_api() -> str:
+    """
+    R: Check Google API connectivity with a simple embedding call.
+    
+    Returns:
+        "available": API is responding
+        "unavailable": API is not responding or erroring
+        "disabled": No API key configured
+    """
+    import os
+    api_key = os.getenv("GOOGLE_API_KEY")
+    
+    if not api_key:
+        return "disabled"
+    
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        
+        # R: Minimal API call to verify connectivity (cheap operation)
+        resp = genai.embed_content(
+            model="models/text-embedding-004",
+            content="health check",
+            task_type="retrieval_query"
+        )
+        
+        # R: Verify we got a valid response
+        if resp and "embedding" in resp and len(resp["embedding"]) > 0:
+            return "available"
+        return "unavailable"
+    except Exception as e:
+        logger.warning("Health check: Google API unavailable", extra={"error": str(e)})
+        return "unavailable"
 
 
 # R: Prometheus metrics endpoint

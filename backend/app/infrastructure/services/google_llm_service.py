@@ -6,17 +6,20 @@ Responsibilities:
   - Generate RAG answers using versioned prompt templates
   - Apply business rules (context-only responses)
   - Handle generation errors gracefully
+  - Retry transient errors with exponential backoff + jitter
 
 Collaborators:
   - domain.services.LLMService: Interface implementation
   - infrastructure.prompts.PromptLoader: Template loading
   - google.generativeai: Google Gemini SDK
+  - retry: Resilience helper for transient errors
 
 Constraints:
   - Prompt loaded from versioned template files
   - No control over generation parameters
   - Responses in Spanish (by prompt)
   - No streaming support
+  - Retries on 429, 5xx, timeouts
 
 Notes:
   - Implements Service interface from domain layer
@@ -32,6 +35,7 @@ import google.generativeai as genai
 from ...logger import logger
 from ...exceptions import LLMError
 from ..prompts import PromptLoader, get_prompt_loader
+from .retry import create_retry_decorator
 
 
 class GoogleLLMService:
@@ -96,15 +100,20 @@ class GoogleLLMService:
         prompt = self.prompt_loader.format(context=context, query=query)
         
         try:
-            # R: Generate response using Gemini
-            response = self.model.generate_content(prompt)
+            # R: Create retry decorator for API calls
+            retry_decorator = create_retry_decorator()
+            
+            @retry_decorator
+            def _generate_with_retry(prompt_text: str) -> str:
+                response = self.model.generate_content(prompt_text)
+                return response.text.strip()
+            
+            result = _generate_with_retry(prompt)
             logger.info(
                 "GoogleLLMService: Response generated",
                 extra={"prompt_version": self.prompt_version}
             )
-            
-            # R: Return cleaned response text
-            return response.text.strip()
+            return result
         except LLMError:
             raise
         except Exception as e:
