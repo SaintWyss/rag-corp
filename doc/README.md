@@ -11,9 +11,9 @@ Esta carpeta contiene la documentacion viva del proyecto. El quickstart esta en 
 - `api/http-api.md` - Endpoints, contratos y ejemplos
 - `data/postgres-schema.md` - Schema e indices pgvector
 - `runbook/local-dev.md` - Desarrollo local y comandos utiles
-- `../services/rag-api/tests/README.md` - Tests (unit + integration)
-- `../packages/contracts/openapi.json` - OpenAPI (fuente de verdad)
-- `../packages/contracts/src/generated.ts` - Cliente TypeScript generado
+- `../backend/tests/README.md` - Tests (unit + integration)
+- `../shared/contracts/openapi.json` - OpenAPI (fuente de verdad)
+- `../shared/contracts/src/generated.ts` - Cliente TypeScript generado
 
 ## Estructura minima
 

@@ -25,17 +25,18 @@ Setup:
 
 import os
 import pytest
-from fastapi.testclient import TestClient
-from uuid import uuid4
 
-from app.main import app
-
-
+# Skip BEFORE importing app.* to avoid triggering env validation during collection
 if os.getenv("RUN_INTEGRATION") != "1":
     pytest.skip("Set RUN_INTEGRATION=1 to run integration tests", allow_module_level=True)
 
 if not os.getenv("GOOGLE_API_KEY"):
     pytest.skip("Set GOOGLE_API_KEY to run API integration tests", allow_module_level=True)
+
+from fastapi.testclient import TestClient
+from uuid import uuid4
+
+from app.main import app
 
 pytestmark = pytest.mark.integration
 

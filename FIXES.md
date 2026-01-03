@@ -19,7 +19,7 @@ echo "GOOGLE_API_KEY=tu_clave_aqui" > .env
 ### 2. **CORS Bloqueando Requests del Frontend**
 
 **Problema**: FastAPI no tenía configuración CORS, bloqueando llamadas desde localhost:3000.  
-**Solución**: Agregado middleware CORS en [services/rag-api/app/main.py](services/rag-api/app/main.py).
+**Solución**: Agregado middleware CORS en [backend/app/main.py](backend/app/main.py).
 
 ```python
 app.add_middleware(
@@ -35,7 +35,7 @@ app.add_middleware(
 
 ### 3. **Cliente de API Mal Usado**
 
-**Problema**: [apps/web/app/page.tsx](apps/web/app/page.tsx) usaba `@ts-ignore` y llamaba `.json()` incorrectamente.  
+**Problema**: [frontend/app/page.tsx](frontend/app/page.tsx) usaba `@ts-ignore` y llamaba `.json()` incorrectamente.  
 **Solución**: El cliente generado por Orval ya retorna `{ status, data }`, no necesita `.json()`.
 
 **Antes**:
@@ -57,7 +57,7 @@ setAnswer(res.data.answer); // ✅ Correcto
 ### 4. **Configuración de Next.js Duplicada**
 
 **Problema**: Existían `next.config.ts` y `next.config.mjs` simultáneamente.  
-**Solución**: Consolidada la configuración de rewrites (proxy al backend) en [next.config.ts](apps/web/next.config.ts).
+**Solución**: Consolidada la configuración de rewrites (proxy al backend) en [next.config.ts](frontend/next.config.ts).
 
 **Nota**: `next.config.mjs` puede eliminarse manualmente si sigue presente.
 

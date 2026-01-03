@@ -18,14 +18,14 @@ services:
 
   rag-api:
     build:
-      context: ./services/rag-api
+      context: ./backend
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
       # Pasamos la variable del host al contenedor
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
     volumes:
       - ./:/repo
-    working_dir: /repo/services/rag-api
+    working_dir: /repo/backend
     ports:
       - "8000:8000"
     depends_on:

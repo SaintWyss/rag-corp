@@ -44,7 +44,7 @@ Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG
 - ✅ **Contratos tipados** (OpenAPI → TypeScript vía Orval)
 - ✅ **Docker Compose** para desarrollo local
 - ✅ **Clean Architecture** (use cases para `/ingest`, `/query`, `/ask`)
-- ✅ **Test Suite** documentada (ver `services/rag-api/tests`)
+- ✅ **Test Suite** documentada (ver `backend/tests`)
 
 ---
 
@@ -177,9 +177,9 @@ rag-corp/
 
 ### Carpetas Clave
 
-- **`apps/web`**: Interfaz de usuario React/Next.js que consume la API.
-- **`services/rag-api`**: Servidor Python con lógica RAG (ingesta, búsqueda, generación).
-- **`packages/contracts`**: Single source of truth de tipos compartidos (OpenAPI → TypeScript).
+- **`frontend`**: Interfaz de usuario React/Next.js que consume la API.
+- **`backend`**: Servidor Python con lógica RAG (ingesta, búsqueda, generación).
+- **`shared/contracts`**: Single source of truth de tipos compartidos (OpenAPI → TypeScript).
 - **`infra/postgres`**: DDL y configuración de base de datos vectorial.
 - **`doc/`**: Documentación técnica detallada (arquitectura, API, runbook, data).
 
@@ -193,7 +193,7 @@ La documentación está organizada en [`/doc`](doc/README.md):
 - **[API HTTP](doc/api/http-api.md)**: Endpoints, contratos, ejemplos, errores
 - **[Base de Datos](doc/data/postgres-schema.md)**: Schema e índices pgvector
 - **[Runbook Local](doc/runbook/local-dev.md)**: Cómo correr y comandos útiles
-- **[Tests](services/rag-api/tests/README.md)**: Suite de tests y ejecución
+- **[Tests](backend/tests/README.md)**: Suite de tests y ejecución
 
 ---
 
@@ -231,7 +231,7 @@ Ver [Arquitectura](doc/architecture/overview.md) para el estado actual.
 
 ```bash
 # Backend (Python)
-cd services/rag-api
+cd backend
 pytest tests/ -v --cov=app
 
 # Solo tests unitarios (rápidos, sin DB)
@@ -245,13 +245,13 @@ pytest --cov=app --cov-report=html
 open htmlcov/index.html
 
 # Frontend (TypeScript) - TODO: Implementar tests
-# (No hay scripts de test en apps/web por ahora)
+# (No hay scripts de test en frontend por ahora)
 ```
 
 **Estado actual:**
 - ✅ Suite de tests backend presente (unit + integration)
-- ✅ Cobertura objetivo definida en `services/rag-api/pytest.ini`
-- 📖 Ver [Test Suite Documentation](services/rag-api/tests/README.md)
+- ✅ Cobertura objetivo definida en `backend/pytest.ini`
+- 📖 Ver [Test Suite Documentation](backend/tests/README.md)
 
 ---
 

@@ -227,8 +227,8 @@ pnpm contracts:export
 pnpm contracts:gen
 
 # Desde backend (local)
-cd services/rag-api
-python3 scripts/export_openapi.py --out ../../packages/contracts/openapi.json
+cd backend
+python3 scripts/export_openapi.py --out ../shared/contracts/openapi.json
 ```
 
 View interactive docs:
@@ -239,9 +239,9 @@ View interactive docs:
 
 ## References
 
-- **OpenAPI Spec:** `packages/contracts/openapi.json`
+- **OpenAPI Spec:** `shared/contracts/openapi.json`
 - **FastAPI Docs:** http://localhost:8000/docs
-- **Source Code:** `services/rag-api/app/routes.py`
+- **Source Code:** `backend/app/routes.py`
 
 ---
 

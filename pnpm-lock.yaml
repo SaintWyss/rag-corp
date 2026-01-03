@@ -12,11 +12,11 @@ importers:
         specifier: ^2.0.0
         version: 2.7.2
 
-  apps/web:
+  frontend:
     dependencies:
       '@contracts':
         specifier: workspace:*
-        version: link:../../packages/contracts
+        version: link:../shared/contracts
       next:
         specifier: 16.1.1
         version: 16.1.1(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -52,7 +52,7 @@ importers:
         specifier: ^5
         version: 5.9.3
 
-  packages/contracts:
+  shared/contracts:
     devDependencies:
       orval:
         specifier: ^6.0.0
@@ -3273,7 +3273,7 @@ snapshots:
     dependencies:
       '@stoplight/json': 3.21.7
       '@stoplight/path': 1.3.2
-      '@stoplight/types': 13.6.0
+      '@stoplight/types': 13.20.0
       '@types/urijs': 1.19.26
       dependency-graph: 0.11.0
       fast-memoize: 2.5.2

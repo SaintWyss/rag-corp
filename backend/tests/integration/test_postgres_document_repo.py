@@ -24,6 +24,11 @@ Setup:
 
 import os
 import pytest
+
+# Skip BEFORE importing app.* to avoid triggering env validation during collection
+if os.getenv("RUN_INTEGRATION") != "1":
+    pytest.skip("Set RUN_INTEGRATION=1 to run integration tests", allow_module_level=True)
+
 from uuid import uuid4, UUID
 from typing import List
 
@@ -31,11 +36,6 @@ import psycopg
 
 from app.domain.entities import Document, Chunk
 from app.infrastructure.repositories.postgres_document_repo import PostgresDocumentRepository
-
-
-# Skip integration tests unless explicitly enabled
-if os.getenv("RUN_INTEGRATION") != "1":
-    pytest.skip("Set RUN_INTEGRATION=1 to run integration tests", allow_module_level=True)
 
 pytestmark = pytest.mark.integration
 

@@ -133,8 +133,8 @@ class PostgresDocumentRepository:
             raise DatabaseError(f"Failed to save chunks: {e}")
     
     def find_similar_chunks(
-        self, 
-        embedding: List[float], 
+        self,
+        embedding: List[float],
         top_k: int
     ) -> List[Chunk]:
         """
@@ -185,3 +185,20 @@ class PostgresDocumentRepository:
             )
             for r in rows
         ]
+
+    def ping(self) -> bool:
+        """
+        R: Verify database connectivity.
+
+        Returns:
+            True if a trivial query succeeds.
+        """
+        try:
+            with self._conn() as conn:
+                conn.execute("SELECT 1")
+            return True
+        except DatabaseError:
+            raise
+        except Exception as e:
+            logger.warning(f"PostgresDocumentRepository: ping failed: {e}")
+            raise DatabaseError(f"Ping failed: {e}")
