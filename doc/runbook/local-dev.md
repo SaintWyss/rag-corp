@@ -1,7 +1,7 @@
 # Local Development Runbook
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-02
+**Last Updated:** 2026-01-03
 
 ---
 
@@ -33,6 +33,64 @@ pnpm dev
 
 ---
 
+## Comandos Útiles (Cheat Sheet)
+
+### Docker Compose
+
+```bash
+# Solo base de datos (sin API)
+docker compose up -d db
+
+# Ver logs del backend en tiempo real
+docker compose logs -f rag-api
+
+# Reset completo (borra datos de DB)
+docker compose down -v && docker compose up -d
+
+# Ver estado de servicios
+docker compose ps
+
+# Reconstruir imágenes (después de cambios en Dockerfile)
+docker compose up -d --build
+```
+
+### Testing
+
+```bash
+# Tests unitarios (rápidos, sin Docker)
+cd backend && pytest -m unit
+
+# Tests de integración (requiere DB corriendo)
+cd backend && RUN_INTEGRATION=1 GOOGLE_API_KEY=tu_clave pytest -m integration
+
+# Tests con cobertura HTML
+cd backend && pytest --cov=app --cov-report=html
+open htmlcov/index.html
+```
+
+### Base de Datos
+
+```bash
+# Conectar a PostgreSQL vía psql
+docker compose exec db psql -U postgres -d rag
+
+# Ver tablas
+\dt
+
+# Ver chunks almacenados
+SELECT id, document_id, chunk_index, LEFT(content, 50) FROM chunks LIMIT 10;
+```
+
+### Contratos API
+
+```bash
+# Regenerar cliente TypeScript desde OpenAPI
+pnpm contracts:export   # FastAPI → openapi.json
+pnpm contracts:gen      # openapi.json → generated.ts
+```
+
+---
+
 ## Backend (FastAPI)
 
 ```bash
@@ -41,7 +99,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Export OpenAPI locally:
+Export OpenAPI locally (sin Docker):
 
 ```bash
 cd backend
@@ -59,44 +117,36 @@ pnpm dev
 
 ---
 
-## Database
-
-```bash
-# Start only DB
-docker compose up -d db
-
-# Stop DB
-docker compose stop db
-
-# Reset DB (data loss)
-docker compose down -v
-
-# Connect via psql
-docker compose exec db psql -U postgres -d rag
-```
-
----
-
 ## Environment Variables
 
-```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
-GOOGLE_API_KEY=your-google-api-key-here
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+| Variable | Requerida | Descripción |
+|----------|-----------|-------------|
+| `GOOGLE_API_KEY` | ✅ | API Key de Google Gemini |
+| `DATABASE_URL` | ✅ | Connection string PostgreSQL |
+| `ALLOWED_ORIGINS` | ❌ | CORS origins (default: localhost:3000) |
+
+Ver [`.env.example`](../../.env.example) para valores de ejemplo.
 
 ---
 
-## Testing
+## Troubleshooting
 
+### "Connection refused" al correr tests de integración
 ```bash
-# Unit tests (offline)
-cd backend
-pytest -m unit
+# Verificar que PostgreSQL esté corriendo
+docker compose ps
+docker compose up -d db
+```
 
-# Integration tests (requires DB + GOOGLE_API_KEY)
-RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
+### "GOOGLE_API_KEY not set"
+```bash
+# Verificar que .env existe y tiene la variable
+cat .env | grep GOOGLE_API_KEY
+```
 
-# All tests (integration skipped unless RUN_INTEGRATION=1)
-pytest
+### Frontend no conecta con API
+```bash
+# Verificar que el proxy en next.config.ts apunta a localhost:8000
+# Verificar que el backend está corriendo
+curl http://localhost:8000/healthz
 ```
