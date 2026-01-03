@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     db_pool_max_size: int = 10
     db_statement_timeout_ms: int = 30000  # 30 seconds
 
+    # RAG Quality
+    prompt_version: str = "v1"
+    max_context_chars: int = 12000
+
     @field_validator("chunk_size")
     @classmethod
     def chunk_size_must_be_positive(cls, v: int) -> int:

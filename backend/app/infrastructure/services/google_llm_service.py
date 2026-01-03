@@ -3,16 +3,17 @@ Name: Google Gemini LLM Service Implementation
 
 Responsibilities:
   - Implement LLMService interface for Google Gemini 1.5 Flash
-  - Generate RAG answers with prompt engineering
+  - Generate RAG answers using versioned prompt templates
   - Apply business rules (context-only responses)
   - Handle generation errors gracefully
 
 Collaborators:
   - domain.services.LLMService: Interface implementation
+  - infrastructure.prompts.PromptLoader: Template loading
   - google.generativeai: Google Gemini SDK
 
 Constraints:
-  - Hardcoded prompt (not configurable)
+  - Prompt loaded from versioned template files
   - No control over generation parameters
   - Responses in Spanish (by prompt)
   - No streaming support
@@ -24,10 +25,13 @@ Notes:
 """
 
 import os
+from typing import Optional
+
 import google.generativeai as genai
 
 from ...logger import logger
 from ...exceptions import LLMError
+from ..prompts import PromptLoader, get_prompt_loader
 
 
 class GoogleLLMService:
@@ -38,12 +42,17 @@ class GoogleLLMService:
     using Gemini 1.5 Flash model.
     """
     
-    def __init__(self, api_key: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        prompt_loader: Optional[PromptLoader] = None
+    ):
         """
         R: Initialize Google LLM Service.
         
         Args:
             api_key: Google API key (defaults to GOOGLE_API_KEY env var)
+            prompt_loader: Optional PromptLoader (defaults to singleton)
         
         Raises:
             LLMError: If API key not configured
@@ -60,7 +69,19 @@ class GoogleLLMService:
         
         # R: Initialize model
         self.model = genai.GenerativeModel('gemini-1.5-flash')
-        logger.info("GoogleLLMService initialized")
+        
+        # R: Get prompt loader (use provided or default singleton)
+        self.prompt_loader = prompt_loader or get_prompt_loader()
+        
+        logger.info(
+            "GoogleLLMService initialized",
+            extra={"prompt_version": self.prompt_loader.version}
+        )
+    
+    @property
+    def prompt_version(self) -> str:
+        """R: Get current prompt version."""
+        return self.prompt_loader.version
     
     def generate_answer(self, query: str, context: str) -> str:
         """
@@ -71,28 +92,16 @@ class GoogleLLMService:
         Raises:
             LLMError: If response generation fails
         """
-        # R: Construct prompt with business rules
-        prompt = f"""
-        Act as an expert assistant for RAG Corp company.
-        Your mission is to answer the user's question based EXCLUSIVELY on the context provided below.
-        
-        Rules:
-        1. If the answer is not in the context, say "I don't have enough information in my documents".
-        2. Be concise and professional.
-        3. Always respond in Spanish.
-
-        --- CONTEXT ---
-        {context}
-        ----------------
-        
-        Question: {query}
-        Answer:
-        """
+        # R: Format prompt using versioned template
+        prompt = self.prompt_loader.format(context=context, query=query)
         
         try:
             # R: Generate response using Gemini
             response = self.model.generate_content(prompt)
-            logger.info("GoogleLLMService: Response generated successfully")
+            logger.info(
+                "GoogleLLMService: Response generated",
+                extra={"prompt_version": self.prompt_version}
+            )
             
             # R: Return cleaned response text
             return response.text.strip()

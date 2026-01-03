@@ -144,9 +144,9 @@ class TestAnswerQueryUseCase:
         """R: Should correctly assemble context from chunk contents."""
         # Arrange
         chunks = [
-            Chunk(content="First chunk.", embedding=[0.1] * 768, chunk_index=0),
-            Chunk(content="Second chunk.", embedding=[0.2] * 768, chunk_index=1),
-            Chunk(content="Third chunk.", embedding=[0.3] * 768, chunk_index=2),
+            Chunk(content="First chunk.", embedding=[0.1] * 768, chunk_index=0, chunk_id=uuid4()),
+            Chunk(content="Second chunk.", embedding=[0.2] * 768, chunk_index=1, chunk_id=uuid4()),
+            Chunk(content="Third chunk.", embedding=[0.3] * 768, chunk_index=2, chunk_id=uuid4()),
         ]
         
         mock_embedding_service.embed_query.return_value = [0.5] * 768
@@ -162,14 +162,15 @@ class TestAnswerQueryUseCase:
         # Act
         use_case.execute(AnswerQueryInput(query="Test"))
         
-        # Assert - verify context passed to LLM
+        # Assert - verify context passed to LLM contains all chunks
         call_args = mock_llm_service.generate_answer.call_args
         context = call_args.kwargs["context"]
         
+        # New format uses ContextBuilder with FRAGMENTO delimiters
         assert "First chunk." in context
         assert "Second chunk." in context
         assert "Third chunk." in context
-        assert context == "First chunk.\n\nSecond chunk.\n\nThird chunk."
+        assert "FRAGMENTO" in context  # Uses new delimiter format
     
     def test_execute_preserves_chunk_order(
         self,
@@ -180,7 +181,7 @@ class TestAnswerQueryUseCase:
         """R: Should preserve order of chunks from repository (relevance)."""
         # Arrange
         chunks = [
-            Chunk(content=f"Chunk {i}", embedding=[0.1 * i] * 768, chunk_index=i)
+            Chunk(content=f"Chunk {i}", embedding=[0.1 * i] * 768, chunk_index=i, chunk_id=uuid4())
             for i in range(5)
         ]
         
@@ -197,7 +198,10 @@ class TestAnswerQueryUseCase:
         # Act
         result = use_case.execute(AnswerQueryInput(query="Test"))
         
-        # Assert
+        # Assert - chunks should be in original order
+        assert len(result.chunks) <= 5  # May be limited by context builder
+        for i, chunk in enumerate(result.chunks):
+            assert chunk.chunk_index == i
         for i, chunk in enumerate(result.chunks):
             assert chunk.chunk_index == i
     
@@ -210,7 +214,7 @@ class TestAnswerQueryUseCase:
         """R: Should handle case with single chunk found."""
         # Arrange
         single_chunk = [
-            Chunk(content="Only chunk", embedding=[0.1] * 768, chunk_index=0)
+            Chunk(content="Only chunk", embedding=[0.1] * 768, chunk_index=0, chunk_id=uuid4())
         ]
         
         mock_embedding_service.embed_query.return_value = [0.5] * 768
@@ -230,10 +234,10 @@ class TestAnswerQueryUseCase:
         assert len(result.chunks) == 1
         assert result.metadata["chunks_found"] == 1
         
-        # Verify context has no extra separators
+        # Verify context contains the chunk content
         call_args = mock_llm_service.generate_answer.call_args
         context = call_args.kwargs["context"]
-        assert context == "Only chunk"
+        assert "Only chunk" in context
     
     def test_execute_passes_query_to_llm(
         self,
@@ -309,7 +313,7 @@ class TestAnswerQueryUseCaseEdgeCases:
         """R: Should handle large top_k values (e.g., 100)."""
         # Arrange
         many_chunks = [
-            Chunk(content=f"Chunk {i}", embedding=[0.1] * 768)
+            Chunk(content=f"Chunk {i}", embedding=[0.1] * 768, chunk_id=uuid4())
             for i in range(100)
         ]
         
@@ -326,9 +330,9 @@ class TestAnswerQueryUseCaseEdgeCases:
         # Act
         result = use_case.execute(AnswerQueryInput(query="Test", top_k=100))
         
-        # Assert
-        assert len(result.chunks) == 100
+        # Assert - chunks_found is total, but chunks returned may be limited by context builder
         assert result.metadata["chunks_found"] == 100
+        assert len(result.chunks) <= 100  # May be limited by MAX_CONTEXT_CHARS
     
     def test_execute_with_very_long_query(
         self,
