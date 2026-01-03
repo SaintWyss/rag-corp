@@ -85,6 +85,30 @@ class DocumentRepository(Protocol):
         """
         ...
 
+    def soft_delete_document(self, document_id: UUID) -> bool:
+        """
+        R: Soft delete a document by setting deleted_at timestamp.
+        
+        Args:
+            document_id: Document UUID to soft delete
+        
+        Returns:
+            True if document was found and deleted, False otherwise
+        """
+        ...
+    
+    def restore_document(self, document_id: UUID) -> bool:
+        """
+        R: Restore a soft-deleted document.
+        
+        Args:
+            document_id: Document UUID to restore
+        
+        Returns:
+            True if document was found and restored, False otherwise
+        """
+        ...
+
     def ping(self) -> bool:
         """
         R: Check repository connectivity/availability.

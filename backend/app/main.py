@@ -153,6 +153,10 @@ app.add_middleware(
 # R: Register API routes under /v1 prefix for versioning
 app.include_router(router, prefix="/v1")
 
+# R: Register versioned routes (v1, v2)
+from .versioning import include_versioned_routes
+include_versioned_routes(app)
+
 
 # R: Exception handlers for structured error responses
 @app.exception_handler(DatabaseError)

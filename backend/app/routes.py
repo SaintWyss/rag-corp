@@ -77,6 +77,20 @@ class IngestTextRes(BaseModel):
     document_id: UUID  # R: Unique identifier of stored document
     chunks: int  # R: Number of chunks created from document
 
+# R: Response model for batch ingestion
+class IngestBatchRes(BaseModel):
+    documents: list[IngestTextRes]  # R: List of ingested documents
+    total_chunks: int  # R: Total chunks created across all documents
+
+# R: Request model for batch ingestion
+class IngestBatchReq(BaseModel):
+    documents: list[IngestTextReq] = Field(
+        ...,
+        min_length=1,
+        max_length=10,
+        description="List of documents to ingest (1-10)"
+    )
+
 # R: Endpoint to ingest documents into the RAG system
 @router.post("/ingest/text", response_model=IngestTextRes, tags=["ingest"])
 def ingest_text(
@@ -96,6 +110,39 @@ def ingest_text(
         document_id=result.document_id,
         chunks=result.chunks_created,
     )
+
+# R: Endpoint for batch document ingestion
+@router.post("/ingest/batch", response_model=IngestBatchRes, tags=["ingest"])
+def ingest_batch(
+    req: IngestBatchReq,
+    use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+    _auth: None = Depends(require_scope("ingest")),
+):
+    """
+    Ingest multiple documents in a single request.
+    
+    Processes up to 10 documents sequentially.
+    Returns results for all successfully ingested documents.
+    """
+    results = []
+    total_chunks = 0
+    
+    for doc in req.documents:
+        result = use_case.execute(
+            IngestDocumentInput(
+                title=doc.title,
+                text=doc.text,
+                source=doc.source,
+                metadata=doc.metadata,
+            )
+        )
+        results.append(IngestTextRes(
+            document_id=result.document_id,
+            chunks=result.chunks_created,
+        ))
+        total_chunks += result.chunks_created
+    
+    return IngestBatchRes(documents=results, total_chunks=total_chunks)
 
 # R: Request model for queries (shared by /query and /ask endpoints)
 class QueryReq(BaseModel):

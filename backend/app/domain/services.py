@@ -20,7 +20,7 @@ Notes:
   - Enables testing with mock services
 """
 
-from typing import Protocol, List
+from typing import Protocol, List, AsyncGenerator
 
 
 class EmbeddingService(Protocol):
@@ -80,6 +80,24 @@ class LLMService(Protocol):
             Generated answer (should be based on context only)
         """
         ...
+    
+    async def generate_stream(
+        self, query: str, chunks: List["Chunk"]
+    ) -> AsyncGenerator[str, None]:
+        """
+        R: Stream answer token by token.
+        
+        Args:
+            query: User's question
+            chunks: Retrieved context chunks
+        
+        Yields:
+            Individual tokens as they are generated
+        """
+        ...
+
+
+from .entities import Chunk  # noqa: E402 - avoid circular import
 
 
 class TextChunkerService(Protocol):
