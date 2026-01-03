@@ -24,6 +24,12 @@ venv/
 .env.*
 !.env.example
 
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
 # Jupyter
 .ipynb_checkpoints/
 

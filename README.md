@@ -134,26 +134,26 @@ pnpm dev
 
 ```
 rag-corp/
-├── apps/
-│   └── web/                    # Frontend Next.js 16
-│       ├── app/                # App Router (page.tsx = UI principal)
-│       ├── next.config.ts      # Proxy /v1/* → backend
-│       └── package.json
-├── services/
-│   └── rag-api/                # Backend FastAPI
-│       ├── app/
-│       │   ├── main.py         # Entry point + CORS
-│       │   ├── routes.py       # Controllers (endpoints HTTP)
-│       │   ├── domain/         # Entidades y contratos del core
-│       │   ├── application/    # Use cases (ingest/query/ask)
-│       │   ├── infrastructure/ # Adapters (DB, APIs externas, chunking)
-│       │   ├── container.py    # Dependency Injection
-│       │   └── logger.py
-│       ├── scripts/
-│       │   └── export_openapi.py
-│       ├── Dockerfile
-│       └── requirements.txt
-├── packages/
+├── frontend/                   # Next.js 16 (UI)
+│   ├── app/                    # App Router (page.tsx = UI principal)
+│   │   ├── components/         # React components
+│   │   └── hooks/              # Custom hooks (useRagAsk)
+│   ├── next.config.ts          # Proxy /v1/* → backend
+│   └── package.json
+├── backend/                    # FastAPI (API + RAG logic)
+│   ├── app/
+│   │   ├── main.py             # Entry point + CORS + lifespan
+│   │   ├── routes.py           # Controllers (endpoints HTTP)
+│   │   ├── container.py        # Dependency Injection
+│   │   ├── domain/             # Entidades y contratos del core
+│   │   ├── application/        # Use cases (ingest/query/ask)
+│   │   └── infrastructure/     # Adapters (DB, APIs externas, chunking)
+│   ├── tests/                  # Unit + Integration tests
+│   ├── scripts/
+│   │   └── export_openapi.py
+│   ├── Dockerfile
+│   └── requirements.txt
+├── shared/
 │   └── contracts/              # Contratos compartidos FE/BE
 │       ├── openapi.json        # Schema exportado desde FastAPI
 │       ├── src/generated.ts    # Cliente TypeScript auto-generado
@@ -177,10 +177,10 @@ rag-corp/
 
 ### Carpetas Clave
 
-- **`frontend`**: Interfaz de usuario React/Next.js que consume la API.
-- **`backend`**: Servidor Python con lógica RAG (ingesta, búsqueda, generación).
-- **`shared/contracts`**: Single source of truth de tipos compartidos (OpenAPI → TypeScript).
-- **`infra/postgres`**: DDL y configuración de base de datos vectorial.
+- **`frontend/`**: Interfaz de usuario React/Next.js que consume la API.
+- **`backend/`**: Servidor Python con lógica RAG (ingesta, búsqueda, generación).
+- **`shared/contracts/`**: Single source of truth de tipos compartidos (OpenAPI → TypeScript).
+- **`infra/postgres/`**: DDL y configuración de base de datos vectorial.
 - **`doc/`**: Documentación técnica detallada (arquitectura, API, runbook, data).
 
 ---
