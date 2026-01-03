@@ -2,9 +2,19 @@
 
 **Project:** RAG Corp  
 **Base URL:** `http://localhost:8000`  
-**API Prefix:** `/v1`  
+**API Prefix:** `/v1` (legacy) or `/api/v1` (versioned)  
 **Version:** 0.1.0  
 **Last Updated:** 2026-01-02
+
+---
+
+## Interactive Documentation
+
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **OpenAPI JSON:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+
+> The OpenAPI spec is auto-generated from code and always up-to-date.
 
 ---
 
