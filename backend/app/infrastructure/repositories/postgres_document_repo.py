@@ -286,3 +286,67 @@ class PostgresDocumentRepository:
         except Exception as e:
             logger.warning(f"PostgresDocumentRepository: ping failed: {e}")
             raise DatabaseError(f"Ping failed: {e}")
+
+    def soft_delete_document(self, document_id: UUID) -> bool:
+        """
+        R: Soft delete a document by setting deleted_at timestamp.
+        
+        Args:
+            document_id: Document UUID to soft delete
+        
+        Returns:
+            True if document was found and deleted, False otherwise
+        
+        Raises:
+            DatabaseError: If database operation fails
+        """
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NOW()
+                    WHERE id = %s AND deleted_at IS NULL
+                    """,
+                    (document_id,),
+                )
+                deleted = result.rowcount > 0
+            if deleted:
+                logger.info(f"PostgresDocumentRepository: Soft deleted document {document_id}")
+            return deleted
+        except Exception as e:
+            logger.error(f"PostgresDocumentRepository: Soft delete failed for {document_id}: {e}")
+            raise DatabaseError(f"Soft delete failed: {e}")
+    
+    def restore_document(self, document_id: UUID) -> bool:
+        """
+        R: Restore a soft-deleted document.
+        
+        Args:
+            document_id: Document UUID to restore
+        
+        Returns:
+            True if document was found and restored, False otherwise
+        
+        Raises:
+            DatabaseError: If database operation fails
+        """
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NULL
+                    WHERE id = %s AND deleted_at IS NOT NULL
+                    """,
+                    (document_id,),
+                )
+                restored = result.rowcount > 0
+            if restored:
+                logger.info(f"PostgresDocumentRepository: Restored document {document_id}")
+            return restored
+        except Exception as e:
+            logger.error(f"PostgresDocumentRepository: Restore failed for {document_id}: {e}")
+            raise DatabaseError(f"Restore failed: {e}")
