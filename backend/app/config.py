@@ -41,6 +41,7 @@ class Settings(BaseSettings):
         max_query_chars: Maximum query length (default: 2_000)
         max_title_chars: Maximum title length (default: 200)
         max_source_chars: Maximum source length (default: 500)
+        otel_enabled: Enable OpenTelemetry tracing (default: False)
     """
     
     # Required (no defaults)
@@ -60,6 +61,9 @@ class Settings(BaseSettings):
     max_query_chars: int = 2_000
     max_title_chars: int = 200
     max_source_chars: int = 500
+    
+    # Observability
+    otel_enabled: bool = False
 
     @field_validator("chunk_size")
     @classmethod
