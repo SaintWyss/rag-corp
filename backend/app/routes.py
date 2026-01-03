@@ -21,8 +21,9 @@ Notes:
   - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
+from .config import get_settings
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
@@ -41,11 +42,34 @@ from .container import (
 router = APIRouter()
 
 # R: Request model for text ingestion (document metadata + content)
+# R: Limits are loaded from Settings at module load time for Pydantic schema
+_settings = get_settings()
+
 class IngestTextReq(BaseModel):
-    title: str  # R: Document title
-    text: str  # R: Full document text to be chunked
-    source: str | None = None  # R: Optional source URL or identifier
-    metadata: dict = Field(default_factory=dict)  # R: Additional custom metadata (JSONB)
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_title_chars,
+        description="Document title (1-200 chars)"
+    )
+    text: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_ingest_chars,
+        description="Full document text to be chunked (1-100,000 chars)"
+    )
+    source: str | None = Field(
+        default=None,
+        max_length=_settings.max_source_chars,
+        description="Optional source URL or identifier (max 500 chars)"
+    )
+    metadata: dict = Field(default_factory=dict, description="Additional custom metadata (JSONB)")
+
+    @field_validator("title", "text")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        """Trim leading/trailing whitespace."""
+        return v.strip()
 
 # R: Response model for text ingestion (confirmation)
 class IngestTextRes(BaseModel):
@@ -73,8 +97,24 @@ def ingest_text(
 
 # R: Request model for queries (shared by /query and /ask endpoints)
 class QueryReq(BaseModel):
-    query: str  # R: User's natural language question
-    top_k: int = 5  # R: Number of similar chunks to retrieve
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_query_chars,
+        description="User's natural language question (1-2,000 chars)"
+    )
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=_settings.max_top_k,
+        description="Number of similar chunks to retrieve (1-20)"
+    )
+
+    @field_validator("query")
+    @classmethod
+    def strip_query_whitespace(cls, v: str) -> str:
+        """Trim leading/trailing whitespace from query."""
+        return v.strip()
 
 # R: Match model representing a single similar chunk
 class Match(BaseModel):

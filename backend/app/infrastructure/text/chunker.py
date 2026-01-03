@@ -85,9 +85,30 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str
 class SimpleTextChunker:
     """
     R: Default chunker implementation using chunk_text.
+    
+    Validates parameters on initialization to fail fast.
     """
 
     def __init__(self, chunk_size: int = 900, overlap: int = 120):
+        """
+        Initialize chunker with validated parameters.
+        
+        Args:
+            chunk_size: Maximum size of each chunk (must be > 0)
+            overlap: Characters to overlap between chunks (must be >= 0 and < chunk_size)
+        
+        Raises:
+            ValueError: If parameters are invalid
+        """
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size must be > 0, got {chunk_size}")
+        if overlap < 0:
+            raise ValueError(f"overlap must be >= 0, got {overlap}")
+        if overlap >= chunk_size:
+            raise ValueError(
+                f"overlap ({overlap}) must be less than chunk_size ({chunk_size})"
+            )
+        
         self.chunk_size = chunk_size
         self.overlap = overlap
 

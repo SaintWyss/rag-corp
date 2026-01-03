@@ -27,6 +27,7 @@ Notes:
 
 from functools import lru_cache
 
+from .config import get_settings
 from .domain.repositories import DocumentRepository
 from .domain.services import EmbeddingService, LLMService, TextChunkerService
 from .infrastructure.repositories import PostgresDocumentRepository
@@ -81,10 +82,16 @@ def get_text_chunker() -> TextChunkerService:
     """
     R: Get singleton instance of text chunker.
     
+    Reads chunk_size and chunk_overlap from Settings.
+    
     Returns:
-        SimpleTextChunker implementation
+        SimpleTextChunker implementation with configured params
     """
-    return SimpleTextChunker()
+    settings = get_settings()
+    return SimpleTextChunker(
+        chunk_size=settings.chunk_size,
+        overlap=settings.chunk_overlap,
+    )
 
 
 # R: AnswerQuery use case factory (creates new instance per request)
