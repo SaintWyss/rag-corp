@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from .config import get_settings
+from .auth import require_scope
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
@@ -77,10 +78,11 @@ class IngestTextRes(BaseModel):
     chunks: int  # R: Number of chunks created from document
 
 # R: Endpoint to ingest documents into the RAG system
-@router.post("/ingest/text", response_model=IngestTextRes)
+@router.post("/ingest/text", response_model=IngestTextRes, tags=["ingest"])
 def ingest_text(
     req: IngestTextReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+    _auth: None = Depends(require_scope("ingest")),
 ):
     result = use_case.execute(
         IngestDocumentInput(
@@ -128,10 +130,11 @@ class QueryRes(BaseModel):
     matches: list[Match]  # R: List of similar chunks ordered by relevance
 
 # R: Endpoint for semantic search (retrieval without generation)
-@router.post("/query", response_model=QueryRes)
+@router.post("/query", response_model=QueryRes, tags=["query"])
 def query(
     req: QueryReq,
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
+    _auth: None = Depends(require_scope("ask")),
 ):
     result = use_case.execute(SearchChunksInput(query=req.query, top_k=req.top_k))
     matches = []
@@ -154,10 +157,11 @@ class AskRes(BaseModel):
     sources: list[str]  # R: Retrieved chunks used as context
 
 # R: Endpoint for complete RAG flow (retrieval + generation) - REFACTORED with Use Case
-@router.post("/ask", response_model=AskRes)
+@router.post("/ask", response_model=AskRes, tags=["query"])
 def ask(
     req: QueryReq,
-    use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
+    use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
+    _auth: None = Depends(require_scope("ask")),
 ):
     """
     R: RAG endpoint using Clean Architecture (Use Case pattern).
