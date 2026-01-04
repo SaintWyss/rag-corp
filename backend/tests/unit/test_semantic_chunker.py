@@ -35,7 +35,9 @@ Content of section 2.
 """
         result = chunk_semantically(text, max_chunk_size=200)
         sections = [c.section for c in result if c.section]
-        assert "Introduction" in sections or any("Introduction" in str(s) for s in sections)
+        assert "Introduction" in sections or any(
+            "Introduction" in str(s) for s in sections
+        )
 
     def test_code_blocks_preserved(self):
         text = """Some text.

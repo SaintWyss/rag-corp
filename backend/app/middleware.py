@@ -46,40 +46,41 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         # R: Generate unique request ID
         request_id = str(uuid.uuid4())
-        
+
         # R: Set context vars for this request
         request_id_var.set(request_id)
         http_method_var.set(request.method)
         http_path_var.set(request.url.path)
-        
+
         # R: Also store in request.state for handlers that need it
         request.state.request_id = request_id
-        
+
         # R: Record start time for latency
         start_time = time.perf_counter()
-        
+
         try:
             # R: Process request
             response = await call_next(request)
-            
+
             # R: Calculate latency
             latency_seconds = time.perf_counter() - start_time
-            
+
             # R: Add request_id to response headers
             response.headers["X-Request-Id"] = request_id
-            
+
             # R: Log request completion
             logger.info(
                 "request completed",
                 extra={
                     "status_code": response.status_code,
                     "latency_ms": round(latency_seconds * 1000, 2),
-                }
+                },
             )
-            
+
             # R: Record metrics (imported lazily to avoid circular imports)
             try:
                 from .metrics import record_request_metrics
+
                 record_request_metrics(
                     endpoint=request.url.path,
                     method=request.method,
@@ -88,9 +89,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 )
             except ImportError:
                 pass  # Metrics module not available
-            
+
             return response
-            
+
         except Exception as exc:
             # R: Log error with context
             latency_seconds = time.perf_counter() - start_time
@@ -99,10 +100,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 extra={
                     "latency_ms": round(latency_seconds * 1000, 2),
                     "error": str(exc),
-                }
+                },
             )
             raise
-            
+
         finally:
             # R: Clear context to prevent leaks
             clear_context()
@@ -111,16 +112,16 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 class BodyLimitMiddleware(BaseHTTPMiddleware):
     """
     R: Middleware that enforces request body size limits.
-    
+
     Returns 413 Payload Too Large if Content-Length exceeds MAX_BODY_BYTES.
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
         from .config import get_settings
-        
+
         max_bytes = get_settings().max_body_bytes
         content_length = request.headers.get("content-length")
-        
+
         if content_length:
             try:
                 if int(content_length) > max_bytes:
@@ -130,7 +131,7 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
                             "content_length": content_length,
                             "max_bytes": max_bytes,
                             "path": request.url.path,
-                        }
+                        },
                     )
                     return JSONResponse(
                         status_code=413,
@@ -140,5 +141,5 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
                     )
             except ValueError:
                 pass  # Invalid content-length, let it through
-        
+
         return await call_next(request)

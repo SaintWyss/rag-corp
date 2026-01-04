@@ -1,11 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
-// Must import Error component dynamically to avoid useEffect issues in test setup
-const ErrorComponent = require("../app/error").default;
+let ErrorComponent: typeof import("../app/error").default;
 
 describe("Error Boundary", () => {
     const mockReset = jest.fn();
     const testError = new Error("Test error message");
+
+    beforeAll(async () => {
+        // Must import Error component dynamically to avoid useEffect issues in test setup
+        ErrorComponent = (await import("../app/error")).default;
+    });
 
     beforeEach(() => {
         mockReset.mockClear();

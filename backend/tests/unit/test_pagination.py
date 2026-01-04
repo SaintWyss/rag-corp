@@ -22,7 +22,7 @@ class TestPaginate:
     def test_first_page_with_more(self):
         items = list(range(15))
         page = paginate(items, limit=10, cursor=None, total=100)
-        
+
         assert len(page.items) == 10
         assert page.page_info.has_next is True
         assert page.page_info.has_prev is False
@@ -33,14 +33,14 @@ class TestPaginate:
         items = list(range(5))
         cursor = encode_cursor(90)
         page = paginate(items, limit=10, cursor=cursor, total=95)
-        
+
         assert len(page.items) == 5
         assert page.page_info.has_next is False
         assert page.page_info.has_prev is True
 
     def test_empty_page(self):
         page = paginate([], limit=10, cursor=None)
-        
+
         assert len(page.items) == 0
         assert page.page_info.has_next is False
         assert page.page_info.has_prev is False

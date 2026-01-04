@@ -17,14 +17,12 @@ Notes:
 """
 
 import pytest
-from unittest.mock import Mock
 
 from app.application.use_cases.search_chunks import (
     SearchChunksUseCase,
     SearchChunksInput,
     SearchChunksOutput,
 )
-from app.domain.entities import Chunk
 
 
 @pytest.mark.unit

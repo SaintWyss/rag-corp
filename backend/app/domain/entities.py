@@ -30,7 +30,7 @@ from typing import Optional, Dict, Any, List
 class Document:
     """
     R: Represents a document in the RAG system (metadata only).
-    
+
     Attributes:
         id: Unique document identifier
         title: Document title
@@ -39,13 +39,14 @@ class Document:
         created_at: Creation timestamp
         deleted_at: Soft delete timestamp (None if active)
     """
+
     id: UUID
     title: str
     source: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
-    
+
     @property
     def is_deleted(self) -> bool:
         """Check if document is soft-deleted."""
@@ -56,7 +57,7 @@ class Document:
 class Chunk:
     """
     R: Represents a text fragment with its embedding.
-    
+
     Attributes:
         content: Text fragment content
         embedding: Vector representation of the chunk
@@ -65,17 +66,18 @@ class Chunk:
         chunk_id: Unique chunk identifier (optional, assigned by DB)
         similarity: Optional similarity score for search results
     """
+
     content: str
     embedding: List[float]
     document_id: Optional[UUID] = None
     chunk_index: Optional[int] = None
     chunk_id: Optional[UUID] = None
     similarity: Optional[float] = None
-    
+
     def similarity_score(self, other_embedding: List[float]) -> float:
         """
         R: Calculate similarity score (placeholder).
-        
+
         Note: Actual similarity computation is done in the repository layer.
         This method is for future use or testing purposes.
         """
@@ -86,13 +88,14 @@ class Chunk:
 class QueryResult:
     """
     R: Encapsulates RAG response with answer and sources.
-    
+
     Attributes:
         answer: Generated answer from LLM
         chunks: Retrieved chunks used as context
         query: Original user query (optional)
         metadata: Additional response metadata (top_k, latency, etc.)
     """
+
     answer: str
     chunks: List[Chunk]
     query: Optional[str] = None

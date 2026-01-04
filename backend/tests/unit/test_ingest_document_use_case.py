@@ -77,7 +77,9 @@ class TestIngestDocumentUseCase:
 
         # Verify flow
         mock_chunker.chunk.assert_called_once_with("Some long text to chunk")
-        mock_embedding_service.embed_batch.assert_called_once_with(["Chunk 1", "Chunk 2"])
+        mock_embedding_service.embed_batch.assert_called_once_with(
+            ["Chunk 1", "Chunk 2"]
+        )
         # Uses atomic save_document_with_chunks
         mock_repository.save_document_with_chunks.assert_called_once()
 

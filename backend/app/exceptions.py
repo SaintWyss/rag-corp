@@ -18,6 +18,7 @@ Notes:
   - error_id is UUID for log correlation
   - Use these exceptions instead of generic Exception
 """
+
 from dataclasses import dataclass
 from uuid import uuid4
 

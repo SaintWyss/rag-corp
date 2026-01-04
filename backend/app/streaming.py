@@ -32,14 +32,14 @@ async def stream_answer(
 ) -> StreamingResponse:
     """
     Stream LLM response as Server-Sent Events.
-    
+
     SSE Format:
         event: token
         data: {"token": "word"}
-        
+
         event: done
         data: {"answer": "full answer"}
-        
+
         event: error
         data: {"error": "message"}
     """
@@ -62,28 +62,27 @@ async def _generate_sse(
 ) -> AsyncGenerator[str, None]:
     """Generate SSE events from LLM stream."""
     full_answer = ""
-    
+
     try:
         # Send sources first
         sources = [
-            {"chunk_id": str(c.chunk_id), "content": c.content[:200]}
-            for c in chunks
+            {"chunk_id": str(c.chunk_id), "content": c.content[:200]} for c in chunks
         ]
         yield _sse_event("sources", {"sources": sources})
-        
+
         # Stream tokens from LLM
         async for token in llm_service.generate_stream(query, chunks):
             # Check if client disconnected
             if await request.is_disconnected():
                 logger.info("SSE: Client disconnected")
                 return
-            
+
             full_answer += token
             yield _sse_event("token", {"token": token})
-        
+
         # Send completion event
         yield _sse_event("done", {"answer": full_answer})
-        
+
     except Exception as e:
         logger.error(f"SSE stream error: {e}")
         yield _sse_event("error", {"error": str(e)})

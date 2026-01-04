@@ -13,6 +13,7 @@ if config.config_file_name is not None:
 
 target_metadata = None
 
+
 def get_url() -> str:
     """Get database URL from environment."""
     return os.environ.get(

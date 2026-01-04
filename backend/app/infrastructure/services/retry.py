@@ -23,9 +23,8 @@ Notes:
   - Jitter: random factor [0.5, 1.5] applied to delay
 """
 
-import random
 from functools import wraps
-from typing import Callable, Type, Tuple
+from typing import Callable
 
 from tenacity import (
     retry,
@@ -40,29 +39,33 @@ from ...config import get_settings
 
 
 # R: HTTP status codes that indicate transient errors (retry-able)
-TRANSIENT_HTTP_CODES: frozenset[int] = frozenset({
-    429,  # Too Many Requests (rate limit)
-    500,  # Internal Server Error
-    502,  # Bad Gateway
-    503,  # Service Unavailable
-    504,  # Gateway Timeout
-})
+TRANSIENT_HTTP_CODES: frozenset[int] = frozenset(
+    {
+        429,  # Too Many Requests (rate limit)
+        500,  # Internal Server Error
+        502,  # Bad Gateway
+        503,  # Service Unavailable
+        504,  # Gateway Timeout
+    }
+)
 
 # R: HTTP status codes that indicate permanent errors (no retry)
-PERMANENT_HTTP_CODES: frozenset[int] = frozenset({
-    400,  # Bad Request
-    401,  # Unauthorized
-    403,  # Forbidden
-    404,  # Not Found
-})
+PERMANENT_HTTP_CODES: frozenset[int] = frozenset(
+    {
+        400,  # Bad Request
+        401,  # Unauthorized
+        403,  # Forbidden
+        404,  # Not Found
+    }
+)
 
 
 def get_http_status_code(exception: BaseException) -> int | None:
     """
     R: Extract HTTP status code from various exception types.
-    
+
     Supports google.api_core exceptions and httpx responses.
-    
+
     Returns:
         HTTP status code if found, None otherwise
     """
@@ -72,35 +75,35 @@ def get_http_status_code(exception: BaseException) -> int | None:
         # Handle gRPC status codes vs HTTP codes
         if isinstance(code, int) and code >= 100:
             return code
-    
+
     # httpx.HTTPStatusError
     if hasattr(exception, "response") and hasattr(exception.response, "status_code"):
         return exception.response.status_code
-    
+
     # google-generativeai specific exceptions
     if hasattr(exception, "status_code"):
         return exception.status_code
-    
+
     return None
 
 
 def is_transient_error(exception: BaseException) -> bool:
     """
     R: Determine if an exception is transient (should retry).
-    
+
     Transient errors include:
       - HTTP 429, 5xx
       - Connection/timeout errors
       - Temporary API unavailability
-    
+
     Permanent errors (no retry):
       - HTTP 400, 401, 403, 404
       - Invalid API key
       - Malformed requests
-    
+
     Args:
         exception: The exception to classify
-    
+
     Returns:
         True if transient (retry), False if permanent (fail fast)
     """
@@ -111,7 +114,7 @@ def is_transient_error(exception: BaseException) -> bool:
             return False
         if status_code in TRANSIENT_HTTP_CODES:
             return True
-    
+
     # R: Common transient exception types (connection errors, timeouts)
     exception_name = type(exception).__name__.lower()
     transient_patterns = (
@@ -124,10 +127,10 @@ def is_transient_error(exception: BaseException) -> bool:
         "aborted",
         "cancelled",
     )
-    
+
     if any(pattern in exception_name for pattern in transient_patterns):
         return True
-    
+
     # R: Check exception message for transient indicators
     message = str(exception).lower()
     transient_message_patterns = (
@@ -140,10 +143,10 @@ def is_transient_error(exception: BaseException) -> bool:
         "timed out",
         "deadline exceeded",
     )
-    
+
     if any(pattern in message for pattern in transient_message_patterns):
         return True
-    
+
     # R: Default: treat unknown errors as non-transient (fail fast)
     return False
 
@@ -151,7 +154,7 @@ def is_transient_error(exception: BaseException) -> bool:
 def _log_retry(retry_state: RetryCallState) -> None:
     """
     R: Log retry attempts with context for observability.
-    
+
     Called before each retry to record:
       - Function name
       - Attempt number
@@ -162,7 +165,7 @@ def _log_retry(retry_state: RetryCallState) -> None:
     attempt = retry_state.attempt_number
     wait_time = retry_state.next_action.sleep if retry_state.next_action else 0
     exc = retry_state.outcome.exception() if retry_state.outcome else None
-    
+
     logger.warning(
         f"Retry attempt {attempt} for {fn_name}",
         extra={
@@ -171,7 +174,7 @@ def _log_retry(retry_state: RetryCallState) -> None:
             "wait_seconds": round(wait_time, 2),
             "error": str(exc) if exc else None,
             "error_type": type(exc).__name__ if exc else None,
-        }
+        },
     )
 
 
@@ -182,26 +185,26 @@ def create_retry_decorator(
 ) -> Callable:
     """
     R: Create a retry decorator with exponential backoff + jitter.
-    
+
     Uses settings from config unless overridden. Applies:
       - Exponential backoff: delay doubles each attempt
       - Jitter: randomizes delay to prevent thundering herd
       - Transient error filtering: only retries appropriate errors
-    
+
     Args:
         max_attempts: Max retry attempts (default from settings)
         base_delay: Initial delay in seconds (default from settings)
         max_delay: Maximum delay cap in seconds (default from settings)
-    
+
     Returns:
         Configured tenacity retry decorator
     """
     settings = get_settings()
-    
+
     _max_attempts = max_attempts or settings.retry_max_attempts
     _base_delay = base_delay or settings.retry_base_delay_seconds
     _max_delay = max_delay or settings.retry_max_delay_seconds
-    
+
     return retry(
         stop=stop_after_attempt(_max_attempts),
         wait=wait_exponential_jitter(
@@ -218,18 +221,20 @@ def create_retry_decorator(
 def with_retry(func: Callable) -> Callable:
     """
     R: Decorator that applies retry with default settings.
-    
+
     Convenience wrapper around create_retry_decorator() using
     settings from config.
-    
+
     Usage:
         @with_retry
         def call_external_api():
             ...
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         # R: Create decorator at call time to pick up current settings
         decorator = create_retry_decorator()
         return decorator(func)(*args, **kwargs)
+
     return wrapper

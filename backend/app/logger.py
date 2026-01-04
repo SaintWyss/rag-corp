@@ -32,7 +32,7 @@ from typing import Any
 class JSONFormatter(logging.Formatter):
     """
     R: Format logs as JSON with automatic context enrichment.
-    
+
     Includes:
       - timestamp (ISO 8601)
       - level (INFO, ERROR, etc.)
@@ -46,9 +46,19 @@ class JSONFormatter(logging.Formatter):
 
     # R: Fields that should never be logged (security)
     SENSITIVE_KEYS = {
-        "password", "api_key", "secret", "token", "authorization",
-        "google_api_key", "x-api-key", "apikey", "api_keys_config",
-        "credential", "private_key", "access_token", "refresh_token",
+        "password",
+        "api_key",
+        "secret",
+        "token",
+        "authorization",
+        "google_api_key",
+        "x-api-key",
+        "apikey",
+        "api_keys_config",
+        "credential",
+        "private_key",
+        "access_token",
+        "refresh_token",
     }
 
     def format(self, record: logging.LogRecord) -> str:
@@ -62,32 +72,50 @@ class JSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
         }
-        
+
         # R: Add request context (imported lazily to avoid circular imports)
         try:
             from .context import get_context_dict
+
             ctx = get_context_dict()
             if ctx:
                 log_obj.update(ctx)
         except ImportError:
             pass
-        
+
         # R: Add extra fields from log call (excluding internal ones)
         internal_keys = {
-            "name", "msg", "args", "created", "filename", "funcName",
-            "levelname", "levelno", "lineno", "module", "msecs",
-            "pathname", "process", "processName", "relativeCreated",
-            "stack_info", "exc_info", "exc_text", "thread", "threadName",
-            "taskName", "message",
+            "name",
+            "msg",
+            "args",
+            "created",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "module",
+            "msecs",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "exc_info",
+            "exc_text",
+            "thread",
+            "threadName",
+            "taskName",
+            "message",
         }
-        
+
         if hasattr(record, "__dict__"):
             for key, value in record.__dict__.items():
                 if key not in internal_keys:
                     # R: Filter sensitive keys
                     if key.lower() not in self.SENSITIVE_KEYS:
                         log_obj[key] = value
-        
+
         # R: Add exception info if present
         if record.exc_info:
             log_obj["exception"] = {
@@ -95,17 +123,17 @@ class JSONFormatter(logging.Formatter):
                 "message": str(record.exc_info[1]) if record.exc_info[1] else None,
                 "stacktrace": traceback.format_exception(*record.exc_info),
             }
-        
+
         return json.dumps(log_obj, default=str)
 
 
 def setup_logger(name: str = "rag-api") -> logging.Logger:
     """
     R: Configure and return structured logger.
-    
+
     Args:
         name: Logger name (default: "rag-api")
-    
+
     Returns:
         Configured logger with JSON formatting
     """

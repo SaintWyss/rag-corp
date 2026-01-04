@@ -1,15 +1,8 @@
 """Unit tests for error_responses module."""
 
-import pytest
-from fastapi import Request
-from fastapi.testclient import TestClient
-from starlette.testclient import TestClient
-
 from app.error_responses import (
-    AppHTTPException,
     ErrorCode,
     ErrorDetail,
-    app_exception_handler,
     database_error,
     forbidden,
     internal_error,

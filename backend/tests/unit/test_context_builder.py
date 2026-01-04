@@ -30,26 +30,26 @@ class TestContextBuilder:
     def test_build_empty_chunks(self):
         """R: Should return empty string for no chunks."""
         builder = ContextBuilder(max_chars=1000)
-        
+
         context, chunks_used = builder.build([])
-        
+
         assert context == ""
         assert chunks_used == 0
 
     def test_build_single_chunk(self):
         """R: Should format single chunk with metadata."""
         builder = ContextBuilder(max_chars=1000)
-        
+
         chunk = Chunk(
             chunk_id=uuid4(),
             content="Test content here",
             embedding=[0.1] * 768,
             document_id=uuid4(),
-            chunk_index=0
+            chunk_index=0,
         )
-        
+
         context, chunks_used = builder.build([chunk])
-        
+
         assert chunks_used == 1
         assert "Test content here" in context
         assert "FRAGMENTO 1" in context
@@ -58,20 +58,20 @@ class TestContextBuilder:
     def test_build_respects_max_chars(self):
         """R: Should stop adding chunks when max_chars exceeded."""
         builder = ContextBuilder(max_chars=200)
-        
+
         chunks = [
             Chunk(
                 chunk_id=uuid4(),
                 content="A" * 100,
                 embedding=[0.1] * 768,
                 document_id=uuid4(),
-                chunk_index=i
+                chunk_index=i,
             )
             for i in range(10)
         ]
-        
+
         context, chunks_used = builder.build(chunks)
-        
+
         # Should not use all 10 chunks
         assert chunks_used < 10
         assert len(context) <= 200
@@ -79,18 +79,36 @@ class TestContextBuilder:
     def test_build_deduplicates_by_id(self):
         """R: Should deduplicate chunks with same ID."""
         builder = ContextBuilder(max_chars=5000)
-        
+
         chunk_id = uuid4()
         doc_id = uuid4()
-        
+
         chunks = [
-            Chunk(chunk_id=chunk_id, content="Content 1", embedding=[0.1]*768, document_id=doc_id, chunk_index=0),
-            Chunk(chunk_id=chunk_id, content="Content 1 duplicate", embedding=[0.1]*768, document_id=doc_id, chunk_index=0),
-            Chunk(chunk_id=uuid4(), content="Content 2", embedding=[0.2]*768, document_id=doc_id, chunk_index=1),
+            Chunk(
+                chunk_id=chunk_id,
+                content="Content 1",
+                embedding=[0.1] * 768,
+                document_id=doc_id,
+                chunk_index=0,
+            ),
+            Chunk(
+                chunk_id=chunk_id,
+                content="Content 1 duplicate",
+                embedding=[0.1] * 768,
+                document_id=doc_id,
+                chunk_index=0,
+            ),
+            Chunk(
+                chunk_id=uuid4(),
+                content="Content 2",
+                embedding=[0.2] * 768,
+                document_id=doc_id,
+                chunk_index=1,
+            ),
         ]
-        
+
         context, chunks_used = builder.build(chunks)
-        
+
         # Should only use 2 unique chunks
         assert chunks_used == 2
         assert "Content 1" in context
@@ -100,14 +118,20 @@ class TestContextBuilder:
     def test_build_multiple_chunks(self):
         """R: Should format multiple chunks with sequential numbering."""
         builder = ContextBuilder(max_chars=5000)
-        
+
         chunks = [
-            Chunk(chunk_id=uuid4(), content=f"Content {i}", embedding=[0.1]*768, document_id=uuid4(), chunk_index=i)
+            Chunk(
+                chunk_id=uuid4(),
+                content=f"Content {i}",
+                embedding=[0.1] * 768,
+                document_id=uuid4(),
+                chunk_index=i,
+            )
             for i in range(3)
         ]
-        
+
         context, chunks_used = builder.build(chunks)
-        
+
         assert chunks_used == 3
         assert "FRAGMENTO 1" in context
         assert "FRAGMENTO 2" in context
@@ -121,9 +145,9 @@ class TestEscapeDelimiters:
     def test_escape_injection_patterns(self):
         """R: Should escape potential injection delimiters."""
         text = "Normal text ---[INJECTION]--- more text"
-        
+
         escaped = _escape_delimiters(text)
-        
+
         assert "---[" not in escaped
         assert "]---" not in escaped
         assert "—[" in escaped  # Em dash replacement
@@ -131,9 +155,9 @@ class TestEscapeDelimiters:
     def test_escape_preserves_normal_text(self):
         """R: Should preserve normal text without delimiters."""
         text = "This is normal text without special patterns."
-        
+
         escaped = _escape_delimiters(text)
-        
+
         assert escaped == text
 
 
@@ -149,11 +173,11 @@ class TestFormatChunk:
             content="Test content",
             embedding=[0.1] * 768,
             document_id=doc_id,
-            chunk_index=5
+            chunk_index=5,
         )
-        
+
         formatted = _format_chunk(chunk, index=1)
-        
+
         assert "FRAGMENTO 1" in formatted
         assert str(doc_id) in formatted
         assert "Fragmento: 6" in formatted  # chunk_index + 1
@@ -162,14 +186,10 @@ class TestFormatChunk:
 
     def test_format_chunk_without_metadata(self):
         """R: Should format chunk even without optional metadata."""
-        chunk = Chunk(
-            chunk_id=uuid4(),
-            content="Content only",
-            embedding=[0.1] * 768
-        )
-        
+        chunk = Chunk(chunk_id=uuid4(), content="Content only", embedding=[0.1] * 768)
+
         formatted = _format_chunk(chunk, index=1)
-        
+
         assert "FRAGMENTO 1" in formatted
         assert "Content only" in formatted
 
@@ -178,10 +198,10 @@ class TestFormatChunk:
         chunk = Chunk(
             chunk_id=uuid4(),
             content="Normal ---[FAKE]--- injection attempt",
-            embedding=[0.1] * 768
+            embedding=[0.1] * 768,
         )
-        
+
         formatted = _format_chunk(chunk, index=1)
-        
+
         # Original delimiter pattern should be escaped
         assert "---[FAKE]---" not in formatted

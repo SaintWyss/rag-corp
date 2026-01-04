@@ -30,7 +30,7 @@ describe("Home Page", () => {
     it("renders the submit button", () => {
         render(<Home />);
         expect(
-            screen.getByRole("button", { name: /preguntar/i })
+            screen.getByRole("button", { name: /enviar consulta/i })
         ).toBeInTheDocument();
     });
 });

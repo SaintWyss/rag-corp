@@ -40,12 +40,12 @@ def chunk_semantically(
 ) -> List[SemanticChunk]:
     """
     Split text into semantic chunks based on document structure.
-    
+
     Args:
         text: Document text (supports markdown)
         max_chunk_size: Maximum chunk size in characters
         preserve_structure: If True, respect headers and sections
-    
+
     Returns:
         List of SemanticChunk objects
     """
@@ -58,16 +58,17 @@ def chunk_semantically(
 
     # Extract code blocks first (preserve them intact)
     code_blocks = []
+
     def save_code(match):
         code_blocks.append(match.group(0))
         return f"\x00CODE_{len(code_blocks) - 1}\x00"
-    
+
     text_without_code = CODE_BLOCK.sub(save_code, text)
 
     # Split by headers if preserving structure
     if preserve_structure:
         parts = MARKDOWN_HEADER.split(text_without_code)
-        
+
         # parts = [before_first_header, level1, title1, content1, level2, title2, content2, ...]
         i = 0
         while i < len(parts):
@@ -84,21 +85,25 @@ def chunk_semantically(
                     title = parts[i + 1]
                     content = parts[i + 2].strip()
                     current_section = title.strip()
-                    
+
                     # Add header as own chunk if small
                     header_text = f"{'#' * len(level)} {title}"
                     if content:
-                        chunks.extend(_split_section(
-                            f"{header_text}\n\n{content}",
-                            current_section,
-                            max_chunk_size,
-                        ))
+                        chunks.extend(
+                            _split_section(
+                                f"{header_text}\n\n{content}",
+                                current_section,
+                                max_chunk_size,
+                            )
+                        )
                     else:
-                        chunks.append(SemanticChunk(
-                            content=header_text,
-                            section=current_section,
-                            chunk_type="header",
-                        ))
+                        chunks.append(
+                            SemanticChunk(
+                                content=header_text,
+                                section=current_section,
+                                chunk_type="header",
+                            )
+                        )
                     i += 3
                 else:
                     break
@@ -122,39 +127,43 @@ def _split_section(
     """Split a section into paragraph-level chunks."""
     chunks = []
     paragraphs = PARAGRAPH_BREAK.split(text)
-    
+
     current_chunk = ""
     for para in paragraphs:
         para = para.strip()
         if not para:
             continue
-        
+
         # Determine chunk type
         chunk_type = "paragraph"
         if LIST_ITEM.match(para):
             chunk_type = "list"
         elif para.startswith("```"):
             chunk_type = "code"
-        
+
         # Would adding this paragraph exceed max size?
         if current_chunk and len(current_chunk) + len(para) + 2 > max_size:
-            chunks.append(SemanticChunk(
-                content=current_chunk.strip(),
-                section=section,
-                chunk_type=chunk_type,
-            ))
+            chunks.append(
+                SemanticChunk(
+                    content=current_chunk.strip(),
+                    section=section,
+                    chunk_type=chunk_type,
+                )
+            )
             current_chunk = para
         else:
             current_chunk = f"{current_chunk}\n\n{para}" if current_chunk else para
-    
+
     # Don't forget the last chunk
     if current_chunk.strip():
-        chunks.append(SemanticChunk(
-            content=current_chunk.strip(),
-            section=section,
-            chunk_type="paragraph",
-        ))
-    
+        chunks.append(
+            SemanticChunk(
+                content=current_chunk.strip(),
+                section=section,
+                chunk_type="paragraph",
+            )
+        )
+
     return chunks
 
 

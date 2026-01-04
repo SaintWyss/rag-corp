@@ -18,7 +18,11 @@ Notes:
 
 import pytest
 
-from app.infrastructure.text.chunker import chunk_text, SimpleTextChunker, _find_best_split
+from app.infrastructure.text.chunker import (
+    chunk_text,
+    SimpleTextChunker,
+    _find_best_split,
+)
 
 
 @pytest.mark.unit
@@ -85,9 +89,9 @@ class TestChunkTextNaturalBoundaries:
         """R: Should prefer splitting at paragraph boundaries (double newline)."""
         # Create text with clear paragraph breaks
         text = "Paragraph one with content.\n\nParagraph two with more content.\n\nParagraph three."
-        
+
         chunks = chunk_text(text, chunk_size=40, overlap=10)
-        
+
         # Should split at \n\n rather than mid-word
         assert len(chunks) >= 2
         # First chunk should end cleanly (not mid-word)
@@ -96,31 +100,31 @@ class TestChunkTextNaturalBoundaries:
     def test_chunk_prefers_newline_over_mid_word(self):
         """R: Should prefer splitting at newlines over mid-word."""
         text = "First line content here.\nSecond line content.\nThird line."
-        
+
         chunks = chunk_text(text, chunk_size=30, overlap=5)
-        
+
         # Check chunks don't end mid-word (unless unavoidable)
         assert len(chunks) >= 2
 
     def test_chunk_prefers_sentence_boundaries(self):
         """R: Should prefer splitting at sentence boundaries."""
         text = "First sentence here. Second sentence follows. Third sentence ends."
-        
+
         chunks = chunk_text(text, chunk_size=30, overlap=5)
-        
+
         assert len(chunks) >= 2
         # Chunks should tend to end at periods
         for chunk in chunks[:-1]:  # Except last chunk
             # Should end at period or be a clean boundary
-            assert chunk.rstrip().endswith('.') or len(chunk) < 30
+            assert chunk.rstrip().endswith(".") or len(chunk) < 30
 
     def test_chunk_falls_back_to_character_split_no_separators(self):
         """R: Should fall back to character split when no natural boundaries."""
         # Text without any separators
         text = "A" * 1000
-        
+
         chunks = chunk_text(text, chunk_size=300, overlap=50)
-        
+
         # Should still chunk correctly
         assert len(chunks) >= 3
         assert all(len(c) <= 300 for c in chunks)
@@ -133,9 +137,9 @@ Second paragraph starts here.
 This has a line break.
 
 Third paragraph is short."""
-        
+
         chunks = chunk_text(text, chunk_size=60, overlap=10)
-        
+
         assert len(chunks) >= 2
         # All chunks should be stripped
         assert all(c == c.strip() for c in chunks)
@@ -148,28 +152,28 @@ class TestFindBestSplit:
     def test_find_split_at_paragraph(self):
         """R: Should find paragraph boundary as best split."""
         text = "Some text here.\n\nMore text after."
-        
+
         # Target is in middle, should find \n\n
         result = _find_best_split(text, target=20, window=20)
-        
+
         # Should return position after \n\n (which is at index 15+2=17)
         assert result == 17  # After ".\n\n"
 
     def test_find_split_at_newline(self):
         """R: Should find newline if no paragraph break."""
         text = "Line one content.\nLine two content."
-        
+
         result = _find_best_split(text, target=20, window=15)
-        
+
         # Should return position after \n
         assert result == 18  # After ".\n"
 
     def test_find_split_returns_target_if_no_separator(self):
         """R: Should return target if no separator found."""
         text = "AAAAAAAAAAAAAAAAAAAAAAAAA"
-        
+
         result = _find_best_split(text, target=10, window=5)
-        
+
         assert result == 10  # No separator, return target
 
 
@@ -212,7 +216,6 @@ class TestSimpleTextChunker:
 
     def test_chunker_conforms_to_protocol(self):
         """R: Should implement TextChunkerService protocol."""
-        from app.domain.services import TextChunkerService
 
         chunker = SimpleTextChunker()
 

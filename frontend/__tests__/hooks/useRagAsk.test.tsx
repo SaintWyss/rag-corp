@@ -6,9 +6,17 @@ jest.mock("@contracts/src/generated", () => ({
     askV1AskPost: jest.fn(),
 }));
 
+import type { askV1AskPostResponse } from "@contracts/src/generated";
 import { askV1AskPost } from "@contracts/src/generated";
 
 const mockAskApi = askV1AskPost as jest.MockedFunction<typeof askV1AskPost>;
+const makeResponse = (
+    status: number,
+    data: askV1AskPostResponse["data"] = { answer: "", sources: [] }
+): askV1AskPostResponse => ({
+    status,
+    data,
+});
 
 describe("useRagAsk Hook", () => {
     beforeEach(() => {
@@ -46,11 +54,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles 401 unauthorized error", async () => {
-        mockAskApi.mockResolvedValueOnce({
-            status: 401,
-            data: null,
-            headers: new Headers(),
-        } as any);
+        mockAskApi.mockResolvedValueOnce(makeResponse(401));
 
         const { result } = renderHook(() => useRagAsk());
 
@@ -66,10 +70,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles 429 rate limit error", async () => {
-        mockAskApi.mockResolvedValueOnce({
-            status: 429,
-            data: null,
-        } as any);
+        mockAskApi.mockResolvedValueOnce(makeResponse(429));
 
         const { result } = renderHook(() => useRagAsk());
 
@@ -85,11 +86,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles 503 service unavailable", async () => {
-        mockAskApi.mockResolvedValueOnce({
-            status: 503,
-            data: null,
-            headers: new Headers(),
-        } as any);
+        mockAskApi.mockResolvedValueOnce(makeResponse(503));
 
         const { result } = renderHook(() => useRagAsk());
 
@@ -105,14 +102,12 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles successful response", async () => {
-        mockAskApi.mockResolvedValueOnce({
-            status: 200,
-            data: {
+        mockAskApi.mockResolvedValueOnce(
+            makeResponse(200, {
                 answer: "Test answer",
                 sources: ["source1.pdf", "source2.pdf"],
-            },
-            headers: new Headers(),
-        } as any);
+            })
+        );
 
         const { result } = renderHook(() => useRagAsk());
 

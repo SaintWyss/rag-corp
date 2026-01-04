@@ -29,9 +29,9 @@ Notes:
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
-from ...domain.entities import QueryResult, Chunk
+from ...domain.entities import QueryResult
 from ...domain.repositories import DocumentRepository
 from ...domain.services import EmbeddingService, LLMService
 from ...timing import StageTimings
@@ -43,11 +43,12 @@ from ..context_builder import ContextBuilder, get_context_builder
 class AnswerQueryInput:
     """
     R: Input data for AnswerQuery use case.
-    
+
     Attributes:
         query: User's natural language question
         top_k: Number of similar chunks to retrieve (default: 5)
     """
+
     query: str
     top_k: int = 5
 
@@ -55,21 +56,21 @@ class AnswerQueryInput:
 class AnswerQueryUseCase:
     """
     R: Use case for complete RAG flow (retrieval + generation).
-    
+
     This is the main business logic for answering user questions
     using retrieved context from the document repository.
     """
-    
+
     def __init__(
         self,
         repository: DocumentRepository,
         embedding_service: EmbeddingService,
         llm_service: LLMService,
-        context_builder: Optional[ContextBuilder] = None
+        context_builder: Optional[ContextBuilder] = None,
     ):
         """
         R: Initialize use case with injected dependencies.
-        
+
         Args:
             repository: Document repository for chunk retrieval
             embedding_service: Service for generating embeddings
@@ -80,17 +81,17 @@ class AnswerQueryUseCase:
         self.embedding_service = embedding_service
         self.llm_service = llm_service
         self.context_builder = context_builder or get_context_builder()
-    
+
     def execute(self, input_data: AnswerQueryInput) -> QueryResult:
         """
         R: Execute RAG flow: embed query → retrieve chunks → generate answer.
-        
+
         Args:
             input_data: Query and configuration (top_k)
-        
+
         Returns:
             QueryResult with generated answer and source chunks
-        
+
         Business Rules:
             1. If no chunks found, return "not found" message
             2. Context is assembled with metadata for grounding
@@ -98,10 +99,10 @@ class AnswerQueryUseCase:
         """
         # R: Initialize timing measurement
         timings = StageTimings()
-        
+
         # R: Get prompt version for logging
-        prompt_version = getattr(self.llm_service, 'prompt_version', 'unknown')
-        
+        prompt_version = getattr(self.llm_service, "prompt_version", "unknown")
+
         if input_data.top_k <= 0:
             timing_data = timings.to_dict()
             return QueryResult(
@@ -113,21 +114,20 @@ class AnswerQueryUseCase:
                     "chunks_found": 0,
                     "context_chars": 0,
                     "prompt_version": prompt_version,
-                    **timing_data
-                }
+                    **timing_data,
+                },
             )
-        
+
         # R: STEP 1 - Generate query embedding
         with timings.measure("embed"):
             query_embedding = self.embedding_service.embed_query(input_data.query)
-        
+
         # R: STEP 2 - Retrieve similar chunks from repository
         with timings.measure("retrieve"):
             chunks = self.repository.find_similar_chunks(
-                embedding=query_embedding,
-                top_k=input_data.top_k
+                embedding=query_embedding, top_k=input_data.top_k
             )
-        
+
         # R: STEP 3 - Assemble context from retrieved chunks
         if not chunks:
             # R: Business rule: If no relevant chunks, return fallback message
@@ -137,8 +137,8 @@ class AnswerQueryUseCase:
                 extra={
                     "context_chars": 0,
                     "prompt_version": prompt_version,
-                    **timing_data
-                }
+                    **timing_data,
+                },
             )
             return QueryResult(
                 answer="No encontré documentos relacionados a tu pregunta.",
@@ -149,24 +149,23 @@ class AnswerQueryUseCase:
                     "chunks_found": 0,
                     "context_chars": 0,
                     "prompt_version": prompt_version,
-                    **timing_data
-                }
+                    **timing_data,
+                },
             )
-        
+
         # R: Build context with metadata using ContextBuilder
         context, chunks_used = self.context_builder.build(chunks)
         context_chars = len(context)
-        
+
         # R: STEP 4 - Generate answer using LLM
         with timings.measure("llm"):
             answer = self.llm_service.generate_answer(
-                query=input_data.query,
-                context=context
+                query=input_data.query, context=context
             )
-        
+
         # R: Get final timing data
         timing_data = timings.to_dict()
-        
+
         # R: Log successful query with extended fields
         logger.info(
             "query answered",
@@ -176,12 +175,13 @@ class AnswerQueryUseCase:
                 "context_chars": context_chars,
                 "prompt_version": prompt_version,
                 **timing_data,
-            }
+            },
         )
-        
+
         # R: Record metrics (optional, lazy import)
         try:
             from ...metrics import record_stage_metrics
+
             record_stage_metrics(
                 embed_seconds=timing_data.get("embed_ms", 0) / 1000,
                 retrieve_seconds=timing_data.get("retrieve_ms", 0) / 1000,
@@ -189,7 +189,7 @@ class AnswerQueryUseCase:
             )
         except ImportError:
             pass
-        
+
         # R: Return structured result with answer and sources
         return QueryResult(
             answer=answer,
@@ -202,5 +202,5 @@ class AnswerQueryUseCase:
                 "context_chars": context_chars,
                 "prompt_version": prompt_version,
                 **timing_data,
-            }
+            },
         )

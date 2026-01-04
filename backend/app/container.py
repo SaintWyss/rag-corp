@@ -45,7 +45,7 @@ from .application.use_cases import (
 def get_document_repository() -> DocumentRepository:
     """
     R: Get singleton instance of document repository.
-    
+
     Returns:
         PostgreSQL implementation of DocumentRepository
     """
@@ -57,7 +57,7 @@ def get_document_repository() -> DocumentRepository:
 def get_embedding_service() -> EmbeddingService:
     """
     R: Get singleton instance of embedding service.
-    
+
     Returns:
         Google implementation of EmbeddingService
     """
@@ -69,7 +69,7 @@ def get_embedding_service() -> EmbeddingService:
 def get_llm_service() -> LLMService:
     """
     R: Get singleton instance of LLM service.
-    
+
     Returns:
         Google implementation of LLMService
     """
@@ -81,9 +81,9 @@ def get_llm_service() -> LLMService:
 def get_text_chunker() -> TextChunkerService:
     """
     R: Get singleton instance of text chunker.
-    
+
     Reads chunk_size and chunk_overlap from Settings.
-    
+
     Returns:
         SimpleTextChunker implementation with configured params
     """
@@ -102,7 +102,7 @@ def get_answer_query_use_case() -> AnswerQueryUseCase:
     return AnswerQueryUseCase(
         repository=get_document_repository(),
         embedding_service=get_embedding_service(),
-        llm_service=get_llm_service()
+        llm_service=get_llm_service(),
     )
 
 

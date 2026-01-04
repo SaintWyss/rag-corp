@@ -57,21 +57,21 @@ def paginate(
 ) -> Page[T]:
     """
     Create paginated response from items list.
-    
+
     Args:
         items: Full or page-sized list of items
         limit: Page size
         cursor: Current cursor (if any)
         total: Total count (optional)
-    
+
     Returns:
         Page with items and pagination metadata
     """
     offset = decode_cursor(cursor) if cursor else 0
-    
+
     has_next = len(items) > limit
     page_items = items[:limit]
-    
+
     return Page(
         items=page_items,
         page_info=PageInfo(

@@ -7,17 +7,38 @@
   "paths": {
     "/v1/ingest/text": {
       "post": {
+        "tags": [
+          "ingest"
+        ],
         "summary": "Ingest Text",
         "operationId": "ingest_text_v1_ingest_text_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/IngestTextReq"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -43,19 +64,100 @@
         }
       }
     },
+    "/v1/ingest/batch": {
+      "post": {
+        "tags": [
+          "ingest"
+        ],
+        "summary": "Ingest Batch",
+        "description": "Ingest multiple documents in a single request.\n\nProcesses up to 10 documents sequentially.\nReturns results for all successfully ingested documents.",
+        "operationId": "ingest_batch_v1_ingest_batch_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestBatchReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestBatchRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/query": {
       "post": {
+        "tags": [
+          "query"
+        ],
         "summary": "Query",
         "operationId": "query_v1_query_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/QueryReq"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -83,18 +185,281 @@
     },
     "/v1/ask": {
       "post": {
+        "tags": [
+          "query"
+        ],
         "summary": "Ask",
         "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.",
         "operationId": "ask_v1_ask_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/QueryReq"
               }
             }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskRes"
+                }
+              }
+            }
           },
-          "required": true
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingest/text": {
+      "post": {
+        "tags": [
+          "v1",
+          "ingest"
+        ],
+        "summary": "Ingest Text",
+        "operationId": "ingest_text_api_v1_ingest_text_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestTextReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestTextRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingest/batch": {
+      "post": {
+        "tags": [
+          "v1",
+          "ingest"
+        ],
+        "summary": "Ingest Batch",
+        "description": "Ingest multiple documents in a single request.\n\nProcesses up to 10 documents sequentially.\nReturns results for all successfully ingested documents.",
+        "operationId": "ingest_batch_api_v1_ingest_batch_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestBatchReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestBatchRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/query": {
+      "post": {
+        "tags": [
+          "v1",
+          "query"
+        ],
+        "summary": "Query",
+        "operationId": "query_api_v1_query_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ask": {
+      "post": {
+        "tags": [
+          "v1",
+          "query"
+        ],
+        "summary": "Ask",
+        "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.",
+        "operationId": "ask_api_v1_ask_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryReq"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
@@ -123,8 +488,47 @@
     "/healthz": {
       "get": {
         "summary": "Healthz",
-        "description": "R: Enhanced health check that verifies database connectivity.\n\nReturns:\n    ok: True if all systems operational\n    db: \"connected\" or \"disconnected\"",
+        "description": "R: Enhanced health check that verifies system dependencies.\n\nArgs:\n    full: If True, also check Google API connectivity (slower)\n\nReturns:\n    ok: True if all checked systems operational\n    db: \"connected\" or \"disconnected\"\n    google: \"available\", \"unavailable\", or \"disabled\" (only with full=true)\n    request_id: Correlation ID for this request",
         "operationId": "healthz_healthz_get",
+        "parameters": [
+          {
+            "name": "full",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Full"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "description": "R: Expose Prometheus metrics.\n\nReturns:\n    Prometheus text format metrics",
+        "operationId": "metrics_metrics_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -174,31 +578,80 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IngestBatchReq": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/IngestTextReq"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Documents",
+            "description": "List of documents to ingest (1-10)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "title": "IngestBatchReq"
+      },
+      "IngestBatchRes": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/IngestTextRes"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "title": "Total Chunks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "total_chunks"
+        ],
+        "title": "IngestBatchRes"
+      },
       "IngestTextReq": {
         "properties": {
           "title": {
             "type": "string",
-            "title": "Title"
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "description": "Document title (1-200 chars)"
           },
           "text": {
             "type": "string",
-            "title": "Text"
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Full document text to be chunked (1-100,000 chars)"
           },
           "source": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Source"
+            "title": "Source",
+            "description": "Optional source URL or identifier (max 500 chars)"
           },
           "metadata": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Metadata"
+            "title": "Metadata",
+            "description": "Additional custom metadata (JSONB)"
           }
         },
         "type": "object",
@@ -261,11 +714,17 @@
         "properties": {
           "query": {
             "type": "string",
-            "title": "Query"
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "description": "User's natural language question (1-2,000 chars)"
           },
           "top_k": {
             "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Top K",
+            "description": "Number of similar chunks to retrieve (1-20)",
             "default": 5
           }
         },
@@ -324,6 +783,19 @@
         ],
         "title": "ValidationError"
       }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API key with appropriate scope (ingest, ask, metrics)"
+      }
     }
-  }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ]
 }

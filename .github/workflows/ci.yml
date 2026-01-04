@@ -106,6 +106,9 @@ jobs:
 
   contracts-check:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/ragcorp_test
+      GOOGLE_API_KEY: fake-key-for-tests
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -119,7 +122,7 @@ jobs:
           node-version: "20"
       - run: |
           cd backend && pip install -r requirements.txt
-          python scripts/export_openapi.py
-      - run: |
-          cd shared/contracts && pnpm install && pnpm generate
+          python scripts/export_openapi.py --out ../shared/contracts/openapi.json
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm contracts:gen
       - run: git diff --exit-code shared/contracts/

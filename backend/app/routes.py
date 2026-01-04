@@ -20,6 +20,7 @@ Notes:
   - Business logic lives in application/use_cases
   - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
@@ -46,25 +47,28 @@ router = APIRouter()
 # R: Limits are loaded from Settings at module load time for Pydantic schema
 _settings = get_settings()
 
+
 class IngestTextReq(BaseModel):
     title: str = Field(
         ...,
         min_length=1,
         max_length=_settings.max_title_chars,
-        description="Document title (1-200 chars)"
+        description="Document title (1-200 chars)",
     )
     text: str = Field(
         ...,
         min_length=1,
         max_length=_settings.max_ingest_chars,
-        description="Full document text to be chunked (1-100,000 chars)"
+        description="Full document text to be chunked (1-100,000 chars)",
     )
     source: str | None = Field(
         default=None,
         max_length=_settings.max_source_chars,
-        description="Optional source URL or identifier (max 500 chars)"
+        description="Optional source URL or identifier (max 500 chars)",
     )
-    metadata: dict = Field(default_factory=dict, description="Additional custom metadata (JSONB)")
+    metadata: dict = Field(
+        default_factory=dict, description="Additional custom metadata (JSONB)"
+    )
 
     @field_validator("title", "text")
     @classmethod
@@ -72,15 +76,18 @@ class IngestTextReq(BaseModel):
         """Trim leading/trailing whitespace."""
         return v.strip()
 
+
 # R: Response model for text ingestion (confirmation)
 class IngestTextRes(BaseModel):
     document_id: UUID  # R: Unique identifier of stored document
     chunks: int  # R: Number of chunks created from document
 
+
 # R: Response model for batch ingestion
 class IngestBatchRes(BaseModel):
     documents: list[IngestTextRes]  # R: List of ingested documents
     total_chunks: int  # R: Total chunks created across all documents
+
 
 # R: Request model for batch ingestion
 class IngestBatchReq(BaseModel):
@@ -88,8 +95,9 @@ class IngestBatchReq(BaseModel):
         ...,
         min_length=1,
         max_length=10,
-        description="List of documents to ingest (1-10)"
+        description="List of documents to ingest (1-10)",
     )
+
 
 # R: Endpoint to ingest documents into the RAG system
 @router.post("/ingest/text", response_model=IngestTextRes, tags=["ingest"])
@@ -111,6 +119,7 @@ def ingest_text(
         chunks=result.chunks_created,
     )
 
+
 # R: Endpoint for batch document ingestion
 @router.post("/ingest/batch", response_model=IngestBatchRes, tags=["ingest"])
 def ingest_batch(
@@ -120,13 +129,13 @@ def ingest_batch(
 ):
     """
     Ingest multiple documents in a single request.
-    
+
     Processes up to 10 documents sequentially.
     Returns results for all successfully ingested documents.
     """
     results = []
     total_chunks = 0
-    
+
     for doc in req.documents:
         result = use_case.execute(
             IngestDocumentInput(
@@ -136,13 +145,16 @@ def ingest_batch(
                 metadata=doc.metadata,
             )
         )
-        results.append(IngestTextRes(
-            document_id=result.document_id,
-            chunks=result.chunks_created,
-        ))
+        results.append(
+            IngestTextRes(
+                document_id=result.document_id,
+                chunks=result.chunks_created,
+            )
+        )
         total_chunks += result.chunks_created
-    
+
     return IngestBatchRes(documents=results, total_chunks=total_chunks)
+
 
 # R: Request model for queries (shared by /query and /ask endpoints)
 class QueryReq(BaseModel):
@@ -150,13 +162,13 @@ class QueryReq(BaseModel):
         ...,
         min_length=1,
         max_length=_settings.max_query_chars,
-        description="User's natural language question (1-2,000 chars)"
+        description="User's natural language question (1-2,000 chars)",
     )
     top_k: int = Field(
         default=5,
         ge=1,
         le=_settings.max_top_k,
-        description="Number of similar chunks to retrieve (1-20)"
+        description="Number of similar chunks to retrieve (1-20)",
     )
 
     @field_validator("query")
@@ -165,6 +177,7 @@ class QueryReq(BaseModel):
         """Trim leading/trailing whitespace from query."""
         return v.strip()
 
+
 # R: Match model representing a single similar chunk
 class Match(BaseModel):
     chunk_id: UUID  # R: Unique chunk identifier
@@ -172,9 +185,11 @@ class Match(BaseModel):
     content: str  # R: Chunk text content
     score: float  # R: Similarity score (0-1, higher is better)
 
+
 # R: Response model for semantic search (retrieval only)
 class QueryRes(BaseModel):
     matches: list[Match]  # R: List of similar chunks ordered by relevance
+
 
 # R: Endpoint for semantic search (retrieval without generation)
 @router.post("/query", response_model=QueryRes, tags=["query"])
@@ -198,10 +213,12 @@ def query(
         )
     return QueryRes(matches=matches)
 
+
 # R: Response model for RAG (retrieval + generation)
 class AskRes(BaseModel):
     answer: str  # R: Generated answer from LLM
     sources: list[str]  # R: Retrieved chunks used as context
+
 
 # R: Endpoint for complete RAG flow (retrieval + generation) - REFACTORED with Use Case
 @router.post("/ask", response_model=AskRes, tags=["query"])
@@ -212,24 +229,18 @@ def ask(
 ):
     """
     R: RAG endpoint using Clean Architecture (Use Case pattern).
-    
+
     This endpoint demonstrates the architecture improvement:
     - Business logic in use case (testable, framework-independent)
     - Dependency injection via FastAPI Depends
     - Separation of concerns (HTTP ↔ Business Logic)
-    
+
     Uses the same query contract as /query with a generation step.
     """
     # R: Execute use case with input data
-    result = use_case.execute(
-        AnswerQueryInput(
-            query=req.query,
-            top_k=req.top_k
-        )
-    )
-    
+    result = use_case.execute(AnswerQueryInput(query=req.query, top_k=req.top_k))
+
     # R: Convert domain result to HTTP response
     return AskRes(
-        answer=result.answer,
-        sources=[chunk.content for chunk in result.chunks]
+        answer=result.answer, sources=[chunk.content for chunk in result.chunks]
     )

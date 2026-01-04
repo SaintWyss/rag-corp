@@ -29,7 +29,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
-    
+
     Attributes:
         database_url: PostgreSQL connection string
         google_api_key: Google Gemini API key
@@ -49,35 +49,35 @@ class Settings(BaseSettings):
         metrics_require_auth: Require auth for /metrics (default: False)
         cors_allow_credentials: Allow cookies cross-origin (default: False)
     """
-    
+
     # Required (no defaults)
     database_url: str
     google_api_key: str
-    
+
     # CORS configuration
     allowed_origins: str = "http://localhost:3000"
-    
+
     # Chunking configuration (defaults match current behavior)
     chunk_size: int = 900
     chunk_overlap: int = 120
-    
+
     # API limits (defaults match current implicit behavior)
     max_top_k: int = 20
     max_ingest_chars: int = 100_000
     max_query_chars: int = 2_000
     max_title_chars: int = 200
     max_source_chars: int = 500
-    
+
     # Observability
     otel_enabled: bool = False
 
     # Security - API Keys (JSON: {"key": ["scope1", "scope2"], ...})
     api_keys_config: str = ""
-    
+
     # Security - Rate Limiting
     rate_limit_rps: float = 10.0
     rate_limit_burst: int = 20
-    
+
     # Security - Hardening
     max_body_bytes: int = 10 * 1024 * 1024  # 10MB
     metrics_require_auth: bool = False
@@ -140,7 +140,7 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """
     Get singleton Settings instance.
-    
+
     Raises:
         ValidationError: If required env vars are missing or invalid
     """

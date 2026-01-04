@@ -37,7 +37,7 @@ class CacheEntry:
 class EmbeddingCache:
     """
     Thread-safe LRU cache for embeddings.
-    
+
     Attributes:
         max_size: Maximum number of cached embeddings
         ttl_seconds: Time-to-live for cache entries
@@ -59,7 +59,7 @@ class EmbeddingCache:
     def get(self, text: str) -> Optional[List[float]]:
         """
         Get cached embedding for text.
-        
+
         Returns:
             Embedding if found and not expired, None otherwise.
         """
@@ -79,7 +79,7 @@ class EmbeddingCache:
     def set(self, text: str, embedding: List[float]) -> None:
         """
         Cache an embedding.
-        
+
         Evicts oldest entry if cache is full.
         """
         key = self._hash_text(text)

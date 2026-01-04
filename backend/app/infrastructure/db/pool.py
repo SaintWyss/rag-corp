@@ -39,15 +39,16 @@ _pool_lock = threading.Lock()
 def _configure_connection(conn) -> None:
     """
     R: Configure a connection from the pool.
-    
+
     Called for each connection when acquired from pool.
     Registers pgvector type and sets statement_timeout.
     """
     # R: Register vector type for this connection
     register_vector(conn)
-    
+
     # R: Set statement timeout if configured
     from ...config import get_settings
+
     timeout_ms = get_settings().db_statement_timeout_ms
     if timeout_ms > 0:
         conn.execute(f"SET statement_timeout = {timeout_ms}")
@@ -56,29 +57,29 @@ def _configure_connection(conn) -> None:
 def init_pool(database_url: str, min_size: int, max_size: int) -> ConnectionPool:
     """
     R: Initialize the connection pool.
-    
+
     Args:
         database_url: PostgreSQL connection string
         min_size: Minimum connections to maintain
         max_size: Maximum connections allowed
-    
+
     Returns:
         Initialized ConnectionPool
-    
+
     Raises:
         RuntimeError: If pool already initialized
     """
     global _pool
-    
+
     with _pool_lock:
         if _pool is not None:
             raise RuntimeError("Connection pool already initialized")
-        
+
         logger.info(
             "Initializing connection pool",
-            extra={"min_size": min_size, "max_size": max_size}
+            extra={"min_size": min_size, "max_size": max_size},
         )
-        
+
         _pool = ConnectionPool(
             conninfo=database_url,
             min_size=min_size,
@@ -86,22 +87,22 @@ def init_pool(database_url: str, min_size: int, max_size: int) -> ConnectionPool
             configure=_configure_connection,
             open=True,
         )
-        
+
         logger.info(
             "Connection pool initialized",
-            extra={"min_size": min_size, "max_size": max_size}
+            extra={"min_size": min_size, "max_size": max_size},
         )
-        
+
         return _pool
 
 
 def get_pool() -> ConnectionPool:
     """
     R: Get the connection pool singleton.
-    
+
     Returns:
         ConnectionPool instance
-    
+
     Raises:
         RuntimeError: If pool not initialized
     """
@@ -113,11 +114,11 @@ def get_pool() -> ConnectionPool:
 def close_pool() -> None:
     """
     R: Close the connection pool.
-    
+
     Safe to call even if pool not initialized.
     """
     global _pool
-    
+
     with _pool_lock:
         if _pool is not None:
             logger.info("Closing connection pool")
@@ -129,11 +130,11 @@ def close_pool() -> None:
 def reset_pool() -> None:
     """
     R: Reset pool for testing.
-    
+
     Closes existing pool if any, allowing re-initialization.
     """
     global _pool
-    
+
     with _pool_lock:
         if _pool is not None:
             _pool.close()

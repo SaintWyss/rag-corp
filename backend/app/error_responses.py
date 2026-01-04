@@ -60,12 +60,16 @@ class AppHTTPException(HTTPException):
 
 
 # Pre-defined error factories
-def validation_error(detail: str, errors: list[dict[str, Any]] | None = None) -> AppHTTPException:
+def validation_error(
+    detail: str, errors: list[dict[str, Any]] | None = None
+) -> AppHTTPException:
     return AppHTTPException(422, ErrorCode.VALIDATION_ERROR, detail, errors)
 
 
 def not_found(resource: str, identifier: str) -> AppHTTPException:
-    return AppHTTPException(404, ErrorCode.NOT_FOUND, f"{resource} '{identifier}' not found")
+    return AppHTTPException(
+        404, ErrorCode.NOT_FOUND, f"{resource} '{identifier}' not found"
+    )
 
 
 def unauthorized(detail: str = "Authentication required") -> AppHTTPException:
@@ -77,13 +81,17 @@ def forbidden(detail: str = "Access denied") -> AppHTTPException:
 
 
 def rate_limited(retry_after: int = 60) -> AppHTTPException:
-    exc = AppHTTPException(429, ErrorCode.RATE_LIMITED, f"Too many requests. Retry after {retry_after}s")
+    exc = AppHTTPException(
+        429, ErrorCode.RATE_LIMITED, f"Too many requests. Retry after {retry_after}s"
+    )
     exc.headers = {"Retry-After": str(retry_after)}
     return exc
 
 
 def payload_too_large(max_size: str) -> AppHTTPException:
-    return AppHTTPException(413, ErrorCode.PAYLOAD_TOO_LARGE, f"Payload exceeds maximum size of {max_size}")
+    return AppHTTPException(
+        413, ErrorCode.PAYLOAD_TOO_LARGE, f"Payload exceeds maximum size of {max_size}"
+    )
 
 
 def internal_error(detail: str = "An unexpected error occurred") -> AppHTTPException:
@@ -91,7 +99,9 @@ def internal_error(detail: str = "An unexpected error occurred") -> AppHTTPExcep
 
 
 def service_unavailable(service: str) -> AppHTTPException:
-    return AppHTTPException(503, ErrorCode.SERVICE_UNAVAILABLE, f"{service} is temporarily unavailable")
+    return AppHTTPException(
+        503, ErrorCode.SERVICE_UNAVAILABLE, f"{service} is temporarily unavailable"
+    )
 
 
 def llm_error(detail: str) -> AppHTTPException:
@@ -107,7 +117,9 @@ def database_error(detail: str = "Database operation failed") -> AppHTTPExceptio
 
 
 # Exception handlers for FastAPI
-async def app_exception_handler(request: Request, exc: AppHTTPException) -> JSONResponse:
+async def app_exception_handler(
+    request: Request, exc: AppHTTPException
+) -> JSONResponse:
     """Handler for AppHTTPException."""
     error = ErrorDetail(
         type=f"https://api.ragcorp.local/errors/{exc.code.value.lower()}",

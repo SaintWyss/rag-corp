@@ -1,7 +1,11 @@
 """Unit tests for embedding cache."""
 
 import time
-from app.infrastructure.cache import EmbeddingCache, get_embedding_cache, reset_embedding_cache
+from app.infrastructure.cache import (
+    EmbeddingCache,
+    get_embedding_cache,
+    reset_embedding_cache,
+)
 
 
 class TestEmbeddingCache:
@@ -20,7 +24,7 @@ class TestEmbeddingCache:
         cache = EmbeddingCache()
         embedding = [0.1, 0.2, 0.3]
         cache.set("test text", embedding)
-        
+
         result = cache.get("test text")
         assert result == embedding
         assert cache.stats["hits"] == 1
@@ -28,10 +32,10 @@ class TestEmbeddingCache:
     def test_ttl_expiration(self):
         cache = EmbeddingCache(ttl_seconds=0.1)
         cache.set("text", [1.0, 2.0])
-        
+
         # Should hit immediately
         assert cache.get("text") is not None
-        
+
         # Wait for expiration
         time.sleep(0.15)
         assert cache.get("text") is None
@@ -41,7 +45,7 @@ class TestEmbeddingCache:
         cache.set("a", [1.0])
         cache.set("b", [2.0])
         cache.set("c", [3.0])  # Should evict "a"
-        
+
         assert cache.stats["size"] == 2
         assert cache.get("a") is None
         assert cache.get("b") is not None

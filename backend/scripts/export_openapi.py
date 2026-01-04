@@ -18,6 +18,7 @@ Notes:
   - Output to shared/contracts/openapi.json
   - Orval consumes this file to generate TypeScript client
 """
+
 import argparse
 import json
 import os
@@ -27,12 +28,22 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from app.main import app
+from app.main import app  # noqa: E402
+
+
+def _resolve_app(candidate):
+    if hasattr(candidate, "openapi"):
+        return candidate
+    wrapped = getattr(candidate, "app", None)
+    if wrapped is not None and hasattr(wrapped, "openapi"):
+        return wrapped
+    raise RuntimeError("FastAPI app not found for OpenAPI export")
+
 
 def main():
     """
     R: CLI entrypoint to export OpenAPI schema.
-    
+
     Usage:
         python scripts/export_openapi.py --out openapi.json
     """
@@ -42,11 +53,12 @@ def main():
     args = p.parse_args()
 
     # R: Generate OpenAPI schema from FastAPI app
-    schema = app.openapi()
-    
+    schema = _resolve_app(app).openapi()
+
     # R: Write schema to file with readable formatting
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(schema, f, ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     main()

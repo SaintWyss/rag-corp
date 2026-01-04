@@ -41,12 +41,12 @@ http_path_var: ContextVar[str] = ContextVar("http_path", default="")
 def get_context_dict() -> dict:
     """
     R: Get current context as dict for log enrichment.
-    
+
     Returns:
         Dict with non-empty context values only
     """
     ctx = {}
-    
+
     if val := request_id_var.get():
         ctx["request_id"] = val
     if val := trace_id_var.get():
@@ -57,7 +57,7 @@ def get_context_dict() -> dict:
         ctx["method"] = val
     if val := http_path_var.get():
         ctx["path"] = val
-    
+
     return ctx
 
 

@@ -49,18 +49,18 @@ def _constant_time_compare(a: str, b: str) -> bool:
 def _parse_keys_config() -> dict[str, list[str]]:
     """
     R: Parse API_KEYS_CONFIG from environment.
-    
+
     Format: JSON object {"key": ["scope1", "scope2"], ...}
     Example: {"secret-key-1": ["ingest", "ask"], "read-only": ["ask"]}
-    
+
     Returns empty dict if not configured (auth disabled).
     """
     from .config import get_settings
-    
+
     config_str = get_settings().api_keys_config
     if not config_str:
         return {}
-    
+
     try:
         config = json.loads(config_str)
         if not isinstance(config, dict):
@@ -90,35 +90,35 @@ def is_auth_enabled() -> bool:
 class APIKeyValidator:
     """
     R: Validates API keys and scopes.
-    
+
     Methods:
         validate_key: Check if key exists (constant-time)
         validate_scope: Check if key has required scope
         get_scopes: Get scopes for a valid key
     """
-    
+
     def __init__(self, keys_config: dict[str, list[str]]):
         self._keys = keys_config
-    
+
     def validate_key(self, key: str) -> bool:
         """R: Check if key is valid using constant-time comparison."""
         if not key:
             return False
-        
+
         # R: Compare against all keys to maintain constant time
         found = False
         for valid_key in self._keys.keys():
             if _constant_time_compare(key, valid_key):
                 found = True
         return found
-    
+
     def get_scopes(self, key: str) -> list[str]:
         """R: Get scopes for a key (empty if invalid)."""
         for valid_key, scopes in self._keys.items():
             if _constant_time_compare(key, valid_key):
                 return scopes
         return []
-    
+
     def validate_scope(self, key: str, required_scope: str) -> bool:
         """R: Check if key has required scope."""
         scopes = self.get_scopes(key)
@@ -132,41 +132,42 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 def require_scope(scope: str) -> Callable:
     """
     R: FastAPI dependency that requires a valid API key with scope.
-    
+
     Usage:
         @router.post("/ingest/text")
         def ingest(req: Request, _: None = Depends(require_scope("ingest"))):
             ...
-    
+
     Raises:
         HTTPException 401: Missing API key
         HTTPException 403: Invalid key or insufficient scope
-    
+
     Returns None if auth is disabled (no keys configured).
     """
+
     async def dependency(
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
         keys_config = get_keys_config()
-        
+
         # R: If no keys configured, auth is disabled
         if not keys_config:
             return None
-        
+
         # R: Missing key -> 401 Unauthorized
         if not api_key:
             logger.warning(
                 "Auth failed: missing API key",
-                extra={"path": request.url.path, "scope": scope}
+                extra={"path": request.url.path, "scope": scope},
             )
             raise HTTPException(
                 status_code=401,
                 detail="Missing API key. Provide X-API-Key header.",
             )
-        
+
         validator = APIKeyValidator(keys_config)
-        
+
         # R: Invalid key -> 403 Forbidden
         if not validator.validate_key(api_key):
             logger.warning(
@@ -175,13 +176,13 @@ def require_scope(scope: str) -> Callable:
                     "key_hash": _hash_key(api_key),
                     "path": request.url.path,
                     "scope": scope,
-                }
+                },
             )
             raise HTTPException(
                 status_code=403,
                 detail="Invalid API key.",
             )
-        
+
         # R: Key without required scope -> 403 Forbidden
         if not validator.validate_scope(api_key, scope):
             logger.warning(
@@ -191,37 +192,38 @@ def require_scope(scope: str) -> Callable:
                     "path": request.url.path,
                     "required_scope": scope,
                     "available_scopes": validator.get_scopes(api_key),
-                }
+                },
             )
             raise HTTPException(
                 status_code=403,
                 detail=f"API key does not have required scope: {scope}",
             )
-        
+
         # R: Store key hash in request state for rate limiting
         request.state.api_key_hash = _hash_key(api_key)
         return None
-    
+
     return dependency
 
 
 def require_metrics_auth() -> Callable:
     """
     R: Optional auth for /metrics endpoint.
-    
+
     Only enforced if METRICS_REQUIRE_AUTH=true.
     """
+
     async def dependency(
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
         from .config import get_settings
-        
+
         if not get_settings().metrics_require_auth:
             return None
-        
+
         # R: Reuse require_scope logic
         await require_scope("metrics")(request, api_key)
         return None
-    
+
     return dependency

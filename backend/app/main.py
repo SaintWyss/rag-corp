@@ -32,7 +32,7 @@ Production Readiness:
 
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response, Depends
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
@@ -42,7 +42,8 @@ from .container import get_document_repository
 from .config import get_settings
 from .middleware import RequestContextMiddleware, BodyLimitMiddleware
 from .rate_limit import RateLimitMiddleware
-from .auth import require_metrics_auth, is_auth_enabled
+from .auth import is_auth_enabled
+from .versioning import include_versioned_routes
 from .infrastructure.db.pool import init_pool, close_pool
 
 
@@ -51,14 +52,14 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle. Validates settings and initializes pool."""
     # This will raise ValidationError if env vars are missing/invalid
     settings = get_settings()
-    
+
     # R: Initialize connection pool
     init_pool(
         database_url=settings.database_url,
         min_size=settings.db_pool_min_size,
         max_size=settings.db_pool_max_size,
     )
-    
+
     logger.info(
         "RAG Corp API starting up",
         extra={
@@ -69,10 +70,10 @@ async def lifespan(app: FastAPI):
             "rate_limit_rps": settings.rate_limit_rps,
             "db_pool_min": settings.db_pool_min_size,
             "db_pool_max": settings.db_pool_max_size,
-        }
+        },
     )
     yield
-    
+
     # R: Close pool on shutdown
     close_pool()
     logger.info("RAG Corp API shutting down")
@@ -95,22 +96,31 @@ app = FastAPI(
     lifespan=lifespan,
     # R: OpenAPI security scheme for API key authentication
     openapi_tags=[
-        {"name": "ingest", "description": "Document ingestion (requires 'ingest' scope)"},
-        {"name": "query", "description": "Semantic search and RAG (requires 'ask' scope)"},
+        {
+            "name": "ingest",
+            "description": "Document ingestion (requires 'ingest' scope)",
+        },
+        {
+            "name": "query",
+            "description": "Semantic search and RAG (requires 'ask' scope)",
+        },
     ],
 )
 
 # R: Add security scheme to OpenAPI
 app.openapi_schema = None  # Force regeneration
 
+
 def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
+    fastapi_app = globals().get("_fastapi_app") or app
+    if fastapi_app.openapi_schema:
+        return fastapi_app.openapi_schema
     from fastapi.openapi.utils import get_openapi
+
     openapi_schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        routes=app.routes,
+        title=fastapi_app.title,
+        version=fastapi_app.version,
+        routes=fastapi_app.routes,
     )
     openapi_schema["components"] = openapi_schema.get("components", {})
     openapi_schema["components"]["securitySchemes"] = {
@@ -123,14 +133,15 @@ def custom_openapi():
     }
     # R: Apply security globally (endpoints can override)
     openapi_schema["security"] = [{"ApiKeyAuth": []}]
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
+    fastapi_app.openapi_schema = openapi_schema
+    return fastapi_app.openapi_schema
+
 
 app.openapi = custom_openapi
 
 # R: Middleware order (bottom = first to execute):
 # 1. RateLimitMiddleware (ASGI) - checks rate before anything
-# 2. BodyLimitMiddleware - rejects oversized bodies early  
+# 2. BodyLimitMiddleware - rejects oversized bodies early
 # 3. CORSMiddleware - handles preflight
 # 4. RequestContextMiddleware - sets request_id
 
@@ -154,7 +165,6 @@ app.add_middleware(
 app.include_router(router, prefix="/v1")
 
 # R: Register versioned routes (v1, v2)
-from .versioning import include_versioned_routes
 include_versioned_routes(app)
 
 
@@ -163,8 +173,7 @@ include_versioned_routes(app)
 async def database_error_handler(request: Request, exc: DatabaseError):
     """Handle database errors with structured response."""
     logger.error(
-        "Database error",
-        extra={"error_id": exc.error_id, "error_message": exc.message}
+        "Database error", extra={"error_id": exc.error_id, "error_message": exc.message}
     )
     return JSONResponse(
         status_code=503,
@@ -177,7 +186,7 @@ async def embedding_error_handler(request: Request, exc: EmbeddingError):
     """Handle embedding service errors."""
     logger.error(
         "Embedding error",
-        extra={"error_id": exc.error_id, "error_message": exc.message}
+        extra={"error_id": exc.error_id, "error_message": exc.message},
     )
     return JSONResponse(
         status_code=503,
@@ -189,8 +198,7 @@ async def embedding_error_handler(request: Request, exc: EmbeddingError):
 async def llm_error_handler(request: Request, exc: LLMError):
     """Handle LLM service errors."""
     logger.error(
-        "LLM error",
-        extra={"error_id": exc.error_id, "error_message": exc.message}
+        "LLM error", extra={"error_id": exc.error_id, "error_message": exc.message}
     )
     return JSONResponse(
         status_code=503,
@@ -202,8 +210,7 @@ async def llm_error_handler(request: Request, exc: LLMError):
 async def rag_error_handler(request: Request, exc: RAGError):
     """Handle generic RAG errors."""
     logger.error(
-        "RAG error",
-        extra={"error_id": exc.error_id, "error_message": exc.message}
+        "RAG error", extra={"error_id": exc.error_id, "error_message": exc.message}
     )
     return JSONResponse(
         status_code=500,
@@ -239,7 +246,7 @@ def healthz(request: Request, full: bool = False):
         "db": db_status,
         "request_id": getattr(request.state, "request_id", None),
     }
-    
+
     # R: Full mode: also verify Google API connectivity
     if full:
         google_status = _check_google_api()
@@ -254,29 +261,31 @@ def healthz(request: Request, full: bool = False):
 def _check_google_api() -> str:
     """
     R: Check Google API connectivity with a simple embedding call.
-    
+
     Returns:
         "available": API is responding
         "unavailable": API is not responding or erroring
         "disabled": No API key configured
     """
     import os
+
     api_key = os.getenv("GOOGLE_API_KEY")
-    
+
     if not api_key:
         return "disabled"
-    
+
     try:
         import google.generativeai as genai
+
         genai.configure(api_key=api_key)
-        
+
         # R: Minimal API call to verify connectivity (cheap operation)
         resp = genai.embed_content(
             model="models/text-embedding-004",
             content="health check",
-            task_type="retrieval_query"
+            task_type="retrieval_query",
         )
-        
+
         # R: Verify we got a valid response
         if resp and "embedding" in resp and len(resp["embedding"]) > 0:
             return "available"
@@ -296,13 +305,13 @@ def metrics():
         Prometheus text format metrics
     """
     from .metrics import get_metrics_response, is_prometheus_available
-    
+
     if not is_prometheus_available():
         return Response(
             content="# prometheus_client not installed\n",
             media_type="text/plain",
         )
-    
+
     body, content_type = get_metrics_response()
     return Response(content=body, media_type=content_type)
 
