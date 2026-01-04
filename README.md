@@ -1,291 +1,286 @@
 # RAG Corp
 
-> Sistema RAG (Retrieval-Augmented Generation) empresarial con Google Gemini, PostgreSQL + pgvector, y Next.js.
+Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite ingestar documentos, buscarlos semánticamente y obtener respuestas contextuales generadas por LLM. Resuelve el problema de documentación dispersa: consultas en lenguaje natural con respuestas precisas y fuentes citadas, sin enviar documentos completos a APIs externas.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black.svg)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
 
 ---
 
-## 📚 Documentación Completa
+## Features
 
-**👉 [Ir a la Documentación Técnica Completa](doc/README.md)**
-
-Arquitectura, API, runbook local y schema de base de datos.
-
----
-
-## 🎯 ¿Qué es RAG Corp?
-
-RAG Corp es un sistema de búsqueda semántica y generación de respuestas que permite:
-
-- **Ingestar documentos** y dividirlos en fragmentos inteligentes (chunks)
-- **Buscar por similitud semántica** usando embeddings vectoriales (768D)
-- **Generar respuestas contextuales** con Google Gemini basándose en documentos recuperados
-- **Evitar alucinaciones** limitando las respuestas al contexto disponible
-
-### Problema que Resuelve
-
-Las organizaciones tienen documentación dispersa (PDFs, Wikis, Confluence). RAG Corp permite:
-- Consultar en lenguaje natural ("¿Cuántos días de vacaciones tengo?")
-- Obtener respuestas precisas con fuentes citadas
-- Mantener el control sobre los datos (sin enviar documentos completos a APIs externas)
+- ✅ Ingesta de documentos vía API REST (`POST /v1/ingest/text`, `/v1/ingest/batch`)
+- ✅ Chunking inteligente con límites naturales (900 chars, 120 overlap)
+- ✅ Embeddings 768D con Google text-embedding-004
+- ✅ Búsqueda vectorial con PostgreSQL + pgvector (índice IVFFlat)
+- ✅ Generación RAG con Gemini 1.5 Flash y prompts versionados
+- ✅ UI en Next.js con App Router y Tailwind CSS
+- ✅ Contratos tipados (OpenAPI → TypeScript vía Orval)
+- ✅ Clean Architecture (Domain/Application/Infrastructure)
+- ✅ Autenticación por API Key con scopes
+- ✅ Rate limiting configurable (token bucket)
+- ✅ Métricas Prometheus en `/metrics`
+- ✅ Logging estructurado JSON con request_id
 
 ---
 
-## ✨ Features
+## Arquitectura
 
-- ✅ **Ingesta de documentos** vía API REST
-- ✅ **Embeddings de 768 dimensiones** (Google text-embedding-004)
-- ✅ **Búsqueda vectorial** con PostgreSQL + pgvector (IVFFlat index)
-- ✅ **Generación RAG** con Gemini 1.5 Flash
-- ✅ **UI moderna** en Next.js 16 con Tailwind CSS
-- ✅ **Contratos tipados** (OpenAPI → TypeScript vía Orval)
-- ✅ **Docker Compose** para desarrollo local
-- ✅ **Clean Architecture** (use cases para `/ingest`, `/query`, `/ask`)
-- ✅ **Test Suite** documentada (ver `backend/tests`)
+### Componentes
+
+| Componente | Tecnología | Ubicación |
+|------------|------------|-----------|
+| **Backend** | FastAPI + Python 3.11 | `backend/` |
+| **Base de Datos** | PostgreSQL 16 + pgvector 0.8.1 | `infra/postgres/` |
+| **Frontend** | Next.js 16 + TypeScript | `frontend/` |
+| **Contracts** | OpenAPI 3.1 + Orval | `shared/contracts/` |
+| **Embeddings/LLM** | Google Gemini API | Servicios externos |
+
+### Flujo "Ask" (consulta RAG)
+
+```
+1. Usuario envía query → Frontend (useRagAsk hook)
+2. Frontend llama POST /v1/ask → Backend (routes.py)
+3. AnswerQueryUseCase embebe la query → GoogleEmbeddingService
+4. Búsqueda vectorial top-k → PostgresDocumentRepository
+5. ContextBuilder arma contexto con chunks recuperados
+6. GoogleLLMService genera respuesta grounded en contexto
+7. Response con answer + sources → Usuario
+```
+
+### Flujo "Ingest" (ingesta de documentos)
+
+```
+1. Cliente envía documento → POST /v1/ingest/text
+2. IngestDocumentUseCase valida y chunkea → SimpleTextChunker
+3. GoogleEmbeddingService genera embeddings por chunk
+4. PostgresDocumentRepository guarda documento + chunks (transacción atómica)
+5. Response con document_id + chunks_created → Cliente
+```
 
 ---
 
-## 🏗️ Stack Tecnológico
+## Stack
 
-### Backend
-- **FastAPI** (Python 3.11) - Framework web ASGI
-- **PostgreSQL 16** + **pgvector 0.8.1** - Base de datos vectorial
-- **Google Generative AI SDK** - Embeddings + LLM (Gemini)
-- **psycopg 3.2** - Driver PostgreSQL moderno
-
-### Frontend
-- **Next.js 16.1.1** (App Router) - Framework React con SSR
-- **Tailwind CSS 4** - Utilidades de estilo
-- **TypeScript 5** - Tipado estático
-- **Orval** - Generador de cliente HTTP desde OpenAPI
-
-### DevOps
-- **pnpm + Turbo** - Monorepo con caché de builds
-- **Docker Compose** - Orquestación local
-- **OpenAPI 3.1** - Documentación de API
+| Capa | Tecnología |
+|------|------------|
+| API | FastAPI, Pydantic, psycopg 3.2 |
+| DB | PostgreSQL 16, pgvector 0.8.1 |
+| AI | Google Gemini (text-embedding-004, Gemini 1.5 Flash) |
+| Frontend | Next.js 16, TypeScript 5, Tailwind CSS 4 |
+| Contracts | OpenAPI 3.1, Orval |
+| DevOps | Docker Compose, pnpm, Turbo |
 
 ---
 
-## 🚀 Quickstart Local
+## Quickstart Local
 
-### Requisitos Previos
+### Requisitos
 
-- [Node.js 20.9+](https://nodejs.org/) y [pnpm 10+](https://pnpm.io/)
-- [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/)
-- Cuenta de [Google Cloud](https://console.cloud.google.com/) con Gemini API habilitada
+- Docker + Docker Compose
+- Node.js 20.9+ y pnpm 10+
+- Cuenta Google Cloud con Gemini API habilitada
 
-### Paso 1: Clonar y Configurar
+### Variables de Entorno
 
 ```bash
-# Clonar repositorio
-git clone https://github.com/SaintWyss/rag-corp.git
-cd rag-corp
-
-# Copiar template de variables de entorno
 cp .env.example .env
-
-# Editar .env y agregar tu API Key
-# GOOGLE_API_KEY=tu_clave_aqui
 ```
 
-### Paso 2: Instalar Dependencias
+Editar `.env` con:
+
+| Variable | Descripción | Requerida |
+|----------|-------------|-----------|
+| `GOOGLE_API_KEY` | API key de Google Gemini | ✅ |
+| `DATABASE_URL` | Connection string PostgreSQL | Default en compose |
+| `API_KEYS_CONFIG` | JSON con API keys y scopes | Para auth |
+
+### Levantar Servicios
 
 ```bash
+# Instalar dependencias
 pnpm install
-```
 
-### Paso 3: Levantar Infraestructura
-
-```bash
-# Inicia PostgreSQL + pgvector + Backend FastAPI
+# Levantar PostgreSQL (db) + Backend (rag-api)
 pnpm docker:up
 
-# Verificar que servicios estén healthy
+# Esperar ~30s y verificar
 docker compose ps
 ```
 
-### Paso 4: Generar Contratos TypeScript
+### Generar Contratos
 
 ```bash
-# Exporta OpenAPI desde FastAPI
 pnpm contracts:export
-
-# Genera cliente TypeScript con Orval
 pnpm contracts:gen
 ```
 
-### Paso 5: Ejecutar en Modo Desarrollo
+### Ejecutar en Desarrollo
 
 ```bash
 pnpm dev
 ```
 
-**Accesos:**
-- 🌐 Frontend: http://localhost:3000
-- 🔌 API: http://localhost:8000
-- 📚 Docs interactivas: http://localhost:8000/docs
+### Verificar Funcionamiento
+
+```bash
+# Health check
+curl http://localhost:8000/healthz
+# Esperado: {"ok":true,"db":"connected","request_id":"..."}
+
+# Métricas
+curl http://localhost:8000/metrics | head -5
+
+# Ingestar documento
+curl -X POST http://localhost:8000/v1/ingest/text \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Test","text":"RAG Corp es un sistema de búsqueda semántica."}'
+
+# Consulta RAG
+curl -X POST http://localhost:8000/v1/ask \
+  -H "Content-Type: application/json" \
+  -d '{"query":"¿Qué es RAG Corp?","top_k":3}'
+```
+
+### URLs de Acceso
+
+| Servicio | URL |
+|----------|-----|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8000 |
+| Swagger UI | http://localhost:8000/docs |
+| Métricas | http://localhost:8000/metrics |
 
 ---
 
-## 📁 Estructura del Repositorio
+## Scripts Útiles
+
+| Script | Descripción |
+|--------|-------------|
+| `pnpm install` | Instalar dependencias del monorepo |
+| `pnpm dev` | Levantar frontend + backend en modo desarrollo |
+| `pnpm docker:up` | Iniciar PostgreSQL (db) + Backend (rag-api) |
+| `pnpm docker:down` | Detener contenedores y eliminar volúmenes |
+| `pnpm contracts:export` | Exportar OpenAPI desde FastAPI |
+| `pnpm contracts:gen` | Generar cliente TypeScript con Orval |
+| `pnpm build` | Build de producción |
+| `pnpm lint` | Lint del monorepo |
+
+### Backend (Python)
+
+```bash
+cd backend
+pytest -m unit              # Tests unitarios (rápidos)
+pytest -m integration       # Tests de integración (requiere DB)
+pytest --cov=app            # Con cobertura
+```
+
+---
+
+## Estructura del Repo
 
 ```
 rag-corp/
-├── frontend/                   # Next.js 16 (UI)
-│   ├── app/                    # App Router (page.tsx = UI principal)
-│   │   ├── components/         # React components
-│   │   └── hooks/              # Custom hooks (useRagAsk)
-│   ├── next.config.ts          # Proxy /v1/* → backend
-│   └── package.json
-├── backend/                    # FastAPI (API + RAG logic)
+├── backend/                 # FastAPI + lógica RAG
 │   ├── app/
-│   │   ├── main.py             # Entry point + CORS + lifespan
-│   │   ├── routes.py           # Controllers (endpoints HTTP)
-│   │   ├── container.py        # Dependency Injection
-│   │   ├── domain/             # Entidades y contratos del core
-│   │   ├── application/        # Use cases (ingest/query/ask)
-│   │   └── infrastructure/     # Adapters (DB, APIs externas, chunking)
-│   ├── tests/                  # Unit + Integration tests
-│   ├── scripts/
-│   │   └── export_openapi.py
-│   ├── Dockerfile
-│   └── requirements.txt
+│   │   ├── domain/          # Entidades y Protocols
+│   │   ├── application/     # Use cases
+│   │   ├── infrastructure/  # Adapters (DB, APIs, chunking)
+│   │   ├── main.py          # Entry point FastAPI
+│   │   └── routes.py        # Controllers HTTP
+│   └── tests/               # Unit + Integration tests
+├── frontend/                # Next.js UI
+│   ├── app/                 # App Router
+│   └── __tests__/           # Tests frontend
 ├── shared/
-│   └── contracts/              # Contratos compartidos FE/BE
-│       ├── openapi.json        # Schema exportado desde FastAPI
-│       ├── src/generated.ts    # Cliente TypeScript auto-generado
-│       └── orval.config.ts
+│   └── contracts/           # OpenAPI + cliente TS generado
 ├── infra/
-│   └── postgres/
-│       └── init.sql            # Schema inicial (documents + chunks + índice)
-├── doc/                        # 📖 Documentación detallada
-│   ├── README.md               # Índice de documentación
-│   ├── architecture/           # Arquitectura (overview)
-│   ├── api/                    # Documentación de API
-│   ├── data/                   # Schema y base de datos
-│   └── runbook/                # Guía de desarrollo local
-├── compose.yaml                # Docker Compose (db + rag-api)
-├── pnpm-workspace.yaml         # Configuración monorepo
-├── turbo.json                  # Tareas Turbo (dev, build, lint)
-├── .env.example                # Template de variables de entorno
-├── FIXES.md                    # Histórico de fixes críticos
-└── README.md                   # Este archivo
+│   └── postgres/            # init.sql (schema + pgvector)
+├── doc/                     # Documentación técnica
+├── compose.yaml             # Docker Compose desarrollo
+├── compose.prod.yaml        # Docker Compose producción
+└── .env.example             # Template de variables
 ```
 
-### Carpetas Clave
+---
 
-- **`frontend/`**: Interfaz de usuario React/Next.js que consume la API.
-- **`backend/`**: Servidor Python con lógica RAG (ingesta, búsqueda, generación).
-- **`shared/contracts/`**: Single source of truth de tipos compartidos (OpenAPI → TypeScript).
-- **`infra/postgres/`**: DDL y configuración de base de datos vectorial.
-- **`doc/`**: Documentación técnica detallada (arquitectura, API, runbook, data).
+## Documentación
+
+La documentación técnica vive en [`doc/`](doc/README.md):
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Arquitectura](doc/architecture/overview.md) | Capas, flujos, componentes |
+| [API HTTP](doc/api/http-api.md) | Endpoints, auth, errores |
+| [Schema DB](doc/data/postgres-schema.md) | PostgreSQL + pgvector |
+| [Runbook Local](doc/runbook/local-dev.md) | Desarrollo y troubleshooting |
+| [Tests](backend/tests/README.md) | Estructura y ejecución |
 
 ---
 
-## 📚 Documentación Completa
+## Contribución y Calidad
 
-La documentación está organizada en [`/doc`](doc/README.md):
-
-- **[Arquitectura](doc/architecture/overview.md)**: Capas, flujo de datos, componentes
-- **[API HTTP](doc/api/http-api.md)**: Endpoints, contratos, ejemplos, errores
-- **[Base de Datos](doc/data/postgres-schema.md)**: Schema e índices pgvector
-- **[Runbook Local](doc/runbook/local-dev.md)**: Cómo correr y comandos útiles
-- **[Tests](backend/tests/README.md)**: Suite de tests y ejecución
-
----
-
-## 🛣️ Roadmap
-
-### ✅ Completado (v0.1.0)
-- [x] Ingesta de documentos con chunking
-- [x] Embeddings con Google text-embedding-004
-- [x] Búsqueda vectorial con pgvector
-- [x] Generación RAG con Gemini 1.5 Flash
-- [x] UI en Next.js 16
-- [x] Contratos tipados (OpenAPI → TypeScript)
-- [x] Documentación CRC Cards en código
-- [x] Clean Architecture: Domain, Application, Infrastructure + use cases
-- [x] Exception handlers base (Database/Embedding/LLM)
-- [x] Logging estructurado en backend
-
-### 🚧 En Progreso
-- [ ] **Observabilidad**: Métricas y tracing
-
-### 📋 Planificado
-- [ ] **Autenticación**: API Keys o JWT
-- [ ] **Rate Limiting**: Protección contra abuse
-- [ ] **Streaming**: Respuestas en tiempo real (SSE)
-- [ ] **Multi-turn Chat**: Historial de conversación
-- [ ] **Filtros Avanzados**: Por metadata, fecha, source
-- [ ] **Admin UI**: CRUD de documentos
-- [ ] **Deployment**: Kubernetes + Helm charts
-
-Ver [Arquitectura](doc/architecture/overview.md) para el estado actual.
-
----
-
-## 🧪 Testing
+### Tests
 
 ```bash
-# Backend (Python)
-cd backend
-pytest tests/ -v --cov=app
+# Backend - unitarios
+cd backend && pytest -m unit -v
 
-# Solo tests unitarios (rápidos, sin DB)
-pytest -m unit
-
-# Solo tests de integración (requiere DB + GOOGLE_API_KEY)
-RUN_INTEGRATION=1 GOOGLE_API_KEY=tu_clave pytest -m integration
-
-# Con reporte HTML
+# Backend - con cobertura
 pytest --cov=app --cov-report=html
-open htmlcov/index.html
 
-# Frontend (TypeScript) - TODO: Implementar tests
-# (No hay scripts de test en frontend por ahora)
+# Frontend
+cd frontend && pnpm test
 ```
 
-**Estado actual:**
-- ✅ Suite de tests backend presente (unit + integration)
-- ✅ Cobertura objetivo definida en `backend/pytest.ini`
-- 📖 Ver [Test Suite Documentation](backend/tests/README.md)
+### Convenciones
 
----
-
-## 🤝 Contribuir
-
-1. Fork el repositorio
-2. Crea una branch (`git checkout -b feature/amazing-feature`)
-3. Commit tus cambios (`git commit -m 'feat: add amazing feature'`)
-4. Push a la branch (`git push origin feature/amazing-feature`)
-5. Abre un Pull Request
-
-### Guías de Estilo
-
+- **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`)
+- **PRs**: Pequeños, una feature/fix por PR
 - **Python**: PEP 8, type hints, docstrings CRC
 - **TypeScript**: ESLint + Prettier
-- **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`)
+
+### Workflow
+
+1. Fork y crear branch (`git checkout -b feat/mi-feature`)
+2. Desarrollar con tests
+3. Commit con mensaje descriptivo
+4. Push y abrir PR
+5. Actualizar docs si el cambio lo requiere
 
 ---
 
-## 📄 Licencia
+## Roadmap
 
-Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detalles.
+### ✅ Implementado
+
+- [x] Clean Architecture con capas bien definidas
+- [x] Autenticación por API Key con scopes
+- [x] Rate limiting configurable
+- [x] Métricas Prometheus y logging estructurado
+- [x] Connection pooling y atomic ingest
+- [x] Prompts versionados y externalizados
+
+### 🚧 Pendiente
+
+- [ ] **Streaming**: Respuestas SSE en tiempo real
+- [ ] **Multi-turn Chat**: Historial de conversación
+- [ ] **Caché de embeddings**: Reducir latencia y costos
+- [ ] **Retry logic**: Resiliencia para servicios externos
+- [ ] **CI/CD**: GitHub Actions pipeline
+- [ ] **Admin UI**: CRUD visual de documentos
 
 ---
 
-## 🙏 Agradecimientos
+## Licencia
 
-- [pgvector](https://github.com/pgvector/pgvector) - Extensión PostgreSQL para búsquedas vectoriales
-- [FastAPI](https://fastapi.tiangolo.com/) - Framework web moderno para Python
-- [Google Gemini](https://ai.google.dev/) - LLM y embeddings de alta calidad
-- [Next.js](https://nextjs.org/) - Framework React con SSR
+MIT License - ver [LICENSE](LICENSE)
 
 ---
 
-## 📞 Soporte
+## Links
 
-- 🐛 Issues: [GitHub Issues](https://github.com/SaintWyss/rag-corp/issues)
+- 📖 [Documentación Completa](doc/README.md)
+- 🐛 [Issues](https://github.com/SaintWyss/rag-corp/issues)
+- 📊 [Swagger UI](http://localhost:8000/docs) (local)
