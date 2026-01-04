@@ -1,0 +1,62 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Frontend
+    participant API as FastAPI
+    participant UC as Use Case
+    participant Embed as EmbeddingService
+    participant Repo as ChunkRepository
+    participant LLM as LLMService
+    participant PG as PostgreSQL
+    participant Gemini as Google Gemini
+
+    Note over User,Gemini: === INGEST FLOW ===
+    
+    User->>Frontend: Submit document
+    Frontend->>API: POST /v1/ingest/text
+    API->>API: Validate (Pydantic)
+    API->>UC: IngestDocumentUseCase.execute()
+    UC->>UC: Split into chunks
+    
+    loop For each chunk
+        UC->>Embed: embed(chunk.content)
+        Embed->>Gemini: text-embedding-004
+        Gemini-->>Embed: vector[768]
+        Embed-->>UC: embedding
+    end
+    
+    UC->>Repo: save_document(doc)
+    Repo->>PG: INSERT documents
+    UC->>Repo: save_chunks(chunks)
+    Repo->>PG: INSERT chunks (with embeddings)
+    Repo-->>UC: success
+    UC-->>API: {document_id, chunks: N}
+    API-->>Frontend: 200 OK
+    Frontend-->>User: "Document ingested"
+
+    Note over User,Gemini: === ASK FLOW ===
+    
+    User->>Frontend: Submit question
+    Frontend->>API: POST /v1/ask
+    API->>API: Validate (Pydantic)
+    API->>UC: AnswerQueryUseCase.execute()
+    
+    UC->>Embed: embed(query)
+    Embed->>Gemini: text-embedding-004
+    Gemini-->>Embed: query_vector[768]
+    Embed-->>UC: query_embedding
+    
+    UC->>Repo: search(query_embedding, top_k=5)
+    Repo->>PG: SELECT ... ORDER BY embedding <=> $1
+    PG-->>Repo: matching chunks
+    Repo-->>UC: ChunkMatch[]
+    
+    UC->>UC: context_builder.build_context()
+    UC->>LLM: generate(prompt + context)
+    LLM->>Gemini: gemini-2.0-flash-001
+    Gemini-->>LLM: answer text
+    LLM-->>UC: answer
+    
+    UC-->>API: {answer, sources}
+    API-->>Frontend: 200 OK
+    Frontend-->>User: Display answer
