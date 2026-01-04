@@ -1,0 +1,62 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#326ce5', 'primaryTextColor': '#fff'}}}%%
+graph TB
+    subgraph "Frontend (Next.js 15)"
+        UI[UI Components]
+        Hooks[useRagAsk Hook]
+        Client[API Client<br/>Orval Generated]
+    end
+
+    subgraph "Backend (FastAPI)"
+        subgraph "API Layer"
+            Routes[routes.py]
+            Auth[auth.py]
+            Errors[error_responses.py]
+        end
+        
+        subgraph "Application Layer"
+            UC_Ask[AnswerQueryUseCase]
+            UC_Ingest[IngestDocumentUseCase]
+            UC_Search[SearchChunksUseCase]
+            CtxBuilder[context_builder.py]
+        end
+        
+        subgraph "Domain Layer"
+            Entities[entities.py]
+            RepoProto[repositories.py<br/>Protocols]
+            SvcProto[services.py<br/>Protocols]
+        end
+        
+        subgraph "Infrastructure Layer"
+            PgRepo[PostgresDocumentRepo]
+            EmbSvc[GoogleEmbeddingService]
+            LLMSvc[GoogleLLMService]
+            Retry[retry.py]
+        end
+    end
+
+    subgraph "External Services"
+        PG[(PostgreSQL 16<br/>+ pgvector)]
+        Gemini[Google Gemini API]
+    end
+
+    UI --> Hooks
+    Hooks --> Client
+    Client -->|HTTP| Routes
+    Routes --> Auth
+    Routes --> UC_Ask
+    Routes --> UC_Ingest
+    Routes --> UC_Search
+    UC_Ask --> CtxBuilder
+    UC_Ask --> RepoProto
+    UC_Ask --> SvcProto
+    UC_Ingest --> RepoProto
+    UC_Ingest --> SvcProto
+    UC_Search --> RepoProto
+    UC_Search --> SvcProto
+    RepoProto -.->|implements| PgRepo
+    SvcProto -.->|implements| EmbSvc
+    SvcProto -.->|implements| LLMSvc
+    PgRepo --> PG
+    EmbSvc --> Retry
+    LLMSvc --> Retry
+    Retry --> Gemini

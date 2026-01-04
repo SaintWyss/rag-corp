@@ -1,0 +1,88 @@
+%%{init: {'theme': 'base'}}%%
+graph TB
+    subgraph External["External World"]
+        HTTP[HTTP Clients]
+        DB[(PostgreSQL)]
+        GAPI[Google API]
+    end
+
+    subgraph API_Layer["API Layer (Frameworks)"]
+        direction TB
+        FastAPI[FastAPI<br/>routes.py]
+        Pydantic[Pydantic Models<br/>Request/Response]
+        AuthMW[Auth Middleware<br/>auth.py]
+        ErrorH[Error Handlers<br/>error_responses.py]
+    end
+
+    subgraph App_Layer["Application Layer (Use Cases)"]
+        direction TB
+        UCIngest[IngestDocumentUseCase]
+        UCSearch[SearchChunksUseCase]
+        UCAsk[AnswerQueryUseCase]
+        CtxBuild[ContextBuilder]
+    end
+
+    subgraph Domain_Layer["Domain Layer (Business Rules)"]
+        direction TB
+        Entities[Entities<br/>Document, Chunk, ChunkMatch]
+        RepoP[Repository Protocols<br/>DocumentRepository<br/>ChunkRepository]
+        SvcP[Service Protocols<br/>EmbeddingService<br/>LLMService]
+    end
+
+    subgraph Infra_Layer["Infrastructure Layer (Implementations)"]
+        direction TB
+        PGRepo[PostgresDocumentRepo<br/>PostgresChunkRepo]
+        GEmbed[GoogleEmbeddingService]
+        GLLM[GoogleLLMService]
+        Retry[RetryWrapper<br/>Tenacity]
+        Psycopg[psycopg 3.2]
+        GClient[google-generativeai]
+    end
+
+    %% External to API
+    HTTP -->|Request| FastAPI
+    FastAPI -->|Response| HTTP
+
+    %% API to Application
+    FastAPI --> UCIngest
+    FastAPI --> UCSearch
+    FastAPI --> UCAsk
+
+    %% Application to Domain (depends on abstractions)
+    UCIngest --> RepoP
+    UCIngest --> SvcP
+    UCSearch --> RepoP
+    UCSearch --> SvcP
+    UCAsk --> RepoP
+    UCAsk --> SvcP
+    UCAsk --> CtxBuild
+    CtxBuild --> Entities
+
+    %% Infrastructure implements Domain (Dependency Inversion)
+    PGRepo -.->|implements| RepoP
+    GEmbed -.->|implements| SvcP
+    GLLM -.->|implements| SvcP
+
+    %% Infrastructure to External
+    PGRepo --> Psycopg
+    Psycopg --> DB
+    GEmbed --> Retry
+    GLLM --> Retry
+    Retry --> GClient
+    GClient --> GAPI
+
+    %% Styling
+    style Domain_Layer fill:#e8f5e9,stroke:#2e7d32
+    style App_Layer fill:#e3f2fd,stroke:#1565c0
+    style API_Layer fill:#fff3e0,stroke:#ef6c00
+    style Infra_Layer fill:#fce4ec,stroke:#c2185b
+    style External fill:#f5f5f5,stroke:#616161
+
+    %% Legend
+    subgraph Legend
+        direction LR
+        L1[Domain: No external deps]
+        L2[Application: Orchestration]
+        L3[API: HTTP/Framework]
+        L4[Infrastructure: I/O]
+    end
