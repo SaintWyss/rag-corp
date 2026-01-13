@@ -1,0 +1,31 @@
+# RAG Corp Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ragcorp-config
+  namespace: ragcorp
+  labels:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/component: config
+data:
+  # Application settings
+  LOG_LEVEL: "info"
+  CHUNK_SIZE: "900"
+  CHUNK_OVERLAP: "120"
+  TOP_K_DEFAULT: "5"
+  MAX_CONTEXT_CHARS: "12000"
+  
+  # Rate limiting
+  RATE_LIMIT_RPS: "10"
+  RATE_LIMIT_BURST: "20"
+  
+  # Connection pool
+  DB_POOL_MIN_SIZE: "2"
+  DB_POOL_MAX_SIZE: "10"
+  
+  # Health check
+  HEALTHCHECK_GOOGLE_ENABLED: "false"
+  
+  # CORS (comma-separated origins)
+  ALLOWED_ORIGINS: "https://ragcorp.example.com"
+  CORS_ALLOW_CREDENTIALS: "false"

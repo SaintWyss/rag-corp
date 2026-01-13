@@ -1,0 +1,19 @@
+# RAG Corp Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragcorp-frontend
+  namespace: ragcorp
+  labels:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/component: frontend

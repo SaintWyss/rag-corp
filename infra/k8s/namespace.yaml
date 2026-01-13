@@ -1,0 +1,8 @@
+# RAG Corp Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ragcorp
+  labels:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/part-of: ragcorp

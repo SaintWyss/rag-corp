@@ -1,0 +1,19 @@
+# RAG Corp Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragcorp-backend
+  namespace: ragcorp
+  labels:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/component: backend

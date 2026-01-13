@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Kubernetes manifests** - Production-ready K8s deployment in `infra/k8s/`
+  - Deployment, Service, HPA for backend and frontend
+  - ConfigMap and Secret management
+  - Ingress with TLS support
+  - Pod Disruption Budgets for high availability
+  - Network Policies (zero-trust)
+  - Redis deployment for caching
+  - Kustomize configuration
+- **Role-Based Access Control (RBAC)** - Fine-grained permissions system
+  - Hierarchical roles (admin, user, readonly, ingest-only)
+  - Permission-based access control (documents:*, query:*, admin:*)
+  - Role inheritance support
+  - Configurable via `RBAC_CONFIG` environment variable
 - SSE streaming endpoint for LLM responses (`POST /v1/ask/stream`)
 - Redis cache backend for production (auto-detected via `REDIS_URL`)
 - Maximal Marginal Relevance (MMR) retrieval for diverse search results
@@ -17,12 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Conventional changelog automation
 
 ### Changed
+- **compose.prod.yaml** - Full observability stack integration
+  - Redis always enabled in production
+  - Prometheus, Grafana, exporters via `--profile observability`
+  - Redis exporter for cache metrics
 - Extracted exception handlers from `main.py` to `exception_handlers.py`
-- Integrated observability stack as Docker Compose profiles
 - Added coverage threshold (70%) to frontend tests
+- Updated documentation index with K8s and RBAC guides
 
 ### Fixed
 - Health check now respects configuration for Google API verification
+- Completed TODO for LLM fallback documentation in ADR-003
 
 ## [0.1.0] - 2026-01-01
 

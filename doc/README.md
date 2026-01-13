@@ -10,8 +10,11 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 - `../README.md` - Quickstart y overview
 - `architecture/overview.md` - Arquitectura, capas y flujo RAG
 - `api/http-api.md` - Endpoints, contratos y ejemplos
+- `api/rbac.md` - Role-Based Access Control (RBAC)
 - `data/postgres-schema.md` - Schema e indices pgvector
 - `runbook/local-dev.md` - Desarrollo local y comandos utiles
+- `runbook/migrations.md` - Migraciones con Alembic
+- `runbook/kubernetes.md` - Deployment en Kubernetes
 - `../backend/tests/README.md` - Tests (unit + integration)
 - `../shared/contracts/openapi.json` - OpenAPI (fuente de verdad)
 - `../shared/contracts/src/generated.ts` - Cliente TypeScript generado
@@ -27,14 +30,21 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 doc/
 ├── README.md
 ├── architecture/
-│   └── overview.md
+│   ├── overview.md
+│   └── decisions/        # ADRs
 ├── api/
-│   └── http-api.md
+│   ├── http-api.md
+│   └── rbac.md           # RBAC documentation
 ├── data/
 │   └── postgres-schema.md
+├── design/
+│   └── patterns.md
+├── quality/
+│   └── testing.md
 └── runbook/
     ├── local-dev.md
-    └── migrations.md
+    ├── migrations.md
+    └── kubernetes.md     # K8s deployment guide
 ```
 
 ## Mantenimiento
@@ -84,9 +94,10 @@ UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
 ## Operacion y calidad
 
 - **Observabilidad**: logs estructurados, metricas Prometheus y health check en `/healthz`.
-- **Seguridad**: API keys con scopes y rate limiting configurables.
+- **Seguridad**: API keys con scopes, RBAC (Role-Based Access Control) y rate limiting configurables.
 - **Testing**: unit + integration en backend, tests de UI en frontend, E2E con Playwright; ver `../backend/tests/README.md`.
 - **Infra local**: `compose.yaml` y pasos en `runbook/local-dev.md`.
+- **Infra K8s**: manifests production-ready en `../infra/k8s/`; ver `runbook/kubernetes.md`.
 - **Migraciones**: Alembic para schema evolution; ver `runbook/migrations.md`.
 - **Cache**: In-memory por defecto, Redis en produccion (auto-detectado via `REDIS_URL`).
 

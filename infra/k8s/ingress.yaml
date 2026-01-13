@@ -1,0 +1,60 @@
+# RAG Corp Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ragcorp-ingress
+  namespace: ragcorp
+  labels:
+    app.kubernetes.io/name: ragcorp
+    app.kubernetes.io/component: ingress
+  annotations:
+    # NGINX Ingress Controller
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    # Rate limiting (backup to application-level)
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # TLS with cert-manager
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ragcorp.example.com
+        - api.ragcorp.example.com
+      secretName: ragcorp-tls
+  rules:
+    # Frontend
+    - host: ragcorp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ragcorp-frontend
+                port:
+                  name: http
+    # API (backend)
+    - host: api.ragcorp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ragcorp-backend
+                port:
+                  name: http

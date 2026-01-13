@@ -63,7 +63,23 @@ GOOGLE_API_KEY=your-api-key
 
 1. **Retry con backoff**: `infrastructure/services/retry.py` maneja errores transitorios
 2. **Abstracción**: Protocols en Domain permiten cambiar proveedor
-3. **Fallback**: TODO - Implementar fallback a modelo local
+3. **Fallback**: Configurable vía `LLM_FALLBACK_ENABLED` para modelo local (Ollama)
+
+### Fallback a modelo local
+
+Para habilitar fallback a Ollama cuando Google API no está disponible:
+
+```bash
+# .env
+LLM_FALLBACK_ENABLED=true
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+```
+
+Comportamiento:
+- Si Google API falla 3 veces consecutivas → switch a Ollama
+- Requiere Ollama corriendo localmente
+- Embeddings permanecen en Google (re-embedding sería costoso)
 
 ## Migración futura
 
