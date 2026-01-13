@@ -1,3 +1,25 @@
+/**
+ * @fileoverview
+ * Name: AnswerCard Component
+ *
+ * Responsibilities:
+ *   - Display LLM-generated answer text
+ *   - Show model badge ("Gemini")
+ *   - Render nothing if answer is empty
+ *   - Announce content changes via aria-live
+ *
+ * Collaborators:
+ *   - page.tsx: parent that passes answer prop
+ *   - useRagAsk: provides answer state
+ *
+ * Constraints:
+ *   - Must be accessible (aria-live for screen readers)
+ *   - Conditionally renders (null when empty)
+ *
+ * Notes:
+ *   - Gradient background for visual depth
+ *   - Responsive text sizing (sm:text-lg)
+ */
 "use client";
 
 type AnswerCardProps = {

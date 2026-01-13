@@ -1,13 +1,30 @@
+/**
+ * @fileoverview
+ * Name: Error Boundary Component
+ *
+ * Responsibilities:
+ *   - Catch unhandled errors in route segment
+ *   - Display user-friendly error UI
+ *   - Provide retry button to reset error state
+ *   - Log errors to console (extensible to tracking service)
+ *
+ * Collaborators:
+ *   - Next.js App Router: provides error/reset props
+ *   - Future: error tracking service (Sentry, etc.)
+ *
+ * Constraints:
+ *   - Must be client component ("use client")
+ *   - Must handle both known and unknown errors
+ *   - Must show digest ID when available
+ *
+ * Notes:
+ *   - Spanish UI text ("Algo salió mal")
+ *   - Dark theme consistent with app design
+ *   - Emoji for visual error indication
+ */
 "use client";
 
 import { useEffect } from "react";
-
-/**
- * Global Error Boundary for Next.js App Router.
- *
- * Catches rendering errors in this route segment and displays
- * a user-friendly fallback UI with retry option.
- */
 export default function Error({
     error,
     reset,

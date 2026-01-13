@@ -2,9 +2,27 @@
 Name: Ingest Document Use Case
 
 Responsibilities:
-  - Orchestrate document ingestion (chunk → embed → store)
-  - Coordinate repository, embedding service, and chunker
-  - Return document id and chunk count
+  - Orchestrate document ingestion: validate → chunk → embed → persist
+  - Split text into semantic chunks using TextChunkerService
+  - Generate embeddings for each chunk in batch
+  - Persist document + chunks atomically via repository
+  - Return document_id and chunks_created count
+
+Collaborators:
+  - domain/repositories.DocumentRepository: atomic persistence
+  - domain/services.EmbeddingService: batch embedding
+  - domain/services.TextChunkerService: text splitting
+
+Constraints:
+  - Text must be non-empty (empty chunks saved with count=0)
+  - Title required, source/metadata optional
+  - Transaction must be atomic (all or nothing)
+  - Must NOT call external APIs if chunking returns empty
+
+Notes:
+  - Chunking defaults: 900 chars, 120 overlap
+  - Embedding batch size limited by Google API quotas
+  - Output includes UUID for subsequent retrieval/search
 """
 
 from dataclasses import dataclass

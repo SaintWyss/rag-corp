@@ -1,3 +1,27 @@
+/**
+ * @fileoverview
+ * Name: QueryForm Component
+ *
+ * Responsibilities:
+ *   - Render textarea for user query input
+ *   - Handle form submission
+ *   - Show loading state on submit button
+ *   - Provide accessible form controls (ARIA)
+ *
+ * Collaborators:
+ *   - page.tsx: parent that passes props
+ *   - useRagAsk: provides onQueryChange and onSubmit
+ *
+ * Constraints:
+ *   - Must be accessible (WCAG 2.1 AA)
+ *   - Textarea disabled during loading
+ *   - aria-busy reflects loading state
+ *
+ * Notes:
+ *   - Uses useId() for unique accessible IDs
+ *   - role="search" for semantic HTML
+ *   - Spanish placeholder text
+ */
 "use client";
 
 import { useId } from "react";

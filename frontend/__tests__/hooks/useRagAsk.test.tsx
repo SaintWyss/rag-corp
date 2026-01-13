@@ -10,13 +10,18 @@ import type { askV1AskPostResponse } from "@contracts/src/generated";
 import { askV1AskPost } from "@contracts/src/generated";
 
 const mockAskApi = askV1AskPost as jest.MockedFunction<typeof askV1AskPost>;
+
+/**
+ * Helper to create mock API responses.
+ * Uses type assertion because we test error codes not in the OpenAPI spec (401, 429, 503, etc.)
+ */
 const makeResponse = (
     status: number,
     data: askV1AskPostResponse["data"] = { answer: "", sources: [] }
 ): askV1AskPostResponse => ({
     status,
     data,
-});
+} as askV1AskPostResponse);
 
 describe("useRagAsk Hook", () => {
     beforeEach(() => {

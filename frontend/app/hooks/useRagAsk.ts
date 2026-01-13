@@ -1,3 +1,30 @@
+/**
+ * @fileoverview
+ * Name: useRagAsk Hook
+ *
+ * Responsibilities:
+ *   - Manage RAG ask query state (query, answer, sources, loading, error)
+ *   - Handle API call to backend /v1/ask endpoint
+ *   - Provide abort capability for pending requests
+ *   - Map HTTP error codes to user-friendly messages (es-AR)
+ *   - Cleanup resources on component unmount
+ *
+ * Collaborators:
+ *   - @contracts/src/generated: Orval-generated API client
+ *   - QueryForm: consumes setQuery and submit
+ *   - AnswerCard: consumes answer
+ *   - SourcesList: consumes sources
+ *
+ * Constraints:
+ *   - Timeout: 30 seconds max per request
+ *   - Only one request in flight at a time
+ *   - Must abort pending request on unmount
+ *
+ * Notes:
+ *   - AbortController for request cancellation
+ *   - State reset on new submit
+ *   - Error messages localized to Spanish
+ */
 "use client";
 
 import { askV1AskPost } from "@contracts/src/generated";
