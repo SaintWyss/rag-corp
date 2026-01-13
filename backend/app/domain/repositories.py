@@ -83,6 +83,30 @@ class DocumentRepository(Protocol):
         """
         ...
 
+    def find_similar_chunks_mmr(
+        self,
+        embedding: List[float],
+        top_k: int,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+    ) -> List[Chunk]:
+        """
+        R: Search for similar chunks using Maximal Marginal Relevance.
+
+        MMR balances relevance to the query with diversity among results,
+        reducing redundant/similar chunks in the output.
+
+        Args:
+            embedding: Query embedding vector
+            top_k: Number of chunks to return
+            fetch_k: Number of candidates to fetch before reranking
+            lambda_mult: Balance between relevance (1.0) and diversity (0.0)
+
+        Returns:
+            List of Chunk entities ordered by MMR score
+        """
+        ...
+
     def soft_delete_document(self, document_id: UUID) -> bool:
         """
         R: Soft delete a document by setting deleted_at timestamp.

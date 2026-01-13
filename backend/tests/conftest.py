@@ -93,6 +93,7 @@ def mock_repository(sample_chunks: List[Chunk]) -> Mock:
 
     Pre-configured behaviors:
     - find_similar_chunks() returns sample_chunks
+    - find_similar_chunks_mmr() returns sample_chunks (MMR diversity)
     - save_document() succeeds
     - save_chunks() succeeds
     """
@@ -100,6 +101,7 @@ def mock_repository(sample_chunks: List[Chunk]) -> Mock:
 
     # Configure default return values
     mock.find_similar_chunks.return_value = sample_chunks
+    mock.find_similar_chunks_mmr.return_value = sample_chunks  # MMR diversity search
     mock.save_document.return_value = None
     mock.save_chunks.return_value = None
 
@@ -151,6 +153,29 @@ def mock_llm_service() -> Mock:
     # Add prompt_version attribute for observability
     mock.prompt_version = "v1"
 
+    return mock
+
+
+@pytest.fixture
+def mock_context_builder() -> Mock:
+    """
+    R: Create a mock ContextBuilder.
+
+    Pre-configured behaviors:
+    - build() returns assembled context and chunks_used count
+    """
+    mock = Mock()
+    
+    def build_side_effect(chunks):
+        """Assemble context from chunks with FRAGMENTO format."""
+        if not chunks:
+            return "", 0
+        context_parts = []
+        for i, chunk in enumerate(chunks):
+            context_parts.append(f"--- FRAGMENTO {i+1} ---\n{chunk.content}")
+        return "\n\n".join(context_parts), len(chunks)
+    
+    mock.build.side_effect = build_side_effect
     return mock
 
 

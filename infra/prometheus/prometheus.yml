@@ -2,6 +2,18 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # Alertmanager endpoint (configure when Alertmanager is deployed)
+          # - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - "alerts.yml"
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:

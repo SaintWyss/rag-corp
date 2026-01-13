@@ -87,6 +87,50 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
+## Cache (Redis)
+
+El backend soporta dos backends de cache para embeddings:
+
+### In-Memory (Default)
+
+Sin configuración adicional. Ideal para desarrollo local:
+- LRU con máximo 1000 entradas
+- TTL de 1 hora
+- Se pierde al reiniciar el servidor
+
+### Redis (Producción)
+
+```bash
+# 1) Configurar en .env
+REDIS_URL=redis://localhost:6379
+
+# 2) Opción A: Levantar Redis standalone
+docker run -d -p 6379:6379 --name redis redis:7-alpine
+
+# 2) Opción B: Usar docker compose con perfil full
+pnpm docker:full
+# Esto levanta: db + api + redis
+```
+
+**Verificar conexión:**
+```bash
+docker exec redis redis-cli ping
+# Esperado: PONG
+```
+
+**Beneficios de Redis:**
+- Cache persistente entre reinicios
+- Compartido entre instancias (multi-replica)
+- TTL automático por clave
+
+**Configuración avanzada:**
+```bash
+# TTL personalizado (segundos)
+EMBEDDING_CACHE_TTL=7200  # 2 horas
+```
+
+---
+
 ## Testing
 
 ### Backend Tests

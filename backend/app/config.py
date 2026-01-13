@@ -89,8 +89,9 @@ class Settings(BaseSettings):
     db_statement_timeout_ms: int = 30000  # 30 seconds
 
     # RAG Quality
-    prompt_version: str = "v1"
+    prompt_version: str = "v2"  # R: v2 includes better grounding and injection protection
     max_context_chars: int = 12000
+    default_use_mmr: bool = False  # R: MMR for diverse retrieval (default off for perf)
 
     # Retry/Resilience
     retry_max_attempts: int = 3

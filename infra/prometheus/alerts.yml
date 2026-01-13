@@ -1,0 +1,251 @@
+# RAG Corp Alerting Rules
+# See: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+groups:
+  - name: ragcorp-api
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(rag_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(rag_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: ragcorp-api
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#1-api-returns-500-internal-server-error"
+
+      # High latency alert (p95 > 2s)
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(rag_request_latency_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-api
+        annotations:
+          summary: "High API latency (p95)"
+          description: "P95 latency is {{ $value | humanizeDuration }} (threshold: 2s)"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#4-slow-query-performance"
+
+      # Very high latency (p99 > 5s)
+      - alert: VeryHighLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(rag_request_latency_seconds_bucket[5m])) by (le)
+          ) > 5
+        for: 3m
+        labels:
+          severity: critical
+          service: ragcorp-api
+        annotations:
+          summary: "Very high API latency (p99)"
+          description: "P99 latency is {{ $value | humanizeDuration }} (threshold: 5s)"
+
+      # API down
+      - alert: APIDown
+        expr: up{job="ragcorp-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ragcorp-api
+        annotations:
+          summary: "RAG Corp API is down"
+          description: "The API has been unreachable for more than 1 minute"
+
+      # Embedding latency spike
+      - alert: EmbeddingLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(rag_embed_latency_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-api
+        annotations:
+          summary: "High embedding latency"
+          description: "Embedding p95 latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+
+      # LLM latency spike
+      - alert: LLMLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(rag_llm_latency_seconds_bucket[5m])) by (le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-api
+        annotations:
+          summary: "High LLM latency"
+          description: "LLM p95 latency is {{ $value | humanizeDuration }} (threshold: 5s)"
+
+  - name: ragcorp-database
+    interval: 30s
+    rules:
+      # Database down
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ragcorp-postgres
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL has been unreachable for more than 1 minute"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#1-api-returns-500-internal-server-error"
+
+      # High connection count (near limit)
+      - alert: PostgreSQLHighConnections
+        expr: |
+          pg_stat_activity_count{datname="ragcorp"} 
+          / 
+          pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-postgres
+        annotations:
+          summary: "High PostgreSQL connection usage"
+          description: "Connection usage is at {{ $value | humanizePercentage }} of max"
+
+      # Low cache hit rate
+      - alert: PostgreSQLLowCacheHitRate
+        expr: |
+          (
+            pg_stat_database_blks_hit{datname="ragcorp"}
+            /
+            (pg_stat_database_blks_hit{datname="ragcorp"} + pg_stat_database_blks_read{datname="ragcorp"})
+          ) < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: ragcorp-postgres
+        annotations:
+          summary: "Low PostgreSQL cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 90%)"
+
+      # High rollback rate
+      - alert: PostgreSQLHighRollbackRate
+        expr: |
+          rate(pg_stat_database_xact_rollback{datname="ragcorp"}[5m])
+          /
+          (rate(pg_stat_database_xact_commit{datname="ragcorp"}[5m]) + rate(pg_stat_database_xact_rollback{datname="ragcorp"}[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-postgres
+        annotations:
+          summary: "High PostgreSQL rollback rate"
+          description: "Rollback rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Deadlocks detected
+      - alert: PostgreSQLDeadlocks
+        expr: rate(pg_stat_database_deadlocks{datname="ragcorp"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-postgres
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: "Deadlock rate: {{ $value }} per second"
+
+  - name: ragcorp-infrastructure
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: ragcorp-infra
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-infra
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 90%)"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#5-memory-issues"
+
+      # Critical memory usage
+      - alert: CriticalMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          service: ragcorp-infra
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 95%)"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-infra
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value | printf \"%.1f\" }}% free (threshold: 15%)"
+
+  - name: ragcorp-slo
+    interval: 1m
+    rules:
+      # SLO: 99.9% availability
+      - alert: SLOAvailabilityBreach
+        expr: |
+          (
+            1 - (
+              sum(rate(rag_requests_total{status=~"5.."}[1h]))
+              /
+              sum(rate(rag_requests_total[1h]))
+            )
+          ) < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          service: ragcorp-slo
+        annotations:
+          summary: "SLO availability breach"
+          description: "Availability is {{ $value | humanizePercentage }} (SLO: 99.9%)"
+
+      # SLO: 95% of requests < 2s
+      - alert: SLOLatencyBreach
+        expr: |
+          (
+            sum(rate(rag_request_latency_seconds_bucket{le="2"}[1h]))
+            /
+            sum(rate(rag_request_latency_seconds_count[1h]))
+          ) < 0.95
+        for: 5m
+        labels:
+          severity: warning
+          service: ragcorp-slo
+        annotations:
+          summary: "SLO latency breach"
+          description: "Only {{ $value | humanizePercentage }} of requests under 2s (SLO: 95%)"

@@ -45,6 +45,7 @@ from .auth import is_auth_enabled
 from .versioning import include_versioned_routes
 from .infrastructure.db.pool import init_pool, close_pool
 from .exception_handlers import register_exception_handlers
+from .security import SecurityHeadersMiddleware
 
 
 @asynccontextmanager
@@ -147,6 +148,9 @@ app.openapi = custom_openapi
 
 # R: Add body limit middleware
 app.add_middleware(BodyLimitMiddleware)
+
+# R: Add security headers middleware (X-Content-Type-Options, X-Frame-Options, HSTS, CSP)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # R: Add request context middleware
 app.add_middleware(RequestContextMiddleware)

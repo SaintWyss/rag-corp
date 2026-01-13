@@ -175,6 +175,10 @@ class QueryReq(BaseModel):
         le=_settings.max_top_k,
         description="Number of similar chunks to retrieve (1-20)",
     )
+    use_mmr: bool = Field(
+        default=False,
+        description="Use Maximal Marginal Relevance for diverse results (slower but reduces redundancy)",
+    )
 
     @field_validator("query")
     @classmethod
@@ -241,9 +245,12 @@ def ask(
     - Separation of concerns (HTTP ↔ Business Logic)
 
     Uses the same query contract as /query with a generation step.
+    Set use_mmr=true for diverse results (reduces redundant chunks).
     """
     # R: Execute use case with input data
-    result = use_case.execute(AnswerQueryInput(query=req.query, top_k=req.top_k))
+    result = use_case.execute(
+        AnswerQueryInput(query=req.query, top_k=req.top_k, use_mmr=req.use_mmr)
+    )
 
     # R: Convert domain result to HTTP response
     return AskRes(

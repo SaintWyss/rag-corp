@@ -47,10 +47,12 @@ class AnswerQueryInput:
     Attributes:
         query: User's natural language question
         top_k: Number of similar chunks to retrieve (default: 5)
+        use_mmr: Use Maximal Marginal Relevance for diverse results
     """
 
     query: str
     top_k: int = 5
+    use_mmr: bool = False
 
 
 class AnswerQueryUseCase:
@@ -124,9 +126,19 @@ class AnswerQueryUseCase:
 
         # R: STEP 2 - Retrieve similar chunks from repository
         with timings.measure("retrieve"):
-            chunks = self.repository.find_similar_chunks(
-                embedding=query_embedding, top_k=input_data.top_k
-            )
+            if input_data.use_mmr:
+                # R: MMR for diverse retrieval (avoids redundant chunks)
+                chunks = self.repository.find_similar_chunks_mmr(
+                    embedding=query_embedding,
+                    top_k=input_data.top_k,
+                    fetch_k=input_data.top_k * 4,  # Fetch 4x for better diversity
+                    lambda_mult=0.5,
+                )
+            else:
+                # R: Standard similarity search (faster)
+                chunks = self.repository.find_similar_chunks(
+                    embedding=query_embedding, top_k=input_data.top_k
+                )
 
         # R: STEP 3 - Assemble context from retrieved chunks
         if not chunks:
@@ -201,6 +213,7 @@ class AnswerQueryUseCase:
                 "chunks_used": chunks_used,
                 "context_chars": context_chars,
                 "prompt_version": prompt_version,
+                "use_mmr": input_data.use_mmr,
                 **timing_data,
             },
         )

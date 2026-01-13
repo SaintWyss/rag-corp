@@ -1,13 +1,36 @@
 """
 Name: Semantic Text Chunker
 
+⚠️  EXPERIMENTAL: This module is experimental and not used in production.
+    The default chunker (SimpleTextChunker in chunker.py) is used instead.
+    
+    This semantic chunker preserves document structure (headers, lists, code blocks)
+    but requires more testing before production use.
+
 Responsibilities:
   - Split text into semantic chunks (by sections, paragraphs)
   - Preserve document structure and context
   - Smart handling of markdown headers and lists
 
 Collaborators:
-  - infrastructure.text.chunker: Fallback to fixed chunking
+  - infrastructure.text.chunker: Fallback to fixed chunking (PRODUCTION)
+
+Status:
+  - Created: 2025-12
+  - Last Review: 2026-01
+  - Maturity: Experimental (not in use)
+
+Usage (when ready for production):
+  from .semantic_chunker import chunk_semantically, SemanticChunk
+  
+  chunks = chunk_semantically(text, max_chunk_size=900)
+  for chunk in chunks:
+      print(chunk.content, chunk.section, chunk.chunk_type)
+
+To enable in production:
+  1. Add integration tests comparing output with SimpleTextChunker
+  2. Benchmark performance with real documents
+  3. Update IngestDocumentUseCase to use semantic chunking
 """
 
 from __future__ import annotations
