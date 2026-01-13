@@ -4,7 +4,7 @@
 **Base URL:** `http://localhost:8000`  
 **API Prefix:** `/v1` (legacy) or `/api/v1` (versioned)  
 **Version:** 0.1.0  
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-13
 
 ---
 
@@ -545,5 +545,5 @@ View interactive docs:
 
 ---
 
-**Last Updated:** 2026-01-02  
+**Last Updated:** 2026-01-13  
 **Maintainer:** Engineering Team

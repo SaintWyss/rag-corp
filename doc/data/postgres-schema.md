@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Database:** PostgreSQL 16  
 **Extension:** pgvector 0.8.1  
-**Last Updated:** 2026-01-03
+**Last Updated:** 2026-01-13
 
 ---
 
@@ -689,5 +689,5 @@ ALTER INDEX chunks_embedding_idx_new RENAME TO chunks_embedding_idx;
 
 ---
 
-**Last Updated:** 2026-01-03  
+**Last Updated:** 2026-01-13  
 **Maintainer:** Engineering Team

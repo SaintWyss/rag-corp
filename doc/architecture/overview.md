@@ -1,7 +1,7 @@
 # Architecture Overview
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-12  
+**Last Updated:** 2026-01-13  
 **Status:** Active
 
 ---
@@ -165,4 +165,4 @@ This improves retrieval quality by keeping semantic units together.
 
 ---
 
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-13

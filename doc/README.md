@@ -1,6 +1,6 @@
 # Documentacion RAG Corp
 
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-13
 
 Esta carpeta contiene la documentacion viva del proyecto. El quickstart esta en `../README.md`.
 Este README concentra solo informacion vigente y enlaces; los reportes historicos se resumen al final.
