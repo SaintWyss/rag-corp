@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     retry_base_delay_seconds: float = 1.0
     retry_max_delay_seconds: float = 30.0
 
+    # Health Check Configuration
+    healthcheck_google_enabled: bool = True  # Include Google API in full health check
+
     @field_validator("chunk_size")
     @classmethod
     def chunk_size_must_be_positive(cls, v: int) -> int:

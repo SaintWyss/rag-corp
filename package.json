@@ -8,10 +8,18 @@
     "lint": "turbo run lint",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down -v",
+    "docker:full": "docker compose --profile full up -d",
+    "docker:observability": "docker compose --profile observability up -d",
     "contracts:export": "docker compose run --rm rag-api python scripts/export_openapi.py --out /repo/shared/contracts/openapi.json",
-    "contracts:gen": "pnpm --filter @contracts gen"
+    "contracts:gen": "pnpm --filter @contracts gen",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "changelog:first": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
+    "version": "pnpm changelog && git add CHANGELOG.md",
+    "e2e": "pnpm --filter @rag-corp/e2e test",
+    "e2e:ui": "pnpm --filter @rag-corp/e2e test:ui"
   },
   "devDependencies": {
+    "conventional-changelog-cli": "^4.1.0",
     "turbo": "^2.0.0"
   }
 }

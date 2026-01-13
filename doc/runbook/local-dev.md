@@ -114,7 +114,7 @@ pnpm test
 # Run tests in watch mode (for development)
 pnpm test:watch
 
-# Run with coverage report
+# Run with coverage report (must meet 70% threshold)
 pnpm test:coverage
 ```
 
@@ -128,9 +128,45 @@ pnpm test:coverage
 - Mock API calls with `jest.mock("@contracts/src/generated")`
 - Mock `next/navigation` is pre-configured in `jest.setup.ts`
 
+### E2E Tests (Playwright)
+
+```bash
+# Install Playwright browsers (first time only)
+cd tests/e2e && pnpm install && pnpm install:browsers
+
+# Run E2E tests
+pnpm e2e
+
+# Run with UI (interactive mode)
+pnpm e2e:ui
+
+# Debug mode
+cd tests/e2e && pnpm test:debug
+```
+
+**Test files:**
+- `tests/e2e/tests/health.spec.ts` - Health checks
+- `tests/e2e/tests/rag-flow.spec.ts` - RAG workflow
+- `tests/e2e/tests/ui.spec.ts` - Frontend UI
+
 ---
 
 ## Observability
+
+### Starting Observability Stack
+
+```bash
+# Start with observability profile (Prometheus + Grafana)
+pnpm docker:observability
+
+# Or start everything (db + api + redis + observability)
+pnpm docker:full
+```
+
+**URLs:**
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3001 (admin/admin)
+- Postgres Exporter: http://localhost:9187/metrics
 
 ### Logs Estructurados (JSON)
 

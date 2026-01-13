@@ -242,7 +242,7 @@ REGLAS
 
 ARCHIVOS A GENERAR/ACTUALIZAR
 
-1) doc/INDEX.md - Índice completo de documentación
+1) doc/README.md - Documentación consolidada + índice completo
 2) doc/architecture/overview.md - Diagrama de capas, flujos
 3) doc/design/patterns.md - Patrones aplicados (extraer de PATTERN_MAP)
 4) doc/api/http-api.md - Endpoints, auth, error catalog completo

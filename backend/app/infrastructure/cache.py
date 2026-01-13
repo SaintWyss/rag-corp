@@ -5,22 +5,54 @@ Responsibilities:
   - Cache embedding results to reduce API calls
   - Provide TTL-based expiration
   - Hash-based lookup for query embeddings
+  - Support both in-memory (dev) and Redis (prod) backends
 
 Collaborators:
   - domain.services.EmbeddingService
+  - config.py: REDIS_URL configuration
 
 Notes:
   - Uses LRU cache with TTL for memory efficiency
   - Hash collision risk is minimal with SHA-256
+  - Redis backend auto-detected if REDIS_URL is set
+  - Falls back to in-memory if Redis unavailable
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from threading import Lock
 from typing import Dict, List, Optional
+
+
+# R: Abstract cache backend interface
+class CacheBackend(ABC):
+    """Abstract interface for cache backends."""
+
+    @abstractmethod
+    def get(self, key: str) -> Optional[List[float]]:
+        """Get cached embedding by key."""
+        ...
+
+    @abstractmethod
+    def set(self, key: str, embedding: List[float], ttl_seconds: float) -> None:
+        """Set embedding with TTL."""
+        ...
+
+    @abstractmethod
+    def clear(self) -> None:
+        """Clear all cached entries."""
+        ...
+
+    @abstractmethod
+    def stats(self) -> dict:
+        """Return cache statistics."""
+        ...
 
 
 @dataclass
@@ -34,9 +66,9 @@ class CacheEntry:
         return time.time() - self.created_at > ttl_seconds
 
 
-class EmbeddingCache:
+class InMemoryCacheBackend(CacheBackend):
     """
-    Thread-safe LRU cache for embeddings.
+    Thread-safe in-memory LRU cache for embeddings.
 
     Attributes:
         max_size: Maximum number of cached embeddings
@@ -51,6 +83,144 @@ class EmbeddingCache:
         self._hits = 0
         self._misses = 0
 
+    def get(self, key: str) -> Optional[List[float]]:
+        """Get cached embedding for key."""
+        with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                self._misses += 1
+                return None
+            if entry.is_expired(self._ttl_seconds):
+                del self._cache[key]
+                self._misses += 1
+                return None
+            self._hits += 1
+            return entry.embedding
+
+    def set(self, key: str, embedding: List[float], ttl_seconds: float = None) -> None:
+        """Cache an embedding. Evicts oldest entry if cache is full."""
+        with self._lock:
+            # Evict oldest if full
+            if len(self._cache) >= self._max_size and key not in self._cache:
+                oldest_key = next(iter(self._cache))
+                del self._cache[oldest_key]
+            self._cache[key] = CacheEntry(embedding=embedding)
+
+    def clear(self) -> None:
+        """Clear all cached entries."""
+        with self._lock:
+            self._cache.clear()
+
+    def stats(self) -> dict:
+        """Return cache statistics."""
+        with self._lock:
+            total = self._hits + self._misses
+            return {
+                "backend": "in-memory",
+                "size": len(self._cache),
+                "max_size": self._max_size,
+                "hits": self._hits,
+                "misses": self._misses,
+                "hit_rate": self._hits / total if total > 0 else 0.0,
+            }
+
+
+class RedisCacheBackend(CacheBackend):
+    """
+    Redis-backed cache for embeddings.
+
+    Provides persistent caching across restarts.
+    Requires redis-py: pip install redis
+    """
+
+    CACHE_PREFIX = "rag:embedding:"
+
+    def __init__(self, redis_url: str, ttl_seconds: float = 3600):
+        import redis
+
+        self._client = redis.from_url(redis_url, decode_responses=True)
+        self._ttl_seconds = ttl_seconds
+        self._hits = 0
+        self._misses = 0
+
+    def get(self, key: str) -> Optional[List[float]]:
+        """Get cached embedding from Redis."""
+        try:
+            data = self._client.get(f"{self.CACHE_PREFIX}{key}")
+            if data is None:
+                self._misses += 1
+                return None
+            self._hits += 1
+            return json.loads(data)
+        except Exception:
+            self._misses += 1
+            return None
+
+    def set(self, key: str, embedding: List[float], ttl_seconds: float = None) -> None:
+        """Cache embedding in Redis with TTL."""
+        ttl = int(ttl_seconds or self._ttl_seconds)
+        try:
+            self._client.setex(
+                f"{self.CACHE_PREFIX}{key}",
+                ttl,
+                json.dumps(embedding),
+            )
+        except Exception:
+            pass  # Fail silently, cache is optional
+
+    def clear(self) -> None:
+        """Clear all cached entries with our prefix."""
+        try:
+            keys = self._client.keys(f"{self.CACHE_PREFIX}*")
+            if keys:
+                self._client.delete(*keys)
+        except Exception:
+            pass
+
+    def stats(self) -> dict:
+        """Return cache statistics."""
+        try:
+            keys = self._client.keys(f"{self.CACHE_PREFIX}*")
+            size = len(keys) if keys else 0
+        except Exception:
+            size = -1
+
+        total = self._hits + self._misses
+        return {
+            "backend": "redis",
+            "size": size,
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": self._hits / total if total > 0 else 0.0,
+        }
+
+
+class EmbeddingCache:
+    """
+    Facade for embedding cache with automatic backend selection.
+
+    Uses Redis if REDIS_URL is set, falls back to in-memory.
+    """
+
+    def __init__(self, max_size: int = 1000, ttl_seconds: float = 3600):
+        self._ttl_seconds = ttl_seconds
+        self._backend = self._create_backend(max_size, ttl_seconds)
+
+    def _create_backend(self, max_size: int, ttl_seconds: float) -> CacheBackend:
+        """Create appropriate backend based on environment."""
+        redis_url = os.getenv("REDIS_URL")
+
+        if redis_url:
+            try:
+                backend = RedisCacheBackend(redis_url, ttl_seconds)
+                # R: Test connection
+                backend._client.ping()
+                return backend
+            except Exception:
+                pass  # Fall back to in-memory
+
+        return InMemoryCacheBackend(max_size, ttl_seconds)
+
     @staticmethod
     def _hash_text(text: str) -> str:
         """Generate hash key for text."""
@@ -64,49 +234,21 @@ class EmbeddingCache:
             Embedding if found and not expired, None otherwise.
         """
         key = self._hash_text(text)
-        with self._lock:
-            entry = self._cache.get(key)
-            if entry is None:
-                self._misses += 1
-                return None
-            if entry.is_expired(self._ttl_seconds):
-                del self._cache[key]
-                self._misses += 1
-                return None
-            self._hits += 1
-            return entry.embedding
+        return self._backend.get(key)
 
     def set(self, text: str, embedding: List[float]) -> None:
-        """
-        Cache an embedding.
-
-        Evicts oldest entry if cache is full.
-        """
+        """Cache an embedding."""
         key = self._hash_text(text)
-        with self._lock:
-            # Evict oldest if full
-            if len(self._cache) >= self._max_size and key not in self._cache:
-                oldest_key = next(iter(self._cache))
-                del self._cache[oldest_key]
-            self._cache[key] = CacheEntry(embedding=embedding)
+        self._backend.set(key, embedding, self._ttl_seconds)
 
     def clear(self) -> None:
         """Clear all cached entries."""
-        with self._lock:
-            self._cache.clear()
+        self._backend.clear()
 
     @property
     def stats(self) -> dict:
         """Return cache statistics."""
-        with self._lock:
-            total = self._hits + self._misses
-            return {
-                "size": len(self._cache),
-                "max_size": self._max_size,
-                "hits": self._hits,
-                "misses": self._misses,
-                "hit_rate": self._hits / total if total > 0 else 0.0,
-            }
+        return self._backend.stats()
 
 
 # Global cache instance

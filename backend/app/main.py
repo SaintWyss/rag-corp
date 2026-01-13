@@ -37,7 +37,6 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
 from .logger import logger
-from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
 from .container import get_document_repository
 from .config import get_settings
 from .middleware import RequestContextMiddleware, BodyLimitMiddleware
@@ -45,6 +44,7 @@ from .rate_limit import RateLimitMiddleware
 from .auth import is_auth_enabled
 from .versioning import include_versioned_routes
 from .infrastructure.db.pool import init_pool, close_pool
+from .exception_handlers import register_exception_handlers
 
 
 @asynccontextmanager
@@ -167,55 +167,8 @@ app.include_router(router, prefix="/v1")
 # R: Register versioned routes (v1, v2)
 include_versioned_routes(app)
 
-
-# R: Exception handlers for structured error responses
-@app.exception_handler(DatabaseError)
-async def database_error_handler(request: Request, exc: DatabaseError):
-    """Handle database errors with structured response."""
-    logger.error(
-        "Database error", extra={"error_id": exc.error_id, "error_message": exc.message}
-    )
-    return JSONResponse(
-        status_code=503,
-        content=exc.to_response().to_dict(),
-    )
-
-
-@app.exception_handler(EmbeddingError)
-async def embedding_error_handler(request: Request, exc: EmbeddingError):
-    """Handle embedding service errors."""
-    logger.error(
-        "Embedding error",
-        extra={"error_id": exc.error_id, "error_message": exc.message},
-    )
-    return JSONResponse(
-        status_code=503,
-        content=exc.to_response().to_dict(),
-    )
-
-
-@app.exception_handler(LLMError)
-async def llm_error_handler(request: Request, exc: LLMError):
-    """Handle LLM service errors."""
-    logger.error(
-        "LLM error", extra={"error_id": exc.error_id, "error_message": exc.message}
-    )
-    return JSONResponse(
-        status_code=503,
-        content=exc.to_response().to_dict(),
-    )
-
-
-@app.exception_handler(RAGError)
-async def rag_error_handler(request: Request, exc: RAGError):
-    """Handle generic RAG errors."""
-    logger.error(
-        "RAG error", extra={"error_id": exc.error_id, "error_message": exc.message}
-    )
-    return JSONResponse(
-        status_code=500,
-        content=exc.to_response().to_dict(),
-    )
+# R: Register exception handlers for structured error responses
+register_exception_handlers(app)
 
 
 # R: Health check endpoint for monitoring/orchestration (Kubernetes, Docker)
@@ -226,13 +179,15 @@ def healthz(request: Request, full: bool = False):
 
     Args:
         full: If True, also check Google API connectivity (slower)
+              Respects HEALTHCHECK_GOOGLE_ENABLED setting
 
     Returns:
         ok: True if all checked systems operational
         db: "connected" or "disconnected"
-        google: "available", "unavailable", or "disabled" (only with full=true)
+        google: "available", "unavailable", "disabled", or "skipped" (only with full=true)
         request_id: Correlation ID for this request
     """
+    settings = get_settings()
     db_status = "disconnected"
     try:
         repo = get_document_repository()
@@ -247,13 +202,16 @@ def healthz(request: Request, full: bool = False):
         "request_id": getattr(request.state, "request_id", None),
     }
 
-    # R: Full mode: also verify Google API connectivity
+    # R: Full mode: also verify Google API connectivity (if enabled)
     if full:
-        google_status = _check_google_api()
-        result["google"] = google_status
-        # R: Overall health requires all checked services to be OK
-        if google_status == "unavailable":
-            result["ok"] = False
+        if settings.healthcheck_google_enabled:
+            google_status = _check_google_api()
+            result["google"] = google_status
+            # R: Overall health requires all checked services to be OK
+            if google_status == "unavailable":
+                result["ok"] = False
+        else:
+            result["google"] = "skipped"
 
     return result
 

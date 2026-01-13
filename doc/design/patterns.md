@@ -1,6 +1,6 @@
 # Design Patterns - RAG Corp
 
-**Última actualización**: 2026-01-03
+**Última actualización**: 2026-01-12
 
 Este documento describe los patrones de diseño aplicados en el proyecto y dónde encontrarlos.
 
@@ -74,15 +74,15 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 
 ---
 
-### 4. Decorator (Retry + Metrics)
+### 4. Decorator (Retry)
 
-**Qué**: Agrega comportamiento (retry, logging) sin modificar la función original.
+**Qué**: Agrega retry con backoff + jitter alrededor de llamadas externas.
 
 **Dónde**:
-- `infrastructure/services/retry.py` → `@with_retry`
-- Aplicado en `google_embedding_service.py`, `google_llm_service.py`
+- `infrastructure/services/retry.py` → `create_retry_decorator()`
+- Usado en `google_embedding_service.py` y `google_llm_service.py`
 
-**Beneficio**: Retry logic separado del negocio.
+**Beneficio**: Resiliencia sin acoplar la logica de retry al negocio.
 
 ---
 
@@ -91,9 +91,10 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 **Qué**: Interface unificada para manejo de errores HTTP.
 
 **Dónde**:
-- `error_responses.py` → `ErrorDetail`, `ErrorCode`, exception handlers
+- `exceptions.py` → `ErrorResponse`, `RAGError` y derivados
+- `main.py` → exception handlers para responder en un formato consistente
 
-**Beneficio**: Respuestas de error consistentes (RFC 7807).
+**Beneficio**: Respuestas de error consistentes para clientes y logs.
 
 ---
 

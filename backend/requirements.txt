@@ -7,6 +7,10 @@ pydantic-settings==2.12.0
 httpx==0.28.1
 google-generativeai==0.8.6
 tenacity>=8.2.0
+numpy>=1.26.0
+
+# Redis cache (optional, for production)
+redis>=5.0.0
 
 # Database migrations
 alembic>=1.13.0

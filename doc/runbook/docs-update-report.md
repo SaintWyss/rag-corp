@@ -14,7 +14,7 @@ Actualización completa de la documentación del repositorio RAG Corp para garan
 
 | Archivo | Estado | Descripción |
 |---------|--------|-------------|
-| `doc/INDEX.md` | ✅ Creado | Índice master de documentación |
+| `doc/README.md` | ✅ Actualizado | Documentación consolidada (índice + auditorías) |
 | `doc/architecture/decisions/ADR-001-clean-architecture.md` | ✅ Creado | ADR Clean Architecture |
 | `doc/architecture/decisions/ADR-002-pgvector.md` | ✅ Creado | ADR PostgreSQL + pgvector |
 | `doc/architecture/decisions/ADR-003-google-gemini.md` | ✅ Creado | ADR Google Gemini |

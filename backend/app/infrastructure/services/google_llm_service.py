@@ -7,6 +7,7 @@ Responsibilities:
   - Apply business rules (context-only responses)
   - Handle generation errors gracefully
   - Retry transient errors with exponential backoff + jitter
+  - Stream responses token-by-token for better UX
 
 Collaborators:
   - domain.services.LLMService: Interface implementation
@@ -18,7 +19,6 @@ Constraints:
   - Prompt loaded from versioned template files
   - No control over generation parameters
   - Responses in Spanish (by prompt)
-  - No streaming support
   - Retries on 429, 5xx, timeouts
 
 Notes:
@@ -28,14 +28,16 @@ Notes:
 """
 
 import os
-from typing import Optional
+from typing import Optional, List, AsyncGenerator
 
 import google.generativeai as genai
 
+from ...domain.entities import Chunk
 from ...logger import logger
 from ...exceptions import LLMError
 from ..prompts import PromptLoader, get_prompt_loader
 from .retry import create_retry_decorator
+from ...application.context_builder import ContextBuilder
 
 
 class GoogleLLMService:
@@ -117,3 +119,43 @@ class GoogleLLMService:
         except Exception as e:
             logger.error(f"GoogleLLMService: Generation failed: {e}")
             raise LLMError(f"Failed to generate response: {e}")
+
+    async def generate_stream(
+        self, query: str, chunks: List[Chunk]
+    ) -> AsyncGenerator[str, None]:
+        """
+        R: Stream answer token by token.
+
+        Implements LLMService.generate_stream()
+
+        Args:
+            query: User's question
+            chunks: Retrieved context chunks
+
+        Yields:
+            Individual tokens as they are generated
+
+        Raises:
+            LLMError: If streaming fails
+        """
+        # R: Build context from chunks
+        context = ContextBuilder.build(chunks)
+
+        # R: Format prompt using versioned template
+        prompt = self.prompt_loader.format(context=context, query=query)
+
+        try:
+            # R: Use streaming API
+            response = self.model.generate_content(prompt, stream=True)
+
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+
+            logger.info(
+                "GoogleLLMService: Streaming response completed",
+                extra={"prompt_version": self.prompt_version},
+            )
+        except Exception as e:
+            logger.error(f"GoogleLLMService: Streaming failed: {e}")
+            raise LLMError(f"Failed to stream response: {e}")

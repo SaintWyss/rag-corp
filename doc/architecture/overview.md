@@ -1,7 +1,7 @@
 # Architecture Overview
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-02  
+**Last Updated:** 2026-01-12  
 **Status:** Active
 
 ---
@@ -138,10 +138,9 @@ Templates are stored in `backend/app/prompts/`:
 ```
 prompts/
   v1_answer_es.md   # Production (Spanish)
-  v2_answer_es.md   # Experimental (if needed)
 ```
 
-Select version via `PROMPT_VERSION` env var. No code changes needed.
+Select version via `PROMPT_VERSION` env var. Solo `v1` esta disponible hoy.
 
 ### Injection Defense
 
@@ -166,4 +165,4 @@ This improves retrieval quality by keeping semantic units together.
 
 ---
 
-**Last Updated:** 2026-01-03
+**Last Updated:** 2026-01-12

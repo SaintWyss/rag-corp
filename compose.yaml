@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
       # Pasamos la variable del host al contenedor
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      REDIS_URL: ${REDIS_URL:-}
     volumes:
       - ./:/repo
     working_dir: /repo/backend
@@ -32,5 +33,75 @@ services:
       db:
         condition: service_healthy
 
+  # Redis cache (optional, for production)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - cache
+      - full
+
+  # Observability stack (optional, use --profile observability)
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    profiles:
+      - observability
+      - full
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./infra/grafana/provisioning-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./infra/grafana/provisioning-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles:
+      - observability
+      - full
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:postgres@db:5432/rag?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - observability
+      - full
+
 volumes:
   pgdata:
+  redis_data:
+  prometheus_data:
+  grafana_data:

@@ -41,7 +41,7 @@ docker compose -f compose.prod.yaml --env-file .env.prod up -d
 docker compose -f compose.prod.yaml ps
 
 # Health checks
-curl http://localhost:8000/health
+curl http://localhost:8000/healthz
 curl http://localhost:3000
 ```
 

@@ -7,6 +7,7 @@ Responsibilities:
   - Atomic operations with transactions
   - Batch insert for performance
   - Vector similarity searches using cosine distance
+  - Maximal Marginal Relevance (MMR) for diverse retrieval
 
 Collaborators:
   - domain.repositories.DocumentRepository: Interface implementation
@@ -22,10 +23,12 @@ Notes:
   - Implements Repository pattern from domain layer
   - Uses dependency inversion (domain doesn't depend on this)
   - Pool must be initialized before use
+  - MMR balances relevance vs diversity
 """
 
 from uuid import UUID, uuid4
 from typing import List, Optional
+import numpy as np
 
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
@@ -372,3 +375,120 @@ class PostgresDocumentRepository:
                 f"PostgresDocumentRepository: Restore failed for {document_id}: {e}"
             )
             raise DatabaseError(f"Restore failed: {e}")
+
+    def find_similar_chunks_mmr(
+        self,
+        embedding: List[float],
+        top_k: int,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+    ) -> List[Chunk]:
+        """
+        R: Search for similar chunks using Maximal Marginal Relevance.
+
+        MMR balances relevance to the query with diversity among results,
+        reducing redundant/similar chunks in the output.
+
+        Args:
+            embedding: Query embedding vector
+            top_k: Number of chunks to return
+            fetch_k: Number of candidates to fetch before reranking (should be > top_k)
+            lambda_mult: Balance between relevance (1.0) and diversity (0.0)
+                        Default 0.5 is a good balance.
+
+        Returns:
+            List of Chunk entities ordered by MMR score
+
+        Raises:
+            DatabaseError: If search query fails
+        """
+        # R: Fetch more candidates than needed for MMR selection
+        candidates = self.find_similar_chunks(embedding, max(fetch_k, top_k * 2))
+
+        if len(candidates) <= top_k:
+            return candidates
+
+        # R: Apply MMR algorithm
+        return self._mmr_rerank(embedding, candidates, top_k, lambda_mult)
+
+    def _mmr_rerank(
+        self,
+        query_embedding: List[float],
+        candidates: List[Chunk],
+        top_k: int,
+        lambda_mult: float,
+    ) -> List[Chunk]:
+        """
+        R: Rerank candidates using Maximal Marginal Relevance algorithm.
+
+        MMR = argmax[λ * sim(d, q) - (1 - λ) * max(sim(d, d_i))]
+
+        Where:
+            d = candidate document
+            q = query
+            d_i = already selected documents
+            λ = lambda_mult (relevance vs diversity tradeoff)
+        """
+        query_vec = np.array(query_embedding)
+
+        # R: Pre-compute candidate embeddings and similarities to query
+        candidate_vecs = []
+        query_sims = []
+        for c in candidates:
+            if c.embedding:
+                vec = np.array(c.embedding)
+                candidate_vecs.append(vec)
+                # R: Cosine similarity to query
+                query_sims.append(self._cosine_similarity(query_vec, vec))
+            else:
+                candidate_vecs.append(None)
+                query_sims.append(0.0)
+
+        selected_indices: List[int] = []
+        selected_vecs: List[np.ndarray] = []
+
+        for _ in range(min(top_k, len(candidates))):
+            best_score = -float("inf")
+            best_idx = -1
+
+            for i, c in enumerate(candidates):
+                if i in selected_indices or candidate_vecs[i] is None:
+                    continue
+
+                # R: Relevance term
+                relevance = query_sims[i]
+
+                # R: Diversity term (max similarity to already selected)
+                diversity_penalty = 0.0
+                if selected_vecs:
+                    max_sim = max(
+                        self._cosine_similarity(candidate_vecs[i], sv)
+                        for sv in selected_vecs
+                    )
+                    diversity_penalty = max_sim
+
+                # R: MMR score
+                mmr_score = lambda_mult * relevance - (1 - lambda_mult) * diversity_penalty
+
+                if mmr_score > best_score:
+                    best_score = mmr_score
+                    best_idx = i
+
+            if best_idx >= 0:
+                selected_indices.append(best_idx)
+                selected_vecs.append(candidate_vecs[best_idx])
+
+        logger.info(
+            f"PostgresDocumentRepository: MMR reranked {len(candidates)} → {len(selected_indices)} chunks"
+        )
+
+        return [candidates[i] for i in selected_indices]
+
+    @staticmethod
+    def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+        """Compute cosine similarity between two vectors."""
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return float(np.dot(a, b) / (norm_a * norm_b))

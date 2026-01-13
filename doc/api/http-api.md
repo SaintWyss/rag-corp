@@ -4,7 +4,7 @@
 **Base URL:** `http://localhost:8000`  
 **API Prefix:** `/v1` (legacy) or `/api/v1` (versioned)  
 **Version:** 0.1.0  
-**Last Updated:** 2026-01-02
+**Last Updated:** 2026-01-12
 
 ---
 
@@ -24,8 +24,10 @@
 2. [Endpoints](#endpoints)
    - [Health Check](#health-check)
    - [Ingest Text](#ingest-text)
+   - [Ingest Batch](#ingest-batch)
    - [Query Documents](#query-documents)
    - [Ask Question (RAG)](#ask-question-rag)
+   - [Ask Question (Streaming)](#ask-question-streaming)
 3. [Error Responses](#error-responses)
 4. [OpenAPI Specification](#openapi-specification)
 
@@ -101,9 +103,11 @@ RATE_LIMIT_BURST=20  # Maximum burst (bucket size)
 
 | Header | Description |
 |--------|-------------|
-| `X-RateLimit-Limit` | Maximum tokens (burst) |
-| `X-RateLimit-Remaining` | Tokens remaining |
-| `Retry-After` | Seconds until next token (when rate limited) |
+| `X-RateLimit-Limit` | Maximum tokens (burst) on successful responses |
+| `X-RateLimit-Remaining` | Tokens remaining (0 when rate limited) |
+| `Retry-After` | Seconds until next token (only on 429) |
+
+Headers are sent only when rate limiting is enabled.
 
 ### Rate Limit Exceeded
 
@@ -135,15 +139,24 @@ Maximum request body size is enforced via `MAX_BODY_BYTES` (default: 10MB).
 
 ### Health Check
 
-Check if the API is running and if the DB responds.
+Check if the API is running and if the DB responds. Optional full check also verifies Google API connectivity.
 
 **Endpoint:** `GET /healthz`  
 **Authentication:** None
+
+#### Query Parameters
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `full` | boolean | ❌ | `false` | When true, also checks Google API connectivity |
 
 #### Request
 
 ```bash
 curl http://localhost:8000/healthz
+
+# Full check (includes Google API)
+curl "http://localhost:8000/healthz?full=true"
 ```
 
 #### Response
@@ -153,7 +166,19 @@ curl http://localhost:8000/healthz
 ```json
 {
   "ok": true,
-  "db": "connected"
+  "db": "connected",
+  "request_id": "..."
+}
+```
+
+**Response (full):**
+
+```json
+{
+  "ok": true,
+  "db": "connected",
+  "google": "available",
+  "request_id": "..."
 }
 ```
 
@@ -204,6 +229,62 @@ X-API-Key: your-api-key
 {
   "document_id": "3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d",
   "chunks": 5
+}
+```
+
+---
+
+### Ingest Batch
+
+Upload multiple text documents in a single request (1-10 documents).
+
+**Endpoint:** `POST /v1/ingest/batch`  
+**Authentication:** Required (scope: `ingest`)  
+**Tag:** `ingest`
+
+#### Request
+
+**Headers:**
+```
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Body:**
+```json
+{
+  "documents": [
+    {
+      "title": "User Guide 2024",
+      "text": "RAG Corp is a retrieval-augmented generation system...",
+      "source": "https://example.com/docs/user-guide",
+      "metadata": { "team": "docs" }
+    }
+  ]
+}
+```
+
+**Constraints:**
+
+| Field | Type | Required | Limits | Default |
+|-------|------|----------|--------|--------|
+| `documents` | array | ✅ | 1-10 documents | - |
+
+Each document in `documents[]` follows the same constraints as **Ingest Text**.
+
+#### Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "documents": [
+    {
+      "document_id": "3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d",
+      "chunks": 5
+    }
+  ],
+  "total_chunks": 5
 }
 ```
 
@@ -304,6 +385,91 @@ X-API-Key: your-api-key
     "RAG Corp is a retrieval-augmented generation system...",
     "The system uses Google Gemini for embeddings..."
   ]
+}
+```
+
+---
+
+### Ask Question (Streaming)
+
+Get an AI-generated answer streamed token-by-token via Server-Sent Events.
+
+**Endpoint:** `POST /v1/ask/stream`  
+**Authentication:** Required (scope: `ask`)  
+**Tag:** `query`  
+**Response Type:** `text/event-stream`
+
+#### Request
+
+**Headers:**
+```
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Body:**
+```json
+{
+  "query": "How does RAG Corp work?",
+  "top_k": 5
+}
+```
+
+**Constraints:** Same as `/v1/ask` (see above).
+
+#### Response
+
+**Status:** `200 OK`  
+**Content-Type:** `text/event-stream`
+
+SSE event stream with the following event types:
+
+**Event: `sources`** (sent first)
+```
+event: sources
+data: {"sources": [{"chunk_id": "...", "content": "..."}]}
+```
+
+**Event: `token`** (sent for each generated token)
+```
+event: token
+data: {"token": "RAG"}
+```
+
+**Event: `done`** (sent when generation completes)
+```
+event: done
+data: {"answer": "RAG Corp combina retrieval y generación..."}
+```
+
+**Event: `error`** (sent if generation fails)
+```
+event: error
+data: {"error": "Failed to generate response"}
+```
+
+#### JavaScript Client Example
+
+```javascript
+const response = await fetch('/v1/ask/stream', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': apiKey
+  },
+  body: JSON.stringify({ query: 'How does RAG work?', top_k: 5 })
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const text = decoder.decode(value);
+  // Parse SSE events...
+  console.log(text);
 }
 ```
 
