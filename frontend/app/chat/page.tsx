@@ -53,6 +53,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={reset}
+              data-testid="chat-reset-button"
               className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white/70 transition hover:bg-white/10"
             >
               Nueva conversacion
@@ -66,7 +67,10 @@ export default function ChatPage() {
         </header>
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex max-h-[520px] flex-col gap-4 overflow-y-auto pr-2">
+          <div
+            className="flex max-h-[520px] flex-col gap-4 overflow-y-auto pr-2"
+            data-testid="chat-message-list"
+          >
             {messages.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-white/60">
                 Todavia no hay mensajes. Escribi una pregunta para comenzar.
@@ -135,6 +139,7 @@ export default function ChatPage() {
 
         <form
           className="rounded-3xl border border-white/10 bg-white/5 p-6"
+          data-testid="chat-form"
           onSubmit={(event) => {
             event.preventDefault();
             if (!loading) {
@@ -157,6 +162,7 @@ export default function ChatPage() {
               }
             }}
             rows={4}
+            data-testid="chat-input"
             className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
             placeholder="Escribi tu pregunta... (Shift+Enter para nueva linea)"
           />
@@ -165,6 +171,7 @@ export default function ChatPage() {
             <button
               type="submit"
               disabled={loading}
+              data-testid="chat-send-button"
               className="rounded-full bg-cyan-400/80 px-6 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/50"
             >
               {loading ? "Generando..." : "Enviar"}
@@ -173,6 +180,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={cancel}
+                data-testid="chat-cancel-button"
                 className="rounded-full border border-white/20 px-5 py-2 text-sm text-white/70 transition hover:bg-white/10"
               >
                 Cancelar
@@ -182,6 +190,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={() => void retryLast()}
+                data-testid="chat-retry-button"
                 className="rounded-full border border-white/20 px-5 py-2 text-sm text-white/70 transition hover:bg-white/10"
               >
                 Reintentar

@@ -239,17 +239,24 @@ export default function DocumentsPage() {
             <button
               type="button"
               onClick={addDraft}
+              data-testid="documents-add-draft"
               className="self-start rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white"
             >
               Agregar documento
             </button>
           </div>
 
-          <form onSubmit={handleIngest} className="mt-6 space-y-6">
+          <form
+            onSubmit={handleIngest}
+            className="mt-6 space-y-6"
+            data-testid="documents-ingest-form"
+          >
             {drafts.map((draft, index) => (
               <div
                 key={`draft-${index}`}
                 className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+                data-testid="documents-draft"
+                data-draft-index={index}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-semibold text-white/80">
@@ -258,6 +265,8 @@ export default function DocumentsPage() {
                   <button
                     type="button"
                     onClick={() => removeDraft(index)}
+                    data-testid="documents-remove-draft"
+                    data-draft-index={index}
                     className="text-xs text-white/50 hover:text-rose-200"
                   >
                     Quitar
@@ -271,6 +280,8 @@ export default function DocumentsPage() {
                       onChange={(event) =>
                         updateDraft(index, "title", event.target.value)
                       }
+                      data-testid="documents-title-input"
+                      data-draft-index={index}
                       className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
                       placeholder="Guia de onboarding"
                     />
@@ -282,6 +293,8 @@ export default function DocumentsPage() {
                       onChange={(event) =>
                         updateDraft(index, "source", event.target.value)
                       }
+                      data-testid="documents-source-input"
+                      data-draft-index={index}
                       className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
                       placeholder="https://docs.example.com/intro"
                     />
@@ -294,6 +307,8 @@ export default function DocumentsPage() {
                     onChange={(event) =>
                       updateDraft(index, "text", event.target.value)
                     }
+                    data-testid="documents-text-input"
+                    data-draft-index={index}
                     className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
                     placeholder="Pega el texto del documento..."
                   />
@@ -310,6 +325,7 @@ export default function DocumentsPage() {
               <button
                 type="submit"
                 disabled={ingesting}
+                data-testid="documents-ingest-submit"
                 className="rounded-full bg-cyan-500/80 px-6 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-cyan-900/40 disabled:text-white/40"
               >
                 {ingesting ? "Procesando..." : "Ingestar"}
@@ -330,13 +346,14 @@ export default function DocumentsPage() {
               <button
                 type="button"
                 onClick={loadDocuments}
+                data-testid="documents-reload"
                 className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white"
               >
                 Recargar
               </button>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-3" data-testid="documents-list">
               {loadingList ? (
                 <p className="text-sm text-white/50">Cargando documentos...</p>
               ) : documents.length === 0 ? (
@@ -351,6 +368,9 @@ export default function DocumentsPage() {
                       key={doc.id}
                       type="button"
                       onClick={() => setSelectedId(doc.id)}
+                      data-testid="document-list-item"
+                      data-document-id={doc.id}
+                      data-document-title={doc.title}
                       className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                         active
                           ? "border-cyan-400/60 bg-cyan-400/10"
@@ -377,7 +397,12 @@ export default function DocumentsPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <section
+            className="rounded-3xl border border-white/10 bg-white/5 p-6"
+            data-testid="document-detail"
+            data-document-id={selected?.id}
+            data-document-title={selected?.title}
+          >
             <h2 className="text-lg font-semibold">Detalle</h2>
             {loadingDetail ? (
               <p className="mt-4 text-sm text-white/50">Cargando detalle...</p>
@@ -391,19 +416,28 @@ export default function DocumentsPage() {
                   <p className="text-xs uppercase tracking-[0.2em] text-white/40">
                     Titulo
                   </p>
-                  <p className="text-base text-white">{selected.title}</p>
+                  <p
+                    className="text-base text-white"
+                    data-testid="document-detail-title"
+                  >
+                    {selected.title}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-white/40">
                     Source
                   </p>
-                  <p>{selected.source || "Sin source"}</p>
+                  <p data-testid="document-detail-source">
+                    {selected.source || "Sin source"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-white/40">
                     Creado
                   </p>
-                  <p>{formatDate(selected.created_at)}</p>
+                  <p data-testid="document-detail-created">
+                    {formatDate(selected.created_at)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-white/40">
@@ -412,7 +446,10 @@ export default function DocumentsPage() {
                   {metadataEntries.length === 0 ? (
                     <p className="text-white/50">Sin metadata.</p>
                   ) : (
-                    <ul className="space-y-2">
+                    <ul
+                      className="space-y-2"
+                      data-testid="document-detail-metadata"
+                    >
                       {metadataEntries.map(([key, value]) => (
                         <li
                           key={key}
@@ -430,6 +467,7 @@ export default function DocumentsPage() {
                 <button
                   type="button"
                   onClick={handleDelete}
+                  data-testid="document-delete-button"
                   className="w-full rounded-full border border-rose-400/40 px-4 py-2 text-sm text-rose-100 transition hover:border-rose-300/70 hover:bg-rose-500/10"
                 >
                   Borrar documento

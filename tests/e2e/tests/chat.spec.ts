@@ -11,12 +11,10 @@ test.describe("Chat flow", () => {
     });
 
     test("sends a message and receives a response", async ({ page }) => {
-        const input = page.getByPlaceholder(
-            "Escribi tu pregunta... (Shift+Enter para nueva linea)"
-        );
+        const input = page.getByTestId("chat-input");
         await input.fill("Que es RAG?");
 
-        const sendButton = page.getByRole("button", { name: "Enviar" });
+        const sendButton = page.getByTestId("chat-send-button");
         await sendButton.click();
         await expect(sendButton).toBeDisabled();
 

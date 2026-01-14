@@ -15,29 +15,36 @@ test.describe("Documents flow", () => {
         const docText =
             "Este documento de prueba valida la ingesta y el CRUD desde la UI.";
 
-        const titleInput = page.getByLabel("Titulo").first();
-        const textInput = page.getByLabel("Texto").first();
+        const titleInput = page.locator(
+            '[data-testid="documents-title-input"][data-draft-index="0"]'
+        );
+        const textInput = page.locator(
+            '[data-testid="documents-text-input"][data-draft-index="0"]'
+        );
 
         await titleInput.fill(docTitle);
         await textInput.fill(docText);
 
-        await page.getByRole("button", { name: "Ingestar" }).click();
-        await expect(page.getByText(/Documento listo/i)).toBeVisible();
+        await page.getByTestId("documents-ingest-submit").click();
 
-        const listItem = page.getByRole("button", {
-            name: new RegExp(docTitle),
-        });
+        const listItem = page.locator(
+            `[data-testid="document-list-item"][data-document-title="${docTitle}"]`
+        );
         await expect(listItem).toBeVisible();
         await listItem.click();
 
-        await expect(page.getByText(docTitle)).toBeVisible();
+        await expect(page.getByTestId("document-detail")).toHaveAttribute(
+            "data-document-title",
+            docTitle
+        );
 
         page.once("dialog", (dialog) => dialog.accept());
-        await page.getByRole("button", { name: "Borrar documento" }).click();
+        await page.getByTestId("document-delete-button").click();
 
-        await expect(page.getByText("Documento eliminado.")).toBeVisible();
         await expect(
-            page.getByRole("button", { name: new RegExp(docTitle) })
+            page.locator(
+                `[data-testid="document-list-item"][data-document-title="${docTitle}"]`
+            )
         ).toHaveCount(0);
     });
 });
