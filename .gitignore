@@ -14,6 +14,7 @@ dist/
 .turbo/
 npm-debug.log*
 pnpm-debug.log*
+frontend/pnpm-lock.yaml
 
 # Python
 __pycache__/
