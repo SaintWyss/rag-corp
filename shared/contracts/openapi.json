@@ -5,6 +5,194 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/v1/documents": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_v1_documents_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsListRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get Document",
+        "operationId": "get_document_v1_documents__document_id__get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDetailRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Delete Document",
+        "operationId": "delete_document_v1_documents__document_id__delete",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDocumentRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/ingest/text": {
       "post": {
         "tags": [
@@ -189,7 +377,7 @@
           "query"
         ],
         "summary": "Ask",
-        "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.",
+        "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.\nSet use_mmr=true for diverse results (reduces redundant chunks).",
         "operationId": "ask_v1_ask_post",
         "parameters": [
           {
@@ -226,6 +414,255 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AskRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ask/stream": {
+      "post": {
+        "tags": [
+          "query"
+        ],
+        "summary": "Ask Stream",
+        "description": "R: Streaming RAG endpoint using Server-Sent Events.\n\nReturns tokens as they are generated by the LLM for better UX.\nUses the same query contract as /ask but streams the response.\n\nSSE Events:\n- sources: Initial event with retrieved chunks\n- token: Individual tokens as generated\n- done: Final event with complete answer\n- error: Error event if generation fails",
+        "operationId": "ask_stream_v1_ask_stream_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents": {
+      "get": {
+        "tags": [
+          "v1",
+          "documents"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_api_v1_documents_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsListRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "v1",
+          "documents"
+        ],
+        "summary": "Get Document",
+        "operationId": "get_document_api_v1_documents__document_id__get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDetailRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "v1",
+          "documents"
+        ],
+        "summary": "Delete Document",
+        "operationId": "delete_document_api_v1_documents__document_id__delete",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDocumentRes"
                 }
               }
             }
@@ -431,7 +868,7 @@
           "query"
         ],
         "summary": "Ask",
-        "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.",
+        "description": "R: RAG endpoint using Clean Architecture (Use Case pattern).\n\nThis endpoint demonstrates the architecture improvement:\n- Business logic in use case (testable, framework-independent)\n- Dependency injection via FastAPI Depends\n- Separation of concerns (HTTP ↔ Business Logic)\n\nUses the same query contract as /query with a generation step.\nSet use_mmr=true for diverse results (reduces redundant chunks).",
         "operationId": "ask_api_v1_ask_post",
         "parameters": [
           {
@@ -485,10 +922,69 @@
         }
       }
     },
+    "/api/v1/ask/stream": {
+      "post": {
+        "tags": [
+          "v1",
+          "query"
+        ],
+        "summary": "Ask Stream",
+        "description": "R: Streaming RAG endpoint using Server-Sent Events.\n\nReturns tokens as they are generated by the LLM for better UX.\nUses the same query contract as /ask but streams the response.\n\nSSE Events:\n- sources: Initial event with retrieved chunks\n- token: Individual tokens as generated\n- done: Final event with complete answer\n- error: Error event if generation fails",
+        "operationId": "ask_stream_api_v1_ask_stream_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "summary": "Healthz",
-        "description": "R: Enhanced health check that verifies system dependencies.\n\nArgs:\n    full: If True, also check Google API connectivity (slower)\n\nReturns:\n    ok: True if all checked systems operational\n    db: \"connected\" or \"disconnected\"\n    google: \"available\", \"unavailable\", or \"disabled\" (only with full=true)\n    request_id: Correlation ID for this request",
+        "description": "R: Enhanced health check that verifies system dependencies.\n\nArgs:\n    full: If True, also check Google API connectivity (slower)\n          Respects HEALTHCHECK_GOOGLE_ENABLED setting\n\nReturns:\n    ok: True if all checked systems operational\n    db: \"connected\" or \"disconnected\"\n    google: \"available\", \"unavailable\", \"disabled\", or \"skipped\" (only with full=true)\n    request_id: Correlation ID for this request",
         "operationId": "healthz_healthz_get",
         "parameters": [
           {
@@ -529,12 +1025,40 @@
         "summary": "Metrics",
         "description": "R: Expose Prometheus metrics.\n\nReturns:\n    Prometheus text format metrics",
         "operationId": "metrics_metrics_get",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -556,6 +1080,17 @@
             },
             "type": "array",
             "title": "Sources"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
           }
         },
         "type": "object",
@@ -564,6 +1099,147 @@
           "sources"
         ],
         "title": "AskRes"
+      },
+      "DeleteDocumentRes": {
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted"
+        ],
+        "title": "DeleteDocumentRes"
+      },
+      "DocumentDetailRes": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "source",
+          "metadata",
+          "created_at"
+        ],
+        "title": "DocumentDetailRes"
+      },
+      "DocumentSummaryRes": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "source",
+          "metadata",
+          "created_at"
+        ],
+        "title": "DocumentSummaryRes"
+      },
+      "DocumentsListRes": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentSummaryRes"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "title": "DocumentsListRes"
       },
       "HTTPValidationError": {
         "properties": {
@@ -719,6 +1395,18 @@
             "title": "Query",
             "description": "User's natural language question (1-2,000 chars)"
           },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id",
+            "description": "Conversation ID for multi-turn chat (optional)"
+          },
           "top_k": {
             "type": "integer",
             "maximum": 20.0,
@@ -726,6 +1414,12 @@
             "title": "Top K",
             "description": "Number of similar chunks to retrieve (1-20)",
             "default": 5
+          },
+          "use_mmr": {
+            "type": "boolean",
+            "title": "Use Mmr",
+            "description": "Use Maximal Marginal Relevance for diverse results (slower but reduces redundancy)",
+            "default": false
           }
         },
         "type": "object",

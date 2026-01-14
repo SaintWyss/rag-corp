@@ -4,9 +4,51 @@
  * RAG Corp API
  * OpenAPI spec version: 0.1.0
  */
+export type AskResConversationId = string | null;
+
 export interface AskRes {
   answer: string;
   sources: string[];
+  conversation_id?: AskResConversationId;
+}
+
+export interface DeleteDocumentRes {
+  deleted: boolean;
+}
+
+export type DocumentDetailResSource = string | null;
+
+export type DocumentDetailResMetadata = { [key: string]: unknown };
+
+export type DocumentDetailResCreatedAt = string | null;
+
+export type DocumentDetailResDeletedAt = string | null;
+
+export interface DocumentDetailRes {
+  id: string;
+  title: string;
+  source: DocumentDetailResSource;
+  metadata: DocumentDetailResMetadata;
+  created_at: DocumentDetailResCreatedAt;
+  deleted_at?: DocumentDetailResDeletedAt;
+}
+
+export type DocumentSummaryResSource = string | null;
+
+export type DocumentSummaryResMetadata = { [key: string]: unknown };
+
+export type DocumentSummaryResCreatedAt = string | null;
+
+export interface DocumentSummaryRes {
+  id: string;
+  title: string;
+  source: DocumentSummaryResSource;
+  metadata: DocumentSummaryResMetadata;
+  created_at: DocumentSummaryResCreatedAt;
+}
+
+export interface DocumentsListRes {
+  documents: DocumentSummaryRes[];
 }
 
 export interface HTTPValidationError {
@@ -68,6 +110,11 @@ export interface Match {
   score: number;
 }
 
+/**
+ * Conversation ID for multi-turn chat (optional)
+ */
+export type QueryReqConversationId = string | null;
+
 export interface QueryReq {
   /**
    * User's natural language question (1-2,000 chars)
@@ -75,12 +122,16 @@ export interface QueryReq {
    * @maxLength 2000
    */
   query: string;
+  /** Conversation ID for multi-turn chat (optional) */
+  conversation_id?: QueryReqConversationId;
   /**
    * Number of similar chunks to retrieve (1-20)
    * @minimum 1
    * @maximum 20
    */
   top_k?: number;
+  /** Use Maximal Marginal Relevance for diverse results (slower but reduces redundancy) */
+  use_mmr?: boolean;
 }
 
 export interface QueryRes {
@@ -95,9 +146,187 @@ export interface ValidationError {
   type: string;
 }
 
+export type ListDocumentsV1DocumentsGetParams = {
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListDocumentsApiV1DocumentsGetParams = {
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
 export type HealthzHealthzGetParams = {
 full?: boolean;
 };
+
+/**
+ * @summary List Documents
+ */
+export type listDocumentsV1DocumentsGetResponse200 = {
+  data: DocumentsListRes
+  status: 200
+}
+
+export type listDocumentsV1DocumentsGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type listDocumentsV1DocumentsGetResponseSuccess = (listDocumentsV1DocumentsGetResponse200) & {
+  headers: Headers;
+};
+export type listDocumentsV1DocumentsGetResponseError = (listDocumentsV1DocumentsGetResponse422) & {
+  headers: Headers;
+};
+
+export type listDocumentsV1DocumentsGetResponse = (listDocumentsV1DocumentsGetResponseSuccess | listDocumentsV1DocumentsGetResponseError)
+
+export const getListDocumentsV1DocumentsGetUrl = (params?: ListDocumentsV1DocumentsGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/documents?${stringifiedParams}` : `/v1/documents`
+}
+
+export const listDocumentsV1DocumentsGet = async (params?: ListDocumentsV1DocumentsGetParams, options?: RequestInit): Promise<listDocumentsV1DocumentsGetResponse> => {
+  
+  const res = await fetch(getListDocumentsV1DocumentsGetUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listDocumentsV1DocumentsGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listDocumentsV1DocumentsGetResponse
+}
+
+
+
+/**
+ * @summary Get Document
+ */
+export type getDocumentV1DocumentsDocumentIdGetResponse200 = {
+  data: DocumentDetailRes
+  status: 200
+}
+
+export type getDocumentV1DocumentsDocumentIdGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type getDocumentV1DocumentsDocumentIdGetResponseSuccess = (getDocumentV1DocumentsDocumentIdGetResponse200) & {
+  headers: Headers;
+};
+export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1DocumentsDocumentIdGetResponse422) & {
+  headers: Headers;
+};
+
+export type getDocumentV1DocumentsDocumentIdGetResponse = (getDocumentV1DocumentsDocumentIdGetResponseSuccess | getDocumentV1DocumentsDocumentIdGetResponseError)
+
+export const getGetDocumentV1DocumentsDocumentIdGetUrl = (documentId: string,) => {
+
+
+  
+
+  return `/v1/documents/${documentId}`
+}
+
+export const getDocumentV1DocumentsDocumentIdGet = async (documentId: string, options?: RequestInit): Promise<getDocumentV1DocumentsDocumentIdGetResponse> => {
+  
+  const res = await fetch(getGetDocumentV1DocumentsDocumentIdGetUrl(documentId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getDocumentV1DocumentsDocumentIdGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getDocumentV1DocumentsDocumentIdGetResponse
+}
+
+
+
+/**
+ * @summary Delete Document
+ */
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponse200 = {
+  data: DeleteDocumentRes
+  status: 200
+}
+
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponseSuccess = (deleteDocumentV1DocumentsDocumentIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentV1DocumentsDocumentIdDeleteResponse422) & {
+  headers: Headers;
+};
+
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponse = (deleteDocumentV1DocumentsDocumentIdDeleteResponseSuccess | deleteDocumentV1DocumentsDocumentIdDeleteResponseError)
+
+export const getDeleteDocumentV1DocumentsDocumentIdDeleteUrl = (documentId: string,) => {
+
+
+  
+
+  return `/v1/documents/${documentId}`
+}
+
+export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: string, options?: RequestInit): Promise<deleteDocumentV1DocumentsDocumentIdDeleteResponse> => {
+  
+  const res = await fetch(getDeleteDocumentV1DocumentsDocumentIdDeleteUrl(documentId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteDocumentV1DocumentsDocumentIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteDocumentV1DocumentsDocumentIdDeleteResponse
+}
+
+
 
 /**
  * @summary Ingest Text
@@ -262,6 +491,7 @@ This endpoint demonstrates the architecture improvement:
 - Separation of concerns (HTTP ↔ Business Logic)
 
 Uses the same query contract as /query with a generation step.
+Set use_mmr=true for diverse results (reduces redundant chunks).
  * @summary Ask
  */
 export type askV1AskPostResponse200 = {
@@ -307,6 +537,220 @@ export const askV1AskPost = async (queryReq: QueryReq, options?: RequestInit): P
   
   const data: askV1AskPostResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as askV1AskPostResponse
+}
+
+
+
+/**
+ * R: Streaming RAG endpoint using Server-Sent Events.
+
+Returns tokens as they are generated by the LLM for better UX.
+Uses the same query contract as /ask but streams the response.
+
+SSE Events:
+- sources: Initial event with retrieved chunks
+- token: Individual tokens as generated
+- done: Final event with complete answer
+- error: Error event if generation fails
+ * @summary Ask Stream
+ */
+export type askStreamV1AskStreamPostResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type askStreamV1AskStreamPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type askStreamV1AskStreamPostResponseSuccess = (askStreamV1AskStreamPostResponse200) & {
+  headers: Headers;
+};
+export type askStreamV1AskStreamPostResponseError = (askStreamV1AskStreamPostResponse422) & {
+  headers: Headers;
+};
+
+export type askStreamV1AskStreamPostResponse = (askStreamV1AskStreamPostResponseSuccess | askStreamV1AskStreamPostResponseError)
+
+export const getAskStreamV1AskStreamPostUrl = () => {
+
+
+  
+
+  return `/v1/ask/stream`
+}
+
+export const askStreamV1AskStreamPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askStreamV1AskStreamPostResponse> => {
+  
+  const res = await fetch(getAskStreamV1AskStreamPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askStreamV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askStreamV1AskStreamPostResponse
+}
+
+
+
+/**
+ * @summary List Documents
+ */
+export type listDocumentsApiV1DocumentsGetResponse200 = {
+  data: DocumentsListRes
+  status: 200
+}
+
+export type listDocumentsApiV1DocumentsGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type listDocumentsApiV1DocumentsGetResponseSuccess = (listDocumentsApiV1DocumentsGetResponse200) & {
+  headers: Headers;
+};
+export type listDocumentsApiV1DocumentsGetResponseError = (listDocumentsApiV1DocumentsGetResponse422) & {
+  headers: Headers;
+};
+
+export type listDocumentsApiV1DocumentsGetResponse = (listDocumentsApiV1DocumentsGetResponseSuccess | listDocumentsApiV1DocumentsGetResponseError)
+
+export const getListDocumentsApiV1DocumentsGetUrl = (params?: ListDocumentsApiV1DocumentsGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/documents?${stringifiedParams}` : `/api/v1/documents`
+}
+
+export const listDocumentsApiV1DocumentsGet = async (params?: ListDocumentsApiV1DocumentsGetParams, options?: RequestInit): Promise<listDocumentsApiV1DocumentsGetResponse> => {
+  
+  const res = await fetch(getListDocumentsApiV1DocumentsGetUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listDocumentsApiV1DocumentsGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listDocumentsApiV1DocumentsGetResponse
+}
+
+
+
+/**
+ * @summary Get Document
+ */
+export type getDocumentApiV1DocumentsDocumentIdGetResponse200 = {
+  data: DocumentDetailRes
+  status: 200
+}
+
+export type getDocumentApiV1DocumentsDocumentIdGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type getDocumentApiV1DocumentsDocumentIdGetResponseSuccess = (getDocumentApiV1DocumentsDocumentIdGetResponse200) & {
+  headers: Headers;
+};
+export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentApiV1DocumentsDocumentIdGetResponse422) & {
+  headers: Headers;
+};
+
+export type getDocumentApiV1DocumentsDocumentIdGetResponse = (getDocumentApiV1DocumentsDocumentIdGetResponseSuccess | getDocumentApiV1DocumentsDocumentIdGetResponseError)
+
+export const getGetDocumentApiV1DocumentsDocumentIdGetUrl = (documentId: string,) => {
+
+
+  
+
+  return `/api/v1/documents/${documentId}`
+}
+
+export const getDocumentApiV1DocumentsDocumentIdGet = async (documentId: string, options?: RequestInit): Promise<getDocumentApiV1DocumentsDocumentIdGetResponse> => {
+  
+  const res = await fetch(getGetDocumentApiV1DocumentsDocumentIdGetUrl(documentId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getDocumentApiV1DocumentsDocumentIdGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getDocumentApiV1DocumentsDocumentIdGetResponse
+}
+
+
+
+/**
+ * @summary Delete Document
+ */
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse200 = {
+  data: DeleteDocumentRes
+  status: 200
+}
+
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseSuccess = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422) & {
+  headers: Headers;
+};
+
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponseSuccess | deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError)
+
+export const getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl = (documentId: string,) => {
+
+
+  
+
+  return `/api/v1/documents/${documentId}`
+}
+
+export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: string, options?: RequestInit): Promise<deleteDocumentApiV1DocumentsDocumentIdDeleteResponse> => {
+  
+  const res = await fetch(getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl(documentId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteDocumentApiV1DocumentsDocumentIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteDocumentApiV1DocumentsDocumentIdDeleteResponse
 }
 
 
@@ -474,6 +918,7 @@ This endpoint demonstrates the architecture improvement:
 - Separation of concerns (HTTP ↔ Business Logic)
 
 Uses the same query contract as /query with a generation step.
+Set use_mmr=true for diverse results (reduces redundant chunks).
  * @summary Ask
  */
 export type askApiV1AskPostResponse200 = {
@@ -524,15 +969,76 @@ export const askApiV1AskPost = async (queryReq: QueryReq, options?: RequestInit)
 
 
 /**
+ * R: Streaming RAG endpoint using Server-Sent Events.
+
+Returns tokens as they are generated by the LLM for better UX.
+Uses the same query contract as /ask but streams the response.
+
+SSE Events:
+- sources: Initial event with retrieved chunks
+- token: Individual tokens as generated
+- done: Final event with complete answer
+- error: Error event if generation fails
+ * @summary Ask Stream
+ */
+export type askStreamApiV1AskStreamPostResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type askStreamApiV1AskStreamPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type askStreamApiV1AskStreamPostResponseSuccess = (askStreamApiV1AskStreamPostResponse200) & {
+  headers: Headers;
+};
+export type askStreamApiV1AskStreamPostResponseError = (askStreamApiV1AskStreamPostResponse422) & {
+  headers: Headers;
+};
+
+export type askStreamApiV1AskStreamPostResponse = (askStreamApiV1AskStreamPostResponseSuccess | askStreamApiV1AskStreamPostResponseError)
+
+export const getAskStreamApiV1AskStreamPostUrl = () => {
+
+
+  
+
+  return `/api/v1/ask/stream`
+}
+
+export const askStreamApiV1AskStreamPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askStreamApiV1AskStreamPostResponse> => {
+  
+  const res = await fetch(getAskStreamApiV1AskStreamPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askStreamApiV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askStreamApiV1AskStreamPostResponse
+}
+
+
+
+/**
  * R: Enhanced health check that verifies system dependencies.
 
 Args:
     full: If True, also check Google API connectivity (slower)
+          Respects HEALTHCHECK_GOOGLE_ENABLED setting
 
 Returns:
     ok: True if all checked systems operational
     db: "connected" or "disconnected"
-    google: "available", "unavailable", or "disabled" (only with full=true)
+    google: "available", "unavailable", "disabled", or "skipped" (only with full=true)
     request_id: Correlation ID for this request
  * @summary Healthz
  */
@@ -600,13 +1106,20 @@ export type metricsMetricsGetResponse200 = {
   data: unknown
   status: 200
 }
+
+export type metricsMetricsGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
     
 export type metricsMetricsGetResponseSuccess = (metricsMetricsGetResponse200) & {
   headers: Headers;
 };
-;
+export type metricsMetricsGetResponseError = (metricsMetricsGetResponse422) & {
+  headers: Headers;
+};
 
-export type metricsMetricsGetResponse = (metricsMetricsGetResponseSuccess)
+export type metricsMetricsGetResponse = (metricsMetricsGetResponseSuccess | metricsMetricsGetResponseError)
 
 export const getMetricsMetricsGetUrl = () => {
 
