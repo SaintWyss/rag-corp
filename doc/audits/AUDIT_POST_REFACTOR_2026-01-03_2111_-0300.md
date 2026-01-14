@@ -117,7 +117,6 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 | `infra/` | Infraestructura | Docker configs, Prometheus, Grafana |
 | `doc/` | Documentación técnica | Arquitectura, API, runbooks |
 | `tests/` | Tests adicionales | k6 load tests |
-| `_legacy_candidates/` | Documentos históricos | Auditorías previas (pre-migración) |
 | `compose.yaml` | Docker dev | PostgreSQL + Backend |
 | `compose.prod.yaml` | Docker prod | Con frontend + limits |
 | `compose.observability.yaml` | Monitoring stack | Prometheus + Grafana |
