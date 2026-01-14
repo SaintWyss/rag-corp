@@ -89,7 +89,13 @@ export default function ChatPage() {
                   : "";
 
               return (
-                <div key={message.id} className={`flex ${alignment}`}>
+                <div
+                  key={message.id}
+                  className={`flex ${alignment}`}
+                  data-testid="chat-message"
+                  data-role={message.role}
+                  data-status={message.status ?? "complete"}
+                >
                   <div
                     className={`w-full max-w-[85%] rounded-2xl px-4 py-3 ${bubbleStyles}`}
                   >

@@ -24,6 +24,8 @@ services:
       # Pasamos la variable del host al contenedor
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       REDIS_URL: ${REDIS_URL:-}
+      API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
+      RBAC_CONFIG: ${RBAC_CONFIG:-}
     volumes:
       - ./:/repo
     working_dir: /repo/backend
@@ -32,6 +34,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://rag-api:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - rag-api
+    profiles:
+      - e2e
 
   # Redis cache (optional, for production)
   redis:
