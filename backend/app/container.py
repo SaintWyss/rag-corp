@@ -37,6 +37,8 @@ from .infrastructure.repositories import (
 )
 from .infrastructure.services import (
     CachingEmbeddingService,
+    FakeEmbeddingService,
+    FakeLLMService,
     GoogleEmbeddingService,
     GoogleLLMService,
 )
@@ -84,10 +86,16 @@ def get_embedding_service() -> EmbeddingService:
     R: Get singleton instance of embedding service.
 
     Returns:
-        Google implementation of EmbeddingService
+        Google or Fake implementation of EmbeddingService
     """
+    settings = get_settings()
+    provider: EmbeddingService
+    if settings.fake_embeddings:
+        provider = FakeEmbeddingService()
+    else:
+        provider = GoogleEmbeddingService()
     return CachingEmbeddingService(
-        provider=GoogleEmbeddingService(),
+        provider=provider,
         cache=get_embedding_cache(),
     )
 
@@ -99,8 +107,11 @@ def get_llm_service() -> LLMService:
     R: Get singleton instance of LLM service.
 
     Returns:
-        Google implementation of LLMService
+        Google or Fake implementation of LLMService
     """
+    settings = get_settings()
+    if settings.fake_llm:
+        return FakeLLMService()
     return GoogleLLMService()
 
 

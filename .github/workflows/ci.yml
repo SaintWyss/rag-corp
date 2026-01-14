@@ -132,7 +132,8 @@ jobs:
     needs: [backend-test, frontend-test]
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     env:
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      FAKE_LLM: "1"
+      FAKE_EMBEDDINGS: "1"
       API_KEYS_CONFIG: '{"e2e-key":["ingest","ask"]}'
       TEST_API_KEY: e2e-key
       E2E_USE_COMPOSE: "1"

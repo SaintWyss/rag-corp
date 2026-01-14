@@ -22,7 +22,7 @@ Notes:
 """
 
 from functools import lru_cache
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # Required (no defaults)
     database_url: str
-    google_api_key: str
+    google_api_key: str = ""
 
     # CORS configuration
     allowed_origins: str = "http://localhost:3000"
@@ -71,6 +71,10 @@ class Settings(BaseSettings):
 
     # Observability
     otel_enabled: bool = False
+
+    # Testing/CI
+    fake_llm: bool = False
+    fake_embeddings: bool = False
 
     # Security - API Keys (JSON: {"key": ["scope1", "scope2"], ...})
     api_keys_config: str = ""
@@ -135,6 +139,16 @@ class Settings(BaseSettings):
             for origin in self.allowed_origins.split(",")
             if origin.strip()
         ]
+
+    @model_validator(mode="after")
+    def validate_ai_requirements(self):
+        if not self.google_api_key and not (
+            self.fake_llm and self.fake_embeddings
+        ):
+            raise ValueError(
+                "GOOGLE_API_KEY is required unless FAKE_LLM=1 and FAKE_EMBEDDINGS=1"
+            )
+        return self
 
     class Config:
         env_file = ".env"
