@@ -12,6 +12,32 @@ export interface AskRes {
   conversation_id?: AskResConversationId;
 }
 
+export type BodyUploadDocumentApiV1DocumentsUploadPostTitle = string | null;
+
+export type BodyUploadDocumentApiV1DocumentsUploadPostSource = string | null;
+
+export type BodyUploadDocumentApiV1DocumentsUploadPostMetadata = string | null;
+
+export interface BodyUploadDocumentApiV1DocumentsUploadPost {
+  file: Blob;
+  title?: BodyUploadDocumentApiV1DocumentsUploadPostTitle;
+  source?: BodyUploadDocumentApiV1DocumentsUploadPostSource;
+  metadata?: BodyUploadDocumentApiV1DocumentsUploadPostMetadata;
+}
+
+export type BodyUploadDocumentV1DocumentsUploadPostTitle = string | null;
+
+export type BodyUploadDocumentV1DocumentsUploadPostSource = string | null;
+
+export type BodyUploadDocumentV1DocumentsUploadPostMetadata = string | null;
+
+export interface BodyUploadDocumentV1DocumentsUploadPost {
+  file: Blob;
+  title?: BodyUploadDocumentV1DocumentsUploadPostTitle;
+  source?: BodyUploadDocumentV1DocumentsUploadPostSource;
+  metadata?: BodyUploadDocumentV1DocumentsUploadPostMetadata;
+}
+
 export interface DeleteDocumentRes {
   deleted: boolean;
 }
@@ -22,7 +48,15 @@ export type DocumentDetailResMetadata = { [key: string]: unknown };
 
 export type DocumentDetailResCreatedAt = string | null;
 
+export type DocumentDetailResFileName = string | null;
+
+export type DocumentDetailResMimeType = string | null;
+
+export type DocumentDetailResStatus = string | null;
+
 export type DocumentDetailResDeletedAt = string | null;
+
+export type DocumentDetailResErrorMessage = string | null;
 
 export interface DocumentDetailRes {
   id: string;
@@ -30,7 +64,11 @@ export interface DocumentDetailRes {
   source: DocumentDetailResSource;
   metadata: DocumentDetailResMetadata;
   created_at: DocumentDetailResCreatedAt;
+  file_name?: DocumentDetailResFileName;
+  mime_type?: DocumentDetailResMimeType;
+  status?: DocumentDetailResStatus;
   deleted_at?: DocumentDetailResDeletedAt;
+  error_message?: DocumentDetailResErrorMessage;
 }
 
 export type DocumentSummaryResSource = string | null;
@@ -39,12 +77,21 @@ export type DocumentSummaryResMetadata = { [key: string]: unknown };
 
 export type DocumentSummaryResCreatedAt = string | null;
 
+export type DocumentSummaryResFileName = string | null;
+
+export type DocumentSummaryResMimeType = string | null;
+
+export type DocumentSummaryResStatus = string | null;
+
 export interface DocumentSummaryRes {
   id: string;
   title: string;
   source: DocumentSummaryResSource;
   metadata: DocumentSummaryResMetadata;
   created_at: DocumentSummaryResCreatedAt;
+  file_name?: DocumentSummaryResFileName;
+  mime_type?: DocumentSummaryResMimeType;
+  status?: DocumentSummaryResStatus;
 }
 
 export interface DocumentsListRes {
@@ -103,6 +150,26 @@ export interface IngestTextRes {
   chunks: number;
 }
 
+export interface LoginRequest {
+  /**
+   * @minLength 3
+   * @maxLength 320
+   */
+  email: string;
+  /**
+   * @minLength 1
+   * @maxLength 512
+   */
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type?: string;
+  expires_in: number;
+  user: UserResponse;
+}
+
 export interface Match {
   chunk_id: string;
   document_id: string;
@@ -137,6 +204,41 @@ export interface QueryReq {
 export interface QueryRes {
   matches: Match[];
 }
+
+export interface ReprocessDocumentRes {
+  document_id: string;
+  status: string;
+  enqueued: boolean;
+}
+
+export interface UploadDocumentRes {
+  document_id: string;
+  status: string;
+  file_name: string;
+  mime_type: string;
+}
+
+export type UserResponseCreatedAt = string | null;
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: UserResponseCreatedAt;
+}
+
+/**
+ * R: Supported user roles for JWT auth.
+ */
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const UserRole = {
+  admin: 'admin',
+  employee: 'employee',
+} as const;
 
 export type ValidationErrorLocItem = string | number;
 
@@ -324,6 +426,116 @@ export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: stri
   
   const data: deleteDocumentV1DocumentsDocumentIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteDocumentV1DocumentsDocumentIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Upload Document
+ */
+export type uploadDocumentV1DocumentsUploadPostResponse200 = {
+  data: UploadDocumentRes
+  status: 200
+}
+
+export type uploadDocumentV1DocumentsUploadPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type uploadDocumentV1DocumentsUploadPostResponseSuccess = (uploadDocumentV1DocumentsUploadPostResponse200) & {
+  headers: Headers;
+};
+export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1DocumentsUploadPostResponse422) & {
+  headers: Headers;
+};
+
+export type uploadDocumentV1DocumentsUploadPostResponse = (uploadDocumentV1DocumentsUploadPostResponseSuccess | uploadDocumentV1DocumentsUploadPostResponseError)
+
+export const getUploadDocumentV1DocumentsUploadPostUrl = () => {
+
+
+  
+
+  return `/v1/documents/upload`
+}
+
+export const uploadDocumentV1DocumentsUploadPost = async (bodyUploadDocumentV1DocumentsUploadPost: BodyUploadDocumentV1DocumentsUploadPost, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
+    const formData = new FormData();
+formData.append(`file`, bodyUploadDocumentV1DocumentsUploadPost.file)
+if(bodyUploadDocumentV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentV1DocumentsUploadPost.title !== null) {
+ formData.append(`title`, bodyUploadDocumentV1DocumentsUploadPost.title)
+ }
+if(bodyUploadDocumentV1DocumentsUploadPost.source !== undefined && bodyUploadDocumentV1DocumentsUploadPost.source !== null) {
+ formData.append(`source`, bodyUploadDocumentV1DocumentsUploadPost.source)
+ }
+if(bodyUploadDocumentV1DocumentsUploadPost.metadata !== undefined && bodyUploadDocumentV1DocumentsUploadPost.metadata !== null) {
+ formData.append(`metadata`, bodyUploadDocumentV1DocumentsUploadPost.metadata)
+ }
+
+  const res = await fetch(getUploadDocumentV1DocumentsUploadPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    ,
+    body: 
+      formData,
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: uploadDocumentV1DocumentsUploadPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as uploadDocumentV1DocumentsUploadPostResponse
+}
+
+
+
+/**
+ * @summary Reprocess Document
+ */
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse202 = {
+  data: ReprocessDocumentRes
+  status: 202
+}
+
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseSuccess = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse202) & {
+  headers: Headers;
+};
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422) & {
+  headers: Headers;
+};
+
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseSuccess | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError)
+
+export const getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,) => {
+
+
+  
+
+  return `/v1/documents/${documentId}/reprocess`
+}
+
+export const reprocessDocumentV1DocumentsDocumentIdReprocessPost = async (documentId: string, options?: RequestInit): Promise<reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse> => {
+  
+  const res = await fetch(getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl(documentId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse
 }
 
 
@@ -602,6 +814,147 @@ export const askStreamV1AskStreamPost = async (queryReq: QueryReq, options?: Req
 
 
 /**
+ * @summary Login
+ */
+export type loginAuthLoginPostResponse200 = {
+  data: LoginResponse
+  status: 200
+}
+
+export type loginAuthLoginPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type loginAuthLoginPostResponseSuccess = (loginAuthLoginPostResponse200) & {
+  headers: Headers;
+};
+export type loginAuthLoginPostResponseError = (loginAuthLoginPostResponse422) & {
+  headers: Headers;
+};
+
+export type loginAuthLoginPostResponse = (loginAuthLoginPostResponseSuccess | loginAuthLoginPostResponseError)
+
+export const getLoginAuthLoginPostUrl = () => {
+
+
+  
+
+  return `/auth/login`
+}
+
+export const loginAuthLoginPost = async (loginRequest: LoginRequest, options?: RequestInit): Promise<loginAuthLoginPostResponse> => {
+  
+  const res = await fetch(getLoginAuthLoginPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      loginRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: loginAuthLoginPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as loginAuthLoginPostResponse
+}
+
+
+
+/**
+ * @summary Me
+ */
+export type meAuthMeGetResponse200 = {
+  data: UserResponse
+  status: 200
+}
+
+export type meAuthMeGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type meAuthMeGetResponseSuccess = (meAuthMeGetResponse200) & {
+  headers: Headers;
+};
+export type meAuthMeGetResponseError = (meAuthMeGetResponse422) & {
+  headers: Headers;
+};
+
+export type meAuthMeGetResponse = (meAuthMeGetResponseSuccess | meAuthMeGetResponseError)
+
+export const getMeAuthMeGetUrl = () => {
+
+
+  
+
+  return `/auth/me`
+}
+
+export const meAuthMeGet = async ( options?: RequestInit): Promise<meAuthMeGetResponse> => {
+  
+  const res = await fetch(getMeAuthMeGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: meAuthMeGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as meAuthMeGetResponse
+}
+
+
+
+/**
+ * @summary Logout
+ */
+export type logoutAuthLogoutPostResponse200 = {
+  data: unknown
+  status: 200
+}
+    
+export type logoutAuthLogoutPostResponseSuccess = (logoutAuthLogoutPostResponse200) & {
+  headers: Headers;
+};
+;
+
+export type logoutAuthLogoutPostResponse = (logoutAuthLogoutPostResponseSuccess)
+
+export const getLogoutAuthLogoutPostUrl = () => {
+
+
+  
+
+  return `/auth/logout`
+}
+
+export const logoutAuthLogoutPost = async ( options?: RequestInit): Promise<logoutAuthLogoutPostResponse> => {
+  
+  const res = await fetch(getLogoutAuthLogoutPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: logoutAuthLogoutPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as logoutAuthLogoutPostResponse
+}
+
+
+
+/**
  * @summary List Documents
  */
 export type listDocumentsApiV1DocumentsGetResponse200 = {
@@ -751,6 +1104,116 @@ export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: s
   
   const data: deleteDocumentApiV1DocumentsDocumentIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteDocumentApiV1DocumentsDocumentIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Upload Document
+ */
+export type uploadDocumentApiV1DocumentsUploadPostResponse200 = {
+  data: UploadDocumentRes
+  status: 200
+}
+
+export type uploadDocumentApiV1DocumentsUploadPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type uploadDocumentApiV1DocumentsUploadPostResponseSuccess = (uploadDocumentApiV1DocumentsUploadPostResponse200) & {
+  headers: Headers;
+};
+export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumentApiV1DocumentsUploadPostResponse422) & {
+  headers: Headers;
+};
+
+export type uploadDocumentApiV1DocumentsUploadPostResponse = (uploadDocumentApiV1DocumentsUploadPostResponseSuccess | uploadDocumentApiV1DocumentsUploadPostResponseError)
+
+export const getUploadDocumentApiV1DocumentsUploadPostUrl = () => {
+
+
+  
+
+  return `/api/v1/documents/upload`
+}
+
+export const uploadDocumentApiV1DocumentsUploadPost = async (bodyUploadDocumentApiV1DocumentsUploadPost: BodyUploadDocumentApiV1DocumentsUploadPost, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
+    const formData = new FormData();
+formData.append(`file`, bodyUploadDocumentApiV1DocumentsUploadPost.file)
+if(bodyUploadDocumentApiV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.title !== null) {
+ formData.append(`title`, bodyUploadDocumentApiV1DocumentsUploadPost.title)
+ }
+if(bodyUploadDocumentApiV1DocumentsUploadPost.source !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.source !== null) {
+ formData.append(`source`, bodyUploadDocumentApiV1DocumentsUploadPost.source)
+ }
+if(bodyUploadDocumentApiV1DocumentsUploadPost.metadata !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.metadata !== null) {
+ formData.append(`metadata`, bodyUploadDocumentApiV1DocumentsUploadPost.metadata)
+ }
+
+  const res = await fetch(getUploadDocumentApiV1DocumentsUploadPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    ,
+    body: 
+      formData,
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: uploadDocumentApiV1DocumentsUploadPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as uploadDocumentApiV1DocumentsUploadPostResponse
+}
+
+
+
+/**
+ * @summary Reprocess Document
+ */
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse202 = {
+  data: ReprocessDocumentRes
+  status: 202
+}
+
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+    
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseSuccess = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse202) & {
+  headers: Headers;
+};
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422) & {
+  headers: Headers;
+};
+
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseSuccess | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError)
+
+export const getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,) => {
+
+
+  
+
+  return `/api/v1/documents/${documentId}/reprocess`
+}
+
+export const reprocessDocumentApiV1DocumentsDocumentIdReprocessPost = async (documentId: string, options?: RequestInit): Promise<reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse> => {
+  
+  const res = await fetch(getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl(documentId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse
 }
 
 

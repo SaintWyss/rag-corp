@@ -12,7 +12,7 @@ Responsibilities:
 Collaborators:
   - domain.services.LLMService: Interface implementation
   - infrastructure.prompts.PromptLoader: Template loading
-  - google.generativeai: Google Gemini SDK
+  - google.genai: Google Gen AI SDK
   - retry: Resilience helper for transient errors
 
 Constraints:
@@ -30,7 +30,7 @@ Notes:
 import os
 from typing import Optional, List, AsyncGenerator
 
-import google.generativeai as genai
+from google import genai
 
 from ...domain.entities import Chunk
 from ...logger import logger
@@ -68,11 +68,9 @@ class GoogleLLMService:
             logger.error("GoogleLLMService: GOOGLE_API_KEY not configured")
             raise LLMError("GOOGLE_API_KEY not configured")
 
-        # R: Configure Google API client
-        genai.configure(api_key=self.api_key)
-
-        # R: Initialize model
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        # R: Initialize Google Gen AI client
+        self.client = genai.Client(api_key=self.api_key)
+        self.model_id = "gemini-1.5-flash"
 
         # R: Get prompt loader (use provided or default singleton)
         self.prompt_loader = prompt_loader or get_prompt_loader()
@@ -105,8 +103,11 @@ class GoogleLLMService:
 
             @retry_decorator
             def _generate_with_retry(prompt_text: str) -> str:
-                response = self.model.generate_content(prompt_text)
-                return response.text.strip()
+                response = self.client.models.generate_content(
+                    model=self.model_id,
+                    contents=prompt_text,
+                )
+                return (response.text or "").strip()
 
             result = _generate_with_retry(prompt)
             logger.info(
@@ -147,9 +148,10 @@ class GoogleLLMService:
 
         try:
             # R: Use streaming API
-            response = self.model.generate_content(prompt, stream=True)
-
-            for chunk in response:
+            for chunk in self.client.models.generate_content_stream(
+                model=self.model_id,
+                contents=prompt,
+            ):
                 if chunk.text:
                     yield chunk.text
 

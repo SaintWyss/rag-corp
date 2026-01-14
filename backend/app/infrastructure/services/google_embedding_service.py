@@ -10,7 +10,7 @@ Responsibilities:
 
 Collaborators:
   - domain.services.EmbeddingService: Interface implementation
-  - google.generativeai: Google Gemini SDK
+  - google.genai: Google Gen AI SDK
   - retry: Resilience helper for transient errors
 
 Constraints:
@@ -26,7 +26,7 @@ Notes:
 
 import os
 from typing import List
-import google.generativeai as genai
+from google import genai
 
 from ...logger import logger
 from ...exceptions import EmbeddingError
@@ -41,7 +41,7 @@ class GoogleEmbeddingService:
     using Google text-embedding-004 model.
     """
 
-    MODEL_ID = "models/text-embedding-004"
+    MODEL_ID = "text-embedding-004"
 
     def __init__(self, api_key: str | None = None):
         """
@@ -60,8 +60,8 @@ class GoogleEmbeddingService:
             logger.error("GoogleEmbeddingService: GOOGLE_API_KEY not configured")
             raise EmbeddingError("GOOGLE_API_KEY not configured")
 
-        # R: Configure Google API client
-        genai.configure(api_key=self.api_key)
+        # R: Initialize Google Gen AI client
+        self.client = genai.Client(api_key=self.api_key)
         logger.info("GoogleEmbeddingService initialized")
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
@@ -84,16 +84,24 @@ class GoogleEmbeddingService:
             try:
                 # R: Wrap API call with retry for transient errors
                 @retry_decorator
-                def _embed_batch_with_retry(content: List[str]) -> dict:
-                    return genai.embed_content(
+                def _embed_batch_with_retry(content: List[str]):
+                    return self.client.models.embed_content(
                         model=self.MODEL_ID,
-                        content=content,
-                        task_type="retrieval_document",  # R: Optimized for document storage
+                        contents=content,
+                        config={
+                            "task_type": "retrieval_document"
+                        },  # R: Optimized for document storage
                     )
 
                 resp = _embed_batch_with_retry(batch)
-                # R: Extract embeddings from response (list of lists)
-                results.extend(resp["embedding"])
+                # R: Extract embeddings from response (list of values)
+                embeddings = resp.embeddings or []
+                if len(embeddings) != len(batch):
+                    raise EmbeddingError("Embedding response size mismatch")
+                for embedding in embeddings:
+                    if not embedding.values:
+                        raise EmbeddingError("Empty embedding response")
+                    results.append(embedding.values)
                 logger.info(
                     f"GoogleEmbeddingService: Embedded batch of {len(batch)} texts"
                 )
@@ -117,16 +125,19 @@ class GoogleEmbeddingService:
             retry_decorator = create_retry_decorator()
 
             @retry_decorator
-            def _embed_query_with_retry(content: str) -> dict:
-                return genai.embed_content(
+            def _embed_query_with_retry(content: str):
+                return self.client.models.embed_content(
                     model=self.MODEL_ID,
-                    content=content,
-                    task_type="retrieval_query",  # R: Optimized for search
+                    contents=[content],
+                    config={"task_type": "retrieval_query"},  # R: Optimized for search
                 )
 
             resp = _embed_query_with_retry(query)
             logger.info("GoogleEmbeddingService: Query embedded successfully")
-            return resp["embedding"]
+            embeddings = resp.embeddings or []
+            if not embeddings or not embeddings[0].values:
+                raise EmbeddingError("Empty embedding response")
+            return embeddings[0].values
         except Exception as e:
             logger.error(f"GoogleEmbeddingService: Query embedding failed: {e}")
             raise EmbeddingError(f"Failed to embed query: {e}")

@@ -58,28 +58,32 @@ class TestCheckGoogleApi:
             if saved_key:
                 os.environ["GOOGLE_API_KEY"] = saved_key
 
-    @patch("google.generativeai.embed_content")
-    @patch("google.generativeai.configure")
-    def test_returns_available_on_success(self, mock_configure, mock_embed):
+    @patch("google.genai.Client")
+    def test_returns_available_on_success(self, mock_client_cls):
         """Should return 'available' when API responds."""
         os.environ["GOOGLE_API_KEY"] = "test-key"
 
-        mock_embed.return_value = {"embedding": [0.1, 0.2, 0.3]}
+        mock_client = mock_client_cls.return_value
+        mock_embedding = Mock()
+        mock_embedding.values = [0.1, 0.2, 0.3]
+        mock_response = Mock()
+        mock_response.embeddings = [mock_embedding]
+        mock_client.models.embed_content.return_value = mock_response
 
         from app.main import _check_google_api
 
         result = _check_google_api()
 
         assert result == "available"
-        mock_configure.assert_called_with(api_key="test-key")
+        mock_client_cls.assert_called_with(api_key="test-key")
 
-    @patch("google.generativeai.embed_content")
-    @patch("google.generativeai.configure")
-    def test_returns_unavailable_on_error(self, mock_configure, mock_embed):
+    @patch("google.genai.Client")
+    def test_returns_unavailable_on_error(self, mock_client_cls):
         """Should return 'unavailable' when API errors."""
         os.environ["GOOGLE_API_KEY"] = "test-key"
 
-        mock_embed.side_effect = Exception("API error")
+        mock_client = mock_client_cls.return_value
+        mock_client.models.embed_content.side_effect = Exception("API error")
 
         from app.main import _check_google_api
 

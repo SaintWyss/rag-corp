@@ -255,19 +255,20 @@ def _check_google_api() -> str:
         return "disabled"
 
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
 
         # R: Minimal API call to verify connectivity (cheap operation)
-        resp = genai.embed_content(
-            model="models/text-embedding-004",
-            content="health check",
-            task_type="retrieval_query",
+        resp = client.models.embed_content(
+            model="text-embedding-004",
+            contents=["health check"],
+            config={"task_type": "retrieval_query"},
         )
 
         # R: Verify we got a valid response
-        if resp and "embedding" in resp and len(resp["embedding"]) > 0:
+        embeddings = resp.embeddings or []
+        if embeddings and embeddings[0].values:
             return "available"
         return "unavailable"
     except Exception as e:

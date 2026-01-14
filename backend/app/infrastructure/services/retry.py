@@ -80,7 +80,7 @@ def get_http_status_code(exception: BaseException) -> int | None:
     if hasattr(exception, "response") and hasattr(exception.response, "status_code"):
         return exception.response.status_code
 
-    # google-generativeai specific exceptions
+    # google-genai specific exceptions
     if hasattr(exception, "status_code"):
         return exception.status_code
 
