@@ -10,6 +10,7 @@ type AppShellProps = {
 
 const links = [
   { href: "/", label: "Ask" },
+  { href: "/chat", label: "Chat" },
   { href: "/documents", label: "Documents" },
 ];
 

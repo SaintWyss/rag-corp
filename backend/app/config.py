@@ -48,6 +48,7 @@ class Settings(BaseSettings):
         max_body_bytes: Max request body size (default: 10MB)
         metrics_require_auth: Require auth for /metrics (default: False)
         cors_allow_credentials: Allow cookies cross-origin (default: False)
+        max_conversation_messages: Max chat history messages (default: 12)
     """
 
     # Required (no defaults)
@@ -92,6 +93,7 @@ class Settings(BaseSettings):
     prompt_version: str = "v2"  # R: v2 includes better grounding and injection protection
     max_context_chars: int = 12000
     default_use_mmr: bool = False  # R: MMR for diverse retrieval (default off for perf)
+    max_conversation_messages: int = 12
 
     # Retry/Resilience
     retry_max_attempts: int = 3

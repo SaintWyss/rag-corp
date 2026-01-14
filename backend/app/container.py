@@ -28,10 +28,13 @@ Notes:
 from functools import lru_cache
 
 from .config import get_settings
-from .domain.repositories import DocumentRepository
+from .domain.repositories import DocumentRepository, ConversationRepository
 from .domain.services import EmbeddingService, LLMService, TextChunkerService
 from .infrastructure.cache import get_embedding_cache
-from .infrastructure.repositories import PostgresDocumentRepository
+from .infrastructure.repositories import (
+    PostgresDocumentRepository,
+    InMemoryConversationRepository,
+)
 from .infrastructure.services import (
     CachingEmbeddingService,
     GoogleEmbeddingService,
@@ -58,6 +61,20 @@ def get_document_repository() -> DocumentRepository:
         PostgreSQL implementation of DocumentRepository
     """
     return PostgresDocumentRepository()
+
+
+@lru_cache
+def get_conversation_repository() -> ConversationRepository:
+    """
+    R: Get singleton instance of conversation repository.
+
+    Returns:
+        In-memory implementation of ConversationRepository
+    """
+    settings = get_settings()
+    return InMemoryConversationRepository(
+        max_messages=settings.max_conversation_messages
+    )
 
 
 # R: Embedding service factory (singleton)

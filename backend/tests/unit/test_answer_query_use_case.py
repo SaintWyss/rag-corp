@@ -327,6 +327,32 @@ class TestAnswerQueryUseCase:
         call_args = mock_llm_service.generate_answer.call_args
         assert call_args.kwargs["query"] == original_query
 
+    def test_execute_uses_llm_query_override(
+        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+    ):
+        """R: Should allow overriding the LLM query with conversation context."""
+        # Arrange
+        original_query = "What is the capital of France?"
+        llm_query = "Historial...\nPregunta actual: What is the capital of France?"
+
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = sample_chunks
+        mock_llm_service.generate_answer.return_value = "Paris"
+
+        use_case = AnswerQueryUseCase(
+            repository=mock_repository,
+            embedding_service=mock_embedding_service,
+            llm_service=mock_llm_service,
+            context_builder=mock_context_builder,
+        )
+
+        # Act
+        use_case.execute(AnswerQueryInput(query=original_query, llm_query=llm_query))
+
+        # Assert
+        call_args = mock_llm_service.generate_answer.call_args
+        assert call_args.kwargs["query"] == llm_query
+
 
 @pytest.mark.unit
 class TestAnswerQueryInput:
@@ -337,6 +363,7 @@ class TestAnswerQueryInput:
         input_data = AnswerQueryInput(query="Test query")
 
         assert input_data.query == "Test query"
+        assert input_data.llm_query is None
         assert input_data.top_k == 5
 
     def test_create_with_custom_top_k(self):

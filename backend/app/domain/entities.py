@@ -23,7 +23,7 @@ Notes:
 from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal
 
 
 @dataclass
@@ -100,3 +100,17 @@ class QueryResult:
     chunks: List[Chunk]
     query: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ConversationMessage:
+    """
+    R: Represents a message in a multi-turn conversation.
+
+    Attributes:
+        role: Message role (user or assistant)
+        content: Message content
+    """
+
+    role: Literal["user", "assistant"]
+    content: str

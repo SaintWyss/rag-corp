@@ -46,11 +46,13 @@ class AnswerQueryInput:
 
     Attributes:
         query: User's natural language question
+        llm_query: Optional query override passed to the LLM prompt
         top_k: Number of similar chunks to retrieve (default: 5)
         use_mmr: Use Maximal Marginal Relevance for diverse results
     """
 
     query: str
+    llm_query: Optional[str] = None
     top_k: int = 5
     use_mmr: bool = False
 
@@ -170,9 +172,11 @@ class AnswerQueryUseCase:
         context_chars = len(context)
 
         # R: STEP 4 - Generate answer using LLM
+        llm_query = input_data.llm_query or input_data.query
+
         with timings.measure("llm"):
             answer = self.llm_service.generate_answer(
-                query=input_data.query, context=context
+                query=llm_query, context=context
             )
 
         # R: Get final timing data

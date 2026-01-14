@@ -23,7 +23,7 @@ Notes:
 
 from typing import Protocol, List, Optional
 from uuid import UUID
-from .entities import Document, Chunk
+from .entities import Document, Chunk, ConversationMessage
 
 
 class DocumentRepository(Protocol):
@@ -162,5 +162,41 @@ class DocumentRepository(Protocol):
 
         Returns:
             True if the underlying data store is reachable.
+        """
+        ...
+
+
+class ConversationRepository(Protocol):
+    """
+    R: Interface for storing and retrieving conversation history.
+
+    Implementations must provide:
+      - Conversation creation/lookup
+      - Message append and retrieval
+    """
+
+    def create_conversation(self) -> str:
+        """
+        R: Create a new conversation and return its ID.
+        """
+        ...
+
+    def conversation_exists(self, conversation_id: str) -> bool:
+        """
+        R: Check if a conversation exists.
+        """
+        ...
+
+    def append_message(self, conversation_id: str, message: ConversationMessage) -> None:
+        """
+        R: Append a message to a conversation.
+        """
+        ...
+
+    def get_messages(
+        self, conversation_id: str, limit: Optional[int] = None
+    ) -> List[ConversationMessage]:
+        """
+        R: Get messages for a conversation, optionally limited to last N.
         """
         ...

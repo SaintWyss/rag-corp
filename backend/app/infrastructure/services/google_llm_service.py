@@ -37,7 +37,7 @@ from ...logger import logger
 from ...exceptions import LLMError
 from ..prompts import PromptLoader, get_prompt_loader
 from .retry import create_retry_decorator
-from ...application.context_builder import ContextBuilder
+from ...application.context_builder import get_context_builder
 
 
 class GoogleLLMService:
@@ -139,7 +139,8 @@ class GoogleLLMService:
             LLMError: If streaming fails
         """
         # R: Build context from chunks
-        context = ContextBuilder.build(chunks)
+        context_builder = get_context_builder()
+        context, _ = context_builder.build(chunks)
 
         # R: Format prompt using versioned template
         prompt = self.prompt_loader.format(context=context, query=query)

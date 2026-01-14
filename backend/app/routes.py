@@ -30,6 +30,10 @@ from .config import get_settings
 from .rbac import Permission, require_permissions
 from .error_responses import not_found
 from .streaming import stream_answer
+from .application.conversations import (
+    format_conversation_query,
+    resolve_conversation_id,
+)
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
@@ -48,10 +52,12 @@ from .container import (
     get_llm_service,
     get_embedding_service,
     get_document_repository,
+    get_conversation_repository,
     get_list_documents_use_case,
     get_get_document_use_case,
     get_delete_document_use_case,
 )
+from .domain.entities import ConversationMessage
 
 # R: Create API router for RAG endpoints
 router = APIRouter()
@@ -258,6 +264,10 @@ class QueryReq(BaseModel):
         max_length=_settings.max_query_chars,
         description="User's natural language question (1-2,000 chars)",
     )
+    conversation_id: str | None = Field(
+        default=None,
+        description="Conversation ID for multi-turn chat (optional)",
+    )
     top_k: int = Field(
         default=5,
         ge=1,
@@ -316,6 +326,7 @@ def query(
 class AskRes(BaseModel):
     answer: str  # R: Generated answer from LLM
     sources: list[str]  # R: Retrieved chunks used as context
+    conversation_id: str | None = None  # R: Conversation ID for multi-turn chat
 
 
 # R: Endpoint for complete RAG flow (retrieval + generation) - REFACTORED with Use Case
@@ -336,14 +347,38 @@ def ask(
     Uses the same query contract as /query with a generation step.
     Set use_mmr=true for diverse results (reduces redundant chunks).
     """
+    conversation_repository = get_conversation_repository()
+    conversation_id = resolve_conversation_id(
+        conversation_repository, req.conversation_id
+    )
+    history = conversation_repository.get_messages(
+        conversation_id, limit=_settings.max_conversation_messages
+    )
+    llm_query = format_conversation_query(history, req.query)
+    conversation_repository.append_message(
+        conversation_id,
+        ConversationMessage(role="user", content=req.query),
+    )
+
     # R: Execute use case with input data
     result = use_case.execute(
-        AnswerQueryInput(query=req.query, top_k=req.top_k, use_mmr=req.use_mmr)
+        AnswerQueryInput(
+            query=req.query,
+            llm_query=llm_query,
+            top_k=req.top_k,
+            use_mmr=req.use_mmr,
+        )
     )
 
     # R: Convert domain result to HTTP response
+    conversation_repository.append_message(
+        conversation_id,
+        ConversationMessage(role="assistant", content=result.answer),
+    )
     return AskRes(
-        answer=result.answer, sources=[chunk.content for chunk in result.chunks]
+        answer=result.answer,
+        sources=[chunk.content for chunk in result.chunks],
+        conversation_id=conversation_id,
     )
 
 
@@ -370,10 +405,38 @@ async def ask_stream(
     embedding_service = get_embedding_service()
     repository = get_document_repository()
     llm_service = get_llm_service()
+    conversation_repository = get_conversation_repository()
+
+    conversation_id = resolve_conversation_id(
+        conversation_repository, req.conversation_id
+    )
+    history = conversation_repository.get_messages(
+        conversation_id, limit=_settings.max_conversation_messages
+    )
+    llm_query = format_conversation_query(history, req.query)
+    conversation_repository.append_message(
+        conversation_id,
+        ConversationMessage(role="user", content=req.query),
+    )
 
     # R: Embed query and retrieve similar chunks
     query_embedding = embedding_service.embed_query(req.query)
-    chunks = repository.find_similar_chunks(query_embedding, req.top_k)
+    if req.use_mmr:
+        chunks = repository.find_similar_chunks_mmr(
+            embedding=query_embedding,
+            top_k=req.top_k,
+            fetch_k=req.top_k * 4,
+            lambda_mult=0.5,
+        )
+    else:
+        chunks = repository.find_similar_chunks(query_embedding, req.top_k)
 
     # R: Return streaming response
-    return await stream_answer(req.query, chunks, llm_service, request)
+    return await stream_answer(
+        llm_query,
+        chunks,
+        llm_service,
+        request,
+        conversation_id=conversation_id,
+        conversation_repository=conversation_repository,
+    )
