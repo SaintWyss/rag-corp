@@ -13,6 +13,8 @@ RAG Corp is a Retrieval-Augmented Generation (RAG) system for document search an
 - Document ingestion (chunk, embed, store)
 - Semantic search over stored chunks
 - Answer generation grounded in retrieved context
+- Streaming chat with multi-turn context (conversation_id)
+- Document CRUD for review and cleanup
 
 ---
 
@@ -24,6 +26,7 @@ graph TB
     Web --> API[FastAPI Backend]
     API --> PG[(PostgreSQL + pgvector)]
     API --> Gemini[Google Gemini API]
+    API --> Cache[Embedding Cache (memory/Redis)]
 ```
 
 ---
@@ -37,6 +40,7 @@ graph TB
 | Vector DB | PostgreSQL 16 + pgvector 0.8.1 | Store chunks + embeddings |
 | Embeddings | Gemini text-embedding-004 | 768D vectors |
 | LLM | Gemini 1.5 Flash | Answer generation |
+| Cache | In-memory / Redis | Embedding cache |
 
 ---
 
@@ -44,8 +48,8 @@ graph TB
 
 ### Domain (`backend/app/domain`)
 
-- Entities: `Document`, `Chunk`, `QueryResult`
-- Protocols: `DocumentRepository`, `EmbeddingService`, `LLMService`, `TextChunkerService`
+- Entities: `Document`, `Chunk`, `QueryResult`, `ConversationMessage`
+- Protocols: `DocumentRepository`, `ConversationRepository`, `EmbeddingService`, `LLMService`, `TextChunkerService`
 - Pure Python contracts, no framework dependencies
 
 ### Application (`backend/app/application/use_cases`)
@@ -58,6 +62,8 @@ graph TB
 - `PostgresDocumentRepository`
 - `GoogleEmbeddingService`, `GoogleLLMService`
 - `SimpleTextChunker` (defaults: 900 chars, 120 overlap)
+- `InMemoryConversationRepository`
+- `EmbeddingCache` (memory/Redis)
 
 ### API Layer (`backend/app/main.py`, `backend/app/routes.py`)
 
@@ -89,6 +95,24 @@ graph TB
 3. Build context from chunks
 4. LLM generates answer
 5. Return answer + sources (chunk content)
+
+### Ask Stream (`POST /v1/ask/stream`)
+
+1. Embed query text
+2. Retrieve top-k chunks (MMR optional)
+3. Build context and stream tokens via SSE
+4. "sources" and "done" events include conversation_id
+
+### Conversation History
+
+- In-memory store (`InMemoryConversationRepository`)
+- Limite por `MAX_CONVERSATION_MESSAGES`
+
+### Documents (`/v1/documents`)
+
+1. List documents with limit/offset
+2. Fetch detail by id (includes deleted_at)
+3. Soft delete document (deleted_at)
 
 ---
 
@@ -129,7 +153,7 @@ Content of the chunk goes here...
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | `MAX_CONTEXT_CHARS` | 12000 | Prevent token overflow |
-| `PROMPT_VERSION` | v1 | Select prompt template |
+| `PROMPT_VERSION` | v2 | Select prompt template |
 
 ### Prompt Versioning
 
@@ -137,10 +161,11 @@ Templates are stored in `backend/app/prompts/`:
 
 ```
 prompts/
-  v1_answer_es.md   # Production (Spanish)
+  v1_answer_es.md
+  v2_answer_es.md   # Default (Spanish)
 ```
 
-Select version via `PROMPT_VERSION` env var. Solo `v1` esta disponible hoy.
+Select version via `PROMPT_VERSION` env var.
 
 ### Injection Defense
 

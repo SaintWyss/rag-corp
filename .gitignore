@@ -35,3 +35,6 @@ htmlcov/
 
 # Docker / local
 *.log
+
+# Local audits
+doc/audits/audit-2026-01-13.md

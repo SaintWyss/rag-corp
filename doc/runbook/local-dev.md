@@ -22,7 +22,7 @@ pnpm docker:up
 pnpm contracts:export
 pnpm contracts:gen
 
-# 5) Start dev servers
+# 5) Start frontend dev server
 pnpm dev
 ```
 
@@ -59,7 +59,7 @@ pnpm dev
 
 ---
 
-## Database
+## Docker Compose
 
 ```bash
 # Start only DB
@@ -75,6 +75,13 @@ docker compose down -v
 docker compose exec db psql -U postgres -d rag
 ```
 
+### Web container for E2E
+
+```bash
+# Start db + rag-api + web
+docker compose --profile e2e up -d --build
+```
+
 ---
 
 ## Environment Variables
@@ -83,6 +90,12 @@ docker compose exec db psql -U postgres -d rag
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
 GOOGLE_API_KEY=your-google-api-key-here
 NEXT_PUBLIC_API_URL=http://localhost:8000
+API_KEYS_CONFIG=
+RBAC_CONFIG=
+METRICS_REQUIRE_AUTH=false
+EMBEDDING_CACHE_BACKEND=memory
+REDIS_URL=
+MAX_CONVERSATION_MESSAGES=12
 ```
 
 ---
@@ -93,40 +106,23 @@ El backend soporta dos backends de cache para embeddings:
 
 ### In-Memory (Default)
 
-Sin configuración adicional. Ideal para desarrollo local:
-- LRU con máximo 1000 entradas
-- TTL de 1 hora
+Sin configuracion adicional. Ideal para desarrollo local:
+- LRU con maximo 1000 entradas
+- TTL interno de 1 hora
 - Se pierde al reiniciar el servidor
 
-### Redis (Producción)
+### Redis (Opcional)
 
 ```bash
 # 1) Configurar en .env
+EMBEDDING_CACHE_BACKEND=redis
 REDIS_URL=redis://localhost:6379
 
-# 2) Opción A: Levantar Redis standalone
+# 2) Levantar Redis standalone
 docker run -d -p 6379:6379 --name redis redis:7-alpine
 
-# 2) Opción B: Usar docker compose con perfil full
+# 3) O usar compose con perfil full
 pnpm docker:full
-# Esto levanta: db + api + redis
-```
-
-**Verificar conexión:**
-```bash
-docker exec redis redis-cli ping
-# Esperado: PONG
-```
-
-**Beneficios de Redis:**
-- Cache persistente entre reinicios
-- Compartido entre instancias (multi-replica)
-- TTL automático por clave
-
-**Configuración avanzada:**
-```bash
-# TTL personalizado (segundos)
-EMBEDDING_CACHE_TTL=7200  # 2 horas
 ```
 
 ---
@@ -162,36 +158,24 @@ pnpm test:watch
 pnpm test:coverage
 ```
 
-**Test structure:**
-- `__tests__/page.test.tsx` - Page component render tests
-- `__tests__/error.test.tsx` - Error boundary behavior tests
-- `__tests__/hooks/useRagAsk.test.tsx` - Hook logic tests (API mocking)
-
-**Writing tests:**
-- Use `@testing-library/react` for component tests
-- Mock API calls with `jest.mock("@contracts/src/generated")`
-- Mock `next/navigation` is pre-configured in `jest.setup.ts`
-
 ### E2E Tests (Playwright)
 
 ```bash
 # Install Playwright browsers (first time only)
 cd tests/e2e && pnpm install && pnpm install:browsers
 
-# Run E2E tests
+# Run E2E (local dev servers)
 pnpm e2e
 
-# Run with UI (interactive mode)
-pnpm e2e:ui
-
-# Debug mode
-cd tests/e2e && pnpm test:debug
+# Run E2E with Docker Compose stack
+E2E_USE_COMPOSE=1 TEST_API_KEY=e2e-key pnpm e2e
 ```
 
-**Test files:**
-- `tests/e2e/tests/health.spec.ts` - Health checks
-- `tests/e2e/tests/rag-flow.spec.ts` - RAG workflow
-- `tests/e2e/tests/ui.spec.ts` - Frontend UI
+Tests:
+- `tests/e2e/tests/documents.spec.ts`
+- `tests/e2e/tests/chat.spec.ts`
+
+Nota: el backend debe tener `API_KEYS_CONFIG` con la key usada en `TEST_API_KEY`.
 
 ---
 
@@ -212,9 +196,22 @@ pnpm docker:full
 - Grafana: http://localhost:3001 (admin/admin)
 - Postgres Exporter: http://localhost:9187/metrics
 
+### Metrics
+
+`/metrics` es publico si `METRICS_REQUIRE_AUTH=false`.
+
+Metricas relevantes:
+- `rag_requests_total`
+- `rag_request_latency_seconds`
+- `rag_embed_latency_seconds`
+- `rag_retrieve_latency_seconds`
+- `rag_llm_latency_seconds`
+- `rag_embedding_cache_hit_total`
+- `rag_embedding_cache_miss_total`
+
 ### Logs Estructurados (JSON)
 
-Los logs del backend son JSON con campos automáticos:
+Los logs del backend son JSON con campos automaticos:
 
 ```json
 {
@@ -234,70 +231,7 @@ Los logs del backend son JSON con campos automáticos:
 
 **Campos de contexto:**
 
-| Campo | Descripción |
+| Campo | Descripcion |
 |-------|-------------|
-| `request_id` | UUID único por request (correlación) |
+| `request_id` | UUID unico por request (correlacion) |
 | `trace_id` | OpenTelemetry trace ID (si habilitado) |
-| `span_id` | OpenTelemetry span ID (si habilitado) |
-| `method` | HTTP method (GET, POST, etc.) |
-| `path` | Request path (/v1/ask, etc.) |
-
-**Campos de timing (RAG):**
-
-| Campo | Descripción |
-|-------|-------------|
-| `embed_ms` | Tiempo de generación de embedding |
-| `retrieve_ms` | Tiempo de búsqueda en DB |
-| `llm_ms` | Tiempo de generación LLM |
-| `total_ms` | Tiempo total del use case |
-
-### Métricas Prometheus
-
-Endpoint: `GET /metrics`
-
-```bash
-curl http://localhost:8000/metrics
-```
-
-**Métricas disponibles:**
-
-| Métrica | Tipo | Descripción |
-|---------|------|-------------|
-| `rag_requests_total` | Counter | Total de requests por endpoint/status |
-| `rag_request_latency_seconds` | Histogram | Latencia de requests |
-| `rag_embed_latency_seconds` | Histogram | Latencia de embedding |
-| `rag_retrieve_latency_seconds` | Histogram | Latencia de retrieval |
-| `rag_llm_latency_seconds` | Histogram | Latencia de LLM |
-
-**Ejemplo de uso con Prometheus:**
-
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'rag-corp'
-    static_configs:
-      - targets: ['localhost:8000']
-    metrics_path: /metrics
-```
-
-### Tracing con OpenTelemetry (Opcional)
-
-Para habilitar tracing distribuido:
-
-```bash
-# En .env
-OTEL_ENABLED=1
-```
-
-Los traces se exportan a consola por defecto. Para producción, configurar OTLP:
-
-```bash
-OTEL_ENABLED=1
-OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-```
-
-**Dependencias adicionales (instalar si usás tracing):**
-
-```bash
-pip install opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-fastapi
-```

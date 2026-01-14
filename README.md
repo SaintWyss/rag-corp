@@ -10,18 +10,17 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 
 ## Features
 
-- ✅ Ingesta de documentos vía API REST (`POST /v1/ingest/text`, `/v1/ingest/batch`)
-- ✅ Chunking inteligente con límites naturales (900 chars, 120 overlap)
-- ✅ Embeddings 768D con Google text-embedding-004
-- ✅ Búsqueda vectorial con PostgreSQL + pgvector (índice IVFFlat)
-- ✅ Generación RAG con Gemini 1.5 Flash y prompts versionados
-- ✅ UI en Next.js con App Router y Tailwind CSS
-- ✅ Contratos tipados (OpenAPI → TypeScript vía Orval)
+- ✅ Ingesta de documentos via API REST (`POST /v1/ingest/text`, `/v1/ingest/batch`)
+- ✅ CRUD de documentos (`GET /v1/documents`, `GET /v1/documents/{id}`, `DELETE /v1/documents/{id}`)
+- ✅ Busqueda vectorial con PostgreSQL + pgvector (indice IVFFlat)
+- ✅ RAG con Gemini 1.5 Flash y prompts versionados
+- ✅ Chat streaming SSE con multi-turn (`POST /v1/ask/stream`, `conversation_id`)
+- ✅ Cache de embeddings (memory por defecto, Redis opcional)
+- ✅ UI en Next.js (Ask, Documents, Chat)
+- ✅ Contratos tipados (OpenAPI -> TypeScript via Orval)
 - ✅ Clean Architecture (Domain/Application/Infrastructure)
-- ✅ Autenticación por API Key con scopes
-- ✅ Rate limiting configurable (token bucket)
-- ✅ Métricas Prometheus en `/metrics`
-- ✅ Logging estructurado JSON con request_id
+- ✅ Seguridad: API keys + scopes, RBAC por permisos, rate limiting
+- ✅ Observabilidad: /healthz, /metrics, logs JSON
 
 ---
 
@@ -36,6 +35,8 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 | **Frontend** | Next.js 16 + TypeScript | `frontend/` |
 | **Contracts** | OpenAPI 3.1 + Orval | `shared/contracts/` |
 | **Embeddings/LLM** | Google Gemini API | Servicios externos |
+| **Cache** | In-memory / Redis | `backend/app/infrastructure/cache.py` |
+| **Observability** | Prometheus + Grafana | `infra/` (profile observability) |
 
 ### Flujo "Ask" (consulta RAG)
 
@@ -47,6 +48,16 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 5. ContextBuilder arma contexto con chunks recuperados
 6. GoogleLLMService genera respuesta grounded en contexto
 7. Response con answer + sources → Usuario
+```
+
+### Flujo "Chat streaming" (multi-turn)
+
+```
+1. Usuario envia query → /v1/ask/stream con conversation_id opcional
+2. Backend recupera historial (in-memory) y arma llm_query
+3. Se emite evento "sources" + tokens SSE
+4. "done" incluye answer y conversation_id
+5. UI muestra burbujas y guarda el ID para el siguiente turno
 ```
 
 ### Flujo "Ingest" (ingesta de documentos)
@@ -88,13 +99,14 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 cp .env.example .env
 ```
 
-Editar `.env` con:
+Editar `.env` con valores minimos:
 
 | Variable | Descripción | Requerida |
 |----------|-------------|-----------|
 | `GOOGLE_API_KEY` | API key de Google Gemini | ✅ |
-| `DATABASE_URL` | Connection string PostgreSQL | Default en compose |
-| `API_KEYS_CONFIG` | JSON con API keys y scopes | Para auth |
+| `DATABASE_URL` | Connection string PostgreSQL | Requerida si corres backend local |
+| `API_KEYS_CONFIG` | JSON con API keys y scopes | Opcional (si vacio, auth off) |
+| `RBAC_CONFIG` | JSON con roles y key hashes | Opcional |
 
 ### Levantar Servicios
 
@@ -119,7 +131,11 @@ pnpm contracts:gen
 ### Ejecutar en Desarrollo
 
 ```bash
+# Frontend (dev server)
 pnpm dev
+
+# Backend (si queres correrlo local sin Docker)
+# cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Verificar Funcionamiento
@@ -129,17 +145,24 @@ pnpm dev
 curl http://localhost:8000/healthz
 # Esperado: {"ok":true,"db":"connected","request_id":"..."}
 
-# Métricas
+# Métricas (si METRICS_REQUIRE_AUTH=false)
 curl http://localhost:8000/metrics | head -5
 
 # Ingestar documento
+API_KEY="dev-key"
+## Si queres auth, define API_KEYS_CONFIG en .env con este valor.
 curl -X POST http://localhost:8000/v1/ingest/text \
   -H "Content-Type: application/json" \
-  -d '{"title":"Test","text":"RAG Corp es un sistema de búsqueda semántica."}'
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"title":"Test","text":"RAG Corp es un sistema de busqueda semantica."}'
+
+# Listar documentos
+curl -H "X-API-Key: ${API_KEY}" http://localhost:8000/v1/documents
 
 # Consulta RAG
 curl -X POST http://localhost:8000/v1/ask \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
   -d '{"query":"¿Qué es RAG Corp?","top_k":3}'
 ```
 
@@ -166,6 +189,8 @@ curl -X POST http://localhost:8000/v1/ask \
 | `pnpm contracts:gen` | Generar cliente TypeScript con Orval |
 | `pnpm build` | Build de producción |
 | `pnpm lint` | Lint del monorepo |
+| `pnpm e2e` | Ejecutar Playwright (tests/e2e) |
+| `pnpm e2e:ui` | Playwright UI |
 
 ### Backend (Python)
 
@@ -232,6 +257,9 @@ pytest --cov=app --cov-report=html
 
 # Frontend
 cd frontend && pnpm test
+
+# E2E (Playwright)
+pnpm e2e
 ```
 
 ### Convenciones
@@ -256,20 +284,27 @@ cd frontend && pnpm test
 ### ✅ Implementado
 
 - [x] Clean Architecture con capas bien definidas
-- [x] Autenticación por API Key con scopes
+- [x] API keys + scopes, RBAC por permisos
 - [x] Rate limiting configurable
-- [x] Métricas Prometheus y logging estructurado
-- [x] Connection pooling y atomic ingest
-- [x] Prompts versionados y externalizados
+- [x] Metricas Prometheus y logging estructurado
+- [x] Cache de embeddings (memory/Redis)
+- [x] Chat streaming SSE con multi-turn (conversation_id)
+- [x] UI de documentos (ingesta + CRUD)
+- [x] CI con lint/test y E2E Playwright
 
-### 🚧 Pendiente
+### Post-v3 (ideas)
 
-- [ ] **Streaming**: Respuestas SSE en tiempo real
-- [ ] **Multi-turn Chat**: Historial de conversación
-- [ ] **Caché de embeddings**: Reducir latencia y costos
-- [ ] **Retry logic**: Resiliencia para servicios externos
-- [ ] **CI/CD**: GitHub Actions pipeline
-- [ ] **Admin UI**: CRUD visual de documentos
+- [ ] Persistir conversaciones en Postgres (hoy in-memory)
+- [ ] Admin UI avanzada (roles, claves, auditoria)
+- [ ] Streaming observability (latency por token)
+
+## Release Notes v3
+
+- Chat streaming + multi-turn con conversation_id (SSE en `/v1/ask/stream`).
+- UI de documentos (listado, detalle, delete) + ingesta desde la web.
+- RBAC por permisos con fallback a scopes legacy.
+- Cache de embeddings con backend memory/Redis y metricas hit/miss.
+- Pipeline CI con Playwright E2E y artifacts en falla.
 
 ---
 

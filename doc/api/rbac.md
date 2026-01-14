@@ -7,30 +7,15 @@
 
 ## Overview
 
-RAG Corp supports fine-grained access control through RBAC, complementing the existing API key + scope system.
+RBAC agrega permisos a las API keys existentes. El flujo es:
 
-## Architecture
+1) API key valida (si `API_KEYS_CONFIG` esta configurado)  
+2) RBAC check (si `RBAC_CONFIG` esta configurado)  
+3) Fallback a scopes legacy cuando no hay RBAC
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Authentication Flow                       │
-├─────────────────────────────────────────────────────────────┤
-│  Request → API Key Validation → Scope Check → RBAC Check   │
-│                 ↓                    ↓             ↓        │
-│            auth.py            Depends()      rbac.py       │
-└─────────────────────────────────────────────────────────────┘
-```
+---
 
-## Default Roles
-
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| `admin` | Full system access | `*` (wildcard) |
-| `user` | Standard user | Create/read docs, search, ask |
-| `readonly` | Read-only access | Read docs, search, ask |
-| `ingest-only` | Automation | Create documents only |
-
-## Permissions
+## Permisos
 
 ```python
 # Document operations
@@ -49,9 +34,35 @@ ADMIN_HEALTH = "admin:health"
 ADMIN_CONFIG = "admin:config"
 ```
 
+---
+
+## Scopes legacy -> permisos
+
+En ausencia de RBAC, los scopes se mapean asi:
+
+| Scope | Permisos |
+|-------|----------|
+| `ingest` | `documents:create`, `documents:read`, `documents:delete` |
+| `ask` | `documents:read`, `query:search`, `query:ask`, `query:stream` |
+| `metrics` | `admin:metrics` |
+| `*` | `*` |
+
+---
+
+## Default Roles
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `admin` | Full system access | `*` |
+| `user` | Standard user | create/read docs, search, ask, stream |
+| `readonly` | Read-only access | read docs, search, ask |
+| `ingest-only` | Automation | create docs only |
+
+---
+
 ## Configuration
 
-### Environment Variable
+### RBAC_CONFIG
 
 ```bash
 RBAC_CONFIG='{
@@ -63,66 +74,41 @@ RBAC_CONFIG='{
   },
   "key_roles": {
     "abc123hash...": "admin",
-    "def456hash...": "user",
-    "ghi789hash...": "custom-analyst"
+    "def456hash...": "user"
   }
 }'
 ```
 
-### Key Hash Generation
+### Key hash
 
 ```python
 import hashlib
 
 api_key = "your-api-key"
 key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:12]
-print(key_hash)  # Use this in RBAC_CONFIG
+print(key_hash)
 ```
+
+---
 
 ## Usage in Routes
 
 ```python
-from app.rbac import require_permission, require_role, Permission
+from app.rbac import require_permissions, Permission
 
-# Permission-based
-@router.post("/documents")
-async def create_document(
-    _: None = Depends(require_permission(Permission.DOCUMENTS_CREATE))
-):
-    ...
-
-# Role-based
-@router.delete("/admin/cache")
-async def clear_cache(
-    _: None = Depends(require_role("admin"))
-):
+@router.post("/ingest/text")
+def ingest(_: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE))):
     ...
 ```
 
-## Role Inheritance
-
-Roles can inherit from parent roles:
-
-```json
-{
-  "roles": {
-    "senior-analyst": {
-      "permissions": ["documents:delete"],
-      "inherits_from": "user"
-    }
-  }
-}
-```
-
-The `senior-analyst` role will have:
-- Own permission: `documents:delete`
-- Inherited from `user`: `documents:create`, `documents:read`, `query:*`
+---
 
 ## Fallback Behavior
 
-If RBAC is not configured (`RBAC_CONFIG` not set):
-- Falls back to scope-based authentication only
-- No breaking changes to existing deployments
+- Si `RBAC_CONFIG` no esta configurado: usa scopes legacy.
+- Si `API_KEYS_CONFIG` y `RBAC_CONFIG` estan vacias: auth deshabilitada.
+
+---
 
 ## Testing
 
@@ -130,10 +116,3 @@ If RBAC is not configured (`RBAC_CONFIG` not set):
 cd backend
 pytest tests/unit/test_rbac.py -v
 ```
-
-## Security Considerations
-
-- API key hashes (not raw keys) are used in configuration
-- Permission checks happen after authentication
-- Wildcard (`*`) should only be assigned to admin roles
-- Audit logs include key hash and denied permissions

@@ -6,8 +6,8 @@
 |------|-----------|-------------------|
 | Backend | pytest | >=70% |
 | Frontend | Jest + Testing Library | >=70% |
+| E2E | Playwright | Flujos criticos |
 | Load | k6 | Benchmarks |
-| E2E | (Planned) Playwright | Flujos criticos |
 
 ## Backend (pytest)
 
@@ -20,7 +20,7 @@ cd backend
 pytest -m unit
 
 # Integration tests (requieren DB + GOOGLE_API_KEY)
-RUN_INTEGRATION=1 pytest -m integration
+RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
 
 # Reporte de cobertura (usa la configuracion de pytest.ini)
 pytest
@@ -32,10 +32,9 @@ pytest
 backend/tests/
 ├── unit/
 │   ├── test_answer_query_use_case.py
+│   ├── test_conversation_repository.py
 │   ├── test_ingest_document_use_case.py
-│   ├── test_search_chunks_use_case.py
-│   ├── test_chunker.py
-│   └── test_config.py
+│   └── test_search_chunks_use_case.py
 ├── integration/
 │   ├── test_api_endpoints.py
 │   └── test_postgres_document_repo.py
@@ -70,17 +69,31 @@ pnpm test:coverage
 ```
 frontend/__tests__/
 ├── page.test.tsx
-├── error.test.tsx
+├── documents.page.test.tsx
+├── chat.page.test.tsx
 └── hooks/
-    └── useRagAsk.test.tsx
+    ├── useRagAsk.test.tsx
+    └── useRagChat.test.tsx
 ```
 
-### Configuracion (jest.config.js)
+## E2E (Playwright)
 
-- `testEnvironment: "jsdom"`
-- `setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"]`
-- `moduleNameMapper` incluye `^@/(.*)$` y `^@contracts/(.*)$`
-- `collectCoverageFrom` en `app/**/*.{ts,tsx}` (excluye `app/layout.tsx`)
+```bash
+# Instalar Playwright (primera vez)
+cd tests/e2e && pnpm install && pnpm install:browsers
+
+# Ejecutar E2E con backend/frontend locales (usa playwright.config.ts)
+pnpm e2e
+
+# Ejecutar con stack Docker Compose
+E2E_USE_COMPOSE=1 TEST_API_KEY=e2e-key pnpm e2e
+```
+
+Tests principales:
+- `tests/e2e/tests/documents.spec.ts`
+- `tests/e2e/tests/chat.spec.ts`
+
+Ver `tests/e2e/README.md` para detalles de stack y variables.
 
 ## Load Testing (k6)
 

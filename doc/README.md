@@ -15,6 +15,8 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 - `runbook/local-dev.md` - Desarrollo local y comandos utiles
 - `runbook/migrations.md` - Migraciones con Alembic
 - `runbook/kubernetes.md` - Deployment en Kubernetes
+- `quality/testing.md` - Estrategia de testing
+- `../tests/e2e/README.md` - Playwright E2E (local + CI)
 - `../backend/tests/README.md` - Tests (unit + integration)
 - `../shared/contracts/openapi.json` - OpenAPI (fuente de verdad)
 - `../shared/contracts/src/generated.ts` - Cliente TypeScript generado
@@ -22,6 +24,7 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 - [Flujos principales](#flujos-principales)
 - [Arquitectura (resumen)](#arquitectura-resumen)
 - [Operacion y calidad](#operacion-y-calidad)
+- [Release notes v3](#release-notes-v3)
 - [Reportes historicos (resumen)](#reportes-historicos-resumen)
 
 ## Estructura minima
@@ -66,7 +69,7 @@ Para evitar que la documentacion se desincronice del codigo:
 ## Resumen del sistema
 
 RAG Corp es un sistema de Retrieval-Augmented Generation que permite ingestar documentos, buscarlos
-semantica y responder preguntas con un LLM usando contexto recuperado para reducir alucinaciones.
+semanticamente y responder preguntas con un LLM usando contexto recuperado para reducir alucinaciones.
 
 Arquitectura de alto nivel:
 
@@ -80,26 +83,35 @@ UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
 ## Flujos principales
 
 - **Ingest** (`POST /v1/ingest/text`): valida, chunking, genera embeddings y guarda documento + chunks.
+- **Documentos** (`GET /v1/documents`, `GET/DELETE /v1/documents/{id}`): lista, detalle y borrado.
 - **Query** (`POST /v1/query`): embebe la consulta y recupera los top-k chunks mas similares.
 - **Ask** (`POST /v1/ask`): recupera chunks, arma contexto y el LLM genera la respuesta con fuentes.
-- **Ask Stream** (`POST /v1/ask/stream`): igual que Ask pero con streaming SSE token-by-token.
+- **Ask Stream** (`POST /v1/ask/stream`): igual que Ask pero con streaming SSE token-by-token y conversation_id.
 
 ## Arquitectura (resumen)
 
 - **Clean Architecture**: domain -> application -> infrastructure -> API.
 - **Backend**: use cases en `backend/app/application`, adapters en `backend/app/infrastructure`.
-- **Frontend**: Next.js App Router y hook `useRagAsk` para el flujo principal.
+- **Frontend**: Next.js App Router con vistas Ask, Documents y Chat streaming.
 - **Contratos**: OpenAPI es la fuente de verdad y se genera cliente TypeScript con Orval.
 
 ## Operacion y calidad
 
 - **Observabilidad**: logs estructurados, metricas Prometheus y health check en `/healthz`.
-- **Seguridad**: API keys con scopes, RBAC (Role-Based Access Control) y rate limiting configurables.
-- **Testing**: unit + integration en backend, tests de UI en frontend, E2E con Playwright; ver `../backend/tests/README.md`.
+- **Seguridad**: API keys con scopes, RBAC por permisos y rate limiting configurables.
+- **Testing**: unit + integration en backend, tests de UI en frontend, E2E con Playwright; ver `../tests/e2e/README.md`.
 - **Infra local**: `compose.yaml` y pasos en `runbook/local-dev.md`.
 - **Infra K8s**: manifests production-ready en `../infra/k8s/`; ver `runbook/kubernetes.md`.
 - **Migraciones**: Alembic para schema evolution; ver `runbook/migrations.md`.
 - **Cache**: In-memory por defecto, Redis en produccion (auto-detectado via `REDIS_URL`).
+
+## Release Notes v3
+
+- Chat streaming multi-turn (`/v1/ask/stream`) con conversation_id.
+- UI de documentos (ingesta, listado, detalle, delete).
+- RBAC por permisos con fallback a scopes legacy.
+- Cache de embeddings con metricas de hit/miss.
+- E2E Playwright en CI con artifacts en falla.
 
 ## Reportes historicos (resumen)
 
@@ -116,7 +128,7 @@ UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
 ### Auditoría Completa - RAG Corp (2026-01-03)
 
 - Arquitectura y practicas bien establecidas.
-- Deuda tecnica priorizada: resiliencia en APIs externas, streaming, cache y CI/CD.
+- Deuda tecnica priorizada: resiliencia en APIs externas; streaming, cache y CI/CD quedaron implementados en v3.
 
 ### Readiness Review — 2026-01-02
 
