@@ -63,7 +63,8 @@ CREATE TABLE documents (
     title TEXT NOT NULL,
     source TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ
 );
 ```
 
@@ -76,6 +77,7 @@ CREATE TABLE documents (
 | `source` | TEXT | YES | Optional source URL/identifier |
 | `metadata` | JSONB | NO | Custom metadata |
 | `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+| `deleted_at` | TIMESTAMPTZ | YES | Soft delete timestamp |
 
 ### Table: chunks
 
@@ -115,12 +117,12 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-Note: `infra/postgres/init.sql` creates only `chunks_embedding_idx`. Primary key indexes are implicit, and the optional indexes below are not created by default.
+Note: Alembic creates only `chunks_embedding_idx`. Primary key indexes are implicit, and the optional indexes below are not created by default.
 
 ### Primary Key Indexes (Implicit)
 
 ```sql
--- Automatically created by PRIMARY KEY constraints; no manual DDL in init.sql
+-- Automatically created by PRIMARY KEY constraints; no manual DDL needed
 ```
 
 **Purpose:** Fast lookup by ID  
@@ -159,7 +161,7 @@ WITH (lists = 100);
 CREATE INDEX chunks_document_id_idx ON chunks (document_id);
 ```
 
-**Purpose:** Fast lookup by document (not created in `init.sql`)  
+**Purpose:** Fast lookup by document (not created by default)  
 **Usage:** `SELECT * FROM chunks WHERE document_id = '...'`
 
 ### Composite Index (Optional)
@@ -169,7 +171,7 @@ CREATE INDEX chunks_document_id_idx ON chunks (document_id);
 CREATE INDEX chunks_document_chunk_idx ON chunks (document_id, chunk_index);
 ```
 
-**Purpose:** Retrieve all chunks for a document in order (not created in `init.sql`)  
+**Purpose:** Retrieve all chunks for a document in order (not created by default)  
 **Usage:** `SELECT * FROM chunks WHERE document_id = '...' ORDER BY chunk_index`
 
 ---
@@ -685,7 +687,8 @@ ALTER INDEX chunks_embedding_idx_new RENAME TO chunks_embedding_idx;
 - **pgvector GitHub:** https://github.com/pgvector/pgvector
 - **pgvector Performance Guide:** https://github.com/pgvector/pgvector#performance
 - **PostgreSQL Docs:** https://www.postgresql.org/docs/16/
-- **Init SQL:** [infra/postgres/init.sql](../../infra/postgres/init.sql)
+- **Alembic Migration:** [backend/alembic/versions/001_initial.py](../../backend/alembic/versions/001_initial.py)
+- **Init SQL (pgvector extension):** [infra/postgres/init.sql](../../infra/postgres/init.sql)
 
 ---
 

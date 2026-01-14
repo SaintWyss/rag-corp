@@ -214,13 +214,13 @@ docker compose exec db pg_isready -U postgres -d rag
 
 ### Schema vs Init SQL
 
-**Note:** For local development, `infra/postgres/init.sql` creates the initial schema when the database container starts fresh. Alembic migrations are used for **evolving** the schema after initial setup.
+**Note:** `infra/postgres/init.sql` only enables the pgvector extension. The full schema is applied via Alembic migrations (`backend/alembic/`), including the initial tables and indexes.
 
 ---
 
 ## Initial Schema
 
-The initial schema is defined in `infra/postgres/init.sql` and includes:
+The initial schema is defined by Alembic migrations in `backend/alembic/versions/` and includes:
 
 - `documents` table (with soft delete via `deleted_at`)
 - `chunks` table with pgvector embeddings (768 dimensions)
