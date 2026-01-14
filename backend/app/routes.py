@@ -144,6 +144,9 @@ class DocumentSummaryRes(BaseModel):
     source: str | None
     metadata: dict
     created_at: datetime | None
+    file_name: str | None = None
+    mime_type: str | None = None
+    status: str | None = None
 
 
 class DocumentsListRes(BaseModel):
@@ -152,6 +155,7 @@ class DocumentsListRes(BaseModel):
 
 class DocumentDetailRes(DocumentSummaryRes):
     deleted_at: datetime | None = None
+    error_message: str | None = None
 
 
 class DeleteDocumentRes(BaseModel):
@@ -206,6 +210,9 @@ def list_documents(
                 source=doc.source,
                 metadata=doc.metadata,
                 created_at=doc.created_at,
+                file_name=doc.file_name,
+                mime_type=doc.mime_type,
+                status=doc.status,
             )
             for doc in documents
         ]
@@ -233,6 +240,10 @@ def get_document(
         metadata=document.metadata,
         created_at=document.created_at,
         deleted_at=document.deleted_at,
+        file_name=document.file_name,
+        mime_type=document.mime_type,
+        status=document.status,
+        error_message=document.error_message,
     )
 
 
