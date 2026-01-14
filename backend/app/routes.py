@@ -37,6 +37,7 @@ from .dual_auth import (
     require_principal,
 )
 from .error_responses import (
+    conflict,
     not_found,
     payload_too_large,
     service_unavailable,
@@ -162,6 +163,12 @@ class UploadDocumentRes(BaseModel):
     status: str
     file_name: str
     mime_type: str
+
+
+class ReprocessDocumentRes(BaseModel):
+    document_id: UUID
+    status: str
+    enqueued: bool
 
 
 _ALLOWED_MIME_TYPES = {
@@ -336,6 +343,57 @@ async def upload_document(
         status="PENDING",
         file_name=file_name,
         mime_type=mime_type,
+    )
+
+
+@router.post(
+    "/documents/{document_id}/reprocess",
+    response_model=ReprocessDocumentRes,
+    status_code=202,
+    tags=["documents"],
+)
+def reprocess_document(
+    document_id: UUID,
+    repository: DocumentRepository = Depends(get_document_repository),
+    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
+):
+    if queue is None:
+        raise service_unavailable("Document queue")
+
+    document = repository.get_document(document_id)
+    if not document:
+        raise not_found("Document", str(document_id))
+    if not document.storage_key or not document.mime_type:
+        raise validation_error("Document has no uploaded file to reprocess.")
+    if document.status == "PROCESSING":
+        raise conflict("Document is already processing.")
+
+    transitioned = repository.transition_document_status(
+        document_id,
+        from_statuses=[None, "PENDING", "READY", "FAILED"],
+        to_status="PENDING",
+        error_message=None,
+    )
+    if not transitioned:
+        raise conflict("Document is already processing.")
+
+    try:
+        queue.enqueue_document_processing(document_id)
+    except Exception:
+        repository.transition_document_status(
+            document_id,
+            from_statuses=["PENDING"],
+            to_status="FAILED",
+            error_message="Failed to enqueue document processing job",
+        )
+        raise service_unavailable("Document queue")
+
+    return ReprocessDocumentRes(
+        document_id=document_id,
+        status="PENDING",
+        enqueued=True,
     )
 
 

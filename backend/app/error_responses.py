@@ -21,6 +21,7 @@ class ErrorCode(str, Enum):
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     NOT_FOUND = "NOT_FOUND"
+    CONFLICT = "CONFLICT"
     UNSUPPORTED_MEDIA = "UNSUPPORTED_MEDIA"
     RATE_LIMITED = "RATE_LIMITED"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
@@ -71,6 +72,10 @@ def not_found(resource: str, identifier: str) -> AppHTTPException:
     return AppHTTPException(
         404, ErrorCode.NOT_FOUND, f"{resource} '{identifier}' not found"
     )
+
+
+def conflict(detail: str) -> AppHTTPException:
+    return AppHTTPException(409, ErrorCode.CONFLICT, detail)
 
 
 def unauthorized(detail: str = "Authentication required") -> AppHTTPException:
