@@ -27,7 +27,12 @@ from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from datetime import datetime
 from .config import get_settings
-from .rbac import Permission, require_permissions
+from .rbac import Permission
+from .dual_auth import (
+    require_admin,
+    require_employee_or_admin,
+    require_principal,
+)
 from .error_responses import not_found
 from .streaming import stream_answer
 from .application.conversations import (
@@ -143,7 +148,8 @@ def list_documents(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     use_case: ListDocumentsUseCase = Depends(get_list_documents_use_case),
-    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_READ)),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    _role: None = Depends(require_employee_or_admin()),
 ):
     documents = use_case.execute(limit=limit, offset=offset)
     return DocumentsListRes(
@@ -168,7 +174,8 @@ def list_documents(
 def get_document(
     document_id: UUID,
     use_case: GetDocumentUseCase = Depends(get_get_document_use_case),
-    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_READ)),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    _role: None = Depends(require_employee_or_admin()),
 ):
     document = use_case.execute(document_id)
     if not document:
@@ -191,7 +198,8 @@ def get_document(
 def delete_document(
     document_id: UUID,
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
-    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_DELETE)),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    _role: None = Depends(require_admin()),
 ):
     deleted = use_case.execute(document_id)
     if not deleted:
@@ -204,7 +212,8 @@ def delete_document(
 def ingest_text(
     req: IngestTextReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE)),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
 ):
     result = use_case.execute(
         IngestDocumentInput(
@@ -225,7 +234,8 @@ def ingest_text(
 def ingest_batch(
     req: IngestBatchReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE)),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
 ):
     """
     Ingest multiple documents in a single request.
@@ -304,7 +314,8 @@ class QueryRes(BaseModel):
 def query(
     req: QueryReq,
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
-    _auth: None = Depends(require_permissions(Permission.QUERY_SEARCH)),
+    _principal: None = Depends(require_principal(Permission.QUERY_SEARCH)),
+    _role: None = Depends(require_employee_or_admin()),
 ):
     result = use_case.execute(SearchChunksInput(query=req.query, top_k=req.top_k))
     matches = []
@@ -334,7 +345,8 @@ class AskRes(BaseModel):
 def ask(
     req: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
-    _auth: None = Depends(require_permissions(Permission.QUERY_ASK)),
+    _principal: None = Depends(require_principal(Permission.QUERY_ASK)),
+    _role: None = Depends(require_employee_or_admin()),
 ):
     """
     R: RAG endpoint using Clean Architecture (Use Case pattern).
@@ -387,7 +399,8 @@ def ask(
 async def ask_stream(
     req: QueryReq,
     request: Request,
-    _auth: None = Depends(require_permissions(Permission.QUERY_STREAM)),
+    _principal: None = Depends(require_principal(Permission.QUERY_STREAM)),
+    _role: None = Depends(require_employee_or_admin()),
 ):
     """
     R: Streaming RAG endpoint using Server-Sent Events.

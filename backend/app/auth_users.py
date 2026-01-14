@@ -157,6 +157,15 @@ def _extract_bearer_token(authorization: str | None) -> str | None:
     return parts[1].strip() or None
 
 
+def extract_access_token(request: Request, authorization: str | None) -> str | None:
+    """R: Resolve access token from Authorization header or cookie."""
+    token = _extract_bearer_token(authorization)
+    if token:
+        return token
+    cookie_name = get_auth_settings().jwt_cookie_name or ACCESS_TOKEN_COOKIE
+    return request.cookies.get(cookie_name)
+
+
 def require_user() -> Callable:
     """R: FastAPI dependency that requires a valid JWT user."""
 
@@ -164,10 +173,7 @@ def require_user() -> Callable:
         request: Request,
         authorization: str | None = Header(None, alias="Authorization"),
     ) -> User:
-        token = _extract_bearer_token(authorization)
-        if not token:
-            cookie_name = get_auth_settings().jwt_cookie_name or ACCESS_TOKEN_COOKIE
-            token = request.cookies.get(cookie_name)
+        token = extract_access_token(request, authorization)
         if not token:
             raise unauthorized("Missing bearer token.")
 
