@@ -1,7 +1,7 @@
 # Local Development Runbook
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-14
 
 ---
 
@@ -74,6 +74,22 @@ docker compose down -v
 
 # Connect via psql
 docker compose exec db psql -U postgres -d rag
+```
+
+### Canonical full stack + migrations
+
+```bash
+# 1) Start full stack (db + api + redis + minio + worker)
+pnpm stack:full
+
+# 2) Apply migrations (explicit, idempotent)
+pnpm db:migrate
+```
+
+Bootstrap admin (idempotent):
+
+```bash
+pnpm admin:bootstrap -- --email admin@example.com
 ```
 
 ### Web container for E2E

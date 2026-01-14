@@ -50,6 +50,9 @@ def _prompt_password() -> str:
 
 
 def _parse_args() -> argparse.Namespace:
+    argv = sys.argv[1:]
+    if argv and argv[0] == "--":
+        argv = argv[1:]
     parser = argparse.ArgumentParser(
         description="Create the first admin user (idempotent)."
     )
@@ -69,7 +72,7 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Create user as inactive",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def _normalize_email(email: str) -> str:
