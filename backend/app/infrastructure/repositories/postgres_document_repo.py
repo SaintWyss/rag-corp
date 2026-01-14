@@ -129,7 +129,9 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 rows = conn.execute(
                     """
-                    SELECT id, title, source, metadata, created_at, deleted_at
+                    SELECT id, title, source, metadata, created_at, deleted_at,
+                           file_name, mime_type, storage_key,
+                           uploaded_by_user_id, status, error_message
                     FROM documents
                     WHERE deleted_at IS NULL
                     ORDER BY created_at DESC
@@ -146,6 +148,12 @@ class PostgresDocumentRepository:
                     metadata=row[3] or {},
                     created_at=row[4],
                     deleted_at=row[5],
+                    file_name=row[6],
+                    mime_type=row[7],
+                    storage_key=row[8],
+                    uploaded_by_user_id=row[9],
+                    status=row[10],
+                    error_message=row[11],
                 )
                 for row in rows
             ]
@@ -165,7 +173,9 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 row = conn.execute(
                     """
-                    SELECT id, title, source, metadata, created_at, deleted_at
+                    SELECT id, title, source, metadata, created_at, deleted_at,
+                           file_name, mime_type, storage_key,
+                           uploaded_by_user_id, status, error_message
                     FROM documents
                     WHERE id = %s AND deleted_at IS NULL
                     """,
@@ -182,6 +192,12 @@ class PostgresDocumentRepository:
                 metadata=row[3] or {},
                 created_at=row[4],
                 deleted_at=row[5],
+                file_name=row[6],
+                mime_type=row[7],
+                storage_key=row[8],
+                uploaded_by_user_id=row[9],
+                status=row[10],
+                error_message=row[11],
             )
         except Exception as e:
             logger.error(
@@ -314,6 +330,53 @@ class PostgresDocumentRepository:
                 extra={"document_id": str(document.id), "error": str(e)},
             )
             raise DatabaseError(f"Failed to save document with chunks: {e}")
+
+    def update_document_file_metadata(
+        self,
+        document_id: UUID,
+        *,
+        file_name: str | None = None,
+        mime_type: str | None = None,
+        storage_key: str | None = None,
+        uploaded_by_user_id: UUID | None = None,
+        status: str | None = None,
+        error_message: str | None = None,
+    ) -> bool:
+        """
+        R: Update file metadata for a document.
+
+        Returns True if a document was updated, otherwise False.
+        """
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET file_name = %s,
+                        mime_type = %s,
+                        storage_key = %s,
+                        uploaded_by_user_id = %s,
+                        status = %s,
+                        error_message = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        file_name,
+                        mime_type,
+                        storage_key,
+                        uploaded_by_user_id,
+                        status,
+                        error_message,
+                        document_id,
+                    ),
+                )
+            return result.rowcount > 0
+        except Exception as e:
+            logger.error(
+                f"PostgresDocumentRepository: Update file metadata failed: {e}"
+            )
+            raise DatabaseError(f"Failed to update file metadata: {e}")
 
     def find_similar_chunks(self, embedding: List[float], top_k: int) -> List[Chunk]:
         """

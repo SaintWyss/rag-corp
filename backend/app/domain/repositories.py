@@ -144,6 +144,34 @@ class DocumentRepository(Protocol):
         """
         ...
 
+    def update_document_file_metadata(
+        self,
+        document_id: UUID,
+        *,
+        file_name: str | None = None,
+        mime_type: str | None = None,
+        storage_key: str | None = None,
+        uploaded_by_user_id: UUID | None = None,
+        status: str | None = None,
+        error_message: str | None = None,
+    ) -> bool:
+        """
+        R: Update file metadata for a document.
+
+        Args:
+            document_id: Document UUID to update
+            file_name: Original file name
+            mime_type: MIME type (e.g., application/pdf)
+            storage_key: Object key in storage
+            uploaded_by_user_id: User UUID who uploaded the file
+            status: Storage status (PENDING/READY/FAILED)
+            error_message: Error detail if status is FAILED
+
+        Returns:
+            True if document was updated, False otherwise
+        """
+        ...
+
     def restore_document(self, document_id: UUID) -> bool:
         """
         R: Restore a soft-deleted document.

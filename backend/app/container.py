@@ -29,7 +29,12 @@ from functools import lru_cache
 
 from .config import get_settings
 from .domain.repositories import DocumentRepository, ConversationRepository
-from .domain.services import EmbeddingService, LLMService, TextChunkerService
+from .domain.services import (
+    EmbeddingService,
+    FileStoragePort,
+    LLMService,
+    TextChunkerService,
+)
 from .infrastructure.cache import get_embedding_cache
 from .infrastructure.repositories import (
     PostgresDocumentRepository,
@@ -43,6 +48,7 @@ from .infrastructure.services import (
     GoogleLLMService,
 )
 from .infrastructure.text import SimpleTextChunker
+from .infrastructure.storage import S3FileStorageAdapter, S3Config
 from .application.use_cases import (
     AnswerQueryUseCase,
     DeleteDocumentUseCase,
@@ -131,6 +137,30 @@ def get_text_chunker() -> TextChunkerService:
         chunk_size=settings.chunk_size,
         overlap=settings.chunk_overlap,
     )
+
+
+@lru_cache
+def get_file_storage() -> FileStoragePort | None:
+    """
+    R: Get file storage adapter if configured.
+
+    Returns:
+        S3FileStorageAdapter or None when storage is disabled.
+    """
+    settings = get_settings()
+    if not settings.s3_bucket:
+        return None
+    if not settings.s3_access_key or not settings.s3_secret_key:
+        return None
+
+    config = S3Config(
+        bucket=settings.s3_bucket,
+        access_key=settings.s3_access_key,
+        secret_key=settings.s3_secret_key,
+        region=settings.s3_region or None,
+        endpoint_url=settings.s3_endpoint_url or None,
+    )
+    return S3FileStorageAdapter(config)
 
 
 # R: AnswerQuery use case factory (creates new instance per request)

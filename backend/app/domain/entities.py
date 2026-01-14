@@ -38,6 +38,12 @@ class Document:
         metadata: Additional custom metadata
         created_at: Creation timestamp
         deleted_at: Soft delete timestamp (None if active)
+        file_name: Original uploaded file name (optional)
+        mime_type: MIME type of stored file (optional)
+        storage_key: Object key in file storage (optional)
+        uploaded_by_user_id: User UUID that uploaded the file (optional)
+        status: File processing status (optional)
+        error_message: Error detail if processing failed (optional)
     """
 
     id: UUID
@@ -46,6 +52,12 @@ class Document:
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
+    file_name: Optional[str] = None
+    mime_type: Optional[str] = None
+    storage_key: Optional[str] = None
+    uploaded_by_user_id: Optional[UUID] = None
+    status: Optional[str] = None
+    error_message: Optional[str] = None
 
     @property
     def is_deleted(self) -> bool:

@@ -53,6 +53,11 @@ class Settings(BaseSettings):
         jwt_access_ttl_minutes: Access token TTL in minutes
         jwt_cookie_name: Cookie name for access token
         jwt_cookie_secure: Set Secure on auth cookies
+        s3_endpoint_url: S3/MinIO endpoint URL (optional)
+        s3_bucket: S3 bucket name
+        s3_access_key: S3 access key ID
+        s3_secret_key: S3 secret access key
+        s3_region: S3 region (optional)
     """
 
     # Required (no defaults)
@@ -97,6 +102,13 @@ class Settings(BaseSettings):
     jwt_access_ttl_minutes: int = 30
     jwt_cookie_name: str = "access_token"
     jwt_cookie_secure: bool = False
+
+    # Storage - S3/MinIO
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = ""
 
     # Database - Connection Pool
     db_pool_min_size: int = 2

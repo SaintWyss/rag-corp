@@ -120,3 +120,21 @@ class TextChunkerService(Protocol):
             List of chunk strings
         """
         ...
+
+
+class FileStoragePort(Protocol):
+    """
+    R: Interface for file storage (S3/MinIO).
+
+    Implementations must provide:
+      - Upload binary content to storage
+      - Delete stored content by key
+    """
+
+    def upload_file(self, key: str, content: bytes, content_type: str | None) -> None:
+        """R: Upload file content to storage."""
+        ...
+
+    def delete_file(self, key: str) -> None:
+        """R: Delete file content from storage."""
+        ...
