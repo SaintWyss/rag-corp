@@ -15,6 +15,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       OTEL_ENABLED: ${OTEL_ENABLED:-0}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      METRICS_REQUIRE_AUTH: "true"
     ports:
       - "8000:8000"
     depends_on:

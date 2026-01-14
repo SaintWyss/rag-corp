@@ -25,6 +25,9 @@ data:
   
   # Health check
   HEALTHCHECK_GOOGLE_ENABLED: "false"
+
+  # Observability
+  METRICS_REQUIRE_AUTH: "true"
   
   # CORS (comma-separated origins)
   ALLOWED_ORIGINS: "https://ragcorp.example.com"
