@@ -28,6 +28,7 @@ import threading
 from dataclasses import dataclass
 from typing import Optional
 
+from .error_responses import app_exception_handler, rate_limited
 from .logger import logger
 
 
@@ -237,27 +238,19 @@ class RateLimitMiddleware:
                 },
             )
 
-            # R: Send 429 response
+            # R: Send 429 response (RFC 7807)
             retry_after_int = max(1, int(retry_after) + 1)
-            response_body = b'{"detail": "Rate limit exceeded. Try again later."}'
-
-            await send(
+            exc = rate_limited(retry_after_int)
+            headers = getattr(exc, "headers", None) or {}
+            headers.update(
                 {
-                    "type": "http.response.start",
-                    "status": 429,
-                    "headers": [
-                        (b"content-type", b"application/json"),
-                        (b"retry-after", str(retry_after_int).encode()),
-                        (b"x-ratelimit-remaining", b"0"),
-                    ],
+                    "x-ratelimit-remaining": "0",
+                    "x-ratelimit-limit": str(limiter.burst),
                 }
             )
-            await send(
-                {
-                    "type": "http.response.body",
-                    "body": response_body,
-                }
-            )
+            exc.headers = headers
+            response = await app_exception_handler(request, exc)
+            await response(scope, receive, send)
             return
 
         # R: Add rate limit headers to response

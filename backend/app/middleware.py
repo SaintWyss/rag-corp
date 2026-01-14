@@ -27,7 +27,7 @@ import time
 import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import Response
 
 from .context import (
     request_id_var,
@@ -35,6 +35,7 @@ from .context import (
     http_path_var,
     clear_context,
 )
+from .error_responses import AppHTTPException, ErrorCode, app_exception_handler
 from .logger import logger
 
 
@@ -133,12 +134,15 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
                             "path": request.url.path,
                         },
                     )
-                    return JSONResponse(
+                    exc = AppHTTPException(
                         status_code=413,
-                        content={
-                            "detail": f"Request body too large. Maximum size: {max_bytes} bytes"
-                        },
+                        code=ErrorCode.PAYLOAD_TOO_LARGE,
+                        detail=(
+                            "Request body too large. "
+                            f"Maximum size: {max_bytes} bytes"
+                        ),
                     )
+                    return await app_exception_handler(request, exc)
             except ValueError:
                 pass  # Invalid content-length, let it through
 

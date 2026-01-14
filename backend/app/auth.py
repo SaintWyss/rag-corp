@@ -29,9 +29,10 @@ import json
 from typing import Callable
 from functools import lru_cache
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, Request
 from fastapi.security import APIKeyHeader
 
+from .error_responses import forbidden, unauthorized
 from .logger import logger
 
 
@@ -161,10 +162,7 @@ def require_scope(scope: str) -> Callable:
                 "Auth failed: missing API key",
                 extra={"path": request.url.path, "scope": scope},
             )
-            raise HTTPException(
-                status_code=401,
-                detail="Missing API key. Provide X-API-Key header.",
-            )
+            raise unauthorized("Missing API key. Provide X-API-Key header.")
 
         validator = APIKeyValidator(keys_config)
 
@@ -178,10 +176,7 @@ def require_scope(scope: str) -> Callable:
                     "scope": scope,
                 },
             )
-            raise HTTPException(
-                status_code=403,
-                detail="Invalid API key.",
-            )
+            raise forbidden("Invalid API key.")
 
         # R: Key without required scope -> 403 Forbidden
         if not validator.validate_scope(api_key, scope):
@@ -194,10 +189,7 @@ def require_scope(scope: str) -> Callable:
                     "available_scopes": validator.get_scopes(api_key),
                 },
             )
-            raise HTTPException(
-                status_code=403,
-                detail=f"API key does not have required scope: {scope}",
-            )
+            raise forbidden(f"API key does not have required scope: {scope}")
 
         # R: Store key hash in request state for rate limiting
         request.state.api_key_hash = _hash_key(api_key)

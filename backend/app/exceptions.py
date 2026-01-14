@@ -11,8 +11,8 @@ Collaborators:
   - All modules that can raise errors
 
 Constraints:
-  - Error responses must include: error_code, message, error_id
-  - Don't change existing HTTP response schemas
+  - error_id is used for log correlation and optional error payloads
+  - Handlers convert exceptions to RFC 7807 responses
 
 Notes:
   - error_id is UUID for log correlation

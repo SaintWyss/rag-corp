@@ -11,7 +11,7 @@ Collaborators:
   - exceptions.py: RAGError, DatabaseError, EmbeddingError, LLMError
 
 Constraints:
-  - All responses use ErrorResponse.to_dict() format
+  - All responses use RFC 7807 Problem Details format
   - HTTP status codes: 503 for service errors, 500 for generic errors
 
 Notes:
@@ -23,7 +23,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
-from .error_responses import AppHTTPException, app_exception_handler
+from .error_responses import AppHTTPException, ErrorCode, app_exception_handler
 from .logger import logger
 
 
@@ -32,10 +32,13 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
     logger.error(
         "Database error", extra={"error_id": exc.error_id, "error_message": exc.message}
     )
-    return JSONResponse(
+    app_exc = AppHTTPException(
         status_code=503,
-        content=exc.to_response().to_dict(),
+        code=ErrorCode.DATABASE_ERROR,
+        detail=exc.message,
+        errors=[{"error_id": exc.error_id}],
     )
+    return await app_exception_handler(request, app_exc)
 
 
 async def embedding_error_handler(request: Request, exc: EmbeddingError) -> JSONResponse:
@@ -44,10 +47,13 @@ async def embedding_error_handler(request: Request, exc: EmbeddingError) -> JSON
         "Embedding error",
         extra={"error_id": exc.error_id, "error_message": exc.message},
     )
-    return JSONResponse(
+    app_exc = AppHTTPException(
         status_code=503,
-        content=exc.to_response().to_dict(),
+        code=ErrorCode.EMBEDDING_ERROR,
+        detail=exc.message,
+        errors=[{"error_id": exc.error_id}],
     )
+    return await app_exception_handler(request, app_exc)
 
 
 async def llm_error_handler(request: Request, exc: LLMError) -> JSONResponse:
@@ -55,10 +61,13 @@ async def llm_error_handler(request: Request, exc: LLMError) -> JSONResponse:
     logger.error(
         "LLM error", extra={"error_id": exc.error_id, "error_message": exc.message}
     )
-    return JSONResponse(
+    app_exc = AppHTTPException(
         status_code=503,
-        content=exc.to_response().to_dict(),
+        code=ErrorCode.LLM_ERROR,
+        detail=exc.message,
+        errors=[{"error_id": exc.error_id}],
     )
+    return await app_exception_handler(request, app_exc)
 
 
 async def rag_error_handler(request: Request, exc: RAGError) -> JSONResponse:
@@ -66,10 +75,13 @@ async def rag_error_handler(request: Request, exc: RAGError) -> JSONResponse:
     logger.error(
         "RAG error", extra={"error_id": exc.error_id, "error_message": exc.message}
     )
-    return JSONResponse(
+    app_exc = AppHTTPException(
         status_code=500,
-        content=exc.to_response().to_dict(),
+        code=ErrorCode.INTERNAL_ERROR,
+        detail=exc.message,
+        errors=[{"error_id": exc.error_id}],
     )
+    return await app_exception_handler(request, app_exc)
 
 
 def register_exception_handlers(app) -> None:
