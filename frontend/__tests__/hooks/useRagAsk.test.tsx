@@ -1,15 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { useRagAsk } from "../../app/hooks/useRagAsk";
 
-// Mock the generated API client
-jest.mock("@contracts/src/generated", () => ({
-    askV1AskPost: jest.fn(),
-}));
-
-import type { askV1AskPostResponse } from "@contracts/src/generated";
-import { askV1AskPost } from "@contracts/src/generated";
-
-const mockAskApi = askV1AskPost as jest.MockedFunction<typeof askV1AskPost>;
+const mockFetch = global.fetch as jest.Mock;
 
 /**
  * Helper to create mock API responses.
@@ -17,15 +9,16 @@ const mockAskApi = askV1AskPost as jest.MockedFunction<typeof askV1AskPost>;
  */
 const makeResponse = (
     status: number,
-    data: askV1AskPostResponse["data"] = { answer: "", sources: [] }
-): askV1AskPostResponse => ({
+    data: { answer?: string; sources?: string[] } = { answer: "", sources: [] }
+) => ({
+    ok: status >= 200 && status < 300,
     status,
-    data,
-} as askV1AskPostResponse);
+    text: jest.fn().mockResolvedValue(data ? JSON.stringify(data) : ""),
+});
 
 describe("useRagAsk Hook", () => {
     beforeEach(() => {
-        mockAskApi.mockClear();
+        mockFetch.mockReset();
     });
 
     it("returns initial state", () => {
@@ -59,7 +52,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles 401 unauthorized error", async () => {
-        mockAskApi.mockResolvedValueOnce(makeResponse(401));
+        mockFetch.mockResolvedValueOnce(makeResponse(401));
 
         const { result } = renderHook(() => useRagAsk());
 
@@ -75,7 +68,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles 429 rate limit error", async () => {
-        mockAskApi.mockResolvedValueOnce(makeResponse(429));
+        mockFetch.mockResolvedValueOnce(makeResponse(429));
 
         const { result } = renderHook(() => useRagAsk());
 
@@ -91,7 +84,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles 503 service unavailable", async () => {
-        mockAskApi.mockResolvedValueOnce(makeResponse(503));
+        mockFetch.mockResolvedValueOnce(makeResponse(503));
 
         const { result } = renderHook(() => useRagAsk());
 
@@ -107,7 +100,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles successful response", async () => {
-        mockAskApi.mockResolvedValueOnce(
+        mockFetch.mockResolvedValueOnce(
             makeResponse(200, {
                 answer: "Test answer",
                 sources: ["source1.pdf", "source2.pdf"],
@@ -130,7 +123,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("handles network error", async () => {
-        mockAskApi.mockRejectedValueOnce(new Error("Network error"));
+        mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
         const { result } = renderHook(() => useRagAsk());
 

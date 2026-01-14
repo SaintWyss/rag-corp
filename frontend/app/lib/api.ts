@@ -1,10 +1,8 @@
-import {
-  ingestBatchV1IngestBatchPost,
-  ingestTextV1IngestTextPost,
-  type IngestBatchReq,
-  type IngestBatchRes,
-  type IngestTextReq,
-  type IngestTextRes,
+import type {
+  IngestBatchReq,
+  IngestBatchRes,
+  IngestTextReq,
+  IngestTextRes,
 } from "@contracts/src/generated";
 import { getStoredApiKey } from "./apiKey";
 
@@ -105,19 +103,19 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 export async function listDocuments(): Promise<DocumentsListResponse> {
-  return requestJson<DocumentsListResponse>("/v1/documents", {
+  return requestJson<DocumentsListResponse>("/api/documents", {
     method: "GET",
   });
 }
 
 export async function getDocument(documentId: string): Promise<DocumentDetail> {
-  return requestJson<DocumentDetail>(`/v1/documents/${documentId}`, {
+  return requestJson<DocumentDetail>(`/api/documents/${documentId}`, {
     method: "GET",
   });
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  await requestJson(`/v1/documents/${documentId}`, {
+  await requestJson(`/api/documents/${documentId}`, {
     method: "DELETE",
   });
 }
@@ -125,7 +123,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
 export async function uploadDocument(
   payload: FormData
 ): Promise<UploadDocumentResponse> {
-  return requestJson<UploadDocumentResponse>("/v1/documents/upload", {
+  return requestJson<UploadDocumentResponse>("/api/documents/upload", {
     method: "POST",
     body: payload,
   });
@@ -135,7 +133,7 @@ export async function reprocessDocument(
   documentId: string
 ): Promise<ReprocessDocumentResponse> {
   return requestJson<ReprocessDocumentResponse>(
-    `/v1/documents/${documentId}/reprocess`,
+    `/api/documents/${documentId}/reprocess`,
     {
       method: "POST",
     }
@@ -145,29 +143,19 @@ export async function reprocessDocument(
 export async function ingestText(
   payload: IngestTextReq
 ): Promise<IngestTextRes> {
-  const res = await ingestTextV1IngestTextPost(payload, {
+  return requestJson<IngestTextRes>("/api/ingest/text", {
+    method: "POST",
     headers: withApiKeyHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
   });
-  if (res.status !== 200) {
-    const message =
-      (res.data as { detail?: string })?.detail ||
-      `Request failed with status ${res.status}`;
-    throw { status: res.status, message } satisfies ApiError;
-  }
-  return res.data as IngestTextRes;
 }
 
 export async function ingestBatch(
   payload: IngestBatchReq
 ): Promise<IngestBatchRes> {
-  const res = await ingestBatchV1IngestBatchPost(payload, {
+  return requestJson<IngestBatchRes>("/api/ingest/batch", {
+    method: "POST",
     headers: withApiKeyHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
   });
-  if (res.status !== 200) {
-    const message =
-      (res.data as { detail?: string })?.detail ||
-      `Request failed with status ${res.status}`;
-    throw { status: res.status, message } satisfies ApiError;
-  }
-  return res.data as IngestBatchRes;
 }

@@ -3,7 +3,7 @@
  * 
  * Responsibilities:
  *   - Configure rewrites for transparent proxy to backend
- *   - Avoid CORS in development (same origin for /v1/*)
+ *   - Avoid CORS in development (same origin for /api/*)
  * 
  * Collaborators:
  *   - Next.js rewrites API
@@ -13,7 +13,7 @@
  *   - Defaults to localhost (set NEXT_PUBLIC_API_URL for production)
  * 
  * Notes:
- *   - :path* captures everything after /v1/ (greedy match)
+ *   - :path* captures everything after /api/ (greedy match)
  *   - 127.0.0.1 preferred over localhost (avoids IPv6 lookup)
  * 
  * Production:
@@ -29,7 +29,12 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        // R: Proxy all /v1/* requests to backend
+        // R: Proxy clean /api/* requests to backend /v1/*
+        source: "/api/:path*",  // R: Match pattern (greedy)
+        destination: `${backendUrl}/v1/:path*`,  // R: Backend URL
+      },
+      {
+        // R: Backwards compatibility for any legacy /v1/* usage
         source: "/v1/:path*",  // R: Match pattern (greedy)
         destination: `${backendUrl}/v1/:path*`,  // R: Backend URL
       },

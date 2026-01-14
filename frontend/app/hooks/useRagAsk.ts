@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *   - Manage RAG ask query state (query, answer, sources, loading, error)
- *   - Handle API call to backend /v1/ask endpoint
+ *   - Handle API call to backend /api/ask endpoint
  *   - Provide abort capability for pending requests
  *   - Map HTTP error codes to user-friendly messages (es-AR)
  *   - Cleanup resources on component unmount
@@ -27,7 +27,6 @@
  */
 "use client";
 
-import { askV1AskPost } from "@contracts/src/generated";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getStoredApiKey } from "../lib/apiKey";
 
@@ -127,29 +126,31 @@ export function useRagAsk() {
 
       try {
         const apiKey = getStoredApiKey();
-        const res = await askV1AskPost(
-          { query: trimmed, top_k: 3 },
-          {
-            headers: apiKey
-              ? { "Content-Type": "application/json", "X-API-Key": apiKey }
-              : { "Content-Type": "application/json" },
-            signal: controller.signal,
-          }
-        );
+        const response = await fetch("/api/ask", {
+          method: "POST",
+          headers: apiKey
+            ? { "Content-Type": "application/json", "X-API-Key": apiKey }
+            : { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: trimmed, top_k: 3 }),
+          signal: controller.signal,
+        });
 
         clearTimeout(timeoutId);
 
-        if (res.status === 200) {
+        const body = await response.text();
+        const data = body ? (JSON.parse(body) as { answer?: string; sources?: string[] }) : null;
+
+        if (response.ok) {
           setState((prev) => ({
             ...prev,
-            answer: res.data.answer,
-            sources: res.data.sources || [],
+            answer: data?.answer ?? "",
+            sources: data?.sources ?? [],
           }));
           return;
         }
 
         // Handle specific HTTP error codes
-        const errorMsg = getErrorMessage(res.status);
+        const errorMsg = getErrorMessage(response.status);
         setState((prev) => ({
           ...prev,
           error: errorMsg,

@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *   - Manage chat messages and streaming state
- *   - Handle SSE streaming via /v1/ask/stream
+ *   - Handle SSE streaming via /api/ask/stream
  *   - Maintain conversation_id across turns
  *   - Support cancel and retry flows
  */
@@ -181,7 +181,7 @@ export function useRagChat() {
 
       try {
         const apiKey = getStoredApiKey();
-        const response = await fetch("/v1/ask/stream", {
+        const response = await fetch("/api/ask/stream", {
           method: "POST",
           headers: apiKey
             ? { "Content-Type": "application/json", "X-API-Key": apiKey }
