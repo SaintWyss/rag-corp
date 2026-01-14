@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from .config import get_settings
-from .auth import require_scope
+from .rbac import Permission, require_permissions
 from .streaming import stream_answer
 from .application.use_cases import (
     AnswerQueryUseCase,
@@ -109,7 +109,7 @@ class IngestBatchReq(BaseModel):
 def ingest_text(
     req: IngestTextReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _auth: None = Depends(require_scope("ingest")),
+    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE)),
 ):
     result = use_case.execute(
         IngestDocumentInput(
@@ -130,7 +130,7 @@ def ingest_text(
 def ingest_batch(
     req: IngestBatchReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _auth: None = Depends(require_scope("ingest")),
+    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE)),
 ):
     """
     Ingest multiple documents in a single request.
@@ -205,7 +205,7 @@ class QueryRes(BaseModel):
 def query(
     req: QueryReq,
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
-    _auth: None = Depends(require_scope("ask")),
+    _auth: None = Depends(require_permissions(Permission.QUERY_SEARCH)),
 ):
     result = use_case.execute(SearchChunksInput(query=req.query, top_k=req.top_k))
     matches = []
@@ -234,7 +234,7 @@ class AskRes(BaseModel):
 def ask(
     req: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
-    _auth: None = Depends(require_scope("ask")),
+    _auth: None = Depends(require_permissions(Permission.QUERY_ASK)),
 ):
     """
     R: RAG endpoint using Clean Architecture (Use Case pattern).
@@ -263,7 +263,7 @@ def ask(
 async def ask_stream(
     req: QueryReq,
     request: Request,
-    _auth: None = Depends(require_scope("ask")),
+    _auth: None = Depends(require_permissions(Permission.QUERY_STREAM)),
 ):
     """
     R: Streaming RAG endpoint using Server-Sent Events.

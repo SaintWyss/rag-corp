@@ -32,7 +32,7 @@ Production Readiness:
 
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
@@ -42,6 +42,7 @@ from .config import get_settings
 from .middleware import RequestContextMiddleware, BodyLimitMiddleware
 from .rate_limit import RateLimitMiddleware
 from .auth import is_auth_enabled
+from .rbac import require_metrics_permission
 from .versioning import include_versioned_routes
 from .infrastructure.db.pool import init_pool, close_pool
 from .exception_handlers import register_exception_handlers
@@ -259,7 +260,7 @@ def _check_google_api() -> str:
 
 # R: Prometheus metrics endpoint
 @app.get("/metrics")
-def metrics():
+def metrics(_auth: None = Depends(require_metrics_permission())):
     """
     R: Expose Prometheus metrics.
 

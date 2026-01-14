@@ -29,7 +29,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import Callable, Optional, Set
 
-from fastapi import HTTPException, Request
+from fastapi import Header, HTTPException, Request
 
 from .logger import logger
 
@@ -54,6 +54,24 @@ class Permission(Enum):
     
     # Wildcard
     ALL = "*"
+
+
+# R: Backward-compatible mapping from legacy scopes to permissions.
+#     This keeps existing API key scopes working without RBAC_CONFIG.
+SCOPE_PERMISSIONS: dict[str, Set[Permission]] = {
+    "ingest": {Permission.DOCUMENTS_CREATE},
+    "ask": {
+        Permission.QUERY_SEARCH,
+        Permission.QUERY_ASK,
+        Permission.QUERY_STREAM,
+    },
+    "metrics": {Permission.ADMIN_METRICS},
+}
+
+_PERMISSION_SCOPES: dict[Permission, Set[str]] = {}
+for scope, permissions in SCOPE_PERMISSIONS.items():
+    for permission in permissions:
+        _PERMISSION_SCOPES.setdefault(permission, set()).add(scope)
 
 
 @dataclass
@@ -211,6 +229,122 @@ def is_rbac_enabled() -> bool:
     return get_rbac_config() is not None
 
 
+def _scopes_for_permissions(permissions: Set[Permission]) -> Set[str]:
+    """R: Resolve required scopes for a set of permissions."""
+    scopes: Set[str] = set()
+    for permission in permissions:
+        scopes |= _PERMISSION_SCOPES.get(permission, set())
+    return scopes
+
+
+def require_permissions(*permissions: Permission) -> Callable:
+    """
+    FastAPI dependency that requires at least one of the permissions.
+
+    RBAC path:
+      - Uses RBAC_CONFIG key-role mappings when configured.
+    Scope fallback:
+      - Maps legacy scopes to permissions for backward compatibility.
+    """
+    required = set(permissions)
+
+    async def dependency(
+        request: Request,
+        api_key: str | None = Header(None, alias="X-API-Key"),
+    ) -> None:
+        from .auth import APIKeyValidator, get_keys_config, _hash_key
+
+        keys_config = get_keys_config()
+        rbac_config = get_rbac_config()
+
+        # R: If neither API keys nor RBAC are configured, auth is disabled.
+        if not keys_config and not rbac_config:
+            return None
+
+        if not api_key:
+            logger.warning(
+                "Auth failed: missing API key",
+                extra={"path": request.url.path},
+            )
+            raise HTTPException(
+                status_code=401,
+                detail="Missing API key. Provide X-API-Key header.",
+            )
+
+        validator = APIKeyValidator(keys_config) if keys_config else None
+        if validator and not validator.validate_key(api_key):
+            logger.warning(
+                "Auth failed: invalid API key",
+                extra={
+                    "key_hash": _hash_key(api_key),
+                    "path": request.url.path,
+                },
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Invalid API key.",
+            )
+
+        key_hash = _hash_key(api_key)
+        request.state.api_key_hash = key_hash
+
+        if not required:
+            return None
+
+        # R: RBAC path (roles/permissions).
+        if rbac_config:
+            allowed = any(
+                rbac_config.check_permission(key_hash, permission)
+                for permission in required
+            )
+            if not allowed:
+                logger.warning(
+                    "RBAC denied",
+                    extra={
+                        "key_hash": key_hash[:8] + "...",
+                        "permissions": [perm.value for perm in required],
+                        "path": request.url.path,
+                    },
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Insufficient permissions. Required: "
+                        + ", ".join(sorted(perm.value for perm in required))
+                    ),
+                )
+            return None
+
+        # R: Legacy scope path (scopes -> permissions).
+        if not validator:
+            return None
+
+        scopes = set(validator.get_scopes(api_key))
+        if "*" in scopes:
+            return None
+
+        required_scopes = _scopes_for_permissions(required)
+        if not required_scopes:
+            raise HTTPException(
+                status_code=403,
+                detail="No scope mapping for required permissions.",
+            )
+
+        if not scopes.intersection(required_scopes):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "API key does not have required scope: "
+                    + ", ".join(sorted(required_scopes))
+                ),
+            )
+        return None
+
+    # R: Annotate for tests/introspection.
+    dependency._required_permissions = tuple(perm.value for perm in required)
+    return dependency
+
+
 def require_permission(permission: Permission) -> Callable:
     """
     FastAPI dependency that requires a specific permission.
@@ -228,44 +362,24 @@ def require_permission(permission: Permission) -> Callable:
     
     Note: Falls back to scope-based auth if RBAC is not configured.
     """
-    
-    async def dependency(request: Request) -> None:
-        rbac_config = get_rbac_config()
-        
-        # If RBAC not configured, fall back to scope-based auth
-        if not rbac_config:
+    return require_permissions(permission)
+
+
+def require_metrics_permission() -> Callable:
+    """R: Optional auth for /metrics endpoint based on settings."""
+
+    async def dependency(
+        request: Request,
+        api_key: str | None = Header(None, alias="X-API-Key"),
+    ) -> None:
+        from .config import get_settings
+
+        if not get_settings().metrics_require_auth:
             return None
-        
-        # Get API key hash from request state (set by auth.py)
-        key_hash = getattr(request.state, "api_key_hash", None)
-        
-        if not key_hash:
-            # No API key provided - check if auth is required
-            from .auth import is_auth_enabled
-            if is_auth_enabled():
-                raise HTTPException(
-                    status_code=403,
-                    detail="RBAC requires authenticated request",
-                )
-            return None
-        
-        # Check permission
-        if not rbac_config.check_permission(key_hash, permission):
-            logger.warning(
-                "RBAC denied",
-                extra={
-                    "key_hash": key_hash[:8] + "...",
-                    "permission": permission.value,
-                    "path": request.url.path,
-                },
-            )
-            raise HTTPException(
-                status_code=403,
-                detail=f"Insufficient permissions. Required: {permission.value}",
-            )
-        
+
+        await require_permissions(Permission.ADMIN_METRICS)(request, api_key)
         return None
-    
+
     return dependency
 
 
