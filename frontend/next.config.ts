@@ -10,15 +10,14 @@
  *   - Backend at http://127.0.0.1:8000
  * 
  * Constraints:
- *   - Hardcoded to localhost (doesn't work in production)
- *   - No environment variables for backend URL
+ *   - Defaults to localhost (set NEXT_PUBLIC_API_URL for production)
  * 
  * Notes:
  *   - :path* captures everything after /v1/ (greedy match)
  *   - 127.0.0.1 preferred over localhost (avoids IPv6 lookup)
  * 
  * Production:
- *   - Change destination to environment variable NEXT_PUBLIC_API_URL
+ *   - Set NEXT_PUBLIC_API_URL to your backend base URL
  *   - Or deploy frontend/backend on same domain
  */
 import type { NextConfig } from "next";
