@@ -19,6 +19,11 @@ tests/
 
 ## Ejecutar Tests
 
+### Unit tests (Docker, recomendado)
+```bash
+pnpm test:backend:unit
+```
+
 ### Todos los tests (unit + integration si RUN_INTEGRATION=1)
 ```bash
 pytest

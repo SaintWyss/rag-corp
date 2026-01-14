@@ -134,7 +134,9 @@ pnpm contracts:gen
 pnpm dev
 
 # Backend (si queres correrlo local sin Docker)
-# cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# cd backend
+# alembic upgrade head
+# uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Verificar Funcionamiento
@@ -186,6 +188,7 @@ curl -X POST http://localhost:8000/v1/ask \
 | `pnpm docker:down` | Detener contenedores y eliminar volúmenes |
 | `pnpm contracts:export` | Exportar OpenAPI desde FastAPI |
 | `pnpm contracts:gen` | Generar cliente TypeScript con Orval |
+| `pnpm test:backend:unit` | Tests unitarios backend (Docker) |
 | `pnpm build` | Build de producción |
 | `pnpm lint` | Lint del monorepo |
 | `pnpm e2e` | Ejecutar Playwright (tests/e2e) |
@@ -248,6 +251,9 @@ La documentación técnica vive en [`doc/`](doc/README.md):
 ### Tests
 
 ```bash
+# Backend - unitarios (Docker, canónico)
+pnpm test:backend:unit
+
 # Backend - unitarios
 cd backend && pytest -m unit -v
 

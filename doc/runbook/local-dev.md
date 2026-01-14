@@ -38,6 +38,7 @@ pnpm dev
 ```bash
 cd backend
 pip install -r requirements.txt
+alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -100,6 +101,23 @@ MAX_CONVERSATION_MESSAGES=12
 
 ---
 
+## Bootstrap Admin
+
+Crear el primer admin (idempotente):
+
+```bash
+cd backend
+python3 scripts/create_admin.py --email admin@example.com
+```
+
+Con Docker Compose:
+
+```bash
+docker compose run --rm rag-api python scripts/create_admin.py --email admin@example.com
+```
+
+---
+
 ## Cache (Redis)
 
 El backend soporta dos backends de cache para embeddings:
@@ -132,6 +150,9 @@ pnpm docker:full
 ### Backend Tests
 
 ```bash
+# Unit tests (Docker, recomendado)
+pnpm test:backend:unit
+
 # Unit tests (offline)
 cd backend
 pytest -m unit

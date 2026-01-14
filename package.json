@@ -12,6 +12,7 @@
     "docker:full": "docker compose --profile full up -d",
     "docker:observability": "docker compose --profile observability up -d",
     "contracts:export": "docker compose run --rm rag-api python scripts/export_openapi.py --out /repo/shared/contracts/openapi.json",
+    "test:backend:unit": "docker compose run --rm --no-deps --build rag-api pytest -m unit",
     "contracts:gen": "pnpm --filter @contracts gen",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
     "changelog:first": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
