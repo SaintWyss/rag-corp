@@ -21,6 +21,7 @@ class ErrorCode(str, Enum):
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     NOT_FOUND = "NOT_FOUND"
+    UNSUPPORTED_MEDIA = "UNSUPPORTED_MEDIA"
     RATE_LIMITED = "RATE_LIMITED"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
 
@@ -92,6 +93,10 @@ def payload_too_large(max_size: str) -> AppHTTPException:
     return AppHTTPException(
         413, ErrorCode.PAYLOAD_TOO_LARGE, f"Payload exceeds maximum size of {max_size}"
     )
+
+
+def unsupported_media(detail: str) -> AppHTTPException:
+    return AppHTTPException(415, ErrorCode.UNSUPPORTED_MEDIA, detail)
 
 
 def internal_error(detail: str = "An unexpected error occurred") -> AppHTTPException:

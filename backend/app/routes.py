@@ -22,10 +22,13 @@ Notes:
   - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, File, Form, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from datetime import datetime
+import json
+import os
+from uuid import uuid4
 from .config import get_settings
 from .rbac import Permission
 from .dual_auth import (
@@ -33,7 +36,13 @@ from .dual_auth import (
     require_employee_or_admin,
     require_principal,
 )
-from .error_responses import not_found
+from .error_responses import (
+    not_found,
+    payload_too_large,
+    service_unavailable,
+    unsupported_media,
+    validation_error,
+)
 from .streaming import stream_answer
 from .application.conversations import (
     format_conversation_query,
@@ -61,8 +70,12 @@ from .container import (
     get_list_documents_use_case,
     get_get_document_use_case,
     get_delete_document_use_case,
+    get_file_storage,
 )
-from .domain.entities import ConversationMessage
+from .domain.entities import ConversationMessage, Document
+from .domain.repositories import DocumentRepository
+from .domain.services import FileStoragePort
+from .dual_auth import PrincipalType, Principal
 
 # R: Create API router for RAG endpoints
 router = APIRouter()
@@ -143,6 +156,31 @@ class DeleteDocumentRes(BaseModel):
     deleted: bool
 
 
+class UploadDocumentRes(BaseModel):
+    document_id: UUID
+    status: str
+    file_name: str
+    mime_type: str
+
+
+_ALLOWED_MIME_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
+
+def _parse_metadata(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        raise validation_error("metadata must be valid JSON.")
+    if not isinstance(payload, dict):
+        raise validation_error("metadata must be a JSON object.")
+    return payload
+
+
 @router.get("/documents", response_model=DocumentsListRes, tags=["documents"])
 def list_documents(
     limit: int = Query(50, ge=1, le=200),
@@ -205,6 +243,85 @@ def delete_document(
     if not deleted:
         raise not_found("Document", str(document_id))
     return DeleteDocumentRes(deleted=True)
+
+
+@router.post("/documents/upload", response_model=UploadDocumentRes, tags=["documents"])
+async def upload_document(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    source: str | None = Form(None),
+    metadata: str | None = Form(None),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
+    _role: None = Depends(require_admin()),
+    repository: DocumentRepository = Depends(get_document_repository),
+    storage: FileStoragePort | None = Depends(get_file_storage),
+):
+    settings = get_settings()
+    if storage is None:
+        raise service_unavailable("File storage")
+
+    file_name = os.path.basename(file.filename or "").strip()
+    if not file_name:
+        file_name = "upload"
+
+    mime_type = (file.content_type or "").lower()
+    if mime_type not in _ALLOWED_MIME_TYPES:
+        raise unsupported_media(f"Unsupported media type: {mime_type or 'unknown'}")
+
+    content = await file.read()
+    if settings.max_upload_bytes > 0 and len(content) > settings.max_upload_bytes:
+        raise payload_too_large(f"{settings.max_upload_bytes} bytes")
+
+    metadata_payload = _parse_metadata(metadata)
+
+    doc_title = (title or file_name).strip() or file_name
+    if len(doc_title) > settings.max_title_chars:
+        raise validation_error(
+            f"title exceeds maximum size of {settings.max_title_chars} characters"
+        )
+    if source and len(source) > settings.max_source_chars:
+        raise validation_error(
+            f"source exceeds maximum size of {settings.max_source_chars} characters"
+        )
+
+    document_id = uuid4()
+    storage_key = f"documents/{document_id}/{file_name}"
+    storage.upload_file(storage_key, content, mime_type)
+
+    repository.save_document(
+        Document(
+            id=document_id,
+            title=doc_title,
+            source=source,
+            metadata=metadata_payload,
+        )
+    )
+
+    uploaded_by_user_id = None
+    if principal and principal.principal_type == PrincipalType.USER:
+        uploaded_by_user_id = principal.user.user_id if principal.user else None
+
+    repository.update_document_file_metadata(
+        document_id,
+        file_name=file_name,
+        mime_type=mime_type,
+        storage_key=storage_key,
+        uploaded_by_user_id=uploaded_by_user_id,
+        status="PENDING",
+        error_message=None,
+    )
+
+    await file.close()
+
+    return UploadDocumentRes(
+        document_id=document_id,
+        status="PENDING",
+        file_name=file_name,
+        mime_type=mime_type,
+    )
 
 
 # R: Endpoint to ingest documents into the RAG system

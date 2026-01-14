@@ -26,6 +26,9 @@ argon2-cffi>=23.1.0
 # Storage (S3/MinIO)
 boto3>=1.34.0
 
+# Multipart form handling
+python-multipart>=0.0.9
+
 # Testing dependencies
 pytest==9.0.2
 pytest-cov==7.0.0

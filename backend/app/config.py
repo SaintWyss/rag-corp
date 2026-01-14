@@ -58,6 +58,7 @@ class Settings(BaseSettings):
         s3_access_key: S3 access key ID
         s3_secret_key: S3 secret access key
         s3_region: S3 region (optional)
+        max_upload_bytes: Maximum upload size in bytes (default: 25MB)
     """
 
     # Required (no defaults)
@@ -109,6 +110,7 @@ class Settings(BaseSettings):
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_region: str = ""
+    max_upload_bytes: int = 25 * 1024 * 1024
 
     # Database - Connection Pool
     db_pool_min_size: int = 2
