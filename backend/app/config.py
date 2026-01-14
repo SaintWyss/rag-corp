@@ -49,6 +49,10 @@ class Settings(BaseSettings):
         metrics_require_auth: Require auth for /metrics (default: False)
         cors_allow_credentials: Allow cookies cross-origin (default: False)
         max_conversation_messages: Max chat history messages (default: 12)
+        jwt_secret: Secret for signing JWT access tokens
+        jwt_access_ttl_minutes: Access token TTL in minutes
+        jwt_cookie_name: Cookie name for access token
+        jwt_cookie_secure: Set Secure on auth cookies
     """
 
     # Required (no defaults)
@@ -87,6 +91,12 @@ class Settings(BaseSettings):
     max_body_bytes: int = 10 * 1024 * 1024  # 10MB
     metrics_require_auth: bool = False
     cors_allow_credentials: bool = False
+
+    # Security - JWT Auth
+    jwt_secret: str = "dev-secret"
+    jwt_access_ttl_minutes: int = 30
+    jwt_cookie_name: str = "access_token"
+    jwt_cookie_secure: bool = False
 
     # Database - Connection Pool
     db_pool_min_size: int = 2

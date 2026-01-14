@@ -36,6 +36,7 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
+from .auth_routes import router as auth_router
 from .logger import logger
 from .container import get_document_repository
 from .config import get_settings
@@ -110,6 +111,10 @@ app = FastAPI(
             "name": "documents",
             "description": "Document management (requires document permissions)",
         },
+        {
+            "name": "auth",
+            "description": "User authentication (JWT)",
+        },
     ],
 )
 
@@ -167,11 +172,19 @@ app.add_middleware(
     allow_origins=_get_allowed_origins(),
     allow_credentials=_cors_settings.cors_allow_credentials,  # R: Secure default: False
     allow_methods=["GET", "POST", "OPTIONS"],  # R: Only needed methods
-    allow_headers=["Content-Type", "X-API-Key", "X-Request-Id"],  # R: Explicit headers
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-Request-Id",
+    ],  # R: Explicit headers
 )
 
 # R: Register API routes under /v1 prefix for versioning
 app.include_router(router, prefix="/v1")
+
+# R: Register auth routes (no version prefix)
+app.include_router(auth_router)
 
 # R: Register versioned routes (v1, v2)
 include_versioned_routes(app)
