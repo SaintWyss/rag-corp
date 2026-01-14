@@ -29,6 +29,11 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        // R: Proxy auth routes directly to backend
+        source: "/auth/:path*",  // R: Match pattern (greedy)
+        destination: `${backendUrl}/auth/:path*`,  // R: Backend URL
+      },
+      {
         // R: Proxy clean /api/* requests to backend /v1/*
         source: "/api/:path*",  // R: Match pattern (greedy)
         destination: `${backendUrl}/v1/:path*`,  // R: Backend URL

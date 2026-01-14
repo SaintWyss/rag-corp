@@ -49,6 +49,24 @@ export type CurrentUser = {
   created_at?: string | null;
 };
 
+export type AdminUser = {
+  id: string;
+  email: string;
+  role: "admin" | "employee";
+  is_active: boolean;
+  created_at?: string | null;
+};
+
+export type UsersListResponse = {
+  users: AdminUser[];
+};
+
+export type CreateUserPayload = {
+  email: string;
+  password: string;
+  role?: "admin" | "employee";
+};
+
 type ApiError = {
   status: number;
   message: string;
@@ -100,6 +118,37 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     }
     throw err;
   }
+}
+
+export async function listUsers(): Promise<UsersListResponse> {
+  return requestJson<UsersListResponse>("/auth/users", { method: "GET" });
+}
+
+export async function createUser(
+  payload: CreateUserPayload
+): Promise<AdminUser> {
+  return requestJson<AdminUser>("/auth/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function disableUser(userId: string): Promise<AdminUser> {
+  return requestJson<AdminUser>(`/auth/users/${userId}/disable`, {
+    method: "POST",
+  });
+}
+
+export async function resetUserPassword(
+  userId: string,
+  password: string
+): Promise<AdminUser> {
+  return requestJson<AdminUser>(`/auth/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
 }
 
 export async function listDocuments(): Promise<DocumentsListResponse> {
