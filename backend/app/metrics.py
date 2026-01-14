@@ -48,12 +48,15 @@ _request_latency: Optional["Histogram"] = None
 _embed_latency: Optional["Histogram"] = None
 _retrieve_latency: Optional["Histogram"] = None
 _llm_latency: Optional["Histogram"] = None
+_embedding_cache_hits: Optional["Counter"] = None
+_embedding_cache_misses: Optional["Counter"] = None
 
 
 def _init_metrics() -> None:
     """R: Initialize Prometheus metrics (called once)."""
     global _requests_total, _request_latency
     global _embed_latency, _retrieve_latency, _llm_latency
+    global _embedding_cache_hits, _embedding_cache_misses
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -95,6 +98,20 @@ def _init_metrics() -> None:
         "rag_llm_latency_seconds",
         "LLM generation latency in seconds",
         buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
+        registry=_registry,
+    )
+
+    _embedding_cache_hits = Counter(
+        "rag_embedding_cache_hit_total",
+        "Embedding cache hits",
+        ["kind"],
+        registry=_registry,
+    )
+
+    _embedding_cache_misses = Counter(
+        "rag_embedding_cache_miss_total",
+        "Embedding cache misses",
+        ["kind"],
         registry=_registry,
     )
 
@@ -164,6 +181,22 @@ def record_stage_metrics(
 
     if llm_seconds is not None and _llm_latency:
         _llm_latency.observe(llm_seconds)
+
+
+def record_embedding_cache_hit(count: int = 1, kind: str = "query") -> None:
+    """R: Record embedding cache hit count."""
+    if not _prometheus_available:
+        return
+    if _embedding_cache_hits:
+        _embedding_cache_hits.labels(kind=kind).inc(count)
+
+
+def record_embedding_cache_miss(count: int = 1, kind: str = "query") -> None:
+    """R: Record embedding cache miss count."""
+    if not _prometheus_available:
+        return
+    if _embedding_cache_misses:
+        _embedding_cache_misses.labels(kind=kind).inc(count)
 
 
 def _normalize_endpoint(path: str) -> str:

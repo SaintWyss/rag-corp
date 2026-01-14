@@ -1,5 +1,6 @@
 """Infrastructure services"""
 
+from .cached_embedding_service import CachingEmbeddingService
 from .google_embedding_service import GoogleEmbeddingService
 from .google_llm_service import GoogleLLMService
 from .retry import (
@@ -11,6 +12,7 @@ from .retry import (
 )
 
 __all__ = [
+    "CachingEmbeddingService",
     "GoogleEmbeddingService",
     "GoogleLLMService",
     "is_transient_error",

@@ -30,8 +30,13 @@ from functools import lru_cache
 from .config import get_settings
 from .domain.repositories import DocumentRepository
 from .domain.services import EmbeddingService, LLMService, TextChunkerService
+from .infrastructure.cache import get_embedding_cache
 from .infrastructure.repositories import PostgresDocumentRepository
-from .infrastructure.services import GoogleEmbeddingService, GoogleLLMService
+from .infrastructure.services import (
+    CachingEmbeddingService,
+    GoogleEmbeddingService,
+    GoogleLLMService,
+)
 from .infrastructure.text import SimpleTextChunker
 from .application.use_cases import (
     AnswerQueryUseCase,
@@ -61,7 +66,10 @@ def get_embedding_service() -> EmbeddingService:
     Returns:
         Google implementation of EmbeddingService
     """
-    return GoogleEmbeddingService()
+    return CachingEmbeddingService(
+        provider=GoogleEmbeddingService(),
+        cache=get_embedding_cache(),
+    )
 
 
 # R: LLM service factory (singleton)

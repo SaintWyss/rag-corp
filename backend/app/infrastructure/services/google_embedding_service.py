@@ -41,6 +41,8 @@ class GoogleEmbeddingService:
     using Google text-embedding-004 model.
     """
 
+    MODEL_ID = "models/text-embedding-004"
+
     def __init__(self, api_key: str | None = None):
         """
         R: Initialize Google Embedding Service.
@@ -84,7 +86,7 @@ class GoogleEmbeddingService:
                 @retry_decorator
                 def _embed_batch_with_retry(content: List[str]) -> dict:
                     return genai.embed_content(
-                        model="models/text-embedding-004",
+                        model=self.MODEL_ID,
                         content=content,
                         task_type="retrieval_document",  # R: Optimized for document storage
                     )
@@ -117,7 +119,7 @@ class GoogleEmbeddingService:
             @retry_decorator
             def _embed_query_with_retry(content: str) -> dict:
                 return genai.embed_content(
-                    model="models/text-embedding-004",
+                    model=self.MODEL_ID,
                     content=content,
                     task_type="retrieval_query",  # R: Optimized for search
                 )
@@ -128,3 +130,8 @@ class GoogleEmbeddingService:
         except Exception as e:
             logger.error(f"GoogleEmbeddingService: Query embedding failed: {e}")
             raise EmbeddingError(f"Failed to embed query: {e}")
+
+    @property
+    def model_id(self) -> str:
+        """R: Return model identifier for cache key composition."""
+        return self.MODEL_ID

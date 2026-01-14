@@ -208,14 +208,28 @@ class EmbeddingCache:
 
     def _create_backend(self, max_size: int, ttl_seconds: float) -> CacheBackend:
         """Create appropriate backend based on environment."""
+        backend = os.getenv("EMBEDDING_CACHE_BACKEND", "").strip().lower()
         redis_url = os.getenv("REDIS_URL")
+
+        if backend == "memory":
+            return InMemoryCacheBackend(max_size, ttl_seconds)
+        if backend == "redis":
+            if redis_url:
+                try:
+                    backend_instance = RedisCacheBackend(redis_url, ttl_seconds)
+                    # R: Test connection
+                    backend_instance._client.ping()
+                    return backend_instance
+                except Exception:
+                    pass  # Fall back to in-memory
+            return InMemoryCacheBackend(max_size, ttl_seconds)
 
         if redis_url:
             try:
-                backend = RedisCacheBackend(redis_url, ttl_seconds)
+                backend_instance = RedisCacheBackend(redis_url, ttl_seconds)
                 # R: Test connection
-                backend._client.ping()
-                return backend
+                backend_instance._client.ping()
+                return backend_instance
             except Exception:
                 pass  # Fall back to in-memory
 
