@@ -2,7 +2,6 @@
 
 Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite ingestar documentos, buscarlos semánticamente y obtener respuestas contextuales generadas por LLM. Resuelve el problema de documentación dispersa: consultas en lenguaje natural con respuestas precisas y fuentes citadas, sin enviar documentos completos a APIs externas.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
 
@@ -310,7 +309,7 @@ pnpm e2e
 
 ## Licencia
 
-MIT License - ver [LICENSE](LICENSE)
+Proprietary — personal/educational evaluation only. Commercial use and redistribution prohibited.
 
 ---
 

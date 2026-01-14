@@ -1,6 +1,7 @@
 {
   "name": "@contracts",
   "private": true,
+  "license": "UNLICENSED",
   "devDependencies": {
     "orval": "^7.17.2"
   },

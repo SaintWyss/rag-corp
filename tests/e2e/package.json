@@ -2,6 +2,7 @@
   "name": "@rag-corp/e2e",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",

@@ -1,6 +1,7 @@
 {
   "name": "rag-corp",
   "private": true,
+  "license": "UNLICENSED",
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "dev": "turbo run dev --parallel",
