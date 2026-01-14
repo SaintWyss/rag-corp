@@ -9,6 +9,11 @@ from .ingest_document import (
     IngestDocumentOutput,
 )
 from .list_documents import ListDocumentsUseCase
+from .process_uploaded_document import (
+    ProcessUploadedDocumentUseCase,
+    ProcessUploadedDocumentInput,
+    ProcessUploadedDocumentOutput,
+)
 from .search_chunks import SearchChunksUseCase, SearchChunksInput, SearchChunksOutput
 
 __all__ = [
@@ -20,6 +25,9 @@ __all__ = [
     "IngestDocumentInput",
     "IngestDocumentOutput",
     "ListDocumentsUseCase",
+    "ProcessUploadedDocumentUseCase",
+    "ProcessUploadedDocumentInput",
+    "ProcessUploadedDocumentOutput",
     "SearchChunksUseCase",
     "SearchChunksInput",
     "SearchChunksOutput",

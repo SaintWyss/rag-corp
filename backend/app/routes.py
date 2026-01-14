@@ -71,10 +71,11 @@ from .container import (
     get_get_document_use_case,
     get_delete_document_use_case,
     get_file_storage,
+    get_document_queue,
 )
 from .domain.entities import ConversationMessage, Document
 from .domain.repositories import DocumentRepository
-from .domain.services import FileStoragePort
+from .domain.services import FileStoragePort, DocumentProcessingQueue
 from .dual_auth import PrincipalType, Principal
 
 # R: Create API router for RAG endpoints
@@ -258,10 +259,13 @@ async def upload_document(
     _role: None = Depends(require_admin()),
     repository: DocumentRepository = Depends(get_document_repository),
     storage: FileStoragePort | None = Depends(get_file_storage),
+    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
 ):
     settings = get_settings()
     if storage is None:
         raise service_unavailable("File storage")
+    if queue is None:
+        raise service_unavailable("Document queue")
 
     file_name = os.path.basename(file.filename or "").strip()
     if not file_name:
@@ -313,6 +317,17 @@ async def upload_document(
         status="PENDING",
         error_message=None,
     )
+
+    try:
+        queue.enqueue_document_processing(document_id)
+    except Exception:
+        repository.transition_document_status(
+            document_id,
+            from_statuses=["PENDING"],
+            to_status="FAILED",
+            error_message="Failed to enqueue document processing job",
+        )
+        raise service_unavailable("Document queue")
 
     await file.close()
 

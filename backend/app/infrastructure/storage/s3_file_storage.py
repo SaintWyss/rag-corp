@@ -48,6 +48,19 @@ class S3FileStorageAdapter(FileStoragePort):
             ContentType=content_type or "application/octet-stream",
         )
 
+    def download_file(self, key: str) -> bytes:
+        response = self._client.get_object(
+            Bucket=self._bucket,
+            Key=key,
+        )
+        body = response["Body"]
+        data = body.read()
+        try:
+            body.close()
+        except Exception:
+            pass
+        return data
+
     def delete_file(self, key: str) -> None:
         self._client.delete_object(
             Bucket=self._bucket,

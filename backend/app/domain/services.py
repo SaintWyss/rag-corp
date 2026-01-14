@@ -21,6 +21,7 @@ Notes:
 """
 
 from typing import Protocol, List, AsyncGenerator
+from uuid import UUID
 
 
 class EmbeddingService(Protocol):
@@ -135,6 +136,26 @@ class FileStoragePort(Protocol):
         """R: Upload file content to storage."""
         ...
 
+    def download_file(self, key: str) -> bytes:
+        """R: Download file content from storage."""
+        ...
+
     def delete_file(self, key: str) -> None:
         """R: Delete file content from storage."""
+        ...
+
+
+class DocumentTextExtractor(Protocol):
+    """R: Interface for extracting text from binary documents."""
+
+    def extract_text(self, mime_type: str, content: bytes) -> str:
+        """R: Extract text from a document payload."""
+        ...
+
+
+class DocumentProcessingQueue(Protocol):
+    """R: Interface for enqueuing document processing jobs."""
+
+    def enqueue_document_processing(self, document_id: UUID) -> str:
+        """R: Enqueue processing job for a document."""
         ...

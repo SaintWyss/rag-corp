@@ -30,6 +30,8 @@ from functools import lru_cache
 from .config import get_settings
 from .domain.repositories import DocumentRepository, ConversationRepository
 from .domain.services import (
+    DocumentProcessingQueue,
+    DocumentTextExtractor,
     EmbeddingService,
     FileStoragePort,
     LLMService,
@@ -47,6 +49,8 @@ from .infrastructure.services import (
     GoogleEmbeddingService,
     GoogleLLMService,
 )
+from .infrastructure.parsers import SimpleDocumentTextExtractor
+from .infrastructure.queue import RQDocumentProcessingQueue
 from .infrastructure.text import SimpleTextChunker
 from .infrastructure.storage import S3FileStorageAdapter, S3Config
 from .application.use_cases import (
@@ -162,6 +166,25 @@ def get_file_storage() -> FileStoragePort | None:
     )
     return S3FileStorageAdapter(config)
 
+
+# R: Document text extractor factory (singleton)
+@lru_cache
+def get_document_text_extractor() -> DocumentTextExtractor:
+    """R: Get singleton instance of document text extractor."""
+    return SimpleDocumentTextExtractor()
+
+
+# R: Document processing queue factory (singleton)
+@lru_cache
+def get_document_queue() -> DocumentProcessingQueue | None:
+    """R: Get queue for background document processing if configured."""
+    settings = get_settings()
+    if not settings.redis_url:
+        return None
+    return RQDocumentProcessingQueue(
+        redis_url=settings.redis_url,
+        retry_max_attempts=settings.retry_max_attempts,
+    )
 
 # R: AnswerQuery use case factory (creates new instance per request)
 def get_answer_query_use_case() -> AnswerQueryUseCase:

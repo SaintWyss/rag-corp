@@ -59,6 +59,7 @@ class Settings(BaseSettings):
         s3_secret_key: S3 secret access key
         s3_region: S3 region (optional)
         max_upload_bytes: Maximum upload size in bytes (default: 25MB)
+        redis_url: Redis connection string for queues/cache (optional)
     """
 
     # Required (no defaults)
@@ -85,6 +86,9 @@ class Settings(BaseSettings):
     # Testing/CI
     fake_llm: bool = False
     fake_embeddings: bool = False
+
+    # Redis
+    redis_url: str = ""
 
     # Security - API Keys (JSON: {"key": ["scope1", "scope2"], ...})
     api_keys_config: str = ""

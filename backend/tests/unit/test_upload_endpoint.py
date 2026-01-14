@@ -65,9 +65,11 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
 
     mock_repo = MagicMock()
     mock_storage = MagicMock()
+    mock_queue = MagicMock()
 
     app.dependency_overrides[routes.get_document_repository] = lambda: mock_repo
     app.dependency_overrides[routes.get_file_storage] = lambda: mock_storage
+    app.dependency_overrides[routes.get_document_queue] = lambda: mock_queue
 
     with patch("app.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
         with patch("app.rbac.get_rbac_config", return_value=None):
@@ -94,6 +96,7 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
     mock_storage.upload_file.assert_called_once()
     mock_repo.save_document.assert_called_once()
     mock_repo.update_document_file_metadata.assert_called_once()
+    mock_queue.enqueue_document_processing.assert_called_once()
 
 
 def test_upload_rejects_invalid_mime(monkeypatch):
@@ -102,6 +105,7 @@ def test_upload_rejects_invalid_mime(monkeypatch):
 
     app.dependency_overrides[routes.get_document_repository] = lambda: MagicMock()
     app.dependency_overrides[routes.get_file_storage] = lambda: MagicMock()
+    app.dependency_overrides[routes.get_document_queue] = lambda: MagicMock()
 
     with patch("app.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
         with patch("app.rbac.get_rbac_config", return_value=None):
@@ -128,6 +132,7 @@ def test_upload_rejects_employee_jwt(monkeypatch):
 
     app.dependency_overrides[routes.get_document_repository] = lambda: MagicMock()
     app.dependency_overrides[routes.get_file_storage] = lambda: MagicMock()
+    app.dependency_overrides[routes.get_document_queue] = lambda: MagicMock()
 
     employee = _user(UserRole.EMPLOYEE)
     settings = _auth_settings()
@@ -157,6 +162,7 @@ def test_upload_rejects_api_key_without_permission(monkeypatch):
 
     app.dependency_overrides[routes.get_document_repository] = lambda: MagicMock()
     app.dependency_overrides[routes.get_file_storage] = lambda: MagicMock()
+    app.dependency_overrides[routes.get_document_queue] = lambda: MagicMock()
 
     with patch("app.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
         with patch("app.rbac.get_rbac_config", return_value=None):

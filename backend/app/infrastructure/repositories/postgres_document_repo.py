@@ -378,6 +378,69 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Failed to update file metadata: {e}")
 
+    def transition_document_status(
+        self,
+        document_id: UUID,
+        *,
+        from_statuses: list[str | None],
+        to_status: str,
+        error_message: str | None = None,
+    ) -> bool:
+        """
+        R: Update status if current status is in allowed set.
+
+        Returns True if a document was updated, otherwise False.
+        """
+        if not from_statuses:
+            return False
+
+        include_null = any(status is None for status in from_statuses)
+        allowed_statuses = [status for status in from_statuses if status is not None]
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                query = """
+                    UPDATE documents
+                    SET status = %s,
+                        error_message = %s
+                    WHERE id = %s
+                """
+                params: list[object] = [to_status, error_message, document_id]
+
+                if allowed_statuses and include_null:
+                    query += " AND (status = ANY(%s) OR status IS NULL)"
+                    params.append(allowed_statuses)
+                elif allowed_statuses:
+                    query += " AND status = ANY(%s)"
+                    params.append(allowed_statuses)
+                elif include_null:
+                    query += " AND status IS NULL"
+
+                result = conn.execute(query, params)
+            return result.rowcount > 0
+        except Exception as e:
+            logger.error(
+                f"PostgresDocumentRepository: Status transition failed: {e}"
+            )
+            raise DatabaseError(f"Failed to transition status: {e}")
+
+    def delete_chunks_for_document(self, document_id: UUID) -> int:
+        """R: Delete all chunks for a document."""
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    "DELETE FROM chunks WHERE document_id = %s",
+                    (document_id,),
+                )
+            return result.rowcount
+        except Exception as e:
+            logger.error(
+                f"PostgresDocumentRepository: Delete chunks failed for {document_id}: {e}"
+            )
+            raise DatabaseError(f"Failed to delete chunks: {e}")
+
     def find_similar_chunks(self, embedding: List[float], top_k: int) -> List[Chunk]:
         """
         R: Search for similar chunks using vector cosine similarity.

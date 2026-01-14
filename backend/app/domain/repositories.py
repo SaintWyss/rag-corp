@@ -164,11 +164,45 @@ class DocumentRepository(Protocol):
             mime_type: MIME type (e.g., application/pdf)
             storage_key: Object key in storage
             uploaded_by_user_id: User UUID who uploaded the file
-            status: Storage status (PENDING/READY/FAILED)
+            status: Storage status (PENDING/PROCESSING/READY/FAILED)
             error_message: Error detail if status is FAILED
 
         Returns:
             True if document was updated, False otherwise
+        """
+        ...
+
+    def transition_document_status(
+        self,
+        document_id: UUID,
+        *,
+        from_statuses: list[str | None],
+        to_status: str,
+        error_message: str | None = None,
+    ) -> bool:
+        """
+        R: Transition document status if current status is allowed.
+
+        Args:
+            document_id: Document UUID to update
+            from_statuses: Allowed current statuses (use None for NULL)
+            to_status: New status to set
+            error_message: Error detail if status is FAILED
+
+        Returns:
+            True if document was updated, False otherwise
+        """
+        ...
+
+    def delete_chunks_for_document(self, document_id: UUID) -> int:
+        """
+        R: Delete all chunks for a document.
+
+        Args:
+            document_id: Document UUID whose chunks should be removed
+
+        Returns:
+            Number of chunks deleted
         """
         ...
 
