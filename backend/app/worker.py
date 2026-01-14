@@ -7,7 +7,7 @@ Responsibilities:
 
 import os
 from redis import Redis
-from rq import Connection, Worker
+from rq import Worker
 
 from .config import get_settings
 
@@ -21,9 +21,8 @@ def main() -> None:
     queue_name = os.getenv("DOCUMENT_QUEUE_NAME", "documents")
 
     redis_conn = Redis.from_url(redis_url)
-    with Connection(redis_conn):
-        worker = Worker([queue_name])
-        worker.work(with_scheduler=False)
+    worker = Worker([queue_name], connection=redis_conn)
+    worker.work(with_scheduler=False)
 
 
 if __name__ == "__main__":

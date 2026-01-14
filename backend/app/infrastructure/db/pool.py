@@ -52,6 +52,7 @@ def _configure_connection(conn) -> None:
     timeout_ms = get_settings().db_statement_timeout_ms
     if timeout_ms > 0:
         conn.execute(f"SET statement_timeout = {timeout_ms}")
+        conn.commit()
 
 
 def init_pool(database_url: str, min_size: int, max_size: int) -> ConnectionPool:

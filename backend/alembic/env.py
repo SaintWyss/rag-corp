@@ -14,12 +14,22 @@ if config.config_file_name is not None:
 target_metadata = None
 
 
+def _sqlalchemy_url(raw_url: str) -> str:
+    """Return a SQLAlchemy-compatible URL using psycopg."""
+    if raw_url.startswith("postgresql://"):
+        return raw_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    if raw_url.startswith("postgres://"):
+        return raw_url.replace("postgres://", "postgresql+psycopg://", 1)
+    return raw_url
+
+
 def get_url() -> str:
     """Get database URL from environment."""
-    return os.environ.get(
+    url = os.environ.get(
         "DATABASE_URL",
         "postgresql://ragcorp:ragcorp@localhost:5432/ragcorp",
     )
+    return _sqlalchemy_url(url)
 
 
 def run_migrations_offline() -> None:
