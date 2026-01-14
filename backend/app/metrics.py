@@ -50,6 +50,9 @@ _retrieve_latency: Optional["Histogram"] = None
 _llm_latency: Optional["Histogram"] = None
 _embedding_cache_hits: Optional["Counter"] = None
 _embedding_cache_misses: Optional["Counter"] = None
+_worker_processed_total: Optional["Counter"] = None
+_worker_failed_total: Optional["Counter"] = None
+_worker_duration: Optional["Histogram"] = None
 
 
 def _init_metrics() -> None:
@@ -57,6 +60,7 @@ def _init_metrics() -> None:
     global _requests_total, _request_latency
     global _embed_latency, _retrieve_latency, _llm_latency
     global _embedding_cache_hits, _embedding_cache_misses
+    global _worker_processed_total, _worker_failed_total, _worker_duration
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -112,6 +116,26 @@ def _init_metrics() -> None:
         "rag_embedding_cache_miss_total",
         "Embedding cache misses",
         ["kind"],
+        registry=_registry,
+    )
+
+    _worker_processed_total = Counter(
+        "rag_worker_processed_total",
+        "Total documents processed by worker",
+        ["status"],
+        registry=_registry,
+    )
+
+    _worker_failed_total = Counter(
+        "rag_worker_failed_total",
+        "Total documents failed in worker",
+        registry=_registry,
+    )
+
+    _worker_duration = Histogram(
+        "rag_worker_duration_seconds",
+        "Worker document processing duration in seconds",
+        buckets=(0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
         registry=_registry,
     )
 
@@ -197,6 +221,30 @@ def record_embedding_cache_miss(count: int = 1, kind: str = "query") -> None:
         return
     if _embedding_cache_misses:
         _embedding_cache_misses.labels(kind=kind).inc(count)
+
+
+def record_worker_processed(status: str) -> None:
+    """R: Record worker processed document status."""
+    if not _prometheus_available:
+        return
+    if _worker_processed_total:
+        _worker_processed_total.labels(status=status).inc()
+
+
+def record_worker_failed(count: int = 1) -> None:
+    """R: Record worker failed document count."""
+    if not _prometheus_available:
+        return
+    if _worker_failed_total:
+        _worker_failed_total.inc(count)
+
+
+def observe_worker_duration(duration_seconds: float) -> None:
+    """R: Record worker document processing duration."""
+    if not _prometheus_available:
+        return
+    if _worker_duration:
+        _worker_duration.observe(duration_seconds)
 
 
 def _normalize_endpoint(path: str) -> str:

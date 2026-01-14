@@ -147,7 +147,39 @@ docker compose exec db psql -U postgres -d rag -c "
 
 ---
 
-### 5. Memory Issues
+### 5. Documentos quedan en PROCESSING
+
+**Sintomas:**
+- El documento queda en `PROCESSING` por mucho tiempo
+- No aparecen chunks nuevos
+
+**Diagnostico:**
+```bash
+# Logs del worker
+docker compose logs -f worker
+
+# Health/readiness del worker
+docker compose exec worker python -c "import urllib.request as u; print(u.urlopen('http://localhost:8001/readyz').read().decode())"
+
+# Metricas del worker (processed/failed/duration)
+docker compose exec worker python -c "import urllib.request as u; print(u.urlopen('http://localhost:8001/metrics').read().decode())" | grep rag_worker
+
+# Cola de documentos en Redis
+docker compose exec redis redis-cli llen rq:queue:documents
+```
+
+**Soluciones:**
+
+| Causa | Solucion |
+|-------|----------|
+| Redis desconectado | Revisar REDIS_URL y salud de `redis` |
+| Worker caido | `docker compose up -d --profile worker` |
+| Error en parser/embedding | Revisar logs del worker y reprocesar documento |
+| Cola atascada | Vaciar cola y reintentar reproceso |
+
+---
+
+### 6. Memory Issues
 
 **Symptoms:**
 - Container OOM killed
@@ -175,7 +207,7 @@ print(f'Memory: {psutil.Process().memory_info().rss / 1024**2:.0f} MB')
 
 ---
 
-### 6. Migrations Failed
+### 7. Migrations Failed
 
 **Symptoms:**
 - Alembic migration errors
@@ -207,7 +239,7 @@ alembic stamp head
 
 ---
 
-### 7. Rate Limiting Issues
+### 8. Rate Limiting Issues
 
 **Symptoms:**
 - 429 Too Many Requests
@@ -229,7 +261,7 @@ curl -I http://localhost:8000/healthz
 
 ---
 
-### 8. Authentication Errors
+### 9. Authentication Errors
 
 **Symptoms:**
 - 401 Unauthorized
