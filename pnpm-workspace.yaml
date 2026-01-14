@@ -1,3 +1,4 @@
 packages:
   - "frontend"
   - "shared/*"
+  - "tests/e2e"

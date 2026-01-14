@@ -151,9 +151,8 @@ jobs:
           cache: pnpm
       - name: Install Playwright dependencies
         run: |
-          cd tests/e2e
-          pnpm install
-          pnpm install:browsers
+          pnpm e2e:install
+          pnpm -C tests/e2e exec playwright install --with-deps
       - name: Start stack
         run: docker compose --profile e2e up -d --build
       - name: Wait for backend

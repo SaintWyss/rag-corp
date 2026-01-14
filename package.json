@@ -16,8 +16,10 @@
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
     "changelog:first": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "version": "pnpm changelog && git add CHANGELOG.md",
-    "e2e": "pnpm -C tests/e2e test",
-    "e2e:ui": "pnpm -C tests/e2e test:ui"
+    "e2e:install": "pnpm -C tests/e2e install",
+    "e2e:install:browsers": "pnpm -C tests/e2e exec playwright install",
+    "e2e": "pnpm run e2e:install && pnpm -C tests/e2e exec playwright test",
+    "e2e:ui": "pnpm run e2e:install && pnpm -C tests/e2e test:ui"
   },
   "devDependencies": {
     "conventional-changelog-cli": "^4.1.0",
