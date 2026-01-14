@@ -60,6 +60,7 @@ from .application.use_cases import (
     SearchChunksUseCase,
     SearchChunksInput,
 )
+from .domain.tags import normalize_tags
 from .container import (
     get_answer_query_use_case,
     get_ingest_document_use_case,
@@ -147,10 +148,12 @@ class DocumentSummaryRes(BaseModel):
     file_name: str | None = None
     mime_type: str | None = None
     status: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class DocumentsListRes(BaseModel):
     documents: list[DocumentSummaryRes]
+    next_cursor: str | None = None
 
 
 class DocumentDetailRes(DocumentSummaryRes):
@@ -179,6 +182,13 @@ _ALLOWED_MIME_TYPES = {
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
+_ALLOWED_DOCUMENT_STATUSES = {"PENDING", "PROCESSING", "READY", "FAILED"}
+_ALLOWED_DOCUMENT_SORTS = {
+    "created_at_desc",
+    "created_at_asc",
+    "title_asc",
+    "title_desc",
+}
 
 
 def _parse_metadata(raw: str | None) -> dict:
@@ -195,13 +205,38 @@ def _parse_metadata(raw: str | None) -> dict:
 
 @router.get("/documents", response_model=DocumentsListRes, tags=["documents"])
 def list_documents(
+    q: str | None = Query(None, max_length=200),
+    status: str | None = Query(None),
+    tag: str | None = Query(None, max_length=64),
+    sort: str | None = Query("created_at_desc"),
+    cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     use_case: ListDocumentsUseCase = Depends(get_list_documents_use_case),
     _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    documents = use_case.execute(limit=limit, offset=offset)
+    query = q.strip() if q else None
+    status_value = status.upper() if status else None
+    tag_value = tag.strip() if tag else None
+    sort_value = sort or "created_at_desc"
+
+    if status_value and status_value not in _ALLOWED_DOCUMENT_STATUSES:
+        raise validation_error("status must be PENDING, PROCESSING, READY, or FAILED.")
+    if sort_value not in _ALLOWED_DOCUMENT_SORTS:
+        raise validation_error(
+            "sort must be created_at_desc, created_at_asc, title_asc, or title_desc."
+        )
+
+    output = use_case.execute(
+        limit=limit,
+        offset=offset,
+        cursor=cursor,
+        query=query,
+        status=status_value,
+        tag=tag_value,
+        sort=sort_value,
+    )
     return DocumentsListRes(
         documents=[
             DocumentSummaryRes(
@@ -213,9 +248,11 @@ def list_documents(
                 file_name=doc.file_name,
                 mime_type=doc.mime_type,
                 status=doc.status,
+                tags=doc.tags,
             )
-            for doc in documents
-        ]
+            for doc in output.documents
+        ],
+        next_cursor=output.next_cursor,
     )
 
 
@@ -244,6 +281,7 @@ def get_document(
         mime_type=document.mime_type,
         status=document.status,
         error_message=document.error_message,
+        tags=document.tags,
     )
 
 
@@ -298,6 +336,7 @@ async def upload_document(
         raise payload_too_large(f"{settings.max_upload_bytes} bytes")
 
     metadata_payload = _parse_metadata(metadata)
+    tags = normalize_tags(metadata_payload)
 
     doc_title = (title or file_name).strip() or file_name
     if len(doc_title) > settings.max_title_chars:
@@ -319,6 +358,7 @@ async def upload_document(
             title=doc_title,
             source=source,
             metadata=metadata_payload,
+            tags=tags,
         )
     )
 

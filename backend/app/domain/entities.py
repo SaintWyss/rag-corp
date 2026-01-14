@@ -44,6 +44,7 @@ class Document:
         uploaded_by_user_id: User UUID that uploaded the file (optional)
         status: File processing status (optional)
         error_message: Error detail if processing failed (optional)
+        tags: Optional tags for filtering and grouping
     """
 
     id: UUID
@@ -58,6 +59,7 @@ class Document:
     uploaded_by_user_id: Optional[UUID] = None
     status: Optional[str] = None
     error_message: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
 
     @property
     def is_deleted(self) -> bool:

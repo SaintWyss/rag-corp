@@ -14,18 +14,25 @@ import {
   type DocumentDetail,
   type DocumentStatus,
   type DocumentSummary,
+  type DocumentSort,
 } from "../lib/api";
 import { getStoredApiKey } from "../lib/apiKey";
 
 type UploadDraft = {
   title: string;
   source: string;
+  tags: string;
 };
+
+type StatusFilter = "ALL" | DocumentStatus;
 
 const emptyUpload: UploadDraft = {
   title: "",
   source: "",
+  tags: "",
 };
+
+const PAGE_SIZE = 20;
 
 const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
@@ -47,11 +54,60 @@ const STATUS_STYLES: Record<DocumentStatus, string> = {
   FAILED: "border-rose-400/50 bg-rose-400/10 text-rose-100",
 };
 
+const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "ALL", label: "Todos" },
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "READY", label: "Ready" },
+  { value: "FAILED", label: "Failed" },
+];
+
+const SORT_OPTIONS: Array<{ value: DocumentSort; label: string }> = [
+  { value: "created_at_desc", label: "Mas recientes" },
+  { value: "created_at_asc", label: "Mas antiguos" },
+  { value: "title_asc", label: "Titulo A-Z" },
+  { value: "title_desc", label: "Titulo Z-A" },
+];
+
 function normalizeStatus(status?: DocumentStatus | null): DocumentStatus {
   if (!status) {
     return "READY";
   }
   return status;
+}
+
+function normalizeTags(doc: Pick<DocumentSummary, "tags" | "metadata">): string[] {
+  const tags = new Set<string>();
+
+  if (Array.isArray(doc.tags)) {
+    for (const tag of doc.tags) {
+      if (typeof tag === "string") {
+        const cleaned = tag.trim();
+        if (cleaned) {
+          tags.add(cleaned);
+        }
+      }
+    }
+  }
+
+  const metadataTags = (doc.metadata as Record<string, unknown>)?.tags;
+  if (Array.isArray(metadataTags)) {
+    for (const tag of metadataTags) {
+      if (typeof tag === "string") {
+        const cleaned = tag.trim();
+        if (cleaned) {
+          tags.add(cleaned);
+        }
+      }
+    }
+  } else if (typeof metadataTags === "string") {
+    const cleaned = metadataTags.trim();
+    if (cleaned) {
+      tags.add(cleaned);
+    }
+  }
+
+  return Array.from(tags);
 }
 
 function formatError(error: unknown): string {
@@ -113,6 +169,14 @@ export default function DocumentsPage() {
   const [draft, setDraft] = useState<UploadDraft>(emptyUpload);
   const [file, setFile] = useState<File | null>(null);
   const [dropActive, setDropActive] = useState(false);
+  const [queryInput, setQueryInput] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [sort, setSort] = useState<DocumentSort>("created_at_desc");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -121,26 +185,70 @@ export default function DocumentsPage() {
   const isAdmin = user?.role === "admin" || (!user && Boolean(apiKey));
   const isEmployee = user?.role === "employee";
 
-  const loadDocuments = useCallback(async (preferredId?: string | null) => {
-    setLoadingList(true);
-    setError("");
-    try {
-      const res = await listDocuments();
-      setDocuments(res.documents);
-      const candidateId = preferredId ?? selectedId;
-      const nextSelectedId = res.documents.length
-        ? res.documents.some((doc) => doc.id === candidateId)
-          ? candidateId
-          : res.documents[0].id
-        : null;
-      setSelectedId(nextSelectedId ?? null);
-    } catch (err) {
-      setError(formatError(err));
-    } finally {
-      setLoadingList(false);
-      setRefreshTick((prev) => prev + 1);
-    }
-  }, [selectedId]);
+  const activeFilters = useMemo(
+    () => ({
+      q: query || undefined,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+      tag: tagFilter || undefined,
+      sort,
+    }),
+    [query, sort, statusFilter, tagFilter]
+  );
+
+  const loadDocuments = useCallback(
+    async ({
+      preferredId,
+      cursor,
+      append = false,
+    }: {
+      preferredId?: string | null;
+      cursor?: string | null;
+      append?: boolean;
+    } = {}) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoadingList(true);
+      }
+      setError("");
+      try {
+        const res = await listDocuments({
+          ...activeFilters,
+          cursor: cursor ?? undefined,
+          limit: PAGE_SIZE,
+        });
+        setNextCursor(res.next_cursor ?? null);
+        if (append) {
+          setDocuments((prev) => [...prev, ...res.documents]);
+          setSelectedId(
+            (current) => current ?? res.documents[0]?.id ?? null
+          );
+        } else {
+          setDocuments(res.documents);
+          setSelectedId((current) => {
+            const candidateId = preferredId ?? current;
+            if (!res.documents.length) {
+              return null;
+            }
+            if (candidateId && res.documents.some((doc) => doc.id === candidateId)) {
+              return candidateId;
+            }
+            return res.documents[0].id;
+          });
+          setRefreshTick((prev) => prev + 1);
+        }
+      } catch (err) {
+        setError(formatError(err));
+      } finally {
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoadingList(false);
+        }
+      }
+    },
+    [activeFilters]
+  );
 
   const loadDetail = useCallback(async (documentId: string) => {
     setLoadingDetail(true);
@@ -217,8 +325,36 @@ export default function DocumentsPage() {
     if (!selected?.metadata) {
       return [];
     }
-    return Object.entries(selected.metadata);
+    return Object.entries(selected.metadata).filter(([key]) => key !== "tags");
   }, [selected]);
+
+  const selectedTags = useMemo(
+    () => (selected ? normalizeTags(selected) : []),
+    [selected]
+  );
+
+  const applyFilters = useCallback(() => {
+    setQuery(queryInput.trim());
+    setTagFilter(tagInput.trim());
+  }, [queryInput, tagInput]);
+
+  const clearFilters = useCallback(() => {
+    setQueryInput("");
+    setTagInput("");
+    setQuery("");
+    setTagFilter("");
+    setStatusFilter("ALL");
+    setSort("created_at_desc");
+  }, []);
+
+  const filtersActive = useMemo(
+    () =>
+      Boolean(query) ||
+      Boolean(tagFilter) ||
+      statusFilter !== "ALL" ||
+      sort !== "created_at_desc",
+    [query, sort, statusFilter, tagFilter]
+  );
 
   const handleFileSelection = useCallback(
     (nextFile: File | null) => {
@@ -274,13 +410,20 @@ export default function DocumentsPage() {
         if (draft.source.trim()) {
           formData.append("source", draft.source.trim());
         }
+        const tags = draft.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => Boolean(tag));
+        if (tags.length) {
+          formData.append("metadata", JSON.stringify({ tags }));
+        }
 
         const result = await uploadDocument(formData);
         setNotice(`Archivo subido: ${result.file_name}. Procesando...`);
         setFile(null);
         setDraft(emptyUpload);
         setSelectedId(result.document_id);
-        await loadDocuments(result.document_id);
+        await loadDocuments({ preferredId: result.document_id });
       } catch (err) {
         setError(formatError(err));
       } finally {
@@ -316,6 +459,13 @@ export default function DocumentsPage() {
       setReprocessing(false);
     }
   }, [loadDocuments, selectedId]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) {
+      return;
+    }
+    await loadDocuments({ cursor: nextCursor, append: true });
+  }, [loadDocuments, loadingMore, nextCursor]);
 
   const clearFile = useCallback(() => {
     setFile(null);
@@ -455,6 +605,21 @@ export default function DocumentsPage() {
                     placeholder="https://docs.example.com"
                   />
                 </label>
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+                  Tags (opcional)
+                  <input
+                    value={draft.tags}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        tags: event.target.value,
+                      }))
+                    }
+                    data-testid="sources-tags-input"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    placeholder="legal, finanzas"
+                  />
+                </label>
 
                 <button
                   type="submit"
@@ -489,17 +654,105 @@ export default function DocumentsPage() {
               <div>
                 <h2 className="text-lg font-semibold">Listado</h2>
                 <p className="text-sm text-white/60">
-                  {documents.length} fuentes activas.
+                  {documents.length} fuentes {filtersActive ? "filtradas" : "activas"}.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={loadDocuments}
+                onClick={() => loadDocuments()}
                 data-testid="sources-refresh"
                 className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white"
               >
                 {needsPolling ? "Actualizando..." : "Refrescar"}
               </button>
+            </div>
+
+            <div
+              className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+              data-testid="sources-filters"
+            >
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  applyFilters();
+                }}
+                className="grid gap-3 md:grid-cols-[1.4fr_1fr_auto_auto]"
+              >
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50">
+                  Buscar
+                  <input
+                    value={queryInput}
+                    onChange={(event) => setQueryInput(event.target.value)}
+                    data-testid="sources-search-input"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    placeholder="Titulo, source o archivo"
+                  />
+                </label>
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50">
+                  Tag
+                  <input
+                    value={tagInput}
+                    onChange={(event) => setTagInput(event.target.value)}
+                    data-testid="sources-tag-input"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    placeholder="comercial"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  data-testid="sources-apply-filters"
+                  className="self-end rounded-full bg-cyan-500/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-cyan-400"
+                >
+                  Aplicar
+                </button>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  data-testid="sources-clear-filters"
+                  className="self-end rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/60 transition hover:border-cyan-300/50 hover:text-white"
+                >
+                  Limpiar
+                </button>
+              </form>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {STATUS_FILTERS.map((option) => {
+                  const active = statusFilter === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStatusFilter(option.value)}
+                      data-testid={`sources-status-${option.value.toLowerCase()}`}
+                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] transition ${
+                        active
+                          ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-100"
+                          : "border-white/10 text-white/50 hover:border-cyan-300/30 hover:text-white"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50">
+                Orden
+                <select
+                  value={sort}
+                  onChange={(event) =>
+                    setSort(event.target.value as DocumentSort)
+                  }
+                  data-testid="sources-sort-select"
+                  className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-white/70 focus:border-cyan-400/60 focus:outline-none"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="mt-6 space-y-3" data-testid="sources-list">
@@ -513,6 +766,7 @@ export default function DocumentsPage() {
                 documents.map((doc) => {
                   const active = selectedId === doc.id;
                   const status = normalizeStatus(doc.status);
+                  const tags = normalizeTags(doc);
                   return (
                     <button
                       key={doc.id}
@@ -546,6 +800,24 @@ export default function DocumentsPage() {
                           <p className="text-xs text-white/50">
                             {doc.file_name || doc.source || "Sin archivo"}
                           </p>
+                          {tags.length ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {tags.slice(0, 3).map((tag) => (
+                                <span
+                                  key={tag}
+                                  data-testid="source-tag"
+                                  className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-white/50"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                              {tags.length > 3 ? (
+                                <span className="text-[10px] text-white/40">
+                                  +{tags.length - 3}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                         <span className="text-xs text-white/40">
                           {formatDate(doc.created_at)}
@@ -556,6 +828,19 @@ export default function DocumentsPage() {
                 })
               )}
             </div>
+            {nextCursor ? (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  data-testid="sources-load-more"
+                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white disabled:cursor-not-allowed disabled:text-white/40"
+                >
+                  {loadingMore ? "Cargando..." : "Mostrar mas"}
+                </button>
+              </div>
+            ) : null}
           </section>
 
           <section
@@ -631,6 +916,30 @@ export default function DocumentsPage() {
                   >
                     {STATUS_LABELS[normalizeStatus(selected.status)]}
                   </span>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                    Tags
+                  </p>
+                  {selectedTags.length === 0 ? (
+                    <p className="text-white/50" data-testid="source-detail-tags">
+                      Sin tags.
+                    </p>
+                  ) : (
+                    <div
+                      className="flex flex-wrap gap-2"
+                      data-testid="source-detail-tags"
+                    >
+                      {selectedTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/60"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {normalizeStatus(selected.status) === "FAILED" &&
                 selected.error_message ? (

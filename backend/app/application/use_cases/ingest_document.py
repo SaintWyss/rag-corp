@@ -32,6 +32,7 @@ from typing import Dict, Any, List, Optional
 from ...domain.entities import Document, Chunk
 from ...domain.repositories import DocumentRepository
 from ...domain.services import EmbeddingService, TextChunkerService
+from ...domain.tags import normalize_tags
 
 
 @dataclass
@@ -66,12 +67,14 @@ class IngestDocumentUseCase:
     def execute(self, input_data: IngestDocumentInput) -> IngestDocumentOutput:
         doc_id = uuid4()
         metadata = input_data.metadata or {}
+        tags = normalize_tags(metadata)
 
         document = Document(
             id=doc_id,
             title=input_data.title,
             source=input_data.source,
             metadata=metadata,
+            tags=tags,
         )
 
         chunks = self.chunker.chunk(input_data.text)

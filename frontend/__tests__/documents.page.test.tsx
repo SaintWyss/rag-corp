@@ -40,8 +40,10 @@ describe("Documents Page", () => {
                     status: "FAILED",
                     file_name: "manual.pdf",
                     mime_type: "application/pdf",
+                    tags: ["legal", "handbook"],
                 },
             ],
+            next_cursor: null,
         });
         (getDocument as jest.Mock).mockResolvedValue({
             id: "doc-1",
@@ -53,6 +55,7 @@ describe("Documents Page", () => {
             file_name: "manual.pdf",
             mime_type: "application/pdf",
             error_message: "Parser failed",
+            tags: ["legal", "handbook"],
         });
         (getCurrentUser as jest.Mock).mockResolvedValue(null);
 
@@ -61,11 +64,15 @@ describe("Documents Page", () => {
         expect(
             await screen.findByRole("heading", { name: "Sources" })
         ).toBeInTheDocument();
+        expect(await screen.findByTestId("sources-search-input")).toBeInTheDocument();
         expect(await screen.findByTestId("source-status-chip")).toHaveTextContent(
             "FAILED"
         );
         expect(await screen.findByTestId("source-detail-error")).toHaveTextContent(
             "Parser failed"
+        );
+        expect(await screen.findByTestId("source-detail-tags")).toHaveTextContent(
+            "legal"
         );
     });
 
@@ -84,6 +91,7 @@ describe("Documents Page", () => {
                     mime_type: "application/pdf",
                 },
             ],
+            next_cursor: null,
         });
         (getDocument as jest.Mock).mockResolvedValue({
             id: "doc-2",

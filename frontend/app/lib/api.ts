@@ -17,6 +17,7 @@ export type DocumentSummary = {
   file_name?: string | null;
   mime_type?: string | null;
   status?: DocumentStatus | null;
+  tags?: string[];
 };
 
 export type DocumentDetail = DocumentSummary & {
@@ -26,6 +27,22 @@ export type DocumentDetail = DocumentSummary & {
 
 export type DocumentsListResponse = {
   documents: DocumentSummary[];
+  next_cursor?: string | null;
+};
+
+export type DocumentSort =
+  | "created_at_desc"
+  | "created_at_asc"
+  | "title_asc"
+  | "title_desc";
+
+export type ListDocumentsParams = {
+  q?: string;
+  status?: DocumentStatus;
+  tag?: string;
+  sort?: DocumentSort;
+  cursor?: string;
+  limit?: number;
 };
 
 export type UploadDocumentResponse = {
@@ -151,10 +168,36 @@ export async function resetUserPassword(
   });
 }
 
-export async function listDocuments(): Promise<DocumentsListResponse> {
-  return requestJson<DocumentsListResponse>("/api/documents", {
-    method: "GET",
-  });
+export async function listDocuments(
+  params: ListDocumentsParams = {}
+): Promise<DocumentsListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.q) {
+    searchParams.set("q", params.q);
+  }
+  if (params.status) {
+    searchParams.set("status", params.status);
+  }
+  if (params.tag) {
+    searchParams.set("tag", params.tag);
+  }
+  if (params.sort) {
+    searchParams.set("sort", params.sort);
+  }
+  if (params.cursor) {
+    searchParams.set("cursor", params.cursor);
+  }
+  if (typeof params.limit === "number") {
+    searchParams.set("limit", String(params.limit));
+  }
+  const query = searchParams.toString();
+
+  return requestJson<DocumentsListResponse>(
+    `/api/documents${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+    }
+  );
 }
 
 export async function getDocument(documentId: string): Promise<DocumentDetail> {

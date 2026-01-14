@@ -83,13 +83,26 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    def list_documents(self, limit: int = 50, offset: int = 0) -> List[Document]:
+    def list_documents(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        *,
+        query: str | None = None,
+        status: str | None = None,
+        tag: str | None = None,
+        sort: str | None = None,
+    ) -> List[Document]:
         """
         R: List document metadata (excluding deleted documents).
 
         Args:
             limit: Maximum number of documents to return
             offset: Offset for pagination
+            query: Optional search query
+            status: Optional status filter
+            tag: Optional tag filter
+            sort: Optional sort key
 
         Returns:
             List of Document entities ordered by creation time (descending)

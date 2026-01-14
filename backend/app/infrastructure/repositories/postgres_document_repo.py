@@ -41,6 +41,13 @@ from ...exceptions import DatabaseError
 # R: Expected embedding dimension (Google Gemini)
 EMBEDDING_DIMENSION = 768
 
+_DOCUMENT_SORTS = {
+    "created_at_desc": "created_at DESC NULLS LAST",
+    "created_at_asc": "created_at ASC NULLS LAST",
+    "title_asc": "title ASC NULLS LAST",
+    "title_desc": "title DESC NULLS LAST",
+}
+
 
 class PostgresDocumentRepository:
     """
@@ -96,18 +103,20 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 conn.execute(
                     """
-                    INSERT INTO documents (id, title, source, metadata)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO documents (id, title, source, metadata, tags)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE
                     SET title = EXCLUDED.title,
                         source = EXCLUDED.source,
-                        metadata = EXCLUDED.metadata
+                        metadata = EXCLUDED.metadata,
+                        tags = EXCLUDED.tags
                     """,
                     (
                         document.id,
                         document.title,
                         document.source,
                         Json(document.metadata),
+                        document.tags or [],
                     ),
                 )
             logger.info(f"PostgresDocumentRepository: Document saved: {document.id}")
@@ -117,7 +126,16 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Failed to save document: {e}")
 
-    def list_documents(self, limit: int = 50, offset: int = 0) -> List[Document]:
+    def list_documents(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        *,
+        query: str | None = None,
+        status: str | None = None,
+        tag: str | None = None,
+        sort: str | None = None,
+    ) -> List[Document]:
         """
         R: List document metadata ordered by creation time (descending).
 
@@ -126,18 +144,41 @@ class PostgresDocumentRepository:
         """
         try:
             pool = self._get_pool()
+            filters = ["deleted_at IS NULL"]
+            params: list[object] = []
+
+            if query:
+                like_query = f"%{query}%"
+                filters.append(
+                    "(title ILIKE %s OR source ILIKE %s OR file_name ILIKE %s OR metadata::text ILIKE %s)"
+                )
+                params.extend([like_query, like_query, like_query, like_query])
+
+            if status:
+                filters.append("status = %s")
+                params.append(status)
+
+            if tag:
+                filters.append("%s = ANY(tags)")
+                params.append(tag)
+
+            order_by = _DOCUMENT_SORTS.get(
+                sort or "created_at_desc", _DOCUMENT_SORTS["created_at_desc"]
+            )
+            where_clause = " AND ".join(filters)
+
             with pool.connection() as conn:
                 rows = conn.execute(
-                    """
+                    f"""
                     SELECT id, title, source, metadata, created_at, deleted_at,
                            file_name, mime_type, storage_key,
-                           uploaded_by_user_id, status, error_message
+                           uploaded_by_user_id, status, error_message, tags
                     FROM documents
-                    WHERE deleted_at IS NULL
-                    ORDER BY created_at DESC
+                    WHERE {where_clause}
+                    ORDER BY {order_by}
                     LIMIT %s OFFSET %s
                     """,
-                    (limit, offset),
+                    (*params, limit, offset),
                 ).fetchall()
 
             return [
@@ -154,6 +195,7 @@ class PostgresDocumentRepository:
                     uploaded_by_user_id=row[9],
                     status=row[10],
                     error_message=row[11],
+                    tags=row[12] or [],
                 )
                 for row in rows
             ]
@@ -175,7 +217,7 @@ class PostgresDocumentRepository:
                     """
                     SELECT id, title, source, metadata, created_at, deleted_at,
                            file_name, mime_type, storage_key,
-                           uploaded_by_user_id, status, error_message
+                           uploaded_by_user_id, status, error_message, tags
                     FROM documents
                     WHERE id = %s AND deleted_at IS NULL
                     """,
@@ -198,6 +240,7 @@ class PostgresDocumentRepository:
                 uploaded_by_user_id=row[9],
                 status=row[10],
                 error_message=row[11],
+                tags=row[12] or [],
             )
         except Exception as e:
             logger.error(
@@ -280,18 +323,20 @@ class PostgresDocumentRepository:
                     # R: Insert document
                     conn.execute(
                         """
-                        INSERT INTO documents (id, title, source, metadata)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO documents (id, title, source, metadata, tags)
+                        VALUES (%s, %s, %s, %s, %s)
                         ON CONFLICT (id) DO UPDATE
                         SET title = EXCLUDED.title,
                             source = EXCLUDED.source,
-                            metadata = EXCLUDED.metadata
+                            metadata = EXCLUDED.metadata,
+                            tags = EXCLUDED.tags
                         """,
                         (
                             document.id,
                             document.title,
                             document.source,
                             Json(document.metadata),
+                            document.tags or [],
                         ),
                     )
 
