@@ -117,6 +117,78 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Failed to save document: {e}")
 
+    def list_documents(self, limit: int = 50, offset: int = 0) -> List[Document]:
+        """
+        R: List document metadata ordered by creation time (descending).
+
+        Returns:
+            List of Document entities
+        """
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT id, title, source, metadata, created_at, deleted_at
+                    FROM documents
+                    WHERE deleted_at IS NULL
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (limit, offset),
+                ).fetchall()
+
+            return [
+                Document(
+                    id=row[0],
+                    title=row[1],
+                    source=row[2],
+                    metadata=row[3] or {},
+                    created_at=row[4],
+                    deleted_at=row[5],
+                )
+                for row in rows
+            ]
+        except Exception as e:
+            logger.error(f"PostgresDocumentRepository: List documents failed: {e}")
+            raise DatabaseError(f"List documents failed: {e}")
+
+    def get_document(self, document_id: UUID) -> Optional[Document]:
+        """
+        R: Fetch a single document by ID (excluding deleted).
+
+        Returns:
+            Document or None if not found
+        """
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                row = conn.execute(
+                    """
+                    SELECT id, title, source, metadata, created_at, deleted_at
+                    FROM documents
+                    WHERE id = %s AND deleted_at IS NULL
+                    """,
+                    (document_id,),
+                ).fetchone()
+
+            if not row:
+                return None
+
+            return Document(
+                id=row[0],
+                title=row[1],
+                source=row[2],
+                metadata=row[3] or {},
+                created_at=row[4],
+                deleted_at=row[5],
+            )
+        except Exception as e:
+            logger.error(
+                f"PostgresDocumentRepository: Get document failed for {document_id}: {e}"
+            )
+            raise DatabaseError(f"Get document failed: {e}")
+
     def save_chunks(self, document_id: UUID, chunks: List[Chunk]) -> None:
         """
         R: Persist chunks with embeddings to PostgreSQL (batch insert).

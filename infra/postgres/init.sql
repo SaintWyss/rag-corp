@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS documents (
   title TEXT NOT NULL,  -- R: Document title
   source TEXT,  -- R: Optional source URL or identifier
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,  -- R: Flexible custom metadata
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()  -- R: Creation timestamp (UTC)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),  -- R: Creation timestamp (UTC)
+  deleted_at TIMESTAMPTZ  -- R: Soft delete timestamp (NULL if active)
 );
 
 -- R: Chunks table (stores content + embeddings)

@@ -23,6 +23,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from .exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
+from .error_responses import AppHTTPException, app_exception_handler
 from .logger import logger
 
 
@@ -83,3 +84,4 @@ def register_exception_handlers(app) -> None:
     app.add_exception_handler(EmbeddingError, embedding_error_handler)
     app.add_exception_handler(LLMError, llm_error_handler)
     app.add_exception_handler(RAGError, rag_error_handler)
+    app.add_exception_handler(AppHTTPException, app_exception_handler)

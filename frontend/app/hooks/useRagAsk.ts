@@ -29,6 +29,7 @@
 
 import { askV1AskPost } from "@contracts/src/generated";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getStoredApiKey } from "../lib/apiKey";
 
 /** Request timeout in milliseconds (30 seconds) */
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -125,10 +126,13 @@ export function useRagAsk() {
       }));
 
       try {
+        const apiKey = getStoredApiKey();
         const res = await askV1AskPost(
           { query: trimmed, top_k: 3 },
           {
-            headers: { "Content-Type": "application/json" },
+            headers: apiKey
+              ? { "Content-Type": "application/json", "X-API-Key": apiKey }
+              : { "Content-Type": "application/json" },
             signal: controller.signal,
           }
         );

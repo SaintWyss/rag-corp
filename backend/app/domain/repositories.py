@@ -21,7 +21,7 @@ Notes:
   - Enables testing with mock repositories
 """
 
-from typing import Protocol, List
+from typing import Protocol, List, Optional
 from uuid import UUID
 from .entities import Document, Chunk
 
@@ -80,6 +80,31 @@ class DocumentRepository(Protocol):
 
         Returns:
             List of Chunk entities ordered by similarity (descending)
+        """
+        ...
+
+    def list_documents(self, limit: int = 50, offset: int = 0) -> List[Document]:
+        """
+        R: List document metadata (excluding deleted documents).
+
+        Args:
+            limit: Maximum number of documents to return
+            offset: Offset for pagination
+
+        Returns:
+            List of Document entities ordered by creation time (descending)
+        """
+        ...
+
+    def get_document(self, document_id: UUID) -> Optional[Document]:
+        """
+        R: Fetch a single document by ID.
+
+        Args:
+            document_id: Document UUID
+
+        Returns:
+            Document if found, otherwise None
         """
         ...
 

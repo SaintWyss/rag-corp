@@ -40,7 +40,10 @@ from .infrastructure.services import (
 from .infrastructure.text import SimpleTextChunker
 from .application.use_cases import (
     AnswerQueryUseCase,
+    DeleteDocumentUseCase,
+    GetDocumentUseCase,
     IngestDocumentUseCase,
+    ListDocumentsUseCase,
     SearchChunksUseCase,
 )
 
@@ -135,3 +138,18 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
         repository=get_document_repository(),
         embedding_service=get_embedding_service(),
     )
+
+
+def get_list_documents_use_case() -> ListDocumentsUseCase:
+    """R: Create ListDocumentsUseCase."""
+    return ListDocumentsUseCase(repository=get_document_repository())
+
+
+def get_get_document_use_case() -> GetDocumentUseCase:
+    """R: Create GetDocumentUseCase."""
+    return GetDocumentUseCase(repository=get_document_repository())
+
+
+def get_delete_document_use_case() -> DeleteDocumentUseCase:
+    """R: Create DeleteDocumentUseCase."""
+    return DeleteDocumentUseCase(repository=get_document_repository())

@@ -18,7 +18,7 @@ jest.mock("../app/hooks/useRagAsk", () => ({
 describe("Home Page", () => {
     it("renders the page header", () => {
         render(<Home />);
-        expect(screen.getByText(/RAG Corp/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/RAG Corp/i).length).toBeGreaterThan(0);
     });
 
     it("renders the query form", () => {

@@ -106,6 +106,10 @@ app = FastAPI(
             "name": "query",
             "description": "Semantic search and RAG (requires 'ask' scope)",
         },
+        {
+            "name": "documents",
+            "description": "Document management (requires document permissions)",
+        },
     ],
 )
 

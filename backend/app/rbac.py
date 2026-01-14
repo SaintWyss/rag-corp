@@ -32,6 +32,7 @@ from typing import Callable, Optional, Set
 from fastapi import Header, HTTPException, Request
 
 from .logger import logger
+from .error_responses import forbidden, unauthorized
 
 
 class Permission(Enum):
@@ -59,8 +60,13 @@ class Permission(Enum):
 # R: Backward-compatible mapping from legacy scopes to permissions.
 #     This keeps existing API key scopes working without RBAC_CONFIG.
 SCOPE_PERMISSIONS: dict[str, Set[Permission]] = {
-    "ingest": {Permission.DOCUMENTS_CREATE},
+    "ingest": {
+        Permission.DOCUMENTS_CREATE,
+        Permission.DOCUMENTS_READ,
+        Permission.DOCUMENTS_DELETE,
+    },
     "ask": {
+        Permission.DOCUMENTS_READ,
         Permission.QUERY_SEARCH,
         Permission.QUERY_ASK,
         Permission.QUERY_STREAM,
@@ -266,10 +272,7 @@ def require_permissions(*permissions: Permission) -> Callable:
                 "Auth failed: missing API key",
                 extra={"path": request.url.path},
             )
-            raise HTTPException(
-                status_code=401,
-                detail="Missing API key. Provide X-API-Key header.",
-            )
+            raise unauthorized("Missing API key. Provide X-API-Key header.")
 
         validator = APIKeyValidator(keys_config) if keys_config else None
         if validator and not validator.validate_key(api_key):
@@ -280,10 +283,7 @@ def require_permissions(*permissions: Permission) -> Callable:
                     "path": request.url.path,
                 },
             )
-            raise HTTPException(
-                status_code=403,
-                detail="Invalid API key.",
-            )
+            raise forbidden("Invalid API key.")
 
         key_hash = _hash_key(api_key)
         request.state.api_key_hash = key_hash
@@ -306,12 +306,9 @@ def require_permissions(*permissions: Permission) -> Callable:
                         "path": request.url.path,
                     },
                 )
-                raise HTTPException(
-                    status_code=403,
-                    detail=(
-                        "Insufficient permissions. Required: "
-                        + ", ".join(sorted(perm.value for perm in required))
-                    ),
+                raise forbidden(
+                    "Insufficient permissions. Required: "
+                    + ", ".join(sorted(perm.value for perm in required))
                 )
             return None
 
@@ -325,18 +322,12 @@ def require_permissions(*permissions: Permission) -> Callable:
 
         required_scopes = _scopes_for_permissions(required)
         if not required_scopes:
-            raise HTTPException(
-                status_code=403,
-                detail="No scope mapping for required permissions.",
-            )
+            raise forbidden("No scope mapping for required permissions.")
 
         if not scopes.intersection(required_scopes):
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "API key does not have required scope: "
-                    + ", ".join(sorted(required_scopes))
-                ),
+            raise forbidden(
+                "API key does not have required scope: "
+                + ", ".join(sorted(required_scopes))
             )
         return None
 

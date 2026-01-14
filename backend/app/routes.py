@@ -22,17 +22,22 @@ Notes:
   - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
+from datetime import datetime
 from .config import get_settings
 from .rbac import Permission, require_permissions
+from .error_responses import not_found
 from .streaming import stream_answer
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
+    DeleteDocumentUseCase,
+    GetDocumentUseCase,
     IngestDocumentUseCase,
     IngestDocumentInput,
+    ListDocumentsUseCase,
     SearchChunksUseCase,
     SearchChunksInput,
 )
@@ -43,6 +48,9 @@ from .container import (
     get_llm_service,
     get_embedding_service,
     get_document_repository,
+    get_list_documents_use_case,
+    get_get_document_use_case,
+    get_delete_document_use_case,
 )
 
 # R: Create API router for RAG endpoints
@@ -102,6 +110,87 @@ class IngestBatchReq(BaseModel):
         max_length=10,
         description="List of documents to ingest (1-10)",
     )
+
+
+class DocumentSummaryRes(BaseModel):
+    id: UUID
+    title: str
+    source: str | None
+    metadata: dict
+    created_at: datetime | None
+
+
+class DocumentsListRes(BaseModel):
+    documents: list[DocumentSummaryRes]
+
+
+class DocumentDetailRes(DocumentSummaryRes):
+    deleted_at: datetime | None = None
+
+
+class DeleteDocumentRes(BaseModel):
+    deleted: bool
+
+
+@router.get("/documents", response_model=DocumentsListRes, tags=["documents"])
+def list_documents(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    use_case: ListDocumentsUseCase = Depends(get_list_documents_use_case),
+    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_READ)),
+):
+    documents = use_case.execute(limit=limit, offset=offset)
+    return DocumentsListRes(
+        documents=[
+            DocumentSummaryRes(
+                id=doc.id,
+                title=doc.title,
+                source=doc.source,
+                metadata=doc.metadata,
+                created_at=doc.created_at,
+            )
+            for doc in documents
+        ]
+    )
+
+
+@router.get(
+    "/documents/{document_id}",
+    response_model=DocumentDetailRes,
+    tags=["documents"],
+)
+def get_document(
+    document_id: UUID,
+    use_case: GetDocumentUseCase = Depends(get_get_document_use_case),
+    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_READ)),
+):
+    document = use_case.execute(document_id)
+    if not document:
+        raise not_found("Document", str(document_id))
+    return DocumentDetailRes(
+        id=document.id,
+        title=document.title,
+        source=document.source,
+        metadata=document.metadata,
+        created_at=document.created_at,
+        deleted_at=document.deleted_at,
+    )
+
+
+@router.delete(
+    "/documents/{document_id}",
+    response_model=DeleteDocumentRes,
+    tags=["documents"],
+)
+def delete_document(
+    document_id: UUID,
+    use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
+    _auth: None = Depends(require_permissions(Permission.DOCUMENTS_DELETE)),
+):
+    deleted = use_case.execute(document_id)
+    if not deleted:
+        raise not_found("Document", str(document_id))
+    return DeleteDocumentRes(deleted=True)
 
 
 # R: Endpoint to ingest documents into the RAG system
