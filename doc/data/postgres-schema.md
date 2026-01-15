@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Database:** PostgreSQL 16  
 **Extension:** pgvector 0.8.1  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 ---
 
@@ -34,8 +34,10 @@ RAG Corp uses PostgreSQL with the `pgvector` extension to store document chunks 
 
 | Table | Purpose | Records |
 |-------|---------|---------|
-| `documents` | Document metadata | 1K-1M |
+| `documents` | Document metadata + upload status | 1K-1M |
 | `chunks` | Document chunks with embeddings | 10K-1M |
+| `users` | JWT users (admin/employee) | 10-10K |
+| `audit_events` | Audit trail | 1K-1M |
 
 ---
 
@@ -64,8 +66,19 @@ CREATE TABLE documents (
     source TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at TIMESTAMPTZ
+    deleted_at TIMESTAMPTZ,
+    file_name TEXT,
+    mime_type TEXT,
+    storage_key TEXT,
+    uploaded_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    status TEXT,
+    error_message TEXT,
+    tags TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
+    allowed_roles TEXT[]
 );
+
+ALTER TABLE documents ADD CONSTRAINT ck_documents_status
+CHECK (status IS NULL OR status IN ('PENDING', 'PROCESSING', 'READY', 'FAILED'));
 ```
 
 **Column Details:**
@@ -78,6 +91,65 @@ CREATE TABLE documents (
 | `metadata` | JSONB | NO | Custom metadata |
 | `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
 | `deleted_at` | TIMESTAMPTZ | YES | Soft delete timestamp |
+| `file_name` | TEXT | YES | Nombre de archivo subido |
+| `mime_type` | TEXT | YES | MIME del archivo |
+| `storage_key` | TEXT | YES | Key en S3/MinIO |
+| `uploaded_by_user_id` | UUID | YES | Usuario que subio el archivo |
+| `status` | TEXT | YES | PENDING/PROCESSING/READY/FAILED |
+| `error_message` | TEXT | YES | Error de procesamiento |
+| `tags` | TEXT[] | NO | Tags normalizados |
+| `allowed_roles` | TEXT[] | YES | ACL por rol (admin/employee) |
+
+### Table: users
+
+```sql
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE users ADD CONSTRAINT ck_users_role
+CHECK (role IN ('admin', 'employee'));
+```
+
+**Column Details:**
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | User identifier |
+| `email` | TEXT | NO | Unique email |
+| `password_hash` | TEXT | NO | Argon2 hash |
+| `role` | TEXT | NO | admin/employee |
+| `is_active` | BOOLEAN | NO | Soft disable |
+| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+
+### Table: audit_events
+
+```sql
+CREATE TABLE audit_events (
+    id UUID PRIMARY KEY,
+    actor TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target_id UUID,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+**Column Details:**
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Audit event ID |
+| `actor` | TEXT | NO | `user:<id>` o `service:<hash>` |
+| `action` | TEXT | NO | Evento (`documents.upload`, `auth.login`, etc.) |
+| `target_id` | UUID | YES | Entidad afectada |
+| `metadata` | JSONB | NO | Metadata asociada |
+| `created_at` | TIMESTAMPTZ | NO | Timestamp |
 
 ### Table: chunks
 
@@ -117,7 +189,7 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-Note: Alembic creates only `chunks_embedding_idx`. Primary key indexes are implicit, and the optional indexes below are not created by default.
+Note: Alembic creates `chunks_embedding_idx`. Primary keys and `users.email` unique index are implicit, and the optional indexes below are not created by default.
 
 ### Primary Key Indexes (Implicit)
 

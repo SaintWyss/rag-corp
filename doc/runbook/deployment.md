@@ -1,7 +1,7 @@
 # Deployment Guide
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 ---
 
@@ -25,7 +25,7 @@ RAG Corp supports multiple deployment strategies:
 |--------|-------------|-------|
 | `GOOGLE_API_KEY` | Gemini API key | Google Cloud Console |
 | `DATABASE_URL` | PostgreSQL connection | Managed DB or self-hosted |
-| `API_KEYS` | Application API keys | Generate secure random keys |
+| `API_KEYS_CONFIG` | JSON con API keys + scopes | Generate secure random keys |
 
 ### Infrastructure Requirements
 
@@ -66,7 +66,7 @@ curl http://localhost:8000/healthz?full=true
 # Required
 DATABASE_URL=postgresql://user:pass@db-host:5432/ragcorp
 GOOGLE_API_KEY=your-production-key
-API_KEYS=prod-key-1:ingest,ask;metrics-key:metrics
+API_KEYS_CONFIG='{"prod-key-1":["ingest","ask"],"metrics-key":["metrics"]}'
 
 # Security
 ALLOWED_ORIGINS=https://app.yourdomain.com
@@ -207,7 +207,7 @@ kubectl create namespace ragcorp
 kubectl create secret generic ragcorp-secrets \
   --from-literal=google-api-key=$GOOGLE_API_KEY \
   --from-literal=database-url=$DATABASE_URL \
-  --from-literal=api-keys=$API_KEYS \
+  --from-literal=API_KEYS_CONFIG=$API_KEYS_CONFIG \
   -n ragcorp
 
 # 3. Apply manifests

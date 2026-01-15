@@ -10,12 +10,15 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 ## Features
 
 - ✅ Ingesta de documentos via API REST (`POST /v1/ingest/text`, `/v1/ingest/batch`)
+- ✅ Documentos + pipeline async (`POST /v1/documents/upload`, estados PENDING/PROCESSING/READY/FAILED)
 - ✅ CRUD de documentos (`GET /v1/documents`, `GET /v1/documents/{id}`, `DELETE /v1/documents/{id}`)
 - ✅ Busqueda vectorial con PostgreSQL + pgvector (indice IVFFlat)
 - ✅ RAG con Gemini 1.5 Flash y prompts versionados
 - ✅ Chat streaming SSE con multi-turn (`POST /v1/ask/stream`, `conversation_id`)
 - ✅ Cache de embeddings (memory por defecto, Redis opcional)
-- ✅ UI en Next.js (Ask, Documents, Chat)
+- ✅ UI en Next.js (Sources, Ask, Chat)
+- ✅ Auth dual: JWT (admin/employee) + API keys (CI/E2E)
+- ✅ Storage S3/MinIO + worker Redis (procesamiento en background)
 - ✅ Contratos tipados (OpenAPI -> TypeScript via Orval)
 - ✅ Clean Architecture (Domain/Application/Infrastructure)
 - ✅ Seguridad: API keys + scopes, RBAC por permisos, rate limiting
@@ -35,6 +38,8 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 | **Contracts** | OpenAPI 3.1 + Orval | `shared/contracts/` |
 | **Embeddings/LLM** | Google Gemini API | Servicios externos |
 | **Cache** | In-memory / Redis | `backend/app/infrastructure/cache.py` |
+| **Worker** | RQ + Redis | `backend/app/worker.py` |
+| **Storage** | S3/MinIO | `backend/app/infrastructure/storage/` |
 | **Observability** | Prometheus + Grafana | `infra/` (profile observability) |
 
 ### Flujo "Ask" (consulta RAG)
@@ -69,6 +74,15 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 5. Response con document_id + chunks_created → Cliente
 ```
 
+### Flujo "Upload" (async con worker)
+
+```
+1. Admin sube archivo → POST /v1/documents/upload (multipart)
+2. API guarda binario en S3/MinIO y metadata en Postgres (status=PENDING)
+3. Worker (RQ) procesa en background → PROCESSING → READY/FAILED
+4. UI Sources muestra estado + permite reprocess
+```
+
 ---
 
 ## Stack
@@ -77,6 +91,8 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 |------|------------|
 | API | FastAPI, Pydantic, psycopg 3.2 |
 | DB | PostgreSQL 16, pgvector 0.8.1 |
+| Queue/Cache | Redis 7 (RQ + cache opcional) |
+| Storage | S3 compatible (MinIO en dev) |
 | AI | Google Gemini (text-embedding-004, Gemini 1.5 Flash) |
 | Frontend | Next.js 16, TypeScript 5, Tailwind CSS 4 |
 | Contracts | OpenAPI 3.1, Orval |
@@ -90,7 +106,7 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 
 - Docker + Docker Compose
 - Node.js 20.9+ y pnpm 10+
-- Cuenta Google Cloud con Gemini API habilitada
+- Cuenta Google Cloud con Gemini API habilitada (opcional si usas FAKE_LLM/FAKE_EMBEDDINGS)
 
 ### Variables de Entorno
 
@@ -102,10 +118,17 @@ Editar `.env` con valores minimos:
 
 | Variable | Descripción | Requerida |
 |----------|-------------|-----------|
-| `GOOGLE_API_KEY` | API key de Google Gemini | ✅ |
+| `GOOGLE_API_KEY` | API key de Google Gemini | ✅ (si no usas FAKE_*) |
+| `FAKE_LLM` | Usa Fake LLM (1 = on) | Opcional |
+| `FAKE_EMBEDDINGS` | Usa Fake embeddings (1 = on) | Opcional |
 | `DATABASE_URL` | Connection string PostgreSQL | Requerida si corres backend local |
 | `API_KEYS_CONFIG` | JSON con API keys y scopes | Opcional (si vacio, auth off) |
 | `RBAC_CONFIG` | JSON con roles y key hashes | Opcional |
+| `REDIS_URL` | Redis para worker/cache | Opcional |
+| `S3_ENDPOINT_URL` | Endpoint S3/MinIO | Opcional (requerido para upload) |
+| `S3_BUCKET` | Bucket S3/MinIO | Opcional |
+| `S3_ACCESS_KEY` | Access key S3/MinIO | Opcional |
+| `S3_SECRET_KEY` | Secret key S3/MinIO | Opcional |
 
 ### Levantar Servicios
 
@@ -119,6 +142,27 @@ pnpm docker:up
 # Esperar ~30s y verificar
 docker compose ps
 ```
+
+### Full Stack (storage + worker)
+
+```bash
+# 1) Configurar storage para MinIO (compose)
+export S3_ENDPOINT_URL=http://minio:9000
+export S3_BUCKET=rag-documents
+export S3_ACCESS_KEY=minioadmin
+export S3_SECRET_KEY=minioadmin
+
+# 2) Levantar stack completo
+pnpm stack:full
+
+# 3) Migraciones
+pnpm db:migrate
+
+# 4) Crear admin (idempotente)
+pnpm admin:bootstrap -- --email admin@example.com --password admin-pass-123
+```
+
+> Si corres el backend fuera de Docker, usa `S3_ENDPOINT_URL=http://localhost:9000`.
 
 ### Generar Contratos
 
@@ -146,6 +190,9 @@ pnpm dev
 curl http://localhost:8000/healthz
 # Esperado: {"ok":true,"db":"connected","request_id":"..."}
 
+# Worker readiness (solo con perfil worker/full)
+curl http://localhost:8001/readyz
+
 # Métricas (si METRICS_REQUIRE_AUTH=false)
 curl http://localhost:8000/metrics | head -5
 
@@ -156,6 +203,11 @@ curl -X POST http://localhost:8000/v1/ingest/text \
   -H "Content-Type: application/json" \
   -H "X-API-Key: ${API_KEY}" \
   -d '{"title":"Test","text":"RAG Corp es un sistema de busqueda semantica."}'
+
+# Login JWT (UI / auth)
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"admin-pass-123"}'
 
 # Listar documentos
 curl -H "X-API-Key: ${API_KEY}" http://localhost:8000/v1/documents
@@ -175,6 +227,8 @@ curl -X POST http://localhost:8000/v1/ask \
 | API | http://localhost:8000 |
 | Swagger UI | http://localhost:8000/docs |
 | Métricas | http://localhost:8000/metrics |
+| Worker Health | http://localhost:8001/healthz |
+| MinIO (console) | http://localhost:9001 |
 
 ---
 

@@ -1,6 +1,6 @@
 # Documentacion RAG Corp
 
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 Esta carpeta contiene la documentacion viva del proyecto. El quickstart esta en `../README.md`.
 Este README concentra solo informacion vigente y enlaces; los reportes historicos se resumen al final.
@@ -14,6 +14,7 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 - `data/postgres-schema.md` - Schema e indices pgvector
 - `runbook/local-dev.md` - Desarrollo local y comandos utiles
 - `runbook/migrations.md` - Migraciones con Alembic
+- `runbook/troubleshooting.md` - Troubleshooting operativo
 - `runbook/kubernetes.md` - Deployment en Kubernetes
 - `quality/testing.md` - Estrategia de testing
 - `../tests/e2e/README.md` - Playwright E2E (local + CI)
@@ -24,7 +25,7 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 - [Flujos principales](#flujos-principales)
 - [Arquitectura (resumen)](#arquitectura-resumen)
 - [Operacion y calidad](#operacion-y-calidad)
-- [Release notes v3](#release-notes-v3)
+- [Release notes v4](#release-notes-v4)
 - [Reportes historicos (resumen)](#reportes-historicos-resumen)
 
 ## Estructura minima
@@ -75,15 +76,21 @@ Arquitectura de alto nivel:
 
 ```
 UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
-                     |
+                     |                |
+                     |                v
+                     |           S3/MinIO
                      v
-               Google Gemini (embeddings + LLM)
+                Redis Queue -> Worker -> Gemini (embeddings + LLM)
 ```
 
 ## Flujos principales
 
+- **Auth JWT** (`POST /auth/login`, `GET /auth/me`, `POST /auth/logout`): login UI con JWT + cookie.
 - **Ingest** (`POST /v1/ingest/text`): valida, chunking, genera embeddings y guarda documento + chunks.
+- **Upload async** (`POST /v1/documents/upload`): guarda archivo en S3/MinIO y deja `status=PENDING`.
+- **Worker** (`python -m app.worker`): procesa documentos PENDING → READY/FAILED.
 - **Documentos** (`GET /v1/documents`, `GET/DELETE /v1/documents/{id}`): lista, detalle y borrado.
+- **Reprocess** (`POST /v1/documents/{id}/reprocess`): reintenta pipeline async.
 - **Query** (`POST /v1/query`): embebe la consulta y recupera los top-k chunks mas similares.
 - **Ask** (`POST /v1/ask`): recupera chunks, arma contexto y el LLM genera la respuesta con fuentes.
 - **Ask Stream** (`POST /v1/ask/stream`): igual que Ask pero con streaming SSE token-by-token y conversation_id.
@@ -98,20 +105,22 @@ UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
 ## Operacion y calidad
 
 - **Observabilidad**: logs estructurados, metricas Prometheus y health check en `/healthz`.
-- **Seguridad**: API keys con scopes, RBAC por permisos y rate limiting configurables.
+- **Seguridad**: dual-auth (JWT usuarios + X-API-Key), RBAC por permisos y rate limiting.
 - **Testing**: unit + integration en backend, tests de UI en frontend, E2E con Playwright; ver `../tests/e2e/README.md`.
 - **Infra local**: `compose.yaml` y pasos en `runbook/local-dev.md`.
 - **Infra K8s**: manifests production-ready en `../infra/k8s/`; ver `runbook/kubernetes.md`.
 - **Migraciones**: Alembic para schema evolution; ver `runbook/migrations.md`.
+- **Storage**: S3/MinIO para archivos; metadata en Postgres.
+- **Worker**: health/metrics propio en `:8001` (ver `runbook/troubleshooting.md`).
 - **Cache**: In-memory por defecto, Redis en produccion (auto-detectado via `REDIS_URL`).
 
-## Release Notes v3
+## Release Notes v4
 
-- Chat streaming multi-turn (`/v1/ask/stream`) con conversation_id.
-- UI de documentos (ingesta, listado, detalle, delete).
-- RBAC por permisos con fallback a scopes legacy.
-- Cache de embeddings con metricas de hit/miss.
-- E2E Playwright en CI con artifacts en falla.
+- Auth JWT (admin/employee) + dual-auth con X-API-Key.
+- Upload async a S3/MinIO con pipeline worker (PENDING/PROCESSING/READY/FAILED).
+- ACL basico por documento (`allowed_roles`, owner).
+- Audit log de eventos clave.
+- UI Sources con upload, estados y reproceso.
 
 ## Reportes historicos (resumen)
 

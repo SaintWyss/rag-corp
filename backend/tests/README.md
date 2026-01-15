@@ -10,8 +10,10 @@ Suite completa de tests para RAG Corp API, organizada en tests unitarios e integ
 tests/
 ├── conftest.py                          # Fixtures compartidas y configuración
 ├── unit/                                # Tests unitarios (rápidos, sin deps externas)
-│   ├── test_domain_entities.py          # Tests de entidades del dominio
-│   └── test_answer_query_use_case.py    # Tests del caso de uso principal
+│   ├── test_user_auth.py                # JWT auth + roles
+│   ├── test_upload_endpoint.py          # Upload + validations
+│   ├── test_jobs.py                     # Worker job pipeline
+│   └── test_document_acl.py             # ACL por documento
 └── integration/                         # Tests de integración (requieren DB/APIs)
     ├── test_postgres_document_repo.py   # Tests del repositorio PostgreSQL
     └── test_api_endpoints.py            # Tests end-to-end de la API
@@ -55,7 +57,7 @@ pytest -k test_answer_query
 ### Tests Unitarios
 - No requieren dependencias externas
 - Usan mocks para todas las dependencias
-- Ejecución < 1 segundo
+- Si no hay Google API key, usar `FAKE_LLM=1 FAKE_EMBEDDINGS=1`
 
 ### Tests de Integración
 - Requieren PostgreSQL en ejecución:
@@ -128,15 +130,6 @@ def test_my_feature(mock_repository, mock_embedding_service, mock_llm_service):
 4. **Fast Unit Tests**: < 10ms por test unitario
 5. **Cleanup**: Tests de integración limpian sus datos
 6. **Mock External Services**: Nunca llamar APIs reales en tests unitarios
-
-## Pendientes (TODOs)
-
-- [ ] Tests de chunker (infrastructure/text/)
-- [ ] Tests de servicios Google (mocked)
-- [ ] Tests de manejo de errores (excepciones)
-- [ ] Tests de rendimiento (benchmarks)
-- [ ] Tests de concurrencia
-- [ ] CI/CD integration (GitHub Actions)
 
 ## Troubleshooting
 

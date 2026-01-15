@@ -1,7 +1,7 @@
 # Troubleshooting Guide
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 ---
 
@@ -15,7 +15,7 @@ docker compose ps
 curl http://localhost:8000/healthz?full=true | jq
 
 # Check logs
-docker compose logs -f backend
+docker compose logs -f rag-api
 docker compose logs -f db
 ```
 
@@ -104,7 +104,7 @@ curl -I -X OPTIONS http://localhost:8000/v1/ask \
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `CORS error` | Origin not allowed | Add origin to `ALLOWED_ORIGINS` in `.env` |
-| `Connection refused` | Backend not running | `docker compose up -d backend` |
+| `Connection refused` | Backend not running | `docker compose up -d rag-api` |
 | `404 Not Found` | Wrong API URL | Check `NEXT_PUBLIC_API_URL` in frontend `.env` |
 
 ---
@@ -191,7 +191,7 @@ docker compose exec redis redis-cli llen rq:queue:documents
 docker stats
 
 # Check Python memory
-docker compose exec backend python -c "
+docker compose exec rag-api python -c "
 import psutil
 print(f'Memory: {psutil.Process().memory_info().rss / 1024**2:.0f} MB')
 "
@@ -277,12 +277,12 @@ curl -H "X-API-Key: your-key" http://localhost:8000/v1/documents
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| 401 | Missing or invalid key | Check `API_KEYS` env var format |
+| 401 | Missing or invalid key | Check `API_KEYS_CONFIG` env var format |
 | 403 | Insufficient scope | Key needs `ingest`, `ask`, or `metrics` scope |
 
 **API Key format:**
 ```
-API_KEYS=key1:ingest,ask;key2:metrics
+API_KEYS_CONFIG='{"key1":["ingest","ask"],"key2":["metrics"]}'
 ```
 
 ---
@@ -312,13 +312,13 @@ API_KEYS=key1:ingest,ask;key2:metrics
 
 ```bash
 # Errors only
-docker compose logs backend 2>&1 | jq 'select(.level == "ERROR")'
+docker compose logs rag-api 2>&1 | jq 'select(.level == "ERROR")'
 
 # Slow requests (>2s)
-docker compose logs backend 2>&1 | jq 'select(.total_ms > 2000)'
+docker compose logs rag-api 2>&1 | jq 'select(.total_ms > 2000)'
 
 # Specific request
-docker compose logs backend 2>&1 | jq 'select(.request_id == "abc-123")'
+docker compose logs rag-api 2>&1 | jq 'select(.request_id == "abc-123")'
 ```
 
 ---

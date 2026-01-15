@@ -1,7 +1,7 @@
 # Role-Based Access Control (RBAC)
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 ---
 
@@ -12,6 +12,10 @@ RBAC agrega permisos a las API keys existentes. El flujo es:
 1) API key valida (si `API_KEYS_CONFIG` esta configurado)  
 2) RBAC check (si `RBAC_CONFIG` esta configurado)  
 3) Fallback a scopes legacy cuando no hay RBAC
+
+Notas:
+- RBAC aplica solo a **API keys**.
+- JWT (usuarios) usa roles `admin|employee` via `/auth/*`.
 
 ---
 
@@ -60,6 +64,17 @@ En ausencia de RBAC, los scopes se mapean asi:
 
 ---
 
+## JWT Roles (UI)
+
+Para autenticacion de usuarios (JWT), los roles son:
+
+- `admin`
+- `employee`
+
+Los guards de endpoints combinan JWT role gates con permisos RBAC para API keys.
+
+---
+
 ## Configuration
 
 ### RBAC_CONFIG
@@ -101,6 +116,8 @@ def ingest(_: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE))):
     ...
 ```
 
+Para endpoints admin de `/auth/users`, el permiso requerido es `admin:config` (solo RBAC).
+
 ---
 
 ## Fallback Behavior
@@ -113,6 +130,5 @@ def ingest(_: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE))):
 ## Testing
 
 ```bash
-cd backend
-pytest tests/unit/test_rbac.py -v
+pnpm test:backend:unit
 ```

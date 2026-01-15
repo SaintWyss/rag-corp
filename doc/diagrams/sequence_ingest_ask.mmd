@@ -3,60 +3,51 @@ sequenceDiagram
     participant User
     participant Frontend
     participant API as FastAPI
-    participant UC as Use Case
+    participant Storage as S3/MinIO
+    participant Queue as Redis Queue
+    participant Worker as RQ Worker
+    participant Extract as TextExtractor
     participant Embed as EmbeddingService
-    participant Repo as ChunkRepository
-    participant LLM as LLMService
+    participant Repo as DocumentRepository
     participant PG as PostgreSQL
     participant Gemini as Google Gemini
 
-    Note over User,Gemini: === INGEST FLOW ===
-    
-    User->>Frontend: Submit document
-    Frontend->>API: POST /v1/ingest/text
-    API->>API: Validate (Pydantic)
-    API->>UC: IngestDocumentUseCase.execute()
-    UC->>UC: Split into chunks
-    
-    loop For each chunk
-        UC->>Embed: embed(chunk.content)
-        Embed->>Gemini: text-embedding-004
-        Gemini-->>Embed: vector[768]
-        Embed-->>UC: embedding
-    end
-    
-    UC->>Repo: save_document(doc)
+    Note over User,Gemini: === UPLOAD ASYNC FLOW ===
+
+    User->>Frontend: Upload PDF/DOCX
+    Frontend->>API: POST /v1/documents/upload (multipart)
+    API->>Storage: upload_file()
+    API->>Repo: save_document(status=PENDING)
     Repo->>PG: INSERT documents
-    UC->>Repo: save_chunks(chunks)
-    Repo->>PG: INSERT chunks (with embeddings)
-    Repo-->>UC: success
-    UC-->>API: {document_id, chunks: N}
-    API-->>Frontend: 200 OK
-    Frontend-->>User: "Document ingested"
+    API->>Queue: enqueue_document_processing()
+    Queue-->>API: job_id
+    API-->>Frontend: 200 {document_id, status:PENDING}
+
+    Queue->>Worker: process_document_job(document_id)
+    Worker->>Storage: download_file()
+    Worker->>Extract: extract_text(mime_type)
+    Worker->>Embed: embed_batch(chunks)
+    Embed->>Gemini: text-embedding-004
+    Gemini-->>Embed: vector[768]
+    Worker->>Repo: save_chunks()
+    Repo->>PG: INSERT chunks
+    Worker->>Repo: transition status READY/FAILED
+    Repo->>PG: UPDATE documents
 
     Note over User,Gemini: === ASK FLOW ===
-    
+
     User->>Frontend: Submit question
     Frontend->>API: POST /v1/ask
     API->>API: Validate (Pydantic)
-    API->>UC: AnswerQueryUseCase.execute()
-    
-    UC->>Embed: embed(query)
+    API->>Embed: embed(query)
     Embed->>Gemini: text-embedding-004
     Gemini-->>Embed: query_vector[768]
-    Embed-->>UC: query_embedding
-    
-    UC->>Repo: search(query_embedding, top_k=5)
+    Embed-->>API: query_embedding
+    API->>Repo: search(query_embedding, top_k=5)
     Repo->>PG: SELECT ... ORDER BY embedding <=> $1
     PG-->>Repo: matching chunks
-    Repo-->>UC: ChunkMatch[]
-    
-    UC->>UC: context_builder.build_context()
-    UC->>LLM: generate(prompt + context)
-    LLM->>Gemini: gemini-2.0-flash-001
-    Gemini-->>LLM: answer text
-    LLM-->>UC: answer
-    
-    UC-->>API: {answer, sources}
+    Repo-->>API: ChunkMatch[]
+    API->>Gemini: generate(prompt + context)
+    Gemini-->>API: answer text
     API-->>Frontend: 200 OK
     Frontend-->>User: Display answer

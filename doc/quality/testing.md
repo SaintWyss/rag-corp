@@ -14,9 +14,11 @@
 ### Ejecutar tests
 
 ```bash
-cd backend
+# Unit tests (Docker, recomendado)
+pnpm test:backend:unit
 
-# Unit tests (offline)
+# Unit tests (local)
+cd backend
 pytest -m unit
 
 # Integration tests (requieren DB + GOOGLE_API_KEY)
@@ -31,10 +33,11 @@ pytest
 ```
 backend/tests/
 ├── unit/
-│   ├── test_answer_query_use_case.py
-│   ├── test_conversation_repository.py
-│   ├── test_ingest_document_use_case.py
-│   └── test_search_chunks_use_case.py
+│   ├── test_upload_endpoint.py
+│   ├── test_reprocess_endpoint.py
+│   ├── test_dual_authz.py
+│   ├── test_user_auth.py
+│   └── test_jobs.py
 ├── integration/
 │   ├── test_api_endpoints.py
 │   └── test_postgres_document_repo.py
@@ -52,16 +55,14 @@ backend/tests/
 ### Ejecutar tests
 
 ```bash
-cd frontend
-
 # Todos los tests
-pnpm test
+pnpm --filter web test
 
 # Watch mode
-pnpm test:watch
+pnpm --filter web test:watch
 
 # Con cobertura
-pnpm test:coverage
+pnpm --filter web test:coverage
 ```
 
 ### Estructura
@@ -80,7 +81,8 @@ frontend/__tests__/
 
 ```bash
 # Instalar Playwright (primera vez)
-cd tests/e2e && pnpm install && pnpm install:browsers
+pnpm e2e:install
+pnpm e2e:install:browsers
 
 # Ejecutar E2E con backend/frontend locales (usa playwright.config.ts)
 pnpm e2e
@@ -92,6 +94,7 @@ E2E_USE_COMPOSE=1 TEST_API_KEY=e2e-key pnpm e2e
 Tests principales:
 - `tests/e2e/tests/documents.spec.ts`
 - `tests/e2e/tests/chat.spec.ts`
+- `tests/e2e/tests/full-pipeline.spec.ts` (upload -> READY -> chat)
 
 Ver `tests/e2e/README.md` para detalles de stack y variables.
 

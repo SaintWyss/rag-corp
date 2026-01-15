@@ -1,7 +1,7 @@
 # Local Development Runbook
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-01-15
 
 ---
 
@@ -17,6 +17,12 @@ pnpm install
 
 # 3) Start services (db + api)
 pnpm docker:up
+
+# 3.1) Apply migrations explicitly (idempotent)
+pnpm db:migrate
+
+# 3.2) Bootstrap admin (optional, for UI login)
+pnpm admin:bootstrap -- --email admin@example.com --password supersecret
 
 # 4) Export contracts (OpenAPI -> TS)
 pnpm contracts:export
@@ -42,6 +48,12 @@ alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Si no tenes Google API key, usa providers fake:
+
+```bash
+export FAKE_LLM=1 FAKE_EMBEDDINGS=1
+```
+
 Export OpenAPI locally:
 
 ```bash
@@ -57,6 +69,8 @@ python3 scripts/export_openapi.py --out ../shared/contracts/openapi.json
 cd frontend
 pnpm dev
 ```
+
+El frontend consume `/api/*` (proxy a `/v1/*`) y `/auth/*` (JWT).
 
 ---
 
@@ -89,8 +103,19 @@ pnpm db:migrate
 Bootstrap admin (idempotent):
 
 ```bash
-pnpm admin:bootstrap -- --email admin@example.com
+pnpm admin:bootstrap -- --email admin@example.com --password supersecret
 ```
+
+Para storage local con MinIO (profile `full`), exporta:
+
+```bash
+export S3_ENDPOINT_URL=http://minio:9000
+export S3_BUCKET=rag-documents
+export S3_ACCESS_KEY=minioadmin
+export S3_SECRET_KEY=minioadmin
+```
+
+Si corres el backend fuera de Docker, usa `http://localhost:9000`.
 
 ### Web container for E2E
 
@@ -106,12 +131,24 @@ docker compose --profile e2e up -d --build
 ```
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
 GOOGLE_API_KEY=your-google-api-key-here
+FAKE_LLM=1
+FAKE_EMBEDDINGS=1
 NEXT_PUBLIC_API_URL=http://localhost:8000
 API_KEYS_CONFIG=
 RBAC_CONFIG=
 METRICS_REQUIRE_AUTH=false
+JWT_SECRET=dev-secret
+JWT_ACCESS_TTL_MINUTES=30
+JWT_COOKIE_NAME=access_token
+JWT_COOKIE_SECURE=false
 EMBEDDING_CACHE_BACKEND=memory
 REDIS_URL=
+S3_ENDPOINT_URL=
+S3_BUCKET=rag-documents
+S3_ACCESS_KEY=
+S3_SECRET_KEY=
+S3_REGION=
+MAX_UPLOAD_BYTES=26214400
 MAX_CONVERSATION_MESSAGES=12
 ```
 
@@ -122,13 +159,15 @@ MAX_CONVERSATION_MESSAGES=12
 Crear el primer admin (idempotente):
 
 ```bash
-cd backend
-python3 scripts/create_admin.py --email admin@example.com
+pnpm admin:bootstrap -- --email admin@example.com --password supersecret
 ```
 
-Con Docker Compose:
+Alternativas:
 
 ```bash
+cd backend
+python3 scripts/create_admin.py --email admin@example.com
+
 docker compose run --rm rag-api python scripts/create_admin.py --email admin@example.com
 ```
 
@@ -136,7 +175,7 @@ docker compose run --rm rag-api python scripts/create_admin.py --email admin@exa
 
 ## Cache (Redis)
 
-El backend soporta dos backends de cache para embeddings:
+Redis se usa para cache de embeddings y cola del worker (cuando `REDIS_URL` esta configurado).
 
 ### In-Memory (Default)
 
@@ -156,7 +195,7 @@ REDIS_URL=redis://localhost:6379
 docker run -d -p 6379:6379 --name redis redis:7-alpine
 
 # 3) O usar compose con perfil full
-pnpm docker:full
+pnpm stack:full
 ```
 
 ---
@@ -172,6 +211,9 @@ pnpm test:backend:unit
 # Unit tests (offline)
 cd backend
 pytest -m unit
+
+# Si no hay GOOGLE_API_KEY
+FAKE_LLM=1 FAKE_EMBEDDINGS=1 pytest -m unit
 
 # Integration tests (requires DB + GOOGLE_API_KEY)
 RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
@@ -211,6 +253,7 @@ E2E_USE_COMPOSE=1 TEST_API_KEY=e2e-key pnpm e2e
 Tests:
 - `tests/e2e/tests/documents.spec.ts`
 - `tests/e2e/tests/chat.spec.ts`
+- `tests/e2e/tests/full-pipeline.spec.ts`
 
 Nota: el backend debe tener `API_KEYS_CONFIG` con la key usada en `TEST_API_KEY`.
 
@@ -225,7 +268,7 @@ Nota: el backend debe tener `API_KEYS_CONFIG` con la key usada en `TEST_API_KEY`
 pnpm docker:observability
 
 # Or start everything (db + api + redis + observability)
-pnpm docker:full
+pnpm stack:full
 ```
 
 **URLs:**
@@ -245,6 +288,9 @@ Metricas relevantes:
 - `rag_llm_latency_seconds`
 - `rag_embedding_cache_hit_total`
 - `rag_embedding_cache_miss_total`
+- `rag_worker_processed_total`
+- `rag_worker_failed_total`
+- `rag_worker_duration_seconds`
 
 ### Logs Estructurados (JSON)
 

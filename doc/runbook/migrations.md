@@ -1,7 +1,7 @@
 # Database Migrations (Alembic)
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 ---
 
@@ -65,6 +65,12 @@ This creates a new file in `alembic/versions/` with `upgrade()` and `downgrade()
 ```bash
 cd backend
 alembic upgrade head
+```
+
+Con Docker Compose (canonica):
+
+```bash
+pnpm db:migrate
 ```
 
 ### Apply Specific Migration

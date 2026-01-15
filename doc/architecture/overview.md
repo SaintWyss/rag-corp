@@ -1,7 +1,7 @@
 # Architecture Overview
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13  
+**Last Updated:** 2026-01-15  
 **Status:** Active
 
 ---
@@ -15,6 +15,8 @@ RAG Corp is a Retrieval-Augmented Generation (RAG) system for document search an
 - Answer generation grounded in retrieved context
 - Streaming chat with multi-turn context (conversation_id)
 - Document CRUD for review and cleanup
+- Async upload pipeline (S3/MinIO + worker)
+- Dual auth (JWT users + API keys)
 
 ---
 
@@ -25,8 +27,13 @@ graph TB
     User[User] --> Web[Next.js Web App]
     Web --> API[FastAPI Backend]
     API --> PG[(PostgreSQL + pgvector)]
-    API --> Gemini[Google Gemini API]
     API --> Cache[Embedding Cache (memory/Redis)]
+    API --> S3[(S3/MinIO)]
+    API --> Redis[(Redis Queue)]
+    Redis --> Worker[RQ Worker]
+    Worker --> S3
+    Worker --> Gemini[Google Gemini API]
+    API --> Gemini
 ```
 
 ---
@@ -41,6 +48,8 @@ graph TB
 | Embeddings | Gemini text-embedding-004 | 768D vectors |
 | LLM | Gemini 1.5 Flash | Answer generation |
 | Cache | In-memory / Redis | Embedding cache |
+| Worker | RQ + Redis | Async document processing |
+| Storage | S3/MinIO | File uploads |
 
 ---
 
@@ -50,18 +59,23 @@ graph TB
 
 - Entities: `Document`, `Chunk`, `QueryResult`, `ConversationMessage`
 - Protocols: `DocumentRepository`, `ConversationRepository`, `EmbeddingService`, `LLMService`, `TextChunkerService`
+- Storage/queue: `FileStoragePort`, `DocumentProcessingQueue`, `DocumentTextExtractor`
 - Pure Python contracts, no framework dependencies
 
 ### Application (`backend/app/application/use_cases`)
 
 - Use cases: `IngestDocumentUseCase`, `SearchChunksUseCase`, `AnswerQueryUseCase`
+- Async pipeline: `ProcessUploadedDocumentUseCase`, `ListDocumentsUseCase`, `DeleteDocumentUseCase`
 - Orchestrates domain protocols with explicit input/output DTOs
 
 ### Infrastructure (`backend/app/infrastructure`)
 
-- `PostgresDocumentRepository`
+- `PostgresDocumentRepository`, `PostgresAuditEventRepository`
 - `GoogleEmbeddingService`, `GoogleLLMService`
 - `SimpleTextChunker` (defaults: 900 chars, 120 overlap)
+- `SimpleDocumentTextExtractor`
+- `S3FileStorageAdapter`
+- `RQDocumentProcessingQueue`
 - `InMemoryConversationRepository`
 - `EmbeddingCache` (memory/Redis)
 
@@ -108,18 +122,27 @@ graph TB
 - In-memory store (`InMemoryConversationRepository`)
 - Limite por `MAX_CONVERSATION_MESSAGES`
 
+### Upload Async (`POST /v1/documents/upload`)
+
+1. API valida MIME + size y guarda metadata
+2. Archivo se guarda en S3/MinIO
+3. Documento queda en `PENDING`
+4. Se encola job en Redis
+5. Worker procesa, chunking + embeddings, status `READY/FAILED`
+
 ### Documents (`/v1/documents`)
 
-1. List documents with limit/offset
-2. Fetch detail by id (includes deleted_at)
+1. List documents con filtros (`q`, `status`, `tag`, `sort`)
+2. Fetch detail by id (incluye status/error)
 3. Soft delete document (deleted_at)
+4. ACL por documento (owner/allowed_roles)
 
 ---
 
 ## Source of Truth
 
 - API contract: `shared/contracts/openapi.json` (exported from FastAPI)
-- Database schema: `infra/postgres/init.sql`
+- Database schema: `backend/alembic/` (Alembic)
 
 ---
 
