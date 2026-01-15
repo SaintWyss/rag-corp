@@ -23,6 +23,9 @@ from .auth_users import (
 from .dual_auth import require_admin, require_principal
 from .error_responses import conflict, not_found, unauthorized
 from .rbac import Permission
+from .audit import emit_audit_event
+from .container import get_audit_repository
+from .domain.repositories import AuditEventRepository
 from .infrastructure.repositories.postgres_user_repo import (
     create_user,
     get_user_by_email,
@@ -115,13 +118,24 @@ def _clear_auth_cookie(response: Response) -> None:
 
 
 @router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
-def login(req: LoginRequest, response: Response):
+def login(
+    req: LoginRequest,
+    response: Response,
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
     user = authenticate_user(req.email, req.password)
     if not user:
         raise unauthorized("Invalid credentials.")
 
     token, expires_in = create_access_token(user)
     _set_auth_cookie(response, token, expires_in)
+    emit_audit_event(
+        audit_repo,
+        action="auth.login",
+        actor=f"user:{user.id}",
+        target_id=user.id,
+        metadata={"email": user.email, "role": user.role.value},
+    )
     return LoginResponse(
         access_token=token,
         expires_in=expires_in,

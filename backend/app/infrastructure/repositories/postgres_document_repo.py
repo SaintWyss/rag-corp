@@ -103,13 +103,14 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 conn.execute(
                     """
-                    INSERT INTO documents (id, title, source, metadata, tags)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO documents (id, title, source, metadata, tags, allowed_roles)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE
                     SET title = EXCLUDED.title,
                         source = EXCLUDED.source,
                         metadata = EXCLUDED.metadata,
-                        tags = EXCLUDED.tags
+                        tags = EXCLUDED.tags,
+                        allowed_roles = EXCLUDED.allowed_roles
                     """,
                     (
                         document.id,
@@ -117,6 +118,7 @@ class PostgresDocumentRepository:
                         document.source,
                         Json(document.metadata),
                         document.tags or [],
+                        document.allowed_roles or [],
                     ),
                 )
             logger.info(f"PostgresDocumentRepository: Document saved: {document.id}")
@@ -172,7 +174,7 @@ class PostgresDocumentRepository:
                     f"""
                     SELECT id, title, source, metadata, created_at, deleted_at,
                            file_name, mime_type, storage_key,
-                           uploaded_by_user_id, status, error_message, tags
+                           uploaded_by_user_id, status, error_message, tags, allowed_roles
                     FROM documents
                     WHERE {where_clause}
                     ORDER BY {order_by}
@@ -196,6 +198,7 @@ class PostgresDocumentRepository:
                     status=row[10],
                     error_message=row[11],
                     tags=row[12] or [],
+                    allowed_roles=row[13] or [],
                 )
                 for row in rows
             ]
@@ -217,7 +220,7 @@ class PostgresDocumentRepository:
                     """
                     SELECT id, title, source, metadata, created_at, deleted_at,
                            file_name, mime_type, storage_key,
-                           uploaded_by_user_id, status, error_message, tags
+                           uploaded_by_user_id, status, error_message, tags, allowed_roles
                     FROM documents
                     WHERE id = %s AND deleted_at IS NULL
                     """,
@@ -241,6 +244,7 @@ class PostgresDocumentRepository:
                 status=row[10],
                 error_message=row[11],
                 tags=row[12] or [],
+                allowed_roles=row[13] or [],
             )
         except Exception as e:
             logger.error(
@@ -323,13 +327,14 @@ class PostgresDocumentRepository:
                     # R: Insert document
                     conn.execute(
                         """
-                        INSERT INTO documents (id, title, source, metadata, tags)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO documents (id, title, source, metadata, tags, allowed_roles)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                         ON CONFLICT (id) DO UPDATE
                         SET title = EXCLUDED.title,
                             source = EXCLUDED.source,
                             metadata = EXCLUDED.metadata,
-                            tags = EXCLUDED.tags
+                            tags = EXCLUDED.tags,
+                            allowed_roles = EXCLUDED.allowed_roles
                         """,
                         (
                             document.id,
@@ -337,6 +342,7 @@ class PostgresDocumentRepository:
                             document.source,
                             Json(document.metadata),
                             document.tags or [],
+                            document.allowed_roles or [],
                         ),
                     )
 

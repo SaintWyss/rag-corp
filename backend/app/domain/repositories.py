@@ -24,6 +24,7 @@ Notes:
 from typing import Protocol, List, Optional
 from uuid import UUID
 from .entities import Document, Chunk, ConversationMessage
+from .audit import AuditEvent
 
 
 class DocumentRepository(Protocol):
@@ -253,6 +254,19 @@ class ConversationRepository(Protocol):
     def create_conversation(self) -> str:
         """
         R: Create a new conversation and return its ID.
+        """
+        ...
+
+
+class AuditEventRepository(Protocol):
+    """R: Interface for audit event persistence."""
+
+    def record_event(self, event: AuditEvent) -> None:
+        """
+        R: Persist an audit event.
+
+        Args:
+            event: Audit event data
         """
         ...
 

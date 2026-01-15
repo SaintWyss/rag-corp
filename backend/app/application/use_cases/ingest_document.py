@@ -33,6 +33,7 @@ from ...domain.entities import Document, Chunk
 from ...domain.repositories import DocumentRepository
 from ...domain.services import EmbeddingService, TextChunkerService
 from ...domain.tags import normalize_tags
+from ...domain.access import normalize_allowed_roles
 
 
 @dataclass
@@ -68,6 +69,7 @@ class IngestDocumentUseCase:
         doc_id = uuid4()
         metadata = input_data.metadata or {}
         tags = normalize_tags(metadata)
+        allowed_roles = normalize_allowed_roles(metadata)
 
         document = Document(
             id=doc_id,
@@ -75,6 +77,7 @@ class IngestDocumentUseCase:
             source=input_data.source,
             metadata=metadata,
             tags=tags,
+            allowed_roles=allowed_roles,
         )
 
         chunks = self.chunker.chunk(input_data.text)

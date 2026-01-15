@@ -45,6 +45,7 @@ class Document:
         status: File processing status (optional)
         error_message: Error detail if processing failed (optional)
         tags: Optional tags for filtering and grouping
+        allowed_roles: Optional allowed roles for access control
     """
 
     id: UUID
@@ -60,6 +61,7 @@ class Document:
     status: Optional[str] = None
     error_message: Optional[str] = None
     tags: List[str] = field(default_factory=list)
+    allowed_roles: List[str] = field(default_factory=list)
 
     @property
     def is_deleted(self) -> bool:

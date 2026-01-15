@@ -28,7 +28,11 @@ Notes:
 from functools import lru_cache
 
 from .config import get_settings
-from .domain.repositories import DocumentRepository, ConversationRepository
+from .domain.repositories import (
+    DocumentRepository,
+    ConversationRepository,
+    AuditEventRepository,
+)
 from .domain.services import (
     DocumentProcessingQueue,
     DocumentTextExtractor,
@@ -40,6 +44,7 @@ from .domain.services import (
 from .infrastructure.cache import get_embedding_cache
 from .infrastructure.repositories import (
     PostgresDocumentRepository,
+    PostgresAuditEventRepository,
     InMemoryConversationRepository,
 )
 from .infrastructure.services import (
@@ -87,6 +92,12 @@ def get_conversation_repository() -> ConversationRepository:
     return InMemoryConversationRepository(
         max_messages=settings.max_conversation_messages
     )
+
+
+@lru_cache
+def get_audit_repository() -> AuditEventRepository:
+    """R: Get singleton instance of audit repository."""
+    return PostgresAuditEventRepository()
 
 
 # R: Embedding service factory (singleton)
