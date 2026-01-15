@@ -23,7 +23,7 @@ Notes:
 
 from typing import Protocol, List, Optional
 from uuid import UUID
-from .entities import Document, Chunk, ConversationMessage
+from .entities import Document, Chunk, ConversationMessage, Workspace, WorkspaceVisibility
 from .audit import AuditEvent
 
 
@@ -43,6 +43,107 @@ class DocumentRepository(Protocol):
 
         Args:
             document: Document entity with metadata
+        """
+        ...
+
+
+class WorkspaceRepository(Protocol):
+    """
+    R: Interface for workspace persistence.
+
+    Implementations must provide:
+      - Workspace CRUD operations
+      - Optional archive semantics via deleted_at
+    """
+
+    def list_workspaces(
+        self,
+        *,
+        owner_user_id: UUID | None = None,
+        include_archived: bool = False,
+    ) -> List[Workspace]:
+        """
+        R: List workspaces (optionally filtered by owner).
+
+        Args:
+            owner_user_id: Optional owner filter
+            include_archived: Include archived workspaces when True
+
+        Returns:
+            List of Workspace entities
+        """
+        ...
+
+    def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
+        """
+        R: Fetch a workspace by ID.
+
+        Args:
+            workspace_id: Workspace UUID
+
+        Returns:
+            Workspace if found, otherwise None
+        """
+        ...
+
+    def get_workspace_by_owner_and_name(
+        self, owner_user_id: UUID | None, name: str
+    ) -> Optional[Workspace]:
+        """
+        R: Fetch a workspace by owner + name (for uniqueness checks).
+
+        Args:
+            owner_user_id: Owner UUID or None
+            name: Workspace name
+
+        Returns:
+            Workspace if found, otherwise None
+        """
+        ...
+
+    def create_workspace(self, workspace: Workspace) -> Workspace:
+        """
+        R: Persist a new workspace.
+
+        Args:
+            workspace: Workspace entity to create
+
+        Returns:
+            Created workspace entity
+        """
+        ...
+
+    def update_workspace(
+        self,
+        workspace_id: UUID,
+        *,
+        name: str | None = None,
+        visibility: WorkspaceVisibility | None = None,
+        allowed_roles: list[str] | None = None,
+    ) -> Optional[Workspace]:
+        """
+        R: Update workspace attributes.
+
+        Args:
+            workspace_id: Workspace UUID
+            name: New name (optional)
+            visibility: New visibility (optional)
+            allowed_roles: Updated roles (optional)
+
+        Returns:
+            Updated workspace or None if not found
+        """
+        ...
+
+    def archive_workspace(self, workspace_id: UUID) -> bool:
+        """
+        R: Archive (soft-delete) a workspace.
+
+        Args:
+            workspace_id: Workspace UUID
+
+        Returns:
+            True if archived, False if not found
         """
         ...
 

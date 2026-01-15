@@ -9,6 +9,13 @@ Este README concentra solo informacion vigente y enlaces; los reportes historico
 
 - `../README.md` - Quickstart y overview
 - `architecture/overview.md` - Arquitectura, capas y flujo RAG
+- `architecture/decisions/ADR-001-clean-architecture.md` - ADR Clean Architecture
+- `architecture/decisions/ADR-002-pgvector.md` - ADR pgvector
+- `architecture/decisions/ADR-003-google-gemini.md` - ADR Google Gemini
+- `architecture/decisions/ADR-004-naming-workspace.md` - ADR naming workspace vs seccion
+- `architecture/decisions/ADR-005-workspace-uniqueness.md` - ADR unicidad workspace
+- `architecture/decisions/ADR-006-archive-soft-delete.md` - ADR archive/soft-delete
+- `architecture/decisions/ADR-007-legacy-endpoints.md` - ADR endpoints legacy vs nested
 - `api/http-api.md` - Endpoints, contratos y ejemplos
 - `api/rbac.md` - Role-Based Access Control (RBAC)
 - `data/postgres-schema.md` - Schema e indices pgvector

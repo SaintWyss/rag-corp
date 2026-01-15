@@ -32,6 +32,7 @@ from .domain.repositories import (
     DocumentRepository,
     ConversationRepository,
     AuditEventRepository,
+    WorkspaceRepository,
 )
 from .domain.services import (
     DocumentProcessingQueue,
@@ -46,6 +47,7 @@ from .infrastructure.repositories import (
     PostgresDocumentRepository,
     PostgresAuditEventRepository,
     InMemoryConversationRepository,
+    InMemoryWorkspaceRepository,
 )
 from .infrastructure.services import (
     CachingEmbeddingService,
@@ -62,9 +64,13 @@ from .application.use_cases import (
     AnswerQueryUseCase,
     DeleteDocumentUseCase,
     GetDocumentUseCase,
+    GetWorkspaceUseCase,
     IngestDocumentUseCase,
     ListDocumentsUseCase,
+    ListWorkspacesUseCase,
     SearchChunksUseCase,
+    CreateWorkspaceUseCase,
+    ArchiveWorkspaceUseCase,
 )
 
 
@@ -92,6 +98,12 @@ def get_conversation_repository() -> ConversationRepository:
     return InMemoryConversationRepository(
         max_messages=settings.max_conversation_messages
     )
+
+
+@lru_cache
+def get_workspace_repository() -> WorkspaceRepository:
+    """R: Get singleton instance of workspace repository."""
+    return InMemoryWorkspaceRepository()
 
 
 @lru_cache
@@ -237,11 +249,31 @@ def get_list_documents_use_case() -> ListDocumentsUseCase:
     return ListDocumentsUseCase(repository=get_document_repository())
 
 
+def get_list_workspaces_use_case() -> ListWorkspacesUseCase:
+    """R: Create ListWorkspacesUseCase."""
+    return ListWorkspacesUseCase(repository=get_workspace_repository())
+
+
 def get_get_document_use_case() -> GetDocumentUseCase:
     """R: Create GetDocumentUseCase."""
     return GetDocumentUseCase(repository=get_document_repository())
 
 
+def get_get_workspace_use_case() -> GetWorkspaceUseCase:
+    """R: Create GetWorkspaceUseCase."""
+    return GetWorkspaceUseCase(repository=get_workspace_repository())
+
+
 def get_delete_document_use_case() -> DeleteDocumentUseCase:
     """R: Create DeleteDocumentUseCase."""
     return DeleteDocumentUseCase(repository=get_document_repository())
+
+
+def get_create_workspace_use_case() -> CreateWorkspaceUseCase:
+    """R: Create CreateWorkspaceUseCase."""
+    return CreateWorkspaceUseCase(repository=get_workspace_repository())
+
+
+def get_archive_workspace_use_case() -> ArchiveWorkspaceUseCase:
+    """R: Create ArchiveWorkspaceUseCase."""
+    return ArchiveWorkspaceUseCase(repository=get_workspace_repository())

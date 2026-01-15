@@ -22,6 +22,7 @@ Notes:
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 from typing import Optional, Dict, Any, List, Literal
 
@@ -66,6 +67,44 @@ class Document:
     @property
     def is_deleted(self) -> bool:
         """Check if document is soft-deleted."""
+        return self.deleted_at is not None
+
+
+class WorkspaceVisibility(str, Enum):
+    """R: Workspace visibility options."""
+
+    PRIVATE = "private"
+    SHARED = "shared"
+
+
+@dataclass
+class Workspace:
+    """
+    R: Represents a workspace (logical container for documents).
+
+    Attributes:
+        id: Workspace identifier
+        name: Workspace display name
+        visibility: Visibility setting (private/shared)
+        owner_user_id: Optional owner user UUID
+        allowed_roles: Optional allowed roles for access control
+        created_at: Creation timestamp
+        updated_at: Last update timestamp
+        deleted_at: Archive timestamp (None if active)
+    """
+
+    id: UUID
+    name: str
+    visibility: WorkspaceVisibility = WorkspaceVisibility.PRIVATE
+    owner_user_id: Optional[UUID] = None
+    allowed_roles: List[str] = field(default_factory=list)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+
+    @property
+    def is_archived(self) -> bool:
+        """Check if workspace is archived."""
         return self.deleted_at is not None
 
 

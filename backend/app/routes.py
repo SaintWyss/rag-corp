@@ -55,11 +55,16 @@ from .application.conversations import (
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
+    ArchiveWorkspaceUseCase,
+    CreateWorkspaceUseCase,
+    CreateWorkspaceInput,
     DeleteDocumentUseCase,
     GetDocumentUseCase,
+    GetWorkspaceUseCase,
     IngestDocumentUseCase,
     IngestDocumentInput,
     ListDocumentsUseCase,
+    ListWorkspacesUseCase,
     SearchChunksUseCase,
     SearchChunksInput,
 )
@@ -67,6 +72,8 @@ from .domain.tags import normalize_tags
 from .domain.access import normalize_allowed_roles
 from .container import (
     get_answer_query_use_case,
+    get_archive_workspace_use_case,
+    get_create_workspace_use_case,
     get_ingest_document_use_case,
     get_search_chunks_use_case,
     get_llm_service,
@@ -74,12 +81,14 @@ from .container import (
     get_document_repository,
     get_conversation_repository,
     get_list_documents_use_case,
+    get_list_workspaces_use_case,
     get_get_document_use_case,
+    get_get_workspace_use_case,
     get_delete_document_use_case,
     get_file_storage,
     get_document_queue,
 )
-from .domain.entities import ConversationMessage, Document
+from .domain.entities import ConversationMessage, Document, Workspace, WorkspaceVisibility
 from .domain.repositories import DocumentRepository, AuditEventRepository
 from .domain.services import FileStoragePort, DocumentProcessingQueue
 from .dual_auth import PrincipalType, Principal
@@ -183,6 +192,46 @@ class ReprocessDocumentRes(BaseModel):
     enqueued: bool
 
 
+class WorkspaceACL(BaseModel):
+    allowed_roles: list[str] = Field(default_factory=list)
+
+
+class WorkspaceRes(BaseModel):
+    id: UUID
+    name: str
+    visibility: WorkspaceVisibility
+    owner_user_id: UUID | None = None
+    acl: WorkspaceACL
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    deleted_at: datetime | None = None
+
+
+class WorkspacesListRes(BaseModel):
+    workspaces: list[WorkspaceRes]
+
+
+class CreateWorkspaceReq(BaseModel):
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=_settings.max_title_chars,
+        description="Workspace name",
+    )
+    visibility: WorkspaceVisibility = Field(default=WorkspaceVisibility.PRIVATE)
+    owner_user_id: UUID | None = None
+    acl: WorkspaceACL = Field(default_factory=WorkspaceACL)
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        return v.strip()
+
+
+class ArchiveWorkspaceRes(BaseModel):
+    archived: bool
+
+
 _ALLOWED_MIME_TYPES = {
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -208,7 +257,132 @@ def _parse_metadata(raw: str | None) -> dict:
     return payload
 
 
-@router.get("/documents", response_model=DocumentsListRes, tags=["documents"])
+def _to_workspace_res(workspace: Workspace) -> WorkspaceRes:
+    return WorkspaceRes(
+        id=workspace.id,
+        name=workspace.name,
+        visibility=workspace.visibility,
+        owner_user_id=workspace.owner_user_id,
+        acl=WorkspaceACL(allowed_roles=list(workspace.allowed_roles or [])),
+        created_at=workspace.created_at,
+        updated_at=workspace.updated_at,
+        deleted_at=workspace.deleted_at,
+    )
+
+
+def _require_active_workspace(
+    workspace_id: UUID, use_case: GetWorkspaceUseCase
+) -> Workspace:
+    workspace = use_case.execute(workspace_id)
+    if not workspace or workspace.is_archived:
+        raise not_found("Workspace", str(workspace_id))
+    return workspace
+
+
+@router.get("/workspaces", response_model=WorkspacesListRes, tags=["workspaces"])
+def list_workspaces(
+    owner_user_id: UUID | None = Query(None),
+    include_archived: bool = Query(False),
+    use_case: ListWorkspacesUseCase = Depends(get_list_workspaces_use_case),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    output = use_case.execute(
+        owner_user_id=owner_user_id,
+        include_archived=include_archived,
+    )
+    return WorkspacesListRes(
+        workspaces=[_to_workspace_res(ws) for ws in output.workspaces]
+    )
+
+
+@router.post(
+    "/workspaces",
+    response_model=WorkspaceRes,
+    status_code=201,
+    tags=["workspaces"],
+)
+def create_workspace(
+    req: CreateWorkspaceReq,
+    use_case: CreateWorkspaceUseCase = Depends(get_create_workspace_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    owner_user_id = req.owner_user_id
+    if principal and principal.principal_type == PrincipalType.USER and principal.user:
+        owner_user_id = owner_user_id or principal.user.user_id
+
+    allowed_roles = normalize_allowed_roles({"allowed_roles": req.acl.allowed_roles})
+
+    workspace = use_case.execute(
+        CreateWorkspaceInput(
+            name=req.name,
+            visibility=req.visibility,
+            owner_user_id=owner_user_id,
+            allowed_roles=allowed_roles,
+        )
+    )
+    if not workspace:
+        raise conflict("Workspace name already exists for owner.")
+
+    emit_audit_event(
+        audit_repo,
+        action="workspaces.create",
+        principal=principal,
+        target_id=workspace.id,
+    )
+
+    return _to_workspace_res(workspace)
+
+
+@router.get(
+    "/workspaces/{workspace_id}",
+    response_model=WorkspaceRes,
+    tags=["workspaces"],
+)
+def get_workspace(
+    workspace_id: UUID,
+    use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    workspace = _require_active_workspace(workspace_id, use_case)
+    return _to_workspace_res(workspace)
+
+
+@router.delete(
+    "/workspaces/{workspace_id}",
+    response_model=ArchiveWorkspaceRes,
+    tags=["workspaces"],
+)
+def archive_workspace(
+    workspace_id: UUID,
+    use_case: ArchiveWorkspaceUseCase = Depends(get_archive_workspace_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    _role: None = Depends(require_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    archived = use_case.execute(workspace_id)
+    if not archived:
+        raise not_found("Workspace", str(workspace_id))
+
+    emit_audit_event(
+        audit_repo,
+        action="workspaces.archive",
+        principal=principal,
+        target_id=workspace_id,
+    )
+
+    return ArchiveWorkspaceRes(archived=True)
+
+
+@router.get(
+    "/documents",
+    response_model=DocumentsListRes,
+    tags=["documents"],
+    deprecated=True,
+)
 def list_documents(
     q: str | None = Query(None, max_length=200),
     status: str | None = Query(None),
@@ -266,6 +440,7 @@ def list_documents(
     "/documents/{document_id}",
     response_model=DocumentDetailRes,
     tags=["documents"],
+    deprecated=True,
 )
 def get_document(
     document_id: UUID,
@@ -297,6 +472,7 @@ def get_document(
     "/documents/{document_id}",
     response_model=DeleteDocumentRes,
     tags=["documents"],
+    deprecated=True,
 )
 def delete_document(
     document_id: UUID,
@@ -317,7 +493,12 @@ def delete_document(
     return DeleteDocumentRes(deleted=True)
 
 
-@router.post("/documents/upload", response_model=UploadDocumentRes, tags=["documents"])
+@router.post(
+    "/documents/upload",
+    response_model=UploadDocumentRes,
+    tags=["documents"],
+    deprecated=True,
+)
 async def upload_document(
     request: Request,
     file: UploadFile = File(...),
@@ -428,6 +609,7 @@ async def upload_document(
     response_model=ReprocessDocumentRes,
     status_code=202,
     tags=["documents"],
+    deprecated=True,
 )
 def reprocess_document(
     document_id: UUID,
@@ -483,7 +665,12 @@ def reprocess_document(
 
 
 # R: Endpoint to ingest documents into the RAG system
-@router.post("/ingest/text", response_model=IngestTextRes, tags=["ingest"])
+@router.post(
+    "/ingest/text",
+    response_model=IngestTextRes,
+    tags=["ingest"],
+    deprecated=True,
+)
 def ingest_text(
     req: IngestTextReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
@@ -505,7 +692,12 @@ def ingest_text(
 
 
 # R: Endpoint for batch document ingestion
-@router.post("/ingest/batch", response_model=IngestBatchRes, tags=["ingest"])
+@router.post(
+    "/ingest/batch",
+    response_model=IngestBatchRes,
+    tags=["ingest"],
+    deprecated=True,
+)
 def ingest_batch(
     req: IngestBatchReq,
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
@@ -585,7 +777,12 @@ class QueryRes(BaseModel):
 
 
 # R: Endpoint for semantic search (retrieval without generation)
-@router.post("/query", response_model=QueryRes, tags=["query"])
+@router.post(
+    "/query",
+    response_model=QueryRes,
+    tags=["query"],
+    deprecated=True,
+)
 def query(
     req: QueryReq,
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
@@ -616,7 +813,12 @@ class AskRes(BaseModel):
 
 
 # R: Endpoint for complete RAG flow (retrieval + generation) - REFACTORED with Use Case
-@router.post("/ask", response_model=AskRes, tags=["query"])
+@router.post(
+    "/ask",
+    response_model=AskRes,
+    tags=["query"],
+    deprecated=True,
+)
 def ask(
     req: QueryReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
@@ -670,7 +872,11 @@ def ask(
 
 
 # R: Streaming endpoint for complete RAG flow (retrieval + generation) with SSE
-@router.post("/ask/stream", tags=["query"])
+@router.post(
+    "/ask/stream",
+    tags=["query"],
+    deprecated=True,
+)
 async def ask_stream(
     req: QueryReq,
     request: Request,
@@ -727,4 +933,255 @@ async def ask_stream(
         request,
         conversation_id=conversation_id,
         conversation_repository=conversation_repository,
+    )
+
+
+@router.get(
+    "/workspaces/{workspace_id}/documents",
+    response_model=DocumentsListRes,
+    tags=["workspaces"],
+)
+def list_workspace_documents(
+    workspace_id: UUID,
+    q: str | None = Query(None, max_length=200),
+    status: str | None = Query(None),
+    tag: str | None = Query(None, max_length=64),
+    sort: str | None = Query("created_at_desc"),
+    cursor: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: ListDocumentsUseCase = Depends(get_list_documents_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return list_documents(
+        q=q,
+        status=status,
+        tag=tag,
+        sort=sort,
+        cursor=cursor,
+        limit=limit,
+        offset=offset,
+        use_case=use_case,
+        principal=principal,
+        _role=_role,
+    )
+
+
+@router.get(
+    "/workspaces/{workspace_id}/documents/{document_id}",
+    response_model=DocumentDetailRes,
+    tags=["workspaces"],
+)
+def get_workspace_document(
+    workspace_id: UUID,
+    document_id: UUID,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: GetDocumentUseCase = Depends(get_get_document_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return get_document(
+        document_id=document_id,
+        use_case=use_case,
+        principal=principal,
+        _role=_role,
+    )
+
+
+@router.delete(
+    "/workspaces/{workspace_id}/documents/{document_id}",
+    response_model=DeleteDocumentRes,
+    tags=["workspaces"],
+)
+def delete_workspace_document(
+    workspace_id: UUID,
+    document_id: UUID,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    _role: None = Depends(require_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return delete_document(
+        document_id=document_id,
+        use_case=use_case,
+        principal=principal,
+        _role=_role,
+        audit_repo=audit_repo,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/documents/upload",
+    response_model=UploadDocumentRes,
+    tags=["workspaces"],
+)
+async def upload_workspace_document(
+    workspace_id: UUID,
+    request: Request,
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    source: str | None = Form(None),
+    metadata: str | None = Form(None),
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
+    _role: None = Depends(require_admin()),
+    repository: DocumentRepository = Depends(get_document_repository),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+    storage: FileStoragePort | None = Depends(get_file_storage),
+    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return await upload_document(
+        request=request,
+        file=file,
+        title=title,
+        source=source,
+        metadata=metadata,
+        principal=principal,
+        _role=_role,
+        repository=repository,
+        audit_repo=audit_repo,
+        storage=storage,
+        queue=queue,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/documents/{document_id}/reprocess",
+    response_model=ReprocessDocumentRes,
+    status_code=202,
+    tags=["workspaces"],
+)
+def reprocess_workspace_document(
+    workspace_id: UUID,
+    document_id: UUID,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    repository: DocumentRepository = Depends(get_document_repository),
+    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return reprocess_document(
+        document_id=document_id,
+        repository=repository,
+        queue=queue,
+        principal=principal,
+        _role=_role,
+        audit_repo=audit_repo,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/ingest/text",
+    response_model=IngestTextRes,
+    tags=["workspaces"],
+)
+def ingest_workspace_text(
+    workspace_id: UUID,
+    req: IngestTextReq,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return ingest_text(
+        req=req,
+        use_case=use_case,
+        _principal=_principal,
+        _role=_role,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/ingest/batch",
+    response_model=IngestBatchRes,
+    tags=["workspaces"],
+)
+def ingest_workspace_batch(
+    workspace_id: UUID,
+    req: IngestBatchReq,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
+    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return ingest_batch(
+        req=req,
+        use_case=use_case,
+        _principal=_principal,
+        _role=_role,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/query",
+    response_model=QueryRes,
+    tags=["workspaces"],
+)
+def query_workspace(
+    workspace_id: UUID,
+    req: QueryReq,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
+    _principal: None = Depends(require_principal(Permission.QUERY_SEARCH)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return query(
+        req=req,
+        use_case=use_case,
+        _principal=_principal,
+        _role=_role,
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/ask",
+    response_model=AskRes,
+    tags=["workspaces"],
+)
+def ask_workspace(
+    workspace_id: UUID,
+    req: QueryReq,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
+    _principal: None = Depends(require_principal(Permission.QUERY_ASK)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return ask(
+        req=req,
+        use_case=use_case,
+        _principal=_principal,
+        _role=_role,
+    )
+
+
+@router.post("/workspaces/{workspace_id}/ask/stream", tags=["workspaces"])
+async def ask_workspace_stream(
+    workspace_id: UUID,
+    req: QueryReq,
+    request: Request,
+    workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    _principal: None = Depends(require_principal(Permission.QUERY_STREAM)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    _require_active_workspace(workspace_id, workspace_use_case)
+    return await ask_stream(
+        req=req,
+        request=request,
+        _principal=_principal,
+        _role=_role,
     )
