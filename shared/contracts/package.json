@@ -3,7 +3,7 @@
   "private": true,
   "license": "UNLICENSED",
   "devDependencies": {
-    "orval": "^7.17.2"
+    "orval": "^8.0.1"
   },
   "scripts": {
     "gen": "orval --config orval.config.ts"
