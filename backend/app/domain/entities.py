@@ -73,8 +73,9 @@ class Document:
 class WorkspaceVisibility(str, Enum):
     """R: Workspace visibility options."""
 
-    PRIVATE = "private"
-    SHARED = "shared"
+    PRIVATE = "PRIVATE"
+    ORG_READ = "ORG_READ"
+    SHARED = "SHARED"
 
 
 @dataclass
@@ -85,9 +86,10 @@ class Workspace:
     Attributes:
         id: Workspace identifier
         name: Workspace display name
-        visibility: Visibility setting (private/shared)
+        visibility: Visibility setting (PRIVATE/ORG_READ/SHARED)
         owner_user_id: Optional owner user UUID
         allowed_roles: Optional allowed roles for access control
+        shared_user_ids: Optional user IDs granted read access in SHARED
         created_at: Creation timestamp
         updated_at: Last update timestamp
         deleted_at: Archive timestamp (None if active)
@@ -98,6 +100,7 @@ class Workspace:
     visibility: WorkspaceVisibility = WorkspaceVisibility.PRIVATE
     owner_user_id: Optional[UUID] = None
     allowed_roles: List[str] = field(default_factory=list)
+    shared_user_ids: List[UUID] = field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
