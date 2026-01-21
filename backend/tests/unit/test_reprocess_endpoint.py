@@ -125,6 +125,7 @@ def test_reprocess_admin_enqueues(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 f"/v1/documents/{doc.id}/reprocess",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"Authorization": f"Bearer {token}"},
             )
 
@@ -157,6 +158,7 @@ def test_reprocess_rejects_employee_jwt(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 f"/v1/documents/{uuid4()}/reprocess",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"Authorization": f"Bearer {token}"},
             )
 
@@ -184,6 +186,7 @@ def test_reprocess_processing_returns_conflict(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 f"/v1/documents/{doc.id}/reprocess",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"Authorization": f"Bearer {token}"},
             )
 

@@ -108,6 +108,7 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"X-API-Key": "valid-key"},
                 files={
                     "file": (
@@ -150,6 +151,7 @@ def test_upload_rejects_invalid_mime(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"X-API-Key": "valid-key"},
                 files={
                     "file": (
@@ -185,6 +187,7 @@ def test_upload_rejects_employee_jwt(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"Authorization": f"Bearer {token}"},
                 files={
                     "file": (
@@ -215,6 +218,7 @@ def test_upload_rejects_api_key_without_permission(monkeypatch):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
+                params={"workspace_id": _LEGACY_WORKSPACE_ID},
                 headers={"X-API-Key": "valid-key"},
                 files={
                     "file": (

@@ -5685,6 +5685,23 @@
         }
       }
     },
+    "/readyz": {
+      "get": {
+        "summary": "Readyz",
+        "description": "R: Minimal readiness check for core dependencies only.\n\nReturns:\n    ok: True if core dependencies are operational\n    db: \"connected\" or \"disconnected\"\n    request_id: Correlation ID for this request",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "summary": "Metrics",

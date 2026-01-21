@@ -366,8 +366,6 @@ def _raise_document_error(
 def _resolve_legacy_workspace_id(workspace_id: UUID | None) -> UUID:
     if workspace_id:
         return workspace_id
-    if _settings.legacy_workspace_id:
-        return _settings.legacy_workspace_id
     raise validation_error("workspace_id is required for legacy endpoints.")
 
 

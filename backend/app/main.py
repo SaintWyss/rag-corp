@@ -238,6 +238,31 @@ def healthz(request: Request, full: bool = False):
     return result
 
 
+@app.get("/readyz")
+def readyz(request: Request):
+    """
+    R: Minimal readiness check for core dependencies only.
+
+    Returns:
+        ok: True if core dependencies are operational
+        db: "connected" or "disconnected"
+        request_id: Correlation ID for this request
+    """
+    db_status = "disconnected"
+    try:
+        repo = get_document_repository()
+        if repo.ping():
+            db_status = "connected"
+    except Exception as e:
+        logger.warning("Ready check: DB unavailable", extra={"error": str(e)})
+
+    return {
+        "ok": db_status == "connected",
+        "db": db_status,
+        "request_id": getattr(request.state, "request_id", None),
+    }
+
+
 def _check_google_api() -> str:
     """
     R: Check Google API connectivity with a simple embedding call.
