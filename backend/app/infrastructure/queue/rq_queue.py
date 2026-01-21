@@ -30,10 +30,13 @@ class RQDocumentProcessingQueue(DocumentProcessingQueue):
             interval=retry_intervals,
         )
 
-    def enqueue_document_processing(self, document_id: UUID) -> str:
+    def enqueue_document_processing(
+        self, document_id: UUID, *, workspace_id: UUID
+    ) -> str:
         job = self._queue.enqueue(
             "app.jobs.process_document_job",
             str(document_id),
+            str(workspace_id),
             retry=self._retry,
         )
         return job.id

@@ -112,7 +112,9 @@ class UploadDocumentUseCase:
         )
 
         try:
-            self.queue.enqueue_document_processing(document_id)
+            self.queue.enqueue_document_processing(
+                document_id, workspace_id=input_data.workspace_id
+            )
         except Exception:
             self.repository.transition_document_status(
                 document_id,

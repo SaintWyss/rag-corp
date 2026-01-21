@@ -59,7 +59,12 @@ def test_process_document_happy_path():
         embedding_service=embedding_service,
     )
 
-    result = use_case.execute(ProcessUploadedDocumentInput(document_id=doc.id))
+    result = use_case.execute(
+        ProcessUploadedDocumentInput(
+            document_id=doc.id,
+            workspace_id=doc.workspace_id,
+        )
+    )
 
     assert result.status == "READY"
     assert result.chunks_created == 2
@@ -91,7 +96,12 @@ def test_process_document_skips_ready():
         embedding_service=embedding_service,
     )
 
-    result = use_case.execute(ProcessUploadedDocumentInput(document_id=doc.id))
+    result = use_case.execute(
+        ProcessUploadedDocumentInput(
+            document_id=doc.id,
+            workspace_id=doc.workspace_id,
+        )
+    )
 
     assert result.status == "READY"
     repo.transition_document_status.assert_not_called()
@@ -119,7 +129,12 @@ def test_process_document_sets_failed_on_error():
         embedding_service=embedding_service,
     )
 
-    result = use_case.execute(ProcessUploadedDocumentInput(document_id=doc.id))
+    result = use_case.execute(
+        ProcessUploadedDocumentInput(
+            document_id=doc.id,
+            workspace_id=doc.workspace_id,
+        )
+    )
 
     assert result.status == "FAILED"
     calls = repo.transition_document_status.call_args_list

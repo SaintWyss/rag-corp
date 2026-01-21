@@ -102,7 +102,10 @@ class ReprocessDocumentUseCase:
             )
 
         try:
-            self.queue.enqueue_document_processing(input_data.document_id)
+            self.queue.enqueue_document_processing(
+                input_data.document_id,
+                workspace_id=input_data.workspace_id,
+            )
         except Exception:
             self.repository.transition_document_status(
                 input_data.document_id,

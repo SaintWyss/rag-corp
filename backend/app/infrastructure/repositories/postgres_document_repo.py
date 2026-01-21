@@ -75,6 +75,11 @@ class PostgresDocumentRepository:
 
         return get_pool()
 
+    def _require_workspace_id(self, workspace_id: UUID | None, action: str) -> UUID:
+        if workspace_id is None:
+            raise DatabaseError(f"workspace_id is required for {action}")
+        return workspace_id
+
     def _validate_embeddings(self, chunks: List[Chunk]) -> None:
         """
         R: Validate all chunks have correct embedding dimension.
@@ -98,6 +103,8 @@ class PostgresDocumentRepository:
         Raises:
             DatabaseError: If database operation fails
         """
+        if document.workspace_id is None:
+            raise DatabaseError("workspace_id is required to save document")
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
@@ -157,12 +164,11 @@ class PostgresDocumentRepository:
         """
         try:
             pool = self._get_pool()
-            filters = ["deleted_at IS NULL"]
-            params: list[object] = []
-
-            if workspace_id is not None:
-                filters.append("workspace_id = %s")
-                params.append(workspace_id)
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "list_documents"
+            )
+            filters = ["deleted_at IS NULL", "workspace_id = %s"]
+            params: list[object] = [scoped_workspace_id]
 
             if query:
                 like_query = f"%{query}%"
@@ -232,18 +238,18 @@ class PostgresDocumentRepository:
             Document or None if not found
         """
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "get_document"
+            )
             pool = self._get_pool()
             query = """
                 SELECT id, workspace_id, title, source, metadata, created_at, deleted_at,
                        file_name, mime_type, storage_key,
                        uploaded_by_user_id, status, error_message, tags, allowed_roles
                 FROM documents
-                WHERE id = %s AND deleted_at IS NULL
+                WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
             """
-            params: list[object] = [document_id]
-            if workspace_id is not None:
-                query += " AND workspace_id = %s"
-                params.append(workspace_id)
+            params: list[object] = [document_id, scoped_workspace_id]
 
             with pool.connection() as conn:
                 row = conn.execute(query, params).fetchone()
@@ -294,21 +300,23 @@ class PostgresDocumentRepository:
         self._validate_embeddings(chunks)
 
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "save_chunks"
+            )
             pool = self._get_pool()
             with pool.connection() as conn:
-                if workspace_id is not None:
-                    row = conn.execute(
-                        """
-                        SELECT 1
-                        FROM documents
-                        WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
-                        """,
-                        (document_id, workspace_id),
-                    ).fetchone()
-                    if not row:
-                        raise DatabaseError(
-                            f"Document {document_id} not found for workspace {workspace_id}"
-                        )
+                row = conn.execute(
+                    """
+                    SELECT 1
+                    FROM documents
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
+                    """,
+                    (document_id, scoped_workspace_id),
+                ).fetchone()
+                if not row:
+                    raise DatabaseError(
+                        f"Document {document_id} not found for workspace {scoped_workspace_id}"
+                    )
                 # R: Prepare batch data
                 batch_data = [
                     (
@@ -359,6 +367,8 @@ class PostgresDocumentRepository:
             DatabaseError: If any operation fails (entire transaction rolls back)
             ValueError: If embedding dimension is invalid
         """
+        if document.workspace_id is None:
+            raise DatabaseError("workspace_id is required to save document with chunks")
         if chunks:
             self._validate_embeddings(chunks)
 
@@ -453,6 +463,9 @@ class PostgresDocumentRepository:
         Returns True if a document was updated, otherwise False.
         """
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "update_document_file_metadata"
+            )
             pool = self._get_pool()
             with pool.connection() as conn:
                 query = """
@@ -463,7 +476,7 @@ class PostgresDocumentRepository:
                         uploaded_by_user_id = %s,
                         status = %s,
                         error_message = %s
-                    WHERE id = %s
+                    WHERE id = %s AND workspace_id = %s
                 """
                 params: list[object] = [
                     file_name,
@@ -473,10 +486,8 @@ class PostgresDocumentRepository:
                     status,
                     error_message,
                     document_id,
+                    scoped_workspace_id,
                 ]
-                if workspace_id is not None:
-                    query += " AND workspace_id = %s"
-                    params.append(workspace_id)
                 result = conn.execute(query, params)
             return result.rowcount > 0
         except Exception as e:
@@ -506,19 +517,23 @@ class PostgresDocumentRepository:
         allowed_statuses = [status for status in from_statuses if status is not None]
 
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "transition_document_status"
+            )
             pool = self._get_pool()
             with pool.connection() as conn:
                 query = """
                     UPDATE documents
                     SET status = %s,
                         error_message = %s
-                    WHERE id = %s
+                    WHERE id = %s AND workspace_id = %s
                 """
-                params: list[object] = [to_status, error_message, document_id]
-
-                if workspace_id is not None:
-                    query += " AND workspace_id = %s"
-                    params.append(workspace_id)
+                params: list[object] = [
+                    to_status,
+                    error_message,
+                    document_id,
+                    scoped_workspace_id,
+                ]
 
                 if allowed_statuses and include_null:
                     query += " AND (status = ANY(%s) OR status IS NULL)"
@@ -542,24 +557,21 @@ class PostgresDocumentRepository:
     ) -> int:
         """R: Delete all chunks for a document."""
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "delete_chunks_for_document"
+            )
             pool = self._get_pool()
             with pool.connection() as conn:
-                if workspace_id is not None:
-                    result = conn.execute(
-                        """
-                        DELETE FROM chunks c
-                        USING documents d
-                        WHERE c.document_id = d.id
-                          AND c.document_id = %s
-                          AND d.workspace_id = %s
-                        """,
-                        (document_id, workspace_id),
-                    )
-                else:
-                    result = conn.execute(
-                        "DELETE FROM chunks WHERE document_id = %s",
-                        (document_id,),
-                    )
+                result = conn.execute(
+                    """
+                    DELETE FROM chunks c
+                    USING documents d
+                    WHERE c.document_id = d.id
+                      AND c.document_id = %s
+                      AND d.workspace_id = %s
+                    """,
+                    (document_id, scoped_workspace_id),
+                )
             return result.rowcount
         except Exception as e:
             logger.error(
@@ -585,12 +597,11 @@ class PostgresDocumentRepository:
         """
         try:
             pool = self._get_pool()
-            filters = ["d.deleted_at IS NULL"]
-            params: list[object] = []
-
-            if workspace_id is not None:
-                filters.append("d.workspace_id = %s")
-                params.append(workspace_id)
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "find_similar_chunks"
+            )
+            filters = ["d.deleted_at IS NULL", "d.workspace_id = %s"]
+            params: list[object] = [scoped_workspace_id]
 
             where_clause = " AND ".join(filters)
             with pool.connection() as conn:
@@ -660,17 +671,17 @@ class PostgresDocumentRepository:
             DatabaseError: If database operation fails
         """
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "soft_delete_document"
+            )
             pool = self._get_pool()
             with pool.connection() as conn:
                 query = """
                     UPDATE documents
                     SET deleted_at = NOW()
-                    WHERE id = %s AND deleted_at IS NULL
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
                 """
-                params: list[object] = [document_id]
-                if workspace_id is not None:
-                    query += " AND workspace_id = %s"
-                    params.append(workspace_id)
+                params: list[object] = [document_id, scoped_workspace_id]
                 result = conn.execute(query, params)
                 deleted = result.rowcount > 0
             if deleted:
@@ -700,17 +711,17 @@ class PostgresDocumentRepository:
             DatabaseError: If database operation fails
         """
         try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "restore_document"
+            )
             pool = self._get_pool()
             with pool.connection() as conn:
                 query = """
                     UPDATE documents
                     SET deleted_at = NULL
-                    WHERE id = %s AND deleted_at IS NOT NULL
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NOT NULL
                 """
-                params: list[object] = [document_id]
-                if workspace_id is not None:
-                    query += " AND workspace_id = %s"
-                    params.append(workspace_id)
+                params: list[object] = [document_id, scoped_workspace_id]
                 result = conn.execute(query, params)
                 restored = result.rowcount > 0
             if restored:

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Optional
+from uuid import UUID
 
 from ..domain.entities import Chunk
 from ..domain.repositories import DocumentRepository
@@ -45,6 +46,7 @@ def run_rag_retrieval(
     query: str,
     top_k: int,
     use_mmr: bool,
+    workspace_id: UUID,
     repository: DocumentRepository,
     embedding_service: EmbeddingService,
     context_builder: Optional[ContextBuilder] = None,
@@ -78,10 +80,13 @@ def run_rag_retrieval(
                 top_k=top_k,
                 fetch_k=top_k * 4,
                 lambda_mult=0.5,
+                workspace_id=workspace_id,
             )
         else:
             chunks = repository.find_similar_chunks(
-                embedding=query_embedding, top_k=top_k
+                embedding=query_embedding,
+                top_k=top_k,
+                workspace_id=workspace_id,
             )
 
     chunks_found = len(chunks)

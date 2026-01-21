@@ -156,6 +156,8 @@ class DocumentTextExtractor(Protocol):
 class DocumentProcessingQueue(Protocol):
     """R: Interface for enqueuing document processing jobs."""
 
-    def enqueue_document_processing(self, document_id: UUID) -> str:
+    def enqueue_document_processing(
+        self, document_id: UUID, *, workspace_id: UUID
+    ) -> str:
         """R: Enqueue processing job for a document."""
         ...

@@ -129,6 +129,8 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
     mock_repo.save_document.assert_called_once()
     mock_repo.update_document_file_metadata.assert_called_once()
     mock_queue.enqueue_document_processing.assert_called_once()
+    _, kwargs = mock_queue.enqueue_document_processing.call_args
+    assert kwargs["workspace_id"] == workspace_id
 
 
 def test_upload_rejects_invalid_mime(monkeypatch):

@@ -133,7 +133,9 @@ def test_reprocess_admin_enqueues(monkeypatch):
     assert body["document_id"] == str(doc.id)
     assert body["status"] == "PENDING"
     assert body["enqueued"] is True
-    queue.enqueue_document_processing.assert_called_once_with(doc.id)
+    queue.enqueue_document_processing.assert_called_once()
+    _, kwargs = queue.enqueue_document_processing.call_args
+    assert kwargs["workspace_id"] == workspace_id
 
 
 def test_reprocess_rejects_employee_jwt(monkeypatch):

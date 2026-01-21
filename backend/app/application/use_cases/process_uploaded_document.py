@@ -31,6 +31,7 @@ MAX_ERROR_MESSAGE_LEN = 500
 @dataclass
 class ProcessUploadedDocumentInput:
     document_id: UUID
+    workspace_id: UUID
 
 
 @dataclass
@@ -67,7 +68,9 @@ class ProcessUploadedDocumentUseCase:
         self, input_data: ProcessUploadedDocumentInput
     ) -> ProcessUploadedDocumentOutput:
         document_id = input_data.document_id
-        document = self.repository.get_document(document_id)
+        document = self.repository.get_document(
+            document_id, workspace_id=input_data.workspace_id
+        )
         if not document:
             logger.warning("Process document: not found", extra={"document_id": str(document_id)})
             return ProcessUploadedDocumentOutput(status="MISSING", chunks_created=0)

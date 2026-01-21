@@ -31,7 +31,7 @@ from .metrics import (
 from .tracing import span
 
 
-def process_document_job(document_id: str) -> None:
+def process_document_job(document_id: str, workspace_id: str) -> None:
     """R: RQ job to process a single uploaded document."""
     job = get_current_job()
     job_id = job.id if job else None
@@ -53,6 +53,20 @@ def process_document_job(document_id: str) -> None:
         clear_context()
         return
 
+    try:
+        workspace_uuid = UUID(workspace_id)
+    except ValueError:
+        status = "INVALID"
+        logger.error(
+            "Invalid workspace_id for job",
+            extra={"workspace_id": workspace_id, "job_id": job_id},
+        )
+        record_worker_processed(status)
+        record_worker_failed()
+        observe_worker_duration(time.perf_counter() - start_time)
+        clear_context()
+        return
+
     use_case = ProcessUploadedDocumentUseCase(
         repository=get_document_repository(),
         storage=get_file_storage(),
@@ -62,15 +76,26 @@ def process_document_job(document_id: str) -> None:
     )
     logger.info(
         "Worker job started",
-        extra={"document_id": str(doc_uuid), "job_id": job_id},
+        extra={
+            "document_id": str(doc_uuid),
+            "workspace_id": str(workspace_uuid),
+            "job_id": job_id,
+        },
     )
     try:
         with span(
             "worker.process_document",
-            {"document_id": str(doc_uuid), "job_id": job_id or ""},
+            {
+                "document_id": str(doc_uuid),
+                "workspace_id": str(workspace_uuid),
+                "job_id": job_id or "",
+            },
         ):
             result = use_case.execute(
-                ProcessUploadedDocumentInput(document_id=doc_uuid)
+                ProcessUploadedDocumentInput(
+                    document_id=doc_uuid,
+                    workspace_id=workspace_uuid,
+                )
             )
         status = result.status
     except Exception:
