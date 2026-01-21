@@ -1,5 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import ChatPage from "../app/chat/page";
+import ChatPage from "../app/workspaces/[id]/chat/page";
+
+jest.mock("../app/lib/api", () => ({
+    listWorkspaces: jest.fn().mockResolvedValue({ workspaces: [] }),
+}));
 
 jest.mock("../app/hooks/useRagChat", () => ({
     useRagChat: () => ({
@@ -18,12 +22,12 @@ jest.mock("../app/hooks/useRagChat", () => ({
 
 describe("Chat Page", () => {
     it("renders the chat header", () => {
-        render(<ChatPage />);
+        render(<ChatPage params={{ id: "workspace-1" }} />);
         expect(screen.getByText(/chat con streaming/i)).toBeInTheDocument();
     });
 
     it("renders the message input", () => {
-        render(<ChatPage />);
+        render(<ChatPage params={{ id: "workspace-1" }} />);
         expect(screen.getByRole("textbox")).toBeInTheDocument();
     });
 });

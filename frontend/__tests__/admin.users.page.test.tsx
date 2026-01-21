@@ -3,6 +3,7 @@ import AdminUsersPage from "../app/admin/users/page";
 import {
     getCurrentUser,
     listUsers,
+    listWorkspaces,
 } from "../app/lib/api";
 
 jest.mock("../app/lib/apiKey", () => ({
@@ -13,12 +14,17 @@ jest.mock("../app/lib/apiKey", () => ({
 jest.mock("../app/lib/api", () => ({
     getCurrentUser: jest.fn(),
     listUsers: jest.fn(),
+    listWorkspaces: jest.fn(),
     createUser: jest.fn(),
     disableUser: jest.fn(),
     resetUserPassword: jest.fn(),
 }));
 
 describe("Admin Users Page", () => {
+    beforeEach(() => {
+        (listWorkspaces as jest.Mock).mockResolvedValue({ workspaces: [] });
+    });
+
     it("blocks non-admin users", async () => {
         (getCurrentUser as jest.Mock).mockResolvedValue({
             id: "user-1",

@@ -234,9 +234,7 @@ export async function archiveWorkspace(
   );
 }
 
-export async function listDocuments(
-  params: ListDocumentsParams = {}
-): Promise<DocumentsListResponse> {
+function buildDocumentsQuery(params: ListDocumentsParams): string {
   const searchParams = new URLSearchParams();
   if (params.q) {
     searchParams.set("q", params.q);
@@ -256,7 +254,72 @@ export async function listDocuments(
   if (typeof params.limit === "number") {
     searchParams.set("limit", String(params.limit));
   }
-  const query = searchParams.toString();
+  return searchParams.toString();
+}
+
+export async function listWorkspaceDocuments(
+  workspaceId: string,
+  params: ListDocumentsParams = {}
+): Promise<DocumentsListResponse> {
+  const query = buildDocumentsQuery(params);
+  return requestJson<DocumentsListResponse>(
+    `/api/workspaces/${workspaceId}/documents${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function getWorkspaceDocument(
+  workspaceId: string,
+  documentId: string
+): Promise<DocumentDetail> {
+  return requestJson<DocumentDetail>(
+    `/api/workspaces/${workspaceId}/documents/${documentId}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function deleteWorkspaceDocument(
+  workspaceId: string,
+  documentId: string
+): Promise<void> {
+  await requestJson(`/api/workspaces/${workspaceId}/documents/${documentId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function uploadWorkspaceDocument(
+  workspaceId: string,
+  payload: FormData
+): Promise<UploadDocumentResponse> {
+  return requestJson<UploadDocumentResponse>(
+    `/api/workspaces/${workspaceId}/documents/upload`,
+    {
+      method: "POST",
+      body: payload,
+    }
+  );
+}
+
+export async function reprocessWorkspaceDocument(
+  workspaceId: string,
+  documentId: string
+): Promise<ReprocessDocumentResponse> {
+  return requestJson<ReprocessDocumentResponse>(
+    `/api/workspaces/${workspaceId}/documents/${documentId}/reprocess`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function listDocuments(
+  params: ListDocumentsParams = {}
+): Promise<DocumentsListResponse> {
+  const query = buildDocumentsQuery(params);
 
   return requestJson<DocumentsListResponse>(
     `/api/documents${query ? `?${query}` : ""}`,

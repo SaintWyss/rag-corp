@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import Home from "../app/page";
 
+jest.mock("../app/lib/api", () => ({
+    listWorkspaces: jest.fn().mockResolvedValue({ workspaces: [] }),
+}));
+
 // Mock the useRagAsk hook
 jest.mock("../app/hooks/useRagAsk", () => ({
     useRagAsk: () => ({

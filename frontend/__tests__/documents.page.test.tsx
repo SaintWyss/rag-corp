@@ -1,12 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import DocumentsPage from "../app/documents/page";
+import DocumentsPage from "../app/workspaces/[id]/documents/page";
 import { getStoredApiKey } from "../app/lib/apiKey";
 import {
     getCurrentUser,
-    getDocument,
-    listDocuments,
-    reprocessDocument,
-    uploadDocument,
+    getWorkspaceDocument,
+    listWorkspaceDocuments,
+    listWorkspaces,
+    reprocessWorkspaceDocument,
+    uploadWorkspaceDocument,
 } from "../app/lib/api";
 
 jest.mock("../app/lib/apiKey", () => ({
@@ -14,22 +15,24 @@ jest.mock("../app/lib/apiKey", () => ({
 }));
 
 jest.mock("../app/lib/api", () => ({
-    listDocuments: jest.fn(),
-    getDocument: jest.fn(),
-    uploadDocument: jest.fn(),
-    reprocessDocument: jest.fn(),
+    listWorkspaceDocuments: jest.fn(),
+    getWorkspaceDocument: jest.fn(),
+    uploadWorkspaceDocument: jest.fn(),
+    reprocessWorkspaceDocument: jest.fn(),
+    listWorkspaces: jest.fn(),
     getCurrentUser: jest.fn(),
 }));
 
 describe("Documents Page", () => {
     beforeEach(() => {
         (getStoredApiKey as jest.Mock).mockReturnValue("");
-        (uploadDocument as jest.Mock).mockResolvedValue({});
-        (reprocessDocument as jest.Mock).mockResolvedValue({});
+        (uploadWorkspaceDocument as jest.Mock).mockResolvedValue({});
+        (reprocessWorkspaceDocument as jest.Mock).mockResolvedValue({});
+        (listWorkspaces as jest.Mock).mockResolvedValue({ workspaces: [] });
     });
 
     it("renders sources and failed status details", async () => {
-        (listDocuments as jest.Mock).mockResolvedValue({
+        (listWorkspaceDocuments as jest.Mock).mockResolvedValue({
             documents: [
                 {
                     id: "doc-1",
@@ -45,7 +48,7 @@ describe("Documents Page", () => {
             ],
             next_cursor: null,
         });
-        (getDocument as jest.Mock).mockResolvedValue({
+        (getWorkspaceDocument as jest.Mock).mockResolvedValue({
             id: "doc-1",
             title: "Manual PDF",
             source: "https://example.com",
@@ -59,7 +62,7 @@ describe("Documents Page", () => {
         });
         (getCurrentUser as jest.Mock).mockResolvedValue(null);
 
-        render(<DocumentsPage />);
+        render(<DocumentsPage params={{ id: "workspace-1" }} />);
 
         expect(
             await screen.findByRole("heading", { name: "Sources" })
@@ -78,7 +81,7 @@ describe("Documents Page", () => {
 
     it("hides admin actions for employee role", async () => {
         (getStoredApiKey as jest.Mock).mockReturnValue("e2e-key");
-        (listDocuments as jest.Mock).mockResolvedValue({
+        (listWorkspaceDocuments as jest.Mock).mockResolvedValue({
             documents: [
                 {
                     id: "doc-2",
@@ -93,7 +96,7 @@ describe("Documents Page", () => {
             ],
             next_cursor: null,
         });
-        (getDocument as jest.Mock).mockResolvedValue({
+        (getWorkspaceDocument as jest.Mock).mockResolvedValue({
             id: "doc-2",
             title: "Specs",
             source: null,
@@ -110,7 +113,7 @@ describe("Documents Page", () => {
             is_active: true,
         });
 
-        render(<DocumentsPage />);
+        render(<DocumentsPage params={{ id: "workspace-1" }} />);
 
         await screen.findByTestId("source-detail");
         expect(screen.queryByTestId("sources-upload-panel")).toBeNull();

@@ -99,7 +99,12 @@ function parseSseEvent(raw: string): SseEvent | null {
   };
 }
 
-export function useRagChat() {
+type UseRagChatOptions = {
+  workspaceId?: string;
+};
+
+export function useRagChat(options: UseRagChatOptions = {}) {
+  const { workspaceId } = options;
   const [state, setState] = useState<ChatState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastUserMessageRef = useRef<string | null>(null);
@@ -181,7 +186,10 @@ export function useRagChat() {
 
       try {
         const apiKey = getStoredApiKey();
-        const response = await fetch("/api/ask/stream", {
+        const streamPath = workspaceId
+          ? `/api/workspaces/${workspaceId}/ask/stream`
+          : "/api/ask/stream";
+        const response = await fetch(streamPath, {
           method: "POST",
           headers: apiKey
             ? { "Content-Type": "application/json", "X-API-Key": apiKey }
@@ -337,7 +345,7 @@ export function useRagChat() {
         }));
       }
     },
-    [state.conversationId]
+    [state.conversationId, workspaceId]
   );
 
   const retryLast = useCallback(async () => {
