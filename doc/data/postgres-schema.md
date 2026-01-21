@@ -73,6 +73,7 @@ CREATE TABLE documents (
     mime_type TEXT,
     storage_key TEXT,
     uploaded_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    workspace_id UUID NOT NULL REFERENCES workspaces(id),
     status TEXT,
     error_message TEXT,
     tags TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
@@ -97,6 +98,7 @@ CHECK (status IS NULL OR status IN ('PENDING', 'PROCESSING', 'READY', 'FAILED'))
 | `mime_type` | TEXT | YES | MIME del archivo |
 | `storage_key` | TEXT | YES | Key en S3/MinIO |
 | `uploaded_by_user_id` | UUID | YES | Usuario que subio el archivo |
+| `workspace_id` | UUID | NO | Workspace asociado |
 | `status` | TEXT | YES | PENDING/PROCESSING/READY/FAILED |
 | `error_message` | TEXT | YES | Error de procesamiento |
 | `tags` | TEXT[] | NO | Tags normalizados |
@@ -307,6 +309,15 @@ CREATE INDEX chunks_document_chunk_idx ON chunks (document_id, chunk_index);
 
 **Purpose:** Retrieve all chunks for a document in order (not created by default)  
 **Usage:** `SELECT * FROM chunks WHERE document_id = '...' ORDER BY chunk_index`
+
+### Documents Workspace Index
+
+```sql
+CREATE INDEX ix_documents_workspace_id ON documents (workspace_id);
+```
+
+**Purpose:** Filtrar documentos por workspace.  
+**Usage:** `SELECT * FROM documents WHERE workspace_id = '...'`
 
 ### Workspace Indexes
 
