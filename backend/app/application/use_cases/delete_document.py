@@ -58,7 +58,9 @@ class DeleteDocumentUseCase:
                 ),
             )
 
-        deleted = self.repository.soft_delete_document(document_id)
+        deleted = self.repository.soft_delete_document(
+            document_id, workspace_id=workspace_id
+        )
         if not deleted:
             return DeleteDocumentResult(
                 deleted=False,

@@ -71,6 +71,7 @@ class ProcessUploadedDocumentUseCase:
         if not document:
             logger.warning("Process document: not found", extra={"document_id": str(document_id)})
             return ProcessUploadedDocumentOutput(status="MISSING", chunks_created=0)
+        workspace_id = document.workspace_id
 
         if document.status == "READY":
             return ProcessUploadedDocumentOutput(status="READY", chunks_created=0)
@@ -79,6 +80,7 @@ class ProcessUploadedDocumentUseCase:
 
         transitioned = self.repository.transition_document_status(
             document_id,
+            workspace_id=workspace_id,
             from_statuses=[None, "PENDING", "FAILED"],
             to_status="PROCESSING",
             error_message=None,
@@ -98,7 +100,9 @@ class ProcessUploadedDocumentUseCase:
             text = self.extractor.extract_text(document.mime_type, content)
             chunks = self.chunker.chunk(text)
 
-            self.repository.delete_chunks_for_document(document_id)
+            self.repository.delete_chunks_for_document(
+                document_id, workspace_id=workspace_id
+            )
 
             if chunks:
                 embeddings = self.embedding_service.embed_batch(chunks)
@@ -113,11 +117,14 @@ class ProcessUploadedDocumentUseCase:
                         zip(chunks, embeddings)
                     )
                 ]
-                self.repository.save_chunks(document_id, chunk_entities)
+                self.repository.save_chunks(
+                    document_id, chunk_entities, workspace_id=workspace_id
+                )
                 chunks_created = len(chunk_entities)
 
             self.repository.transition_document_status(
                 document_id,
+                workspace_id=workspace_id,
                 from_statuses=["PROCESSING"],
                 to_status="READY",
                 error_message=None,
@@ -127,6 +134,7 @@ class ProcessUploadedDocumentUseCase:
             error_message = _truncate_error(str(exc))
             self.repository.transition_document_status(
                 document_id,
+                workspace_id=workspace_id,
                 from_statuses=["PROCESSING"],
                 to_status="FAILED",
                 error_message=error_message,

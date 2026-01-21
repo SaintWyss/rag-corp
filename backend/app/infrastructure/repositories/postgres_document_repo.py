@@ -160,7 +160,7 @@ class PostgresDocumentRepository:
             filters = ["deleted_at IS NULL"]
             params: list[object] = []
 
-            if workspace_id:
+            if workspace_id is not None:
                 filters.append("workspace_id = %s")
                 params.append(workspace_id)
 
@@ -241,7 +241,7 @@ class PostgresDocumentRepository:
                 WHERE id = %s AND deleted_at IS NULL
             """
             params: list[object] = [document_id]
-            if workspace_id:
+            if workspace_id is not None:
                 query += " AND workspace_id = %s"
                 params.append(workspace_id)
 
@@ -274,7 +274,13 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Get document failed: {e}")
 
-    def save_chunks(self, document_id: UUID, chunks: List[Chunk]) -> None:
+    def save_chunks(
+        self,
+        document_id: UUID,
+        chunks: List[Chunk],
+        *,
+        workspace_id: UUID | None = None,
+    ) -> None:
         """
         R: Persist chunks with embeddings to PostgreSQL (batch insert).
 
@@ -290,6 +296,19 @@ class PostgresDocumentRepository:
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
+                if workspace_id is not None:
+                    row = conn.execute(
+                        """
+                        SELECT 1
+                        FROM documents
+                        WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
+                        """,
+                        (document_id, workspace_id),
+                    ).fetchone()
+                    if not row:
+                        raise DatabaseError(
+                            f"Document {document_id} not found for workspace {workspace_id}"
+                        )
                 # R: Prepare batch data
                 batch_data = [
                     (
@@ -314,6 +333,8 @@ class PostgresDocumentRepository:
                 f"PostgresDocumentRepository: Saved {len(chunks)} chunks for document {document_id}"
             )
         except ValueError:
+            raise
+        except DatabaseError:
             raise
         except Exception as e:
             logger.error(
@@ -418,6 +439,7 @@ class PostgresDocumentRepository:
         self,
         document_id: UUID,
         *,
+        workspace_id: UUID | None = None,
         file_name: str | None = None,
         mime_type: str | None = None,
         storage_key: str | None = None,
@@ -433,8 +455,7 @@ class PostgresDocumentRepository:
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
-                result = conn.execute(
-                    """
+                query = """
                     UPDATE documents
                     SET file_name = %s,
                         mime_type = %s,
@@ -443,17 +464,20 @@ class PostgresDocumentRepository:
                         status = %s,
                         error_message = %s
                     WHERE id = %s
-                    """,
-                    (
-                        file_name,
-                        mime_type,
-                        storage_key,
-                        uploaded_by_user_id,
-                        status,
-                        error_message,
-                        document_id,
-                    ),
-                )
+                """
+                params: list[object] = [
+                    file_name,
+                    mime_type,
+                    storage_key,
+                    uploaded_by_user_id,
+                    status,
+                    error_message,
+                    document_id,
+                ]
+                if workspace_id is not None:
+                    query += " AND workspace_id = %s"
+                    params.append(workspace_id)
+                result = conn.execute(query, params)
             return result.rowcount > 0
         except Exception as e:
             logger.error(
@@ -465,6 +489,7 @@ class PostgresDocumentRepository:
         self,
         document_id: UUID,
         *,
+        workspace_id: UUID | None = None,
         from_statuses: list[str | None],
         to_status: str,
         error_message: str | None = None,
@@ -491,6 +516,10 @@ class PostgresDocumentRepository:
                 """
                 params: list[object] = [to_status, error_message, document_id]
 
+                if workspace_id is not None:
+                    query += " AND workspace_id = %s"
+                    params.append(workspace_id)
+
                 if allowed_statuses and include_null:
                     query += " AND (status = ANY(%s) OR status IS NULL)"
                     params.append(allowed_statuses)
@@ -508,15 +537,29 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Failed to transition status: {e}")
 
-    def delete_chunks_for_document(self, document_id: UUID) -> int:
+    def delete_chunks_for_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> int:
         """R: Delete all chunks for a document."""
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
-                result = conn.execute(
-                    "DELETE FROM chunks WHERE document_id = %s",
-                    (document_id,),
-                )
+                if workspace_id is not None:
+                    result = conn.execute(
+                        """
+                        DELETE FROM chunks c
+                        USING documents d
+                        WHERE c.document_id = d.id
+                          AND c.document_id = %s
+                          AND d.workspace_id = %s
+                        """,
+                        (document_id, workspace_id),
+                    )
+                else:
+                    result = conn.execute(
+                        "DELETE FROM chunks WHERE document_id = %s",
+                        (document_id,),
+                    )
             return result.rowcount
         except Exception as e:
             logger.error(
@@ -545,7 +588,7 @@ class PostgresDocumentRepository:
             filters = ["d.deleted_at IS NULL"]
             params: list[object] = []
 
-            if workspace_id:
+            if workspace_id is not None:
                 filters.append("d.workspace_id = %s")
                 params.append(workspace_id)
 
@@ -601,7 +644,9 @@ class PostgresDocumentRepository:
             logger.warning(f"PostgresDocumentRepository: ping failed: {e}")
             raise DatabaseError(f"Ping failed: {e}")
 
-    def soft_delete_document(self, document_id: UUID) -> bool:
+    def soft_delete_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> bool:
         """
         R: Soft delete a document by setting deleted_at timestamp.
 
@@ -617,14 +662,16 @@ class PostgresDocumentRepository:
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
-                result = conn.execute(
-                    """
+                query = """
                     UPDATE documents
                     SET deleted_at = NOW()
                     WHERE id = %s AND deleted_at IS NULL
-                    """,
-                    (document_id,),
-                )
+                """
+                params: list[object] = [document_id]
+                if workspace_id is not None:
+                    query += " AND workspace_id = %s"
+                    params.append(workspace_id)
+                result = conn.execute(query, params)
                 deleted = result.rowcount > 0
             if deleted:
                 logger.info(
@@ -637,7 +684,9 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Soft delete failed: {e}")
 
-    def restore_document(self, document_id: UUID) -> bool:
+    def restore_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> bool:
         """
         R: Restore a soft-deleted document.
 
@@ -653,14 +702,16 @@ class PostgresDocumentRepository:
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
-                result = conn.execute(
-                    """
+                query = """
                     UPDATE documents
                     SET deleted_at = NULL
                     WHERE id = %s AND deleted_at IS NOT NULL
-                    """,
-                    (document_id,),
-                )
+                """
+                params: list[object] = [document_id]
+                if workspace_id is not None:
+                    query += " AND workspace_id = %s"
+                    params.append(workspace_id)
+                result = conn.execute(query, params)
                 restored = result.rowcount > 0
             if restored:
                 logger.info(

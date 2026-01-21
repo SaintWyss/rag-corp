@@ -88,6 +88,7 @@ class ReprocessDocumentUseCase:
 
         transitioned = self.repository.transition_document_status(
             input_data.document_id,
+            workspace_id=input_data.workspace_id,
             from_statuses=[None, "PENDING", "READY", "FAILED"],
             to_status="PENDING",
             error_message=None,
@@ -105,6 +106,7 @@ class ReprocessDocumentUseCase:
         except Exception:
             self.repository.transition_document_status(
                 input_data.document_id,
+                workspace_id=input_data.workspace_id,
                 from_statuses=["PENDING"],
                 to_status="FAILED",
                 error_message="Failed to enqueue document processing job",

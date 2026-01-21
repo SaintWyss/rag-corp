@@ -24,6 +24,7 @@ pytestmark = pytest.mark.unit
 def _document(status: str | None = "PENDING") -> Document:
     return Document(
         id=uuid4(),
+        workspace_id=uuid4(),
         title="Doc",
         source=None,
         metadata={},
@@ -66,7 +67,9 @@ def test_process_document_happy_path():
     extractor.extract_text.assert_called_once()
     chunker.chunk.assert_called_once_with("hello world")
     embedding_service.embed_batch.assert_called_once_with(["hello", "world"])
-    repo.delete_chunks_for_document.assert_called_once_with(doc.id)
+    repo.delete_chunks_for_document.assert_called_once_with(
+        doc.id, workspace_id=doc.workspace_id
+    )
     repo.save_chunks.assert_called_once()
 
 

@@ -47,7 +47,7 @@ class _DocumentRepo:
             return None
         return self._document
 
-    def soft_delete_document(self, document_id):
+    def soft_delete_document(self, document_id, *, workspace_id=None):
         return bool(self._document and document_id == self._document.id)
 
 

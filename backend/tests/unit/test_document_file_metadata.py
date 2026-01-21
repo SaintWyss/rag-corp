@@ -31,6 +31,7 @@ def test_update_document_file_metadata_executes_update():
 
     updated = repo.update_document_file_metadata(
         doc_id,
+        workspace_id=uuid4(),
         file_name="doc.pdf",
         mime_type="application/pdf",
         storage_key="documents/doc.pdf",

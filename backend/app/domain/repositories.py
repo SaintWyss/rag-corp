@@ -46,13 +46,20 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    def save_chunks(self, document_id: UUID, chunks: List[Chunk]) -> None:
+    def save_chunks(
+        self,
+        document_id: UUID,
+        chunks: List[Chunk],
+        *,
+        workspace_id: UUID | None = None,
+    ) -> None:
         """
         R: Persist chunks with embeddings for a document.
 
         Args:
             document_id: Parent document UUID
             chunks: List of Chunk entities with embeddings
+            workspace_id: Optional workspace filter
         """
         ...
 
@@ -161,12 +168,15 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    def soft_delete_document(self, document_id: UUID) -> bool:
+    def soft_delete_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> bool:
         """
         R: Soft delete a document by setting deleted_at timestamp.
 
         Args:
             document_id: Document UUID to soft delete
+            workspace_id: Optional workspace filter
 
         Returns:
             True if document was found and deleted, False otherwise
@@ -177,6 +187,7 @@ class DocumentRepository(Protocol):
         self,
         document_id: UUID,
         *,
+        workspace_id: UUID | None = None,
         file_name: str | None = None,
         mime_type: str | None = None,
         storage_key: str | None = None,
@@ -189,6 +200,7 @@ class DocumentRepository(Protocol):
 
         Args:
             document_id: Document UUID to update
+            workspace_id: Optional workspace filter
             file_name: Original file name
             mime_type: MIME type (e.g., application/pdf)
             storage_key: Object key in storage
@@ -205,6 +217,7 @@ class DocumentRepository(Protocol):
         self,
         document_id: UUID,
         *,
+        workspace_id: UUID | None = None,
         from_statuses: list[str | None],
         to_status: str,
         error_message: str | None = None,
@@ -214,6 +227,7 @@ class DocumentRepository(Protocol):
 
         Args:
             document_id: Document UUID to update
+            workspace_id: Optional workspace filter
             from_statuses: Allowed current statuses (use None for NULL)
             to_status: New status to set
             error_message: Error detail if status is FAILED
@@ -223,24 +237,30 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    def delete_chunks_for_document(self, document_id: UUID) -> int:
+    def delete_chunks_for_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> int:
         """
         R: Delete all chunks for a document.
 
         Args:
             document_id: Document UUID whose chunks should be removed
+            workspace_id: Optional workspace filter
 
         Returns:
             Number of chunks deleted
         """
         ...
 
-    def restore_document(self, document_id: UUID) -> bool:
+    def restore_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> bool:
         """
         R: Restore a soft-deleted document.
 
         Args:
             document_id: Document UUID to restore
+            workspace_id: Optional workspace filter
 
         Returns:
             True if document was found and restored, False otherwise

@@ -102,6 +102,7 @@ class UploadDocumentUseCase:
 
         self.repository.update_document_file_metadata(
             document_id,
+            workspace_id=input_data.workspace_id,
             file_name=input_data.file_name,
             mime_type=input_data.mime_type,
             storage_key=storage_key,
@@ -115,6 +116,7 @@ class UploadDocumentUseCase:
         except Exception:
             self.repository.transition_document_status(
                 document_id,
+                workspace_id=input_data.workspace_id,
                 from_statuses=["PENDING"],
                 to_status="FAILED",
                 error_message="Failed to enqueue document processing job",

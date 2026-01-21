@@ -51,8 +51,8 @@ class Document:
     """
 
     id: UUID
-    workspace_id: Optional[UUID] = None
     title: str
+    workspace_id: Optional[UUID] = None
     source: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: Optional[datetime] = None
