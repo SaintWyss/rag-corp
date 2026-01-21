@@ -2,7 +2,12 @@
 Name: Workspace Access Policy
 
 Responsibilities:
+<<<<<<< HEAD
   - Decide read/write/ACL permissions for workspaces
+=======
+  - Define read/write/ACL access rules for workspaces
+  - Keep policy logic inside the domain layer
+>>>>>>> feat/v4-domain-workspace-policy
 """
 
 from __future__ import annotations
@@ -44,7 +49,11 @@ def can_read_workspace(
     *,
     shared_user_ids: Iterable[UUID] | None = None,
 ) -> bool:
+<<<<<<< HEAD
     """R: Read access policy for workspaces."""
+=======
+    """R: Evaluate read access for a workspace."""
+>>>>>>> feat/v4-domain-workspace-policy
     if actor is None or actor.role is None:
         return False
 
@@ -61,13 +70,22 @@ def can_read_workspace(
         return True
 
     if workspace.visibility == WorkspaceVisibility.SHARED:
+<<<<<<< HEAD
         return _is_shared_member(actor, shared_user_ids)
+=======
+        shared_ids = shared_user_ids or workspace.shared_user_ids
+        return _is_shared_member(actor, shared_ids)
+>>>>>>> feat/v4-domain-workspace-policy
 
     return False
 
 
 def can_write_workspace(workspace: Workspace, actor: WorkspaceActor | None) -> bool:
+<<<<<<< HEAD
     """R: Write access policy for workspaces."""
+=======
+    """R: Evaluate write access for a workspace."""
+>>>>>>> feat/v4-domain-workspace-policy
     if actor is None or actor.role is None:
         return False
 
@@ -78,5 +96,9 @@ def can_write_workspace(workspace: Workspace, actor: WorkspaceActor | None) -> b
 
 
 def can_manage_acl(workspace: Workspace, actor: WorkspaceActor | None) -> bool:
+<<<<<<< HEAD
     """R: ACL management policy for workspaces."""
+=======
+    """R: Evaluate ACL management access for a workspace."""
+>>>>>>> feat/v4-domain-workspace-policy
     return can_write_workspace(workspace, actor)

@@ -92,6 +92,7 @@ class Workspace:
         owner_user_id: Optional owner user UUID
         description: Optional workspace description
         allowed_roles: Optional allowed roles for access control
+        shared_user_ids: Optional user IDs granted read access in SHARED
         created_at: Creation timestamp
         updated_at: Last update timestamp
         deleted_at: Archive timestamp (None if active)
@@ -103,6 +104,7 @@ class Workspace:
     owner_user_id: Optional[UUID] = None
     description: Optional[str] = None
     allowed_roles: List[str] = field(default_factory=list)
+    shared_user_ids: List[UUID] = field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
