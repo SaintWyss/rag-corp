@@ -33,6 +33,7 @@ from .domain.repositories import (
     ConversationRepository,
     AuditEventRepository,
     WorkspaceRepository,
+    WorkspaceAclRepository,
 )
 from .domain.services import (
     DocumentProcessingQueue,
@@ -48,6 +49,7 @@ from .infrastructure.repositories import (
     PostgresAuditEventRepository,
     InMemoryConversationRepository,
     InMemoryWorkspaceRepository,
+    InMemoryWorkspaceAclRepository,
 )
 from .infrastructure.services import (
     CachingEmbeddingService,
@@ -71,6 +73,9 @@ from .application.use_cases import (
     SearchChunksUseCase,
     CreateWorkspaceUseCase,
     ArchiveWorkspaceUseCase,
+    UpdateWorkspaceUseCase,
+    PublishWorkspaceUseCase,
+    ShareWorkspaceUseCase,
 )
 
 
@@ -104,6 +109,12 @@ def get_conversation_repository() -> ConversationRepository:
 def get_workspace_repository() -> WorkspaceRepository:
     """R: Get singleton instance of workspace repository."""
     return InMemoryWorkspaceRepository()
+
+
+@lru_cache
+def get_workspace_acl_repository() -> WorkspaceAclRepository:
+    """R: Get singleton instance of workspace ACL repository."""
+    return InMemoryWorkspaceAclRepository()
 
 
 @lru_cache
@@ -251,7 +262,10 @@ def get_list_documents_use_case() -> ListDocumentsUseCase:
 
 def get_list_workspaces_use_case() -> ListWorkspacesUseCase:
     """R: Create ListWorkspacesUseCase."""
-    return ListWorkspacesUseCase(repository=get_workspace_repository())
+    return ListWorkspacesUseCase(
+        repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
 
 
 def get_get_document_use_case() -> GetDocumentUseCase:
@@ -261,7 +275,10 @@ def get_get_document_use_case() -> GetDocumentUseCase:
 
 def get_get_workspace_use_case() -> GetWorkspaceUseCase:
     """R: Create GetWorkspaceUseCase."""
-    return GetWorkspaceUseCase(repository=get_workspace_repository())
+    return GetWorkspaceUseCase(
+        repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
 
 
 def get_delete_document_use_case() -> DeleteDocumentUseCase:
@@ -277,3 +294,21 @@ def get_create_workspace_use_case() -> CreateWorkspaceUseCase:
 def get_archive_workspace_use_case() -> ArchiveWorkspaceUseCase:
     """R: Create ArchiveWorkspaceUseCase."""
     return ArchiveWorkspaceUseCase(repository=get_workspace_repository())
+
+
+def get_update_workspace_use_case() -> UpdateWorkspaceUseCase:
+    """R: Create UpdateWorkspaceUseCase."""
+    return UpdateWorkspaceUseCase(repository=get_workspace_repository())
+
+
+def get_publish_workspace_use_case() -> PublishWorkspaceUseCase:
+    """R: Create PublishWorkspaceUseCase."""
+    return PublishWorkspaceUseCase(repository=get_workspace_repository())
+
+
+def get_share_workspace_use_case() -> ShareWorkspaceUseCase:
+    """R: Create ShareWorkspaceUseCase."""
+    return ShareWorkspaceUseCase(
+        repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )

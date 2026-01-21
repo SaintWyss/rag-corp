@@ -56,6 +56,7 @@ from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
     ArchiveWorkspaceUseCase,
+    ArchiveWorkspaceResult,
     CreateWorkspaceUseCase,
     CreateWorkspaceInput,
     DeleteDocumentUseCase,
@@ -89,6 +90,8 @@ from .container import (
     get_document_queue,
 )
 from .domain.entities import ConversationMessage, Document, Workspace, WorkspaceVisibility
+from .domain.workspace_policy import WorkspaceActor
+from .application.use_cases.workspace_results import WorkspaceErrorCode
 from .domain.repositories import DocumentRepository, AuditEventRepository
 from .domain.services import FileStoragePort, DocumentProcessingQueue
 from .dual_auth import PrincipalType, Principal
@@ -270,13 +273,40 @@ def _to_workspace_res(workspace: Workspace) -> WorkspaceRes:
     )
 
 
+def _to_workspace_actor(principal: Principal | None) -> WorkspaceActor | None:
+    if not principal or principal.principal_type != PrincipalType.USER:
+        return None
+    if not principal.user:
+        return None
+    return WorkspaceActor(
+        user_id=principal.user.user_id,
+        role=principal.user.role,
+    )
+
+
+def _raise_workspace_error(
+    error_code: WorkspaceErrorCode, message: str, workspace_id: UUID | None = None
+) -> None:
+    if error_code == WorkspaceErrorCode.FORBIDDEN:
+        raise forbidden(message)
+    if error_code == WorkspaceErrorCode.CONFLICT:
+        raise conflict(message)
+    if error_code == WorkspaceErrorCode.VALIDATION_ERROR:
+        raise validation_error(message)
+    if error_code == WorkspaceErrorCode.NOT_FOUND:
+        raise not_found("Workspace", str(workspace_id or "unknown"))
+    raise validation_error(message)
+
+
 def _require_active_workspace(
-    workspace_id: UUID, use_case: GetWorkspaceUseCase
+    workspace_id: UUID,
+    use_case: GetWorkspaceUseCase,
+    actor: WorkspaceActor | None,
 ) -> Workspace:
-    workspace = use_case.execute(workspace_id)
-    if not workspace or workspace.is_archived:
-        raise not_found("Workspace", str(workspace_id))
-    return workspace
+    result = use_case.execute(workspace_id, actor)
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+    return result.workspace
 
 
 @router.get("/workspaces", response_model=WorkspacesListRes, tags=["workspaces"])
@@ -284,13 +314,17 @@ def list_workspaces(
     owner_user_id: UUID | None = Query(None),
     include_archived: bool = Query(False),
     use_case: ListWorkspacesUseCase = Depends(get_list_workspaces_use_case),
-    _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
+    actor = _to_workspace_actor(principal)
     output = use_case.execute(
+        actor=actor,
         owner_user_id=owner_user_id,
         include_archived=include_archived,
     )
+    if output.error:
+        _raise_workspace_error(output.error.code, output.error.message)
     return WorkspacesListRes(
         workspaces=[_to_workspace_res(ws) for ws in output.workspaces]
     )
@@ -306,25 +340,21 @@ def create_workspace(
     req: CreateWorkspaceReq,
     use_case: CreateWorkspaceUseCase = Depends(get_create_workspace_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
-    _role: None = Depends(require_admin()),
+    _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    owner_user_id = req.owner_user_id
-    if principal and principal.principal_type == PrincipalType.USER and principal.user:
-        owner_user_id = owner_user_id or principal.user.user_id
-
-    allowed_roles = normalize_allowed_roles({"allowed_roles": req.acl.allowed_roles})
-
-    workspace = use_case.execute(
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(
         CreateWorkspaceInput(
             name=req.name,
+            description=None,
+            actor=actor,
             visibility=req.visibility,
-            owner_user_id=owner_user_id,
-            allowed_roles=allowed_roles,
         )
     )
-    if not workspace:
-        raise conflict("Workspace name already exists for owner.")
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message)
+    workspace = result.workspace
 
     emit_audit_event(
         audit_repo,
@@ -344,10 +374,14 @@ def create_workspace(
 def get_workspace(
     workspace_id: UUID,
     use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
-    _principal: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    workspace = _require_active_workspace(workspace_id, use_case)
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(workspace_id, actor)
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+    workspace = result.workspace
     return _to_workspace_res(workspace)
 
 
@@ -360,12 +394,13 @@ def archive_workspace(
     workspace_id: UUID,
     use_case: ArchiveWorkspaceUseCase = Depends(get_archive_workspace_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
-    _role: None = Depends(require_admin()),
+    _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    archived = use_case.execute(workspace_id)
-    if not archived:
-        raise not_found("Workspace", str(workspace_id))
+    actor = _to_workspace_actor(principal)
+    result: ArchiveWorkspaceResult = use_case.execute(workspace_id, actor)
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
 
     emit_audit_event(
         audit_repo,
@@ -374,7 +409,7 @@ def archive_workspace(
         target_id=workspace_id,
     )
 
-    return ArchiveWorkspaceRes(archived=True)
+    return ArchiveWorkspaceRes(archived=result.archived)
 
 
 @router.get(
@@ -955,7 +990,8 @@ def list_workspace_documents(
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return list_documents(
         q=q,
         status=status,
@@ -983,7 +1019,8 @@ def get_workspace_document(
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return get_document(
         document_id=document_id,
         use_case=use_case,
@@ -1006,7 +1043,8 @@ def delete_workspace_document(
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return delete_document(
         document_id=document_id,
         use_case=use_case,
@@ -1038,7 +1076,8 @@ async def upload_workspace_document(
     storage: FileStoragePort | None = Depends(get_file_storage),
     queue: DocumentProcessingQueue | None = Depends(get_document_queue),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return await upload_document(
         request=request,
         file=file,
@@ -1070,7 +1109,8 @@ def reprocess_workspace_document(
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return reprocess_document(
         document_id=document_id,
         repository=repository,
@@ -1091,14 +1131,15 @@ def ingest_workspace_text(
     req: IngestTextReq,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return ingest_text(
         req=req,
         use_case=use_case,
-        _principal=_principal,
+        _principal=principal,
         _role=_role,
     )
 
@@ -1113,14 +1154,15 @@ def ingest_workspace_batch(
     req: IngestBatchReq,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return ingest_batch(
         req=req,
         use_case=use_case,
-        _principal=_principal,
+        _principal=principal,
         _role=_role,
     )
 
@@ -1135,14 +1177,15 @@ def query_workspace(
     req: QueryReq,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
-    _principal: None = Depends(require_principal(Permission.QUERY_SEARCH)),
+    principal: Principal | None = Depends(require_principal(Permission.QUERY_SEARCH)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return query(
         req=req,
         use_case=use_case,
-        _principal=_principal,
+        _principal=principal,
         _role=_role,
     )
 
@@ -1157,14 +1200,15 @@ def ask_workspace(
     req: QueryReq,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
-    _principal: None = Depends(require_principal(Permission.QUERY_ASK)),
+    principal: Principal | None = Depends(require_principal(Permission.QUERY_ASK)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return ask(
         req=req,
         use_case=use_case,
-        _principal=_principal,
+        _principal=principal,
         _role=_role,
     )
 
@@ -1175,13 +1219,14 @@ async def ask_workspace_stream(
     req: QueryReq,
     request: Request,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
-    _principal: None = Depends(require_principal(Permission.QUERY_STREAM)),
+    principal: Principal | None = Depends(require_principal(Permission.QUERY_STREAM)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    _require_active_workspace(workspace_id, workspace_use_case)
+    actor = _to_workspace_actor(principal)
+    _require_active_workspace(workspace_id, workspace_use_case, actor)
     return await ask_stream(
         req=req,
         request=request,
-        _principal=_principal,
+        _principal=principal,
         _role=_role,
     )

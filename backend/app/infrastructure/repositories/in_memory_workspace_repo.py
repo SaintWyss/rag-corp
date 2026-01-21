@@ -68,6 +68,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
             name=workspace.name,
             visibility=workspace.visibility,
             owner_user_id=workspace.owner_user_id,
+            description=workspace.description,
             allowed_roles=list(workspace.allowed_roles or []),
             created_at=now,
             updated_at=now,
@@ -82,6 +83,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
         workspace_id: UUID,
         *,
         name: str | None = None,
+        description: str | None = None,
         visibility: WorkspaceVisibility | None = None,
         allowed_roles: list[str] | None = None,
     ) -> Optional[Workspace]:
@@ -94,6 +96,9 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
                 name=name if name is not None else current.name,
                 visibility=visibility if visibility is not None else current.visibility,
                 owner_user_id=current.owner_user_id,
+                description=(
+                    description if description is not None else current.description
+                ),
                 allowed_roles=(
                     list(allowed_roles)
                     if allowed_roles is not None
@@ -118,6 +123,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
                 name=current.name,
                 visibility=current.visibility,
                 owner_user_id=current.owner_user_id,
+                description=current.description,
                 allowed_roles=list(current.allowed_roles or []),
                 created_at=current.created_at,
                 updated_at=datetime.now(timezone.utc),

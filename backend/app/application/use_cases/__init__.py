@@ -19,6 +19,16 @@ from .process_uploaded_document import (
 from .search_chunks import SearchChunksUseCase, SearchChunksInput, SearchChunksOutput
 from .create_workspace import CreateWorkspaceUseCase, CreateWorkspaceInput
 from .archive_workspace import ArchiveWorkspaceUseCase
+from .update_workspace import UpdateWorkspaceUseCase
+from .publish_workspace import PublishWorkspaceUseCase
+from .share_workspace import ShareWorkspaceUseCase
+from .workspace_results import (
+    WorkspaceError,
+    WorkspaceErrorCode,
+    WorkspaceResult,
+    WorkspaceListResult,
+    ArchiveWorkspaceResult,
+)
 
 __all__ = [
     "AnswerQueryUseCase",
@@ -40,4 +50,12 @@ __all__ = [
     "CreateWorkspaceUseCase",
     "CreateWorkspaceInput",
     "ArchiveWorkspaceUseCase",
+    "UpdateWorkspaceUseCase",
+    "PublishWorkspaceUseCase",
+    "ShareWorkspaceUseCase",
+    "WorkspaceError",
+    "WorkspaceErrorCode",
+    "WorkspaceResult",
+    "WorkspaceListResult",
+    "ArchiveWorkspaceResult",
 ]
