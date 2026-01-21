@@ -1,4 +1,6 @@
 import type {
+  ArchiveWorkspaceRes,
+  CreateWorkspaceReq,
   DocumentDetailRes,
   DocumentSummaryRes,
   DocumentsListRes,
@@ -8,6 +10,8 @@ import type {
   IngestTextRes,
   ReprocessDocumentRes,
   UploadDocumentRes,
+  WorkspaceRes,
+  WorkspacesListRes,
 } from "@contracts/src/generated";
 import { getStoredApiKey } from "./apiKey";
 
@@ -69,6 +73,23 @@ export type CreateUserPayload = {
   password: string;
   role?: "admin" | "employee";
 };
+
+export type WorkspaceSummary = WorkspaceRes;
+
+export type WorkspacesListResponse = WorkspacesListRes;
+
+export type ListWorkspacesParams = {
+  ownerUserId?: string;
+  includeArchived?: boolean;
+};
+
+export type CreateWorkspacePayload = CreateWorkspaceReq;
+
+export type ShareWorkspacePayload = {
+  user_ids: string[];
+};
+
+export type ArchiveWorkspaceResponse = ArchiveWorkspaceRes;
 
 type ApiError = {
   status: number;
@@ -152,6 +173,65 @@ export async function resetUserPassword(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
   });
+}
+
+export async function listWorkspaces(
+  params: ListWorkspacesParams = {}
+): Promise<WorkspacesListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.ownerUserId) {
+    searchParams.set("owner_user_id", params.ownerUserId);
+  }
+  if (params.includeArchived) {
+    searchParams.set("include_archived", "true");
+  }
+  const query = searchParams.toString();
+  return requestJson<WorkspacesListResponse>(
+    `/api/workspaces${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function createWorkspace(
+  payload: CreateWorkspacePayload
+): Promise<WorkspaceSummary> {
+  return requestJson<WorkspaceSummary>("/api/workspaces", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function publishWorkspace(
+  workspaceId: string
+): Promise<WorkspaceSummary> {
+  return requestJson<WorkspaceSummary>(`/api/workspaces/${workspaceId}/publish`, {
+    method: "POST",
+  });
+}
+
+export async function shareWorkspace(
+  workspaceId: string,
+  payload: ShareWorkspacePayload
+): Promise<WorkspaceSummary> {
+  return requestJson<WorkspaceSummary>(`/api/workspaces/${workspaceId}/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function archiveWorkspace(
+  workspaceId: string
+): Promise<ArchiveWorkspaceResponse> {
+  return requestJson<ArchiveWorkspaceResponse>(
+    `/api/workspaces/${workspaceId}/archive`,
+    {
+      method: "POST",
+    }
+  );
 }
 
 export async function listDocuments(

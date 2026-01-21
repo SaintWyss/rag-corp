@@ -12,6 +12,7 @@ const links = [
   { href: "/", label: "Ask" },
   { href: "/chat", label: "Chat" },
   { href: "/documents", label: "Sources" },
+  { href: "/workspaces", label: "Workspaces" },
 ];
 
 export function AppShell({ children }: AppShellProps) {

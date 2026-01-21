@@ -324,6 +324,28 @@ export interface ResetPasswordRequest {
   password: string;
 }
 
+export interface ShareWorkspaceReq {
+  /** List of user IDs to grant read access */
+  user_ids: string[];
+}
+
+/**
+ * Workspace name
+ */
+export type UpdateWorkspaceReqName = string | null;
+
+/**
+ * Workspace description
+ */
+export type UpdateWorkspaceReqDescription = string | null;
+
+export interface UpdateWorkspaceReq {
+  /** Workspace name */
+  name?: UpdateWorkspaceReqName;
+  /** Workspace description */
+  description?: UpdateWorkspaceReqDescription;
+}
+
 export interface UploadDocumentRes {
   document_id: string;
   status: string;
@@ -396,8 +418,9 @@ export type WorkspaceVisibility = typeof WorkspaceVisibility[keyof typeof Worksp
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const WorkspaceVisibility = {
-  private: 'private',
-  shared: 'shared',
+  PRIVATE: 'PRIVATE',
+  ORG_READ: 'ORG_READ',
+  SHARED: 'SHARED',
 } as const;
 
 export interface WorkspacesListRes {
@@ -410,6 +433,7 @@ include_archived?: boolean;
 };
 
 export type ListDocumentsV1DocumentsGetParams = {
+workspace_id?: string | null;
 q?: string | null;
 status?: string | null;
 tag?: string | null;
@@ -424,6 +448,42 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+};
+
+export type GetDocumentV1DocumentsDocumentIdGetParams = {
+workspace_id?: string | null;
+};
+
+export type DeleteDocumentV1DocumentsDocumentIdDeleteParams = {
+workspace_id?: string | null;
+};
+
+export type UploadDocumentV1DocumentsUploadPostParams = {
+workspace_id?: string | null;
+};
+
+export type ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams = {
+workspace_id?: string | null;
+};
+
+export type IngestTextV1IngestTextPostParams = {
+workspace_id?: string | null;
+};
+
+export type IngestBatchV1IngestBatchPostParams = {
+workspace_id?: string | null;
+};
+
+export type QueryV1QueryPostParams = {
+workspace_id?: string | null;
+};
+
+export type AskV1AskPostParams = {
+workspace_id?: string | null;
+};
+
+export type AskStreamV1AskStreamPostParams = {
+workspace_id?: string | null;
 };
 
 export type ListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetParams = {
@@ -449,6 +509,7 @@ include_archived?: boolean;
 };
 
 export type ListDocumentsApiV1DocumentsGetParams = {
+workspace_id?: string | null;
 q?: string | null;
 status?: string | null;
 tag?: string | null;
@@ -463,6 +524,42 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+};
+
+export type GetDocumentApiV1DocumentsDocumentIdGetParams = {
+workspace_id?: string | null;
+};
+
+export type DeleteDocumentApiV1DocumentsDocumentIdDeleteParams = {
+workspace_id?: string | null;
+};
+
+export type UploadDocumentApiV1DocumentsUploadPostParams = {
+workspace_id?: string | null;
+};
+
+export type ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams = {
+workspace_id?: string | null;
+};
+
+export type IngestTextApiV1IngestTextPostParams = {
+workspace_id?: string | null;
+};
+
+export type IngestBatchApiV1IngestBatchPostParams = {
+workspace_id?: string | null;
+};
+
+export type QueryApiV1QueryPostParams = {
+workspace_id?: string | null;
+};
+
+export type AskApiV1AskPostParams = {
+workspace_id?: string | null;
+};
+
+export type AskStreamApiV1AskStreamPostParams = {
+workspace_id?: string | null;
 };
 
 export type ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams = {
@@ -649,6 +746,57 @@ export const getWorkspaceV1WorkspacesWorkspaceIdGet = async (workspaceId: string
 
 
 /**
+ * @summary Update Workspace
+ */
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseSuccess = (updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse200) & {
+  headers: Headers;
+};
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseError = (updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseDefault) & {
+  headers: Headers;
+};
+
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse = (updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseSuccess | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseError)
+
+export const getUpdateWorkspaceV1WorkspacesWorkspaceIdPatchUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}`
+}
+
+export const updateWorkspaceV1WorkspacesWorkspaceIdPatch = async (workspaceId: string,
+    updateWorkspaceReq: UpdateWorkspaceReq, options?: RequestInit): Promise<updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse> => {
+  
+  const res = await fetch(getUpdateWorkspaceV1WorkspacesWorkspaceIdPatchUrl(workspaceId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateWorkspaceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse
+}
+
+
+
+/**
  * @summary Archive Workspace
  */
 export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200 = {
@@ -693,6 +841,155 @@ export const archiveWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId:
   
   const data: archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Publish Workspace
+ */
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseSuccess = (publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse200) & {
+  headers: Headers;
+};
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseError = (publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse = (publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseSuccess | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseError)
+
+export const getPublishWorkspaceV1WorkspacesWorkspaceIdPublishPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/publish`
+}
+
+export const publishWorkspaceV1WorkspacesWorkspaceIdPublishPost = async (workspaceId: string, options?: RequestInit): Promise<publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse> => {
+  
+  const res = await fetch(getPublishWorkspaceV1WorkspacesWorkspaceIdPublishPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse
+}
+
+
+
+/**
+ * @summary Share Workspace
+ */
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseSuccess = (shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse200) & {
+  headers: Headers;
+};
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseError = (shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseDefault) & {
+  headers: Headers;
+};
+
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse = (shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseSuccess | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseError)
+
+export const getShareWorkspaceV1WorkspacesWorkspaceIdSharePostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/share`
+}
+
+export const shareWorkspaceV1WorkspacesWorkspaceIdSharePost = async (workspaceId: string,
+    shareWorkspaceReq: ShareWorkspaceReq, options?: RequestInit): Promise<shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse> => {
+  
+  const res = await fetch(getShareWorkspaceV1WorkspacesWorkspaceIdSharePostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      shareWorkspaceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse
+}
+
+
+
+/**
+ * @summary Archive Workspace Action
+ */
+export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse200 = {
+  data: ArchiveWorkspaceRes
+  status: 200
+}
+
+export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseSuccess = (archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse200) & {
+  headers: Headers;
+};
+export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseError = (archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseDefault) & {
+  headers: Headers;
+};
+
+export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse = (archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseSuccess | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseError)
+
+export const getArchiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/archive`
+}
+
+export const archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePost = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse> => {
+  
+  const res = await fetch(getArchiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse
 }
 
 
@@ -777,17 +1074,26 @@ export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1Doc
 
 export type getDocumentV1DocumentsDocumentIdGetResponse = (getDocumentV1DocumentsDocumentIdGetResponseSuccess | getDocumentV1DocumentsDocumentIdGetResponseError)
 
-export const getGetDocumentV1DocumentsDocumentIdGetUrl = (documentId: string,) => {
+export const getGetDocumentV1DocumentsDocumentIdGetUrl = (documentId: string,
+    params?: GetDocumentV1DocumentsDocumentIdGetParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/documents/${documentId}`
+  return stringifiedParams.length > 0 ? `/v1/documents/${documentId}?${stringifiedParams}` : `/v1/documents/${documentId}`
 }
 
-export const getDocumentV1DocumentsDocumentIdGet = async (documentId: string, options?: RequestInit): Promise<getDocumentV1DocumentsDocumentIdGetResponse> => {
+export const getDocumentV1DocumentsDocumentIdGet = async (documentId: string,
+    params?: GetDocumentV1DocumentsDocumentIdGetParams, options?: RequestInit): Promise<getDocumentV1DocumentsDocumentIdGetResponse> => {
   
-  const res = await fetch(getGetDocumentV1DocumentsDocumentIdGetUrl(documentId),
+  const res = await fetch(getGetDocumentV1DocumentsDocumentIdGetUrl(documentId,params),
   {      
     ...options,
     method: 'GET'
@@ -827,17 +1133,26 @@ export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocu
 
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponse = (deleteDocumentV1DocumentsDocumentIdDeleteResponseSuccess | deleteDocumentV1DocumentsDocumentIdDeleteResponseError)
 
-export const getDeleteDocumentV1DocumentsDocumentIdDeleteUrl = (documentId: string,) => {
+export const getDeleteDocumentV1DocumentsDocumentIdDeleteUrl = (documentId: string,
+    params?: DeleteDocumentV1DocumentsDocumentIdDeleteParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/documents/${documentId}`
+  return stringifiedParams.length > 0 ? `/v1/documents/${documentId}?${stringifiedParams}` : `/v1/documents/${documentId}`
 }
 
-export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: string, options?: RequestInit): Promise<deleteDocumentV1DocumentsDocumentIdDeleteResponse> => {
+export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: string,
+    params?: DeleteDocumentV1DocumentsDocumentIdDeleteParams, options?: RequestInit): Promise<deleteDocumentV1DocumentsDocumentIdDeleteResponse> => {
   
-  const res = await fetch(getDeleteDocumentV1DocumentsDocumentIdDeleteUrl(documentId),
+  const res = await fetch(getDeleteDocumentV1DocumentsDocumentIdDeleteUrl(documentId,params),
   {      
     ...options,
     method: 'DELETE'
@@ -877,15 +1192,23 @@ export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1
 
 export type uploadDocumentV1DocumentsUploadPostResponse = (uploadDocumentV1DocumentsUploadPostResponseSuccess | uploadDocumentV1DocumentsUploadPostResponseError)
 
-export const getUploadDocumentV1DocumentsUploadPostUrl = () => {
+export const getUploadDocumentV1DocumentsUploadPostUrl = (params?: UploadDocumentV1DocumentsUploadPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/documents/upload`
+  return stringifiedParams.length > 0 ? `/v1/documents/upload?${stringifiedParams}` : `/v1/documents/upload`
 }
 
-export const uploadDocumentV1DocumentsUploadPost = async (bodyUploadDocumentV1DocumentsUploadPost: BodyUploadDocumentV1DocumentsUploadPost, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
+export const uploadDocumentV1DocumentsUploadPost = async (bodyUploadDocumentV1DocumentsUploadPost: BodyUploadDocumentV1DocumentsUploadPost,
+    params?: UploadDocumentV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadDocumentV1DocumentsUploadPost.file)
 if(bodyUploadDocumentV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentV1DocumentsUploadPost.title !== null) {
@@ -898,7 +1221,7 @@ if(bodyUploadDocumentV1DocumentsUploadPost.metadata !== undefined && bodyUploadD
  formData.append(`metadata`, bodyUploadDocumentV1DocumentsUploadPost.metadata)
  }
 
-  const res = await fetch(getUploadDocumentV1DocumentsUploadPostUrl(),
+  const res = await fetch(getUploadDocumentV1DocumentsUploadPostUrl(params),
   {      
     ...options,
     method: 'POST'
@@ -939,17 +1262,26 @@ export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (
 
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseSuccess | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError)
 
-export const getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,) => {
+export const getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,
+    params?: ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/documents/${documentId}/reprocess`
+  return stringifiedParams.length > 0 ? `/v1/documents/${documentId}/reprocess?${stringifiedParams}` : `/v1/documents/${documentId}/reprocess`
 }
 
-export const reprocessDocumentV1DocumentsDocumentIdReprocessPost = async (documentId: string, options?: RequestInit): Promise<reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse> => {
+export const reprocessDocumentV1DocumentsDocumentIdReprocessPost = async (documentId: string,
+    params?: ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams, options?: RequestInit): Promise<reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse> => {
   
-  const res = await fetch(getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl(documentId),
+  const res = await fetch(getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl(documentId,params),
   {      
     ...options,
     method: 'POST'
@@ -989,17 +1321,25 @@ export type ingestTextV1IngestTextPostResponseError = (ingestTextV1IngestTextPos
 
 export type ingestTextV1IngestTextPostResponse = (ingestTextV1IngestTextPostResponseSuccess | ingestTextV1IngestTextPostResponseError)
 
-export const getIngestTextV1IngestTextPostUrl = () => {
+export const getIngestTextV1IngestTextPostUrl = (params?: IngestTextV1IngestTextPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/ingest/text`
+  return stringifiedParams.length > 0 ? `/v1/ingest/text?${stringifiedParams}` : `/v1/ingest/text`
 }
 
-export const ingestTextV1IngestTextPost = async (ingestTextReq: IngestTextReq, options?: RequestInit): Promise<ingestTextV1IngestTextPostResponse> => {
+export const ingestTextV1IngestTextPost = async (ingestTextReq: IngestTextReq,
+    params?: IngestTextV1IngestTextPostParams, options?: RequestInit): Promise<ingestTextV1IngestTextPostResponse> => {
   
-  const res = await fetch(getIngestTextV1IngestTextPostUrl(),
+  const res = await fetch(getIngestTextV1IngestTextPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -1044,17 +1384,25 @@ export type ingestBatchV1IngestBatchPostResponseError = (ingestBatchV1IngestBatc
 
 export type ingestBatchV1IngestBatchPostResponse = (ingestBatchV1IngestBatchPostResponseSuccess | ingestBatchV1IngestBatchPostResponseError)
 
-export const getIngestBatchV1IngestBatchPostUrl = () => {
+export const getIngestBatchV1IngestBatchPostUrl = (params?: IngestBatchV1IngestBatchPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/ingest/batch`
+  return stringifiedParams.length > 0 ? `/v1/ingest/batch?${stringifiedParams}` : `/v1/ingest/batch`
 }
 
-export const ingestBatchV1IngestBatchPost = async (ingestBatchReq: IngestBatchReq, options?: RequestInit): Promise<ingestBatchV1IngestBatchPostResponse> => {
+export const ingestBatchV1IngestBatchPost = async (ingestBatchReq: IngestBatchReq,
+    params?: IngestBatchV1IngestBatchPostParams, options?: RequestInit): Promise<ingestBatchV1IngestBatchPostResponse> => {
   
-  const res = await fetch(getIngestBatchV1IngestBatchPostUrl(),
+  const res = await fetch(getIngestBatchV1IngestBatchPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -1095,17 +1443,25 @@ export type queryV1QueryPostResponseError = (queryV1QueryPostResponseDefault) & 
 
 export type queryV1QueryPostResponse = (queryV1QueryPostResponseSuccess | queryV1QueryPostResponseError)
 
-export const getQueryV1QueryPostUrl = () => {
+export const getQueryV1QueryPostUrl = (params?: QueryV1QueryPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/query`
+  return stringifiedParams.length > 0 ? `/v1/query?${stringifiedParams}` : `/v1/query`
 }
 
-export const queryV1QueryPost = async (queryReq: QueryReq, options?: RequestInit): Promise<queryV1QueryPostResponse> => {
+export const queryV1QueryPost = async (queryReq: QueryReq,
+    params?: QueryV1QueryPostParams, options?: RequestInit): Promise<queryV1QueryPostResponse> => {
   
-  const res = await fetch(getQueryV1QueryPostUrl(),
+  const res = await fetch(getQueryV1QueryPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -1155,17 +1511,25 @@ export type askV1AskPostResponseError = (askV1AskPostResponseDefault) & {
 
 export type askV1AskPostResponse = (askV1AskPostResponseSuccess | askV1AskPostResponseError)
 
-export const getAskV1AskPostUrl = () => {
+export const getAskV1AskPostUrl = (params?: AskV1AskPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/ask`
+  return stringifiedParams.length > 0 ? `/v1/ask?${stringifiedParams}` : `/v1/ask`
 }
 
-export const askV1AskPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askV1AskPostResponse> => {
+export const askV1AskPost = async (queryReq: QueryReq,
+    params?: AskV1AskPostParams, options?: RequestInit): Promise<askV1AskPostResponse> => {
   
-  const res = await fetch(getAskV1AskPostUrl(),
+  const res = await fetch(getAskV1AskPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -1216,17 +1580,25 @@ export type askStreamV1AskStreamPostResponseError = (askStreamV1AskStreamPostRes
 
 export type askStreamV1AskStreamPostResponse = (askStreamV1AskStreamPostResponseSuccess | askStreamV1AskStreamPostResponseError)
 
-export const getAskStreamV1AskStreamPostUrl = () => {
+export const getAskStreamV1AskStreamPostUrl = (params?: AskStreamV1AskStreamPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/ask/stream`
+  return stringifiedParams.length > 0 ? `/v1/ask/stream?${stringifiedParams}` : `/v1/ask/stream`
 }
 
-export const askStreamV1AskStreamPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askStreamV1AskStreamPostResponse> => {
+export const askStreamV1AskStreamPost = async (queryReq: QueryReq,
+    params?: AskStreamV1AskStreamPostParams, options?: RequestInit): Promise<askStreamV1AskStreamPostResponse> => {
   
-  const res = await fetch(getAskStreamV1AskStreamPostUrl(),
+  const res = await fetch(getAskStreamV1AskStreamPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -2275,6 +2647,57 @@ export const getWorkspaceApiV1WorkspacesWorkspaceIdGet = async (workspaceId: str
 
 
 /**
+ * @summary Update Workspace
+ */
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseSuccess = (updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse200) & {
+  headers: Headers;
+};
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseError = (updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseDefault) & {
+  headers: Headers;
+};
+
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse = (updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseSuccess | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseError)
+
+export const getUpdateWorkspaceApiV1WorkspacesWorkspaceIdPatchUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}`
+}
+
+export const updateWorkspaceApiV1WorkspacesWorkspaceIdPatch = async (workspaceId: string,
+    updateWorkspaceReq: UpdateWorkspaceReq, options?: RequestInit): Promise<updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse> => {
+  
+  const res = await fetch(getUpdateWorkspaceApiV1WorkspacesWorkspaceIdPatchUrl(workspaceId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateWorkspaceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse
+}
+
+
+
+/**
  * @summary Archive Workspace
  */
 export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200 = {
@@ -2319,6 +2742,155 @@ export const archiveWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspace
   
   const data: archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Publish Workspace
+ */
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseSuccess = (publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse200) & {
+  headers: Headers;
+};
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseError = (publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse = (publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseSuccess | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseError)
+
+export const getPublishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/publish`
+}
+
+export const publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPost = async (workspaceId: string, options?: RequestInit): Promise<publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse> => {
+  
+  const res = await fetch(getPublishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse
+}
+
+
+
+/**
+ * @summary Share Workspace
+ */
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseSuccess = (shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse200) & {
+  headers: Headers;
+};
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseError = (shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseDefault) & {
+  headers: Headers;
+};
+
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse = (shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseSuccess | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseError)
+
+export const getShareWorkspaceApiV1WorkspacesWorkspaceIdSharePostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/share`
+}
+
+export const shareWorkspaceApiV1WorkspacesWorkspaceIdSharePost = async (workspaceId: string,
+    shareWorkspaceReq: ShareWorkspaceReq, options?: RequestInit): Promise<shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse> => {
+  
+  const res = await fetch(getShareWorkspaceApiV1WorkspacesWorkspaceIdSharePostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      shareWorkspaceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse
+}
+
+
+
+/**
+ * @summary Archive Workspace Action
+ */
+export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse200 = {
+  data: ArchiveWorkspaceRes
+  status: 200
+}
+
+export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseSuccess = (archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse200) & {
+  headers: Headers;
+};
+export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseError = (archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseDefault) & {
+  headers: Headers;
+};
+
+export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse = (archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseSuccess | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseError)
+
+export const getArchiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/archive`
+}
+
+export const archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePost = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse> => {
+  
+  const res = await fetch(getArchiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse
 }
 
 
@@ -2403,17 +2975,26 @@ export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentAp
 
 export type getDocumentApiV1DocumentsDocumentIdGetResponse = (getDocumentApiV1DocumentsDocumentIdGetResponseSuccess | getDocumentApiV1DocumentsDocumentIdGetResponseError)
 
-export const getGetDocumentApiV1DocumentsDocumentIdGetUrl = (documentId: string,) => {
+export const getGetDocumentApiV1DocumentsDocumentIdGetUrl = (documentId: string,
+    params?: GetDocumentApiV1DocumentsDocumentIdGetParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/documents/${documentId}`
+  return stringifiedParams.length > 0 ? `/api/v1/documents/${documentId}?${stringifiedParams}` : `/api/v1/documents/${documentId}`
 }
 
-export const getDocumentApiV1DocumentsDocumentIdGet = async (documentId: string, options?: RequestInit): Promise<getDocumentApiV1DocumentsDocumentIdGetResponse> => {
+export const getDocumentApiV1DocumentsDocumentIdGet = async (documentId: string,
+    params?: GetDocumentApiV1DocumentsDocumentIdGetParams, options?: RequestInit): Promise<getDocumentApiV1DocumentsDocumentIdGetResponse> => {
   
-  const res = await fetch(getGetDocumentApiV1DocumentsDocumentIdGetUrl(documentId),
+  const res = await fetch(getGetDocumentApiV1DocumentsDocumentIdGetUrl(documentId,params),
   {      
     ...options,
     method: 'GET'
@@ -2453,17 +3034,26 @@ export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteD
 
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponseSuccess | deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError)
 
-export const getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl = (documentId: string,) => {
+export const getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl = (documentId: string,
+    params?: DeleteDocumentApiV1DocumentsDocumentIdDeleteParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/documents/${documentId}`
+  return stringifiedParams.length > 0 ? `/api/v1/documents/${documentId}?${stringifiedParams}` : `/api/v1/documents/${documentId}`
 }
 
-export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: string, options?: RequestInit): Promise<deleteDocumentApiV1DocumentsDocumentIdDeleteResponse> => {
+export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: string,
+    params?: DeleteDocumentApiV1DocumentsDocumentIdDeleteParams, options?: RequestInit): Promise<deleteDocumentApiV1DocumentsDocumentIdDeleteResponse> => {
   
-  const res = await fetch(getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl(documentId),
+  const res = await fetch(getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl(documentId,params),
   {      
     ...options,
     method: 'DELETE'
@@ -2503,15 +3093,23 @@ export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumen
 
 export type uploadDocumentApiV1DocumentsUploadPostResponse = (uploadDocumentApiV1DocumentsUploadPostResponseSuccess | uploadDocumentApiV1DocumentsUploadPostResponseError)
 
-export const getUploadDocumentApiV1DocumentsUploadPostUrl = () => {
+export const getUploadDocumentApiV1DocumentsUploadPostUrl = (params?: UploadDocumentApiV1DocumentsUploadPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/documents/upload`
+  return stringifiedParams.length > 0 ? `/api/v1/documents/upload?${stringifiedParams}` : `/api/v1/documents/upload`
 }
 
-export const uploadDocumentApiV1DocumentsUploadPost = async (bodyUploadDocumentApiV1DocumentsUploadPost: BodyUploadDocumentApiV1DocumentsUploadPost, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
+export const uploadDocumentApiV1DocumentsUploadPost = async (bodyUploadDocumentApiV1DocumentsUploadPost: BodyUploadDocumentApiV1DocumentsUploadPost,
+    params?: UploadDocumentApiV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadDocumentApiV1DocumentsUploadPost.file)
 if(bodyUploadDocumentApiV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.title !== null) {
@@ -2524,7 +3122,7 @@ if(bodyUploadDocumentApiV1DocumentsUploadPost.metadata !== undefined && bodyUplo
  formData.append(`metadata`, bodyUploadDocumentApiV1DocumentsUploadPost.metadata)
  }
 
-  const res = await fetch(getUploadDocumentApiV1DocumentsUploadPostUrl(),
+  const res = await fetch(getUploadDocumentApiV1DocumentsUploadPostUrl(params),
   {      
     ...options,
     method: 'POST'
@@ -2565,17 +3163,26 @@ export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError 
 
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseSuccess | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError)
 
-export const getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,) => {
+export const getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,
+    params?: ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/documents/${documentId}/reprocess`
+  return stringifiedParams.length > 0 ? `/api/v1/documents/${documentId}/reprocess?${stringifiedParams}` : `/api/v1/documents/${documentId}/reprocess`
 }
 
-export const reprocessDocumentApiV1DocumentsDocumentIdReprocessPost = async (documentId: string, options?: RequestInit): Promise<reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse> => {
+export const reprocessDocumentApiV1DocumentsDocumentIdReprocessPost = async (documentId: string,
+    params?: ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams, options?: RequestInit): Promise<reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse> => {
   
-  const res = await fetch(getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl(documentId),
+  const res = await fetch(getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl(documentId,params),
   {      
     ...options,
     method: 'POST'
@@ -2615,17 +3222,25 @@ export type ingestTextApiV1IngestTextPostResponseError = (ingestTextApiV1IngestT
 
 export type ingestTextApiV1IngestTextPostResponse = (ingestTextApiV1IngestTextPostResponseSuccess | ingestTextApiV1IngestTextPostResponseError)
 
-export const getIngestTextApiV1IngestTextPostUrl = () => {
+export const getIngestTextApiV1IngestTextPostUrl = (params?: IngestTextApiV1IngestTextPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/ingest/text`
+  return stringifiedParams.length > 0 ? `/api/v1/ingest/text?${stringifiedParams}` : `/api/v1/ingest/text`
 }
 
-export const ingestTextApiV1IngestTextPost = async (ingestTextReq: IngestTextReq, options?: RequestInit): Promise<ingestTextApiV1IngestTextPostResponse> => {
+export const ingestTextApiV1IngestTextPost = async (ingestTextReq: IngestTextReq,
+    params?: IngestTextApiV1IngestTextPostParams, options?: RequestInit): Promise<ingestTextApiV1IngestTextPostResponse> => {
   
-  const res = await fetch(getIngestTextApiV1IngestTextPostUrl(),
+  const res = await fetch(getIngestTextApiV1IngestTextPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -2670,17 +3285,25 @@ export type ingestBatchApiV1IngestBatchPostResponseError = (ingestBatchApiV1Inge
 
 export type ingestBatchApiV1IngestBatchPostResponse = (ingestBatchApiV1IngestBatchPostResponseSuccess | ingestBatchApiV1IngestBatchPostResponseError)
 
-export const getIngestBatchApiV1IngestBatchPostUrl = () => {
+export const getIngestBatchApiV1IngestBatchPostUrl = (params?: IngestBatchApiV1IngestBatchPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/ingest/batch`
+  return stringifiedParams.length > 0 ? `/api/v1/ingest/batch?${stringifiedParams}` : `/api/v1/ingest/batch`
 }
 
-export const ingestBatchApiV1IngestBatchPost = async (ingestBatchReq: IngestBatchReq, options?: RequestInit): Promise<ingestBatchApiV1IngestBatchPostResponse> => {
+export const ingestBatchApiV1IngestBatchPost = async (ingestBatchReq: IngestBatchReq,
+    params?: IngestBatchApiV1IngestBatchPostParams, options?: RequestInit): Promise<ingestBatchApiV1IngestBatchPostResponse> => {
   
-  const res = await fetch(getIngestBatchApiV1IngestBatchPostUrl(),
+  const res = await fetch(getIngestBatchApiV1IngestBatchPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -2721,17 +3344,25 @@ export type queryApiV1QueryPostResponseError = (queryApiV1QueryPostResponseDefau
 
 export type queryApiV1QueryPostResponse = (queryApiV1QueryPostResponseSuccess | queryApiV1QueryPostResponseError)
 
-export const getQueryApiV1QueryPostUrl = () => {
+export const getQueryApiV1QueryPostUrl = (params?: QueryApiV1QueryPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/query`
+  return stringifiedParams.length > 0 ? `/api/v1/query?${stringifiedParams}` : `/api/v1/query`
 }
 
-export const queryApiV1QueryPost = async (queryReq: QueryReq, options?: RequestInit): Promise<queryApiV1QueryPostResponse> => {
+export const queryApiV1QueryPost = async (queryReq: QueryReq,
+    params?: QueryApiV1QueryPostParams, options?: RequestInit): Promise<queryApiV1QueryPostResponse> => {
   
-  const res = await fetch(getQueryApiV1QueryPostUrl(),
+  const res = await fetch(getQueryApiV1QueryPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -2781,17 +3412,25 @@ export type askApiV1AskPostResponseError = (askApiV1AskPostResponseDefault) & {
 
 export type askApiV1AskPostResponse = (askApiV1AskPostResponseSuccess | askApiV1AskPostResponseError)
 
-export const getAskApiV1AskPostUrl = () => {
+export const getAskApiV1AskPostUrl = (params?: AskApiV1AskPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/ask`
+  return stringifiedParams.length > 0 ? `/api/v1/ask?${stringifiedParams}` : `/api/v1/ask`
 }
 
-export const askApiV1AskPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askApiV1AskPostResponse> => {
+export const askApiV1AskPost = async (queryReq: QueryReq,
+    params?: AskApiV1AskPostParams, options?: RequestInit): Promise<askApiV1AskPostResponse> => {
   
-  const res = await fetch(getAskApiV1AskPostUrl(),
+  const res = await fetch(getAskApiV1AskPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -2842,17 +3481,25 @@ export type askStreamApiV1AskStreamPostResponseError = (askStreamApiV1AskStreamP
 
 export type askStreamApiV1AskStreamPostResponse = (askStreamApiV1AskStreamPostResponseSuccess | askStreamApiV1AskStreamPostResponseError)
 
-export const getAskStreamApiV1AskStreamPostUrl = () => {
+export const getAskStreamApiV1AskStreamPostUrl = (params?: AskStreamApiV1AskStreamPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/ask/stream`
+  return stringifiedParams.length > 0 ? `/api/v1/ask/stream?${stringifiedParams}` : `/api/v1/ask/stream`
 }
 
-export const askStreamApiV1AskStreamPost = async (queryReq: QueryReq, options?: RequestInit): Promise<askStreamApiV1AskStreamPostResponse> => {
+export const askStreamApiV1AskStreamPost = async (queryReq: QueryReq,
+    params?: AskStreamApiV1AskStreamPostParams, options?: RequestInit): Promise<askStreamApiV1AskStreamPostResponse> => {
   
-  const res = await fetch(getAskStreamApiV1AskStreamPostUrl(),
+  const res = await fetch(getAskStreamApiV1AskStreamPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -3461,6 +4108,54 @@ export const healthzHealthzGet = async (params?: HealthzHealthzGetParams, option
   
   const data: healthzHealthzGetResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as healthzHealthzGetResponse
+}
+
+
+
+/**
+ * R: Minimal readiness check for core dependencies only.
+
+Returns:
+    ok: True if core dependencies are operational
+    db: "connected" or "disconnected"
+    request_id: Correlation ID for this request
+ * @summary Readyz
+ */
+export type readyzReadyzGetResponse200 = {
+  data: unknown
+  status: 200
+}
+    
+export type readyzReadyzGetResponseSuccess = (readyzReadyzGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type readyzReadyzGetResponse = (readyzReadyzGetResponseSuccess)
+
+export const getReadyzReadyzGetUrl = () => {
+
+
+  
+
+  return `/readyz`
+}
+
+export const readyzReadyzGet = async ( options?: RequestInit): Promise<readyzReadyzGetResponse> => {
+  
+  const res = await fetch(getReadyzReadyzGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: readyzReadyzGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as readyzReadyzGetResponse
 }
 
 
