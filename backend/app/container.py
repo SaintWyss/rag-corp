@@ -70,7 +70,9 @@ from .application.use_cases import (
     IngestDocumentUseCase,
     ListDocumentsUseCase,
     ListWorkspacesUseCase,
+    ReprocessDocumentUseCase,
     SearchChunksUseCase,
+    UploadDocumentUseCase,
     CreateWorkspaceUseCase,
     ArchiveWorkspaceUseCase,
     UpdateWorkspaceUseCase,
@@ -227,6 +229,8 @@ def get_answer_query_use_case() -> AnswerQueryUseCase:
     """
     return AnswerQueryUseCase(
         repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
         embedding_service=get_embedding_service(),
         llm_service=get_llm_service(),
     )
@@ -239,6 +243,7 @@ def get_ingest_document_use_case() -> IngestDocumentUseCase:
     """
     return IngestDocumentUseCase(
         repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
         embedding_service=get_embedding_service(),
         chunker=get_text_chunker(),
     )
@@ -251,13 +256,19 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
     """
     return SearchChunksUseCase(
         repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
         embedding_service=get_embedding_service(),
     )
 
 
 def get_list_documents_use_case() -> ListDocumentsUseCase:
     """R: Create ListDocumentsUseCase."""
-    return ListDocumentsUseCase(repository=get_document_repository())
+    return ListDocumentsUseCase(
+        repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
 
 
 def get_list_workspaces_use_case() -> ListWorkspacesUseCase:
@@ -270,7 +281,11 @@ def get_list_workspaces_use_case() -> ListWorkspacesUseCase:
 
 def get_get_document_use_case() -> GetDocumentUseCase:
     """R: Create GetDocumentUseCase."""
-    return GetDocumentUseCase(repository=get_document_repository())
+    return GetDocumentUseCase(
+        repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
 
 
 def get_get_workspace_use_case() -> GetWorkspaceUseCase:
@@ -283,7 +298,29 @@ def get_get_workspace_use_case() -> GetWorkspaceUseCase:
 
 def get_delete_document_use_case() -> DeleteDocumentUseCase:
     """R: Create DeleteDocumentUseCase."""
-    return DeleteDocumentUseCase(repository=get_document_repository())
+    return DeleteDocumentUseCase(
+        repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+    )
+
+
+def get_upload_document_use_case() -> UploadDocumentUseCase:
+    """R: Create UploadDocumentUseCase."""
+    return UploadDocumentUseCase(
+        repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+        storage=get_file_storage(),
+        queue=get_document_queue(),
+    )
+
+
+def get_reprocess_document_use_case() -> ReprocessDocumentUseCase:
+    """R: Create ReprocessDocumentUseCase."""
+    return ReprocessDocumentUseCase(
+        repository=get_document_repository(),
+        workspace_repository=get_workspace_repository(),
+        queue=get_document_queue(),
+    )
 
 
 def get_create_workspace_use_case() -> CreateWorkspaceUseCase:

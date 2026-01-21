@@ -30,13 +30,21 @@ Notes:
 
 from dataclasses import dataclass
 from typing import Optional
+from uuid import UUID
 
 from ...domain.entities import QueryResult
-from ...domain.repositories import DocumentRepository
+from ...domain.repositories import (
+    DocumentRepository,
+    WorkspaceRepository,
+    WorkspaceAclRepository,
+)
 from ...domain.services import EmbeddingService, LLMService
+from ...domain.workspace_policy import WorkspaceActor
 from ...timing import StageTimings
 from ...logger import logger
 from ..context_builder import ContextBuilder, get_context_builder
+from .document_results import AnswerQueryResult
+from .workspace_access import resolve_workspace_for_read
 
 
 @dataclass
@@ -46,12 +54,16 @@ class AnswerQueryInput:
 
     Attributes:
         query: User's natural language question
+        workspace_id: Workspace UUID for scoping retrieval
+        actor: Actor context for workspace access
         llm_query: Optional query override passed to the LLM prompt
         top_k: Number of similar chunks to retrieve (default: 5)
         use_mmr: Use Maximal Marginal Relevance for diverse results
     """
 
     query: str
+    workspace_id: UUID
+    actor: WorkspaceActor | None
     llm_query: Optional[str] = None
     top_k: int = 5
     use_mmr: bool = False
@@ -68,6 +80,8 @@ class AnswerQueryUseCase:
     def __init__(
         self,
         repository: DocumentRepository,
+        workspace_repository: WorkspaceRepository,
+        acl_repository: WorkspaceAclRepository,
         embedding_service: EmbeddingService,
         llm_service: LLMService,
         context_builder: Optional[ContextBuilder] = None,
@@ -82,11 +96,13 @@ class AnswerQueryUseCase:
             context_builder: Optional context builder (defaults to singleton)
         """
         self.repository = repository
+        self.workspace_repository = workspace_repository
+        self.acl_repository = acl_repository
         self.embedding_service = embedding_service
         self.llm_service = llm_service
         self.context_builder = context_builder or get_context_builder()
 
-    def execute(self, input_data: AnswerQueryInput) -> QueryResult:
+    def execute(self, input_data: AnswerQueryInput) -> AnswerQueryResult:
         """
         R: Execute RAG flow: embed query → retrieve chunks → generate answer.
 
@@ -101,6 +117,15 @@ class AnswerQueryUseCase:
             2. Context is assembled with metadata for grounding
             3. LLM must answer based only on provided context
         """
+        _, error = resolve_workspace_for_read(
+            workspace_id=input_data.workspace_id,
+            actor=input_data.actor,
+            workspace_repository=self.workspace_repository,
+            acl_repository=self.acl_repository,
+        )
+        if error:
+            return AnswerQueryResult(error=error)
+
         # R: Initialize timing measurement
         timings = StageTimings()
 
@@ -109,17 +134,19 @@ class AnswerQueryUseCase:
 
         if input_data.top_k <= 0:
             timing_data = timings.to_dict()
-            return QueryResult(
-                answer="No encontré documentos relacionados a tu pregunta.",
-                chunks=[],
-                query=input_data.query,
-                metadata={
-                    "top_k": input_data.top_k,
-                    "chunks_found": 0,
-                    "context_chars": 0,
-                    "prompt_version": prompt_version,
-                    **timing_data,
-                },
+            return AnswerQueryResult(
+                result=QueryResult(
+                    answer="No encontré documentos relacionados a tu pregunta.",
+                    chunks=[],
+                    query=input_data.query,
+                    metadata={
+                        "top_k": input_data.top_k,
+                        "chunks_found": 0,
+                        "context_chars": 0,
+                        "prompt_version": prompt_version,
+                        **timing_data,
+                    },
+                )
             )
 
         # R: STEP 1 - Generate query embedding
@@ -135,11 +162,14 @@ class AnswerQueryUseCase:
                     top_k=input_data.top_k,
                     fetch_k=input_data.top_k * 4,  # Fetch 4x for better diversity
                     lambda_mult=0.5,
+                    workspace_id=input_data.workspace_id,
                 )
             else:
                 # R: Standard similarity search (faster)
                 chunks = self.repository.find_similar_chunks(
-                    embedding=query_embedding, top_k=input_data.top_k
+                    embedding=query_embedding,
+                    top_k=input_data.top_k,
+                    workspace_id=input_data.workspace_id,
                 )
 
         # R: STEP 3 - Assemble context from retrieved chunks
@@ -154,17 +184,19 @@ class AnswerQueryUseCase:
                     **timing_data,
                 },
             )
-            return QueryResult(
-                answer="No encontré documentos relacionados a tu pregunta.",
-                chunks=[],
-                query=input_data.query,
-                metadata={
-                    "top_k": input_data.top_k,
-                    "chunks_found": 0,
-                    "context_chars": 0,
-                    "prompt_version": prompt_version,
-                    **timing_data,
-                },
+            return AnswerQueryResult(
+                result=QueryResult(
+                    answer="No encontré documentos relacionados a tu pregunta.",
+                    chunks=[],
+                    query=input_data.query,
+                    metadata={
+                        "top_k": input_data.top_k,
+                        "chunks_found": 0,
+                        "context_chars": 0,
+                        "prompt_version": prompt_version,
+                        **timing_data,
+                    },
+                )
             )
 
         # R: Build context with metadata using ContextBuilder
@@ -207,17 +239,19 @@ class AnswerQueryUseCase:
             pass
 
         # R: Return structured result with answer and sources
-        return QueryResult(
-            answer=answer,
-            chunks=chunks[:chunks_used],  # Only include chunks actually used
-            query=input_data.query,
-            metadata={
-                "top_k": input_data.top_k,
-                "chunks_found": len(chunks),
-                "chunks_used": chunks_used,
-                "context_chars": context_chars,
-                "prompt_version": prompt_version,
-                "use_mmr": input_data.use_mmr,
-                **timing_data,
-            },
+        return AnswerQueryResult(
+            result=QueryResult(
+                answer=answer,
+                chunks=chunks[:chunks_used],  # Only include chunks actually used
+                query=input_data.query,
+                metadata={
+                    "top_k": input_data.top_k,
+                    "chunks_found": len(chunks),
+                    "chunks_used": chunks_used,
+                    "context_chars": context_chars,
+                    "prompt_version": prompt_version,
+                    "use_mmr": input_data.use_mmr,
+                    **timing_data,
+                },
+            )
         )

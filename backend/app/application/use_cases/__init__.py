@@ -7,7 +7,6 @@ from .get_workspace import GetWorkspaceUseCase
 from .ingest_document import (
     IngestDocumentUseCase,
     IngestDocumentInput,
-    IngestDocumentOutput,
 )
 from .list_documents import ListDocumentsUseCase
 from .list_workspaces import ListWorkspacesUseCase
@@ -16,12 +15,26 @@ from .process_uploaded_document import (
     ProcessUploadedDocumentInput,
     ProcessUploadedDocumentOutput,
 )
-from .search_chunks import SearchChunksUseCase, SearchChunksInput, SearchChunksOutput
+from .reprocess_document import ReprocessDocumentUseCase, ReprocessDocumentInput
+from .search_chunks import SearchChunksUseCase, SearchChunksInput
+from .upload_document import UploadDocumentUseCase, UploadDocumentInput
 from .create_workspace import CreateWorkspaceUseCase, CreateWorkspaceInput
 from .archive_workspace import ArchiveWorkspaceUseCase
 from .update_workspace import UpdateWorkspaceUseCase
 from .publish_workspace import PublishWorkspaceUseCase
 from .share_workspace import ShareWorkspaceUseCase
+from .document_results import (
+    AnswerQueryResult,
+    DocumentError,
+    DocumentErrorCode,
+    DeleteDocumentResult,
+    GetDocumentResult,
+    IngestDocumentResult,
+    ListDocumentsResult,
+    ReprocessDocumentResult,
+    SearchChunksResult,
+    UploadDocumentResult,
+)
 from .workspace_results import (
     WorkspaceError,
     WorkspaceErrorCode,
@@ -33,20 +46,31 @@ from .workspace_results import (
 __all__ = [
     "AnswerQueryUseCase",
     "AnswerQueryInput",
+    "AnswerQueryResult",
     "DeleteDocumentUseCase",
+    "DeleteDocumentResult",
     "GetDocumentUseCase",
+    "GetDocumentResult",
     "GetWorkspaceUseCase",
     "IngestDocumentUseCase",
     "IngestDocumentInput",
-    "IngestDocumentOutput",
+    "IngestDocumentResult",
     "ListDocumentsUseCase",
+    "ListDocumentsResult",
     "ListWorkspacesUseCase",
     "ProcessUploadedDocumentUseCase",
     "ProcessUploadedDocumentInput",
     "ProcessUploadedDocumentOutput",
+    "ReprocessDocumentUseCase",
+    "ReprocessDocumentInput",
     "SearchChunksUseCase",
     "SearchChunksInput",
-    "SearchChunksOutput",
+    "SearchChunksResult",
+    "UploadDocumentUseCase",
+    "UploadDocumentInput",
+    "UploadDocumentResult",
+    "DocumentError",
+    "DocumentErrorCode",
     "CreateWorkspaceUseCase",
     "CreateWorkspaceInput",
     "ArchiveWorkspaceUseCase",

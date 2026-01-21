@@ -71,13 +71,20 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    def find_similar_chunks(self, embedding: List[float], top_k: int) -> List[Chunk]:
+    def find_similar_chunks(
+        self,
+        embedding: List[float],
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> List[Chunk]:
         """
         R: Search for similar chunks using vector similarity.
 
         Args:
             embedding: Query embedding vector
             top_k: Number of most similar chunks to return
+            workspace_id: Optional workspace filter
 
         Returns:
             List of Chunk entities ordered by similarity (descending)
@@ -89,6 +96,7 @@ class DocumentRepository(Protocol):
         limit: int = 50,
         offset: int = 0,
         *,
+        workspace_id: UUID | None = None,
         query: str | None = None,
         status: str | None = None,
         tag: str | None = None,
@@ -100,6 +108,7 @@ class DocumentRepository(Protocol):
         Args:
             limit: Maximum number of documents to return
             offset: Offset for pagination
+            workspace_id: Optional workspace filter
             query: Optional search query
             status: Optional status filter
             tag: Optional tag filter
@@ -110,12 +119,15 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    def get_document(self, document_id: UUID) -> Optional[Document]:
+    def get_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> Optional[Document]:
         """
         R: Fetch a single document by ID.
 
         Args:
             document_id: Document UUID
+            workspace_id: Optional workspace filter
 
         Returns:
             Document if found, otherwise None
@@ -128,6 +140,8 @@ class DocumentRepository(Protocol):
         top_k: int,
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
+        *,
+        workspace_id: UUID | None = None,
     ) -> List[Chunk]:
         """
         R: Search for similar chunks using Maximal Marginal Relevance.
@@ -140,6 +154,7 @@ class DocumentRepository(Protocol):
             top_k: Number of chunks to return
             fetch_k: Number of candidates to fetch before reranking
             lambda_mult: Balance between relevance (1.0) and diversity (0.0)
+            workspace_id: Optional workspace filter
 
         Returns:
             List of Chunk entities ordered by MMR score

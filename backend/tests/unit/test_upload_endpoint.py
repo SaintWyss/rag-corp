@@ -9,18 +9,22 @@ Responsibilities:
 import importlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.auth_users import create_access_token, hash_password
+from app.application.use_cases.upload_document import UploadDocumentUseCase
+from app.domain.entities import Workspace, WorkspaceVisibility
 from app.exception_handlers import register_exception_handlers
 from app.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
+
+_LEGACY_WORKSPACE_ID = "00000000-0000-0000-0000-000000000001"
 
 
 def _auth_settings():
@@ -52,11 +56,38 @@ def _user(role: UserRole) -> User:
 def _prepare_routes(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+    monkeypatch.setenv("LEGACY_WORKSPACE_ID", _LEGACY_WORKSPACE_ID)
 
     import app.routes as routes
 
     importlib.reload(routes)
     return routes
+
+
+def _override_upload_use_case(
+    app: FastAPI,
+    routes_module,
+    workspace_id: UUID,
+    mock_repo: MagicMock,
+    mock_storage: MagicMock,
+    mock_queue: MagicMock,
+):
+    workspace = Workspace(
+        id=workspace_id,
+        name="Legacy",
+        visibility=WorkspaceVisibility.PRIVATE,
+    )
+    workspace_repo = MagicMock()
+    workspace_repo.get_workspace.return_value = workspace
+    use_case = UploadDocumentUseCase(
+        repository=mock_repo,
+        workspace_repository=workspace_repo,
+        storage=mock_storage,
+        queue=mock_queue,
+    )
+    app.dependency_overrides[routes_module.get_upload_document_use_case] = (
+        lambda: use_case
+    )
 
 
 def test_upload_ok_creates_pending_and_stores(monkeypatch):
@@ -66,10 +97,11 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
     mock_repo = MagicMock()
     mock_storage = MagicMock()
     mock_queue = MagicMock()
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: mock_repo
-    app.dependency_overrides[routes.get_file_storage] = lambda: mock_storage
-    app.dependency_overrides[routes.get_document_queue] = lambda: mock_queue
+    _override_upload_use_case(
+        app, routes, workspace_id, mock_repo, mock_storage, mock_queue
+    )
 
     with patch("app.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
         with patch("app.rbac.get_rbac_config", return_value=None):
@@ -103,9 +135,13 @@ def test_upload_rejects_invalid_mime(monkeypatch):
     routes = _prepare_routes(monkeypatch)
     app = _build_app(routes)
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: MagicMock()
-    app.dependency_overrides[routes.get_file_storage] = lambda: MagicMock()
-    app.dependency_overrides[routes.get_document_queue] = lambda: MagicMock()
+    mock_repo = MagicMock()
+    mock_storage = MagicMock()
+    mock_queue = MagicMock()
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
+    _override_upload_use_case(
+        app, routes, workspace_id, mock_repo, mock_storage, mock_queue
+    )
 
     with patch("app.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
         with patch("app.rbac.get_rbac_config", return_value=None):
@@ -130,9 +166,13 @@ def test_upload_rejects_employee_jwt(monkeypatch):
     routes = _prepare_routes(monkeypatch)
     app = _build_app(routes)
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: MagicMock()
-    app.dependency_overrides[routes.get_file_storage] = lambda: MagicMock()
-    app.dependency_overrides[routes.get_document_queue] = lambda: MagicMock()
+    mock_repo = MagicMock()
+    mock_storage = MagicMock()
+    mock_queue = MagicMock()
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
+    _override_upload_use_case(
+        app, routes, workspace_id, mock_repo, mock_storage, mock_queue
+    )
 
     employee = _user(UserRole.EMPLOYEE)
     settings = _auth_settings()
@@ -160,9 +200,13 @@ def test_upload_rejects_api_key_without_permission(monkeypatch):
     routes = _prepare_routes(monkeypatch)
     app = _build_app(routes)
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: MagicMock()
-    app.dependency_overrides[routes.get_file_storage] = lambda: MagicMock()
-    app.dependency_overrides[routes.get_document_queue] = lambda: MagicMock()
+    mock_repo = MagicMock()
+    mock_storage = MagicMock()
+    mock_queue = MagicMock()
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
+    _override_upload_use_case(
+        app, routes, workspace_id, mock_repo, mock_storage, mock_queue
+    )
 
     with patch("app.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
         with patch("app.rbac.get_rbac_config", return_value=None):

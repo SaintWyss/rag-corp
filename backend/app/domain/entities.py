@@ -34,6 +34,7 @@ class Document:
 
     Attributes:
         id: Unique document identifier
+        workspace_id: Workspace UUID that owns the document
         title: Document title
         source: Optional source URL or identifier
         metadata: Additional custom metadata
@@ -50,6 +51,7 @@ class Document:
     """
 
     id: UUID
+    workspace_id: Optional[UUID] = None
     title: str
     source: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)

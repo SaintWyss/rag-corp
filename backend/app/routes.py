@@ -28,7 +28,6 @@ from uuid import UUID
 from datetime import datetime
 import json
 import os
-from uuid import uuid4
 from .config import get_settings
 from .rbac import Permission
 from .dual_auth import (
@@ -55,22 +54,31 @@ from .application.conversations import (
 from .application.use_cases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
+    AnswerQueryResult,
     ArchiveWorkspaceUseCase,
     ArchiveWorkspaceResult,
     CreateWorkspaceUseCase,
     CreateWorkspaceInput,
     DeleteDocumentUseCase,
+    DeleteDocumentResult,
     GetDocumentUseCase,
+    GetDocumentResult,
     GetWorkspaceUseCase,
     IngestDocumentUseCase,
     IngestDocumentInput,
+    IngestDocumentResult,
     ListDocumentsUseCase,
+    ListDocumentsResult,
     ListWorkspacesUseCase,
+    ReprocessDocumentUseCase,
+    ReprocessDocumentInput,
     SearchChunksUseCase,
     SearchChunksInput,
+    SearchChunksResult,
+    UploadDocumentUseCase,
+    UploadDocumentInput,
+    UploadDocumentResult,
 )
-from .domain.tags import normalize_tags
-from .domain.access import normalize_allowed_roles
 from .container import (
     get_answer_query_use_case,
     get_archive_workspace_use_case,
@@ -78,24 +86,23 @@ from .container import (
     get_ingest_document_use_case,
     get_search_chunks_use_case,
     get_llm_service,
-    get_embedding_service,
-    get_document_repository,
     get_conversation_repository,
     get_list_documents_use_case,
     get_list_workspaces_use_case,
     get_get_document_use_case,
     get_get_workspace_use_case,
     get_delete_document_use_case,
-    get_file_storage,
-    get_document_queue,
+    get_upload_document_use_case,
+    get_reprocess_document_use_case,
 )
-from .domain.entities import ConversationMessage, Document, Workspace, WorkspaceVisibility
+from .domain.entities import ConversationMessage, Workspace, WorkspaceVisibility
 from .domain.workspace_policy import WorkspaceActor
+from .application.use_cases.document_results import DocumentErrorCode
 from .application.use_cases.workspace_results import WorkspaceErrorCode
-from .domain.repositories import DocumentRepository, AuditEventRepository
-from .domain.services import FileStoragePort, DocumentProcessingQueue
+from .domain.repositories import AuditEventRepository
 from .dual_auth import PrincipalType, Principal
 from .container import get_audit_repository
+from .users import UserRole
 
 # R: Create API router for RAG endpoints
 router = APIRouter()
@@ -274,9 +281,11 @@ def _to_workspace_res(workspace: Workspace) -> WorkspaceRes:
 
 
 def _to_workspace_actor(principal: Principal | None) -> WorkspaceActor | None:
-    if not principal or principal.principal_type != PrincipalType.USER:
+    if not principal:
         return None
-    if not principal.user:
+    if principal.principal_type == PrincipalType.SERVICE:
+        return WorkspaceActor(user_id=None, role=UserRole.ADMIN)
+    if principal.principal_type != PrincipalType.USER or not principal.user:
         return None
     return WorkspaceActor(
         user_id=principal.user.user_id,
@@ -296,6 +305,37 @@ def _raise_workspace_error(
     if error_code == WorkspaceErrorCode.NOT_FOUND:
         raise not_found("Workspace", str(workspace_id or "unknown"))
     raise validation_error(message)
+
+
+def _raise_document_error(
+    error_code: DocumentErrorCode,
+    message: str,
+    *,
+    resource: str | None = None,
+    workspace_id: UUID | None = None,
+    document_id: UUID | None = None,
+) -> None:
+    if error_code == DocumentErrorCode.FORBIDDEN:
+        raise forbidden(message)
+    if error_code == DocumentErrorCode.CONFLICT:
+        raise conflict(message)
+    if error_code == DocumentErrorCode.VALIDATION_ERROR:
+        raise validation_error(message)
+    if error_code == DocumentErrorCode.SERVICE_UNAVAILABLE:
+        raise service_unavailable(message)
+    if error_code == DocumentErrorCode.NOT_FOUND:
+        target = resource or "Document"
+        target_id = workspace_id if target == "Workspace" else document_id
+        raise not_found(target, str(target_id or "unknown"))
+    raise validation_error(message)
+
+
+def _resolve_legacy_workspace_id(workspace_id: UUID | None) -> UUID:
+    if workspace_id:
+        return workspace_id
+    if _settings.legacy_workspace_id:
+        return _settings.legacy_workspace_id
+    raise validation_error("workspace_id is required for legacy endpoints.")
 
 
 def _require_active_workspace(
@@ -419,6 +459,7 @@ def archive_workspace(
     deprecated=True,
 )
 def list_documents(
+    workspace_id: UUID | None = Query(None),
     q: str | None = Query(None, max_length=200),
     status: str | None = Query(None),
     tag: str | None = Query(None, max_length=64),
@@ -430,6 +471,8 @@ def list_documents(
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
     query = q.strip() if q else None
     status_value = status.upper() if status else None
     tag_value = tag.strip() if tag else None
@@ -442,7 +485,9 @@ def list_documents(
             "sort must be created_at_desc, created_at_asc, title_asc, or title_desc."
         )
 
-    output = use_case.execute(
+    output: ListDocumentsResult = use_case.execute(
+        workspace_id=resolved_workspace_id,
+        actor=actor,
         limit=limit,
         offset=offset,
         cursor=cursor,
@@ -451,6 +496,13 @@ def list_documents(
         tag=tag_value,
         sort=sort_value,
     )
+    if output.error:
+        _raise_document_error(
+            output.error.code,
+            output.error.message,
+            resource=output.error.resource,
+            workspace_id=resolved_workspace_id,
+        )
     documents = filter_documents(output.documents, principal)
     return DocumentsListRes(
         documents=[
@@ -479,14 +531,28 @@ def list_documents(
 )
 def get_document(
     document_id: UUID,
+    workspace_id: UUID | None = Query(None),
     use_case: GetDocumentUseCase = Depends(get_get_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    document = use_case.execute(document_id)
-    if not document:
-        raise not_found("Document", str(document_id))
-    if not can_access_document(document, principal):
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+    result: GetDocumentResult = use_case.execute(
+        workspace_id=resolved_workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+            document_id=document_id,
+        )
+    document = result.document
+    if not document or not can_access_document(document, principal):
         raise forbidden("Access denied.")
     return DocumentDetailRes(
         id=document.id,
@@ -511,14 +577,27 @@ def get_document(
 )
 def delete_document(
     document_id: UUID,
+    workspace_id: UUID | None = Query(None),
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    deleted = use_case.execute(document_id)
-    if not deleted:
-        raise not_found("Document", str(document_id))
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+    result: DeleteDocumentResult = use_case.execute(
+        workspace_id=resolved_workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+            document_id=document_id,
+        )
     emit_audit_event(
         audit_repo,
         action="documents.delete",
@@ -536,24 +615,21 @@ def delete_document(
 )
 async def upload_document(
     request: Request,
+    workspace_id: UUID | None = Query(None),
     file: UploadFile = File(...),
     title: str | None = Form(None),
     source: str | None = Form(None),
     metadata: str | None = Form(None),
+    use_case: UploadDocumentUseCase = Depends(get_upload_document_use_case),
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
     _role: None = Depends(require_admin()),
-    repository: DocumentRepository = Depends(get_document_repository),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
-    storage: FileStoragePort | None = Depends(get_file_storage),
-    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
 ):
     settings = get_settings()
-    if storage is None:
-        raise service_unavailable("File storage")
-    if queue is None:
-        raise service_unavailable("Document queue")
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
 
     file_name = os.path.basename(file.filename or "").strip()
     if not file_name:
@@ -568,8 +644,6 @@ async def upload_document(
         raise payload_too_large(f"{settings.max_upload_bytes} bytes")
 
     metadata_payload = _parse_metadata(metadata)
-    tags = normalize_tags(metadata_payload)
-    allowed_roles = normalize_allowed_roles(metadata_payload)
 
     doc_title = (title or file_name).strip() or file_name
     if len(doc_title) > settings.max_title_chars:
@@ -581,45 +655,30 @@ async def upload_document(
             f"source exceeds maximum size of {settings.max_source_chars} characters"
         )
 
-    document_id = uuid4()
-    storage_key = f"documents/{document_id}/{file_name}"
-    storage.upload_file(storage_key, content, mime_type)
-
-    repository.save_document(
-        Document(
-            id=document_id,
-            title=doc_title,
-            source=source,
-            metadata=metadata_payload,
-            tags=tags,
-            allowed_roles=allowed_roles,
-        )
-    )
-
     uploaded_by_user_id = None
     if principal and principal.principal_type == PrincipalType.USER:
         uploaded_by_user_id = principal.user.user_id if principal.user else None
 
-    repository.update_document_file_metadata(
-        document_id,
-        file_name=file_name,
-        mime_type=mime_type,
-        storage_key=storage_key,
-        uploaded_by_user_id=uploaded_by_user_id,
-        status="PENDING",
-        error_message=None,
-    )
-
-    try:
-        queue.enqueue_document_processing(document_id)
-    except Exception:
-        repository.transition_document_status(
-            document_id,
-            from_statuses=["PENDING"],
-            to_status="FAILED",
-            error_message="Failed to enqueue document processing job",
+    result: UploadDocumentResult = use_case.execute(
+        UploadDocumentInput(
+            workspace_id=resolved_workspace_id,
+            actor=actor,
+            title=doc_title,
+            source=source,
+            metadata=metadata_payload,
+            file_name=file_name,
+            mime_type=mime_type,
+            content=content,
+            uploaded_by_user_id=uploaded_by_user_id,
         )
-        raise service_unavailable("Document queue")
+    )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+        )
 
     await file.close()
 
@@ -627,15 +686,15 @@ async def upload_document(
         audit_repo,
         action="documents.upload",
         principal=principal,
-        target_id=document_id,
+        target_id=result.document_id,
         metadata={"file_name": file_name, "mime_type": mime_type},
     )
 
     return UploadDocumentRes(
-        document_id=document_id,
-        status="PENDING",
-        file_name=file_name,
-        mime_type=mime_type,
+        document_id=result.document_id,
+        status=result.status,
+        file_name=result.file_name,
+        mime_type=result.mime_type,
     )
 
 
@@ -648,42 +707,29 @@ async def upload_document(
 )
 def reprocess_document(
     document_id: UUID,
-    repository: DocumentRepository = Depends(get_document_repository),
-    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
+    workspace_id: UUID | None = Query(None),
+    use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    if queue is None:
-        raise service_unavailable("Document queue")
-
-    document = repository.get_document(document_id)
-    if not document:
-        raise not_found("Document", str(document_id))
-    if not document.storage_key or not document.mime_type:
-        raise validation_error("Document has no uploaded file to reprocess.")
-    if document.status == "PROCESSING":
-        raise conflict("Document is already processing.")
-
-    transitioned = repository.transition_document_status(
-        document_id,
-        from_statuses=[None, "PENDING", "READY", "FAILED"],
-        to_status="PENDING",
-        error_message=None,
-    )
-    if not transitioned:
-        raise conflict("Document is already processing.")
-
-    try:
-        queue.enqueue_document_processing(document_id)
-    except Exception:
-        repository.transition_document_status(
-            document_id,
-            from_statuses=["PENDING"],
-            to_status="FAILED",
-            error_message="Failed to enqueue document processing job",
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+    result: ReprocessDocumentResult = use_case.execute(
+        ReprocessDocumentInput(
+            workspace_id=resolved_workspace_id,
+            document_id=document_id,
+            actor=actor,
         )
-        raise service_unavailable("Document queue")
+    )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+            document_id=document_id,
+        )
 
     emit_audit_event(
         audit_repo,
@@ -693,9 +739,9 @@ def reprocess_document(
     )
 
     return ReprocessDocumentRes(
-        document_id=document_id,
-        status="PENDING",
-        enqueued=True,
+        document_id=result.document_id,
+        status=result.status,
+        enqueued=result.enqueued,
     )
 
 
@@ -708,18 +754,32 @@ def reprocess_document(
 )
 def ingest_text(
     req: IngestTextReq,
+    workspace_id: UUID | None = Query(None),
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_admin()),
 ):
-    result = use_case.execute(
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+    result: IngestDocumentResult = use_case.execute(
         IngestDocumentInput(
+            workspace_id=resolved_workspace_id,
+            actor=actor,
             title=req.title,
             text=req.text,
             source=req.source,
             metadata=req.metadata,
         )
     )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+        )
     return IngestTextRes(
         document_id=result.document_id,
         chunks=result.chunks_created,
@@ -735,8 +795,11 @@ def ingest_text(
 )
 def ingest_batch(
     req: IngestBatchReq,
+    workspace_id: UUID | None = Query(None),
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    _principal: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_admin()),
 ):
     """
@@ -747,16 +810,27 @@ def ingest_batch(
     """
     results = []
     total_chunks = 0
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
 
     for doc in req.documents:
-        result = use_case.execute(
+        result: IngestDocumentResult = use_case.execute(
             IngestDocumentInput(
+                workspace_id=resolved_workspace_id,
+                actor=actor,
                 title=doc.title,
                 text=doc.text,
                 source=doc.source,
                 metadata=doc.metadata,
             )
         )
+        if result.error:
+            _raise_document_error(
+                result.error.code,
+                result.error.message,
+                resource=result.error.resource,
+                workspace_id=resolved_workspace_id,
+            )
         results.append(
             IngestTextRes(
                 document_id=result.document_id,
@@ -821,10 +895,28 @@ class QueryRes(BaseModel):
 def query(
     req: QueryReq,
     use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
-    _principal: None = Depends(require_principal(Permission.QUERY_SEARCH)),
+    workspace_id: UUID | None = Query(None),
+    principal: Principal | None = Depends(require_principal(Permission.QUERY_SEARCH)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    result = use_case.execute(SearchChunksInput(query=req.query, top_k=req.top_k))
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+    result: SearchChunksResult = use_case.execute(
+        SearchChunksInput(
+            query=req.query,
+            workspace_id=resolved_workspace_id,
+            actor=actor,
+            top_k=req.top_k,
+            use_mmr=req.use_mmr,
+        )
+    )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+        )
     matches = []
     for chunk in result.matches:
         if chunk.chunk_id is None or chunk.document_id is None:
@@ -856,8 +948,9 @@ class AskRes(BaseModel):
 )
 def ask(
     req: QueryReq,
+    workspace_id: UUID | None = Query(None),
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
-    _principal: None = Depends(require_principal(Permission.QUERY_ASK)),
+    principal: Principal | None = Depends(require_principal(Permission.QUERY_ASK)),
     _role: None = Depends(require_employee_or_admin()),
 ):
     """
@@ -884,24 +977,36 @@ def ask(
         ConversationMessage(role="user", content=req.query),
     )
 
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+
     # R: Execute use case with input data
-    result = use_case.execute(
+    result: AnswerQueryResult = use_case.execute(
         AnswerQueryInput(
             query=req.query,
+            workspace_id=resolved_workspace_id,
+            actor=actor,
             llm_query=llm_query,
             top_k=req.top_k,
             use_mmr=req.use_mmr,
         )
     )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+        )
 
     # R: Convert domain result to HTTP response
     conversation_repository.append_message(
         conversation_id,
-        ConversationMessage(role="assistant", content=result.answer),
+        ConversationMessage(role="assistant", content=result.result.answer),
     )
     return AskRes(
-        answer=result.answer,
-        sources=[chunk.content for chunk in result.chunks],
+        answer=result.result.answer,
+        sources=[chunk.content for chunk in result.result.chunks],
         conversation_id=conversation_id,
     )
 
@@ -915,7 +1020,9 @@ def ask(
 async def ask_stream(
     req: QueryReq,
     request: Request,
-    _principal: None = Depends(require_principal(Permission.QUERY_STREAM)),
+    workspace_id: UUID | None = Query(None),
+    use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.QUERY_STREAM)),
     _role: None = Depends(require_employee_or_admin()),
 ):
     """
@@ -930,9 +1037,10 @@ async def ask_stream(
     - done: Final event with complete answer
     - error: Error event if generation fails
     """
+    resolved_workspace_id = _resolve_legacy_workspace_id(workspace_id)
+    actor = _to_workspace_actor(principal)
+
     # R: Get dependencies
-    embedding_service = get_embedding_service()
-    repository = get_document_repository()
     llm_service = get_llm_service()
     conversation_repository = get_conversation_repository()
 
@@ -949,16 +1057,23 @@ async def ask_stream(
     )
 
     # R: Embed query and retrieve similar chunks
-    query_embedding = embedding_service.embed_query(req.query)
-    if req.use_mmr:
-        chunks = repository.find_similar_chunks_mmr(
-            embedding=query_embedding,
+    result: SearchChunksResult = use_case.execute(
+        SearchChunksInput(
+            query=req.query,
+            workspace_id=resolved_workspace_id,
+            actor=actor,
             top_k=req.top_k,
-            fetch_k=req.top_k * 4,
-            lambda_mult=0.5,
+            use_mmr=req.use_mmr,
         )
-    else:
-        chunks = repository.find_similar_chunks(query_embedding, req.top_k)
+    )
+    if result.error:
+        _raise_document_error(
+            result.error.code,
+            result.error.message,
+            resource=result.error.resource,
+            workspace_id=resolved_workspace_id,
+        )
+    chunks = result.matches
 
     # R: Return streaming response
     return await stream_answer(
@@ -993,6 +1108,7 @@ def list_workspace_documents(
     actor = _to_workspace_actor(principal)
     _require_active_workspace(workspace_id, workspace_use_case, actor)
     return list_documents(
+        workspace_id=workspace_id,
         q=q,
         status=status,
         tag=tag,
@@ -1023,6 +1139,7 @@ def get_workspace_document(
     _require_active_workspace(workspace_id, workspace_use_case, actor)
     return get_document(
         document_id=document_id,
+        workspace_id=workspace_id,
         use_case=use_case,
         principal=principal,
         _role=_role,
@@ -1047,6 +1164,7 @@ def delete_workspace_document(
     _require_active_workspace(workspace_id, workspace_use_case, actor)
     return delete_document(
         document_id=document_id,
+        workspace_id=workspace_id,
         use_case=use_case,
         principal=principal,
         _role=_role,
@@ -1067,29 +1185,26 @@ async def upload_workspace_document(
     source: str | None = Form(None),
     metadata: str | None = Form(None),
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: UploadDocumentUseCase = Depends(get_upload_document_use_case),
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
     _role: None = Depends(require_admin()),
-    repository: DocumentRepository = Depends(get_document_repository),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
-    storage: FileStoragePort | None = Depends(get_file_storage),
-    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
 ):
     actor = _to_workspace_actor(principal)
     _require_active_workspace(workspace_id, workspace_use_case, actor)
     return await upload_document(
         request=request,
+        workspace_id=workspace_id,
         file=file,
         title=title,
         source=source,
         metadata=metadata,
+        use_case=use_case,
         principal=principal,
         _role=_role,
-        repository=repository,
         audit_repo=audit_repo,
-        storage=storage,
-        queue=queue,
     )
 
 
@@ -1103,8 +1218,7 @@ def reprocess_workspace_document(
     workspace_id: UUID,
     document_id: UUID,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
-    repository: DocumentRepository = Depends(get_document_repository),
-    queue: DocumentProcessingQueue | None = Depends(get_document_queue),
+    use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
@@ -1113,8 +1227,8 @@ def reprocess_workspace_document(
     _require_active_workspace(workspace_id, workspace_use_case, actor)
     return reprocess_document(
         document_id=document_id,
-        repository=repository,
-        queue=queue,
+        workspace_id=workspace_id,
+        use_case=use_case,
         principal=principal,
         _role=_role,
         audit_repo=audit_repo,
@@ -1139,7 +1253,8 @@ def ingest_workspace_text(
     return ingest_text(
         req=req,
         use_case=use_case,
-        _principal=principal,
+        workspace_id=workspace_id,
+        principal=principal,
         _role=_role,
     )
 
@@ -1162,7 +1277,8 @@ def ingest_workspace_batch(
     return ingest_batch(
         req=req,
         use_case=use_case,
-        _principal=principal,
+        workspace_id=workspace_id,
+        principal=principal,
         _role=_role,
     )
 
@@ -1185,7 +1301,8 @@ def query_workspace(
     return query(
         req=req,
         use_case=use_case,
-        _principal=principal,
+        workspace_id=workspace_id,
+        principal=principal,
         _role=_role,
     )
 
@@ -1208,7 +1325,8 @@ def ask_workspace(
     return ask(
         req=req,
         use_case=use_case,
-        _principal=principal,
+        workspace_id=workspace_id,
+        principal=principal,
         _role=_role,
     )
 
@@ -1219,6 +1337,7 @@ async def ask_workspace_stream(
     req: QueryReq,
     request: Request,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
+    use_case: SearchChunksUseCase = Depends(get_search_chunks_use_case),
     principal: Principal | None = Depends(require_principal(Permission.QUERY_STREAM)),
     _role: None = Depends(require_employee_or_admin()),
 ):
@@ -1227,6 +1346,8 @@ async def ask_workspace_stream(
     return await ask_stream(
         req=req,
         request=request,
-        _principal=principal,
+        workspace_id=workspace_id,
+        use_case=use_case,
+        principal=principal,
         _role=_role,
     )

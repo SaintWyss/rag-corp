@@ -22,6 +22,7 @@ Notes:
 """
 
 from functools import lru_cache
+from uuid import UUID
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
@@ -60,6 +61,7 @@ class Settings(BaseSettings):
         s3_region: S3 region (optional)
         max_upload_bytes: Maximum upload size in bytes (default: 25MB)
         redis_url: Redis connection string for queues/cache (optional)
+        legacy_workspace_id: Implicit workspace UUID for legacy endpoints
     """
 
     # Required (no defaults)
@@ -115,6 +117,9 @@ class Settings(BaseSettings):
     s3_secret_key: str = ""
     s3_region: str = ""
     max_upload_bytes: int = 25 * 1024 * 1024
+
+    # Legacy endpoints
+    legacy_workspace_id: UUID | None = None
 
     # Database - Connection Pool
     db_pool_min_size: int = 2
