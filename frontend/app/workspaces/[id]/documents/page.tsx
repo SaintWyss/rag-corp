@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "../../../components/AppShell";
 import { NoticeBanner } from "../../../components/NoticeBanner";
 import { StatusBanner } from "../../../components/StatusBanner";
 import {
   getCurrentUser,
+  deleteWorkspaceDocument,
   getWorkspaceDocument,
   listWorkspaceDocuments,
   reprocessWorkspaceDocument,
@@ -164,6 +166,8 @@ type PageProps = {
 
 export default function DocumentsPage({ params }: PageProps) {
   const workspaceId = params.id;
+  const searchParams = useSearchParams();
+  const preferredDocId = searchParams.get("doc");
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<DocumentDetail | null>(null);
@@ -171,6 +175,7 @@ export default function DocumentsPage({ params }: PageProps) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState<UploadDraft>(emptyUpload);
@@ -271,8 +276,8 @@ export default function DocumentsPage({ params }: PageProps) {
   }, [workspaceId]);
 
   useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+    loadDocuments({ preferredId: preferredDocId ?? undefined });
+  }, [loadDocuments, preferredDocId]);
 
   useEffect(() => {
     setApiKey(getStoredApiKey());
@@ -464,6 +469,33 @@ export default function DocumentsPage({ params }: PageProps) {
       }
     } finally {
       setReprocessing(false);
+    }
+  }, [loadDocuments, selectedId, workspaceId]);
+
+  const handleDelete = useCallback(async () => {
+    if (!selectedId) {
+      return;
+    }
+    const confirmed = window.confirm(
+      "Eliminar este documento? Esta accion no se puede deshacer."
+    );
+    if (!confirmed) {
+      return;
+    }
+    setError("");
+    setNotice("");
+    setDeleting(true);
+    try {
+      await deleteWorkspaceDocument(workspaceId, selectedId);
+      setNotice("Documento eliminado.");
+      setSelectedId(null);
+      setSelected(null);
+      setDocuments((prev) => prev.filter((doc) => doc.id !== selectedId));
+      await loadDocuments();
+    } catch (err) {
+      setError(formatError(err));
+    } finally {
+      setDeleting(false);
     }
   }, [loadDocuments, selectedId, workspaceId]);
 
@@ -870,15 +902,28 @@ export default function DocumentsPage({ params }: PageProps) {
                 </p>
               </div>
               {isAdmin && selected ? (
-                <button
-                  type="button"
-                  onClick={handleReprocess}
-                  disabled={reprocessing || normalizeStatus(selected.status) === "PROCESSING"}
-                  data-testid="source-reprocess-button"
-                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white disabled:cursor-not-allowed disabled:text-white/40"
-                >
-                  {reprocessing ? "Reprocesando..." : "Reprocesar"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleReprocess}
+                    disabled={
+                      reprocessing || normalizeStatus(selected.status) === "PROCESSING"
+                    }
+                    data-testid="source-reprocess-button"
+                    className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white disabled:cursor-not-allowed disabled:text-white/40"
+                  >
+                    {reprocessing ? "Reprocesando..." : "Reprocesar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    data-testid="source-delete-button"
+                    className="rounded-full border border-rose-400/40 px-4 py-2 text-sm text-rose-100 transition hover:border-rose-300/60 hover:text-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deleting ? "Eliminando..." : "Eliminar"}
+                  </button>
+                </div>
               ) : null}
             </div>
 

@@ -8,6 +8,8 @@ import type {
   IngestBatchRes,
   IngestTextReq,
   IngestTextRes,
+  QueryReq,
+  QueryRes,
   ReprocessDocumentRes,
   UploadDocumentRes,
   WorkspaceRes,
@@ -90,6 +92,10 @@ export type ShareWorkspacePayload = {
 };
 
 export type ArchiveWorkspaceResponse = ArchiveWorkspaceRes;
+
+export type QueryWorkspacePayload = QueryReq;
+
+export type QueryWorkspaceResponse = QueryRes;
 
 type ApiError = {
   status: number;
@@ -314,6 +320,17 @@ export async function reprocessWorkspaceDocument(
       method: "POST",
     }
   );
+}
+
+export async function queryWorkspace(
+  workspaceId: string,
+  payload: QueryWorkspacePayload
+): Promise<QueryWorkspaceResponse> {
+  return requestJson<QueryWorkspaceResponse>(`/api/workspaces/${workspaceId}/query`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function listDocuments(

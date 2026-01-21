@@ -11,6 +11,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getWorkspaceDocument, queryWorkspace } from "../lib/api";
 import { getStoredApiKey } from "../lib/apiKey";
 
 type ChatRole = "user" | "assistant";
@@ -21,12 +22,21 @@ export type StreamSource = {
   content: string;
 };
 
+export type VerifiedSource = {
+  chunk_id: string;
+  document_id: string;
+  content: string;
+  score: number;
+  document_title?: string | null;
+};
+
 export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
   status?: MessageStatus;
   sources?: StreamSource[];
+  verifiedSources?: VerifiedSource[];
 };
 
 type ChatState = {
@@ -97,6 +107,24 @@ function parseSseEvent(raw: string): SseEvent | null {
     event,
     data: dataLines.join("\n"),
   };
+}
+
+async function loadDocumentTitles(
+  workspaceId: string,
+  documentIds: string[]
+): Promise<Map<string, string>> {
+  const titleMap = new Map<string, string>();
+  await Promise.all(
+    documentIds.map(async (documentId) => {
+      try {
+        const doc = await getWorkspaceDocument(workspaceId, documentId);
+        titleMap.set(documentId, doc.title);
+      } catch {
+        // Ignore missing titles for best-effort verification.
+      }
+    })
+  );
+  return titleMap;
 }
 
 type UseRagChatOptions = {
@@ -176,12 +204,42 @@ export function useRagChat(options: UseRagChatOptions = {}) {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
+      const topK = 3;
       const payload: Record<string, unknown> = {
         query: trimmed,
-        top_k: 3,
+        top_k: topK,
       };
       if (state.conversationId) {
         payload.conversation_id = state.conversationId;
+      }
+
+      if (workspaceId) {
+        void (async () => {
+          try {
+            const result = await queryWorkspace(workspaceId, {
+              query: trimmed,
+              top_k: topK,
+            });
+            const uniqueIds = Array.from(
+              new Set(result.matches.map((match) => match.document_id))
+            );
+            const titles = await loadDocumentTitles(workspaceId, uniqueIds);
+            const verifiedSources: VerifiedSource[] = result.matches.map(
+              (match) => ({
+                ...match,
+                document_title: titles.get(match.document_id) ?? null,
+              })
+            );
+            setState((prev) => ({
+              ...prev,
+              messages: prev.messages.map((msg) =>
+                msg.id === assistantId ? { ...msg, verifiedSources } : msg
+              ),
+            }));
+          } catch {
+            // Best-effort verification; don't interrupt chat flow.
+          }
+        })();
       }
 
       try {

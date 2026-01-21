@@ -9,6 +9,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { AppShell } from "../../../components/AppShell";
 import { StatusBanner } from "../../../components/StatusBanner";
 import { useRagChat } from "../../../hooks/useRagChat";
@@ -124,7 +125,46 @@ export default function ChatPage({ params }: PageProps) {
                         {statusText}
                       </p>
                     ) : null}
-                    {message.sources && message.sources.length > 0 ? (
+                    {message.verifiedSources && message.verifiedSources.length > 0 ? (
+                      <div className="mt-3 border-t border-white/10 pt-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                          Fuentes verificadas
+                        </p>
+                        <ul className="mt-2 space-y-2 text-xs text-white/70">
+                          {message.verifiedSources.map((source) => (
+                            <li
+                              key={source.chunk_id}
+                              className="rounded-xl border border-white/10 bg-white/5 p-3"
+                              data-testid="chat-verified-source"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-xs text-white/50">
+                                    Documento
+                                  </p>
+                                  <p className="text-sm text-white">
+                                    {source.document_title || "Documento sin titulo"}
+                                  </p>
+                                </div>
+                                <Link
+                                  href={`/workspaces/${workspaceId}/documents?doc=${source.document_id}`}
+                                  className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/70 transition hover:border-cyan-300/50 hover:text-white"
+                                  data-testid="chat-source-open-doc"
+                                >
+                                  Ver documento
+                                </Link>
+                              </div>
+                              <p className="mt-2 text-[11px] text-white/40">
+                                Doc ID: {source.document_id}
+                              </p>
+                              <p className="mt-2 text-xs text-white/70">
+                                {source.content}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : message.sources && message.sources.length > 0 ? (
                       <div className="mt-3 border-t border-white/10 pt-3">
                         <p className="text-xs uppercase tracking-[0.2em] text-white/50">
                           Fuentes
@@ -134,6 +174,7 @@ export default function ChatPage({ params }: PageProps) {
                             <li
                               key={source.chunk_id}
                               className="rounded-xl border border-white/10 bg-white/5 p-2"
+                              data-testid="chat-source"
                             >
                               {source.content}
                             </li>
