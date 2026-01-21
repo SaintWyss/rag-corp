@@ -1,33 +1,28 @@
 import type {
+  DocumentDetailRes,
+  DocumentSummaryRes,
+  DocumentsListRes,
   IngestBatchReq,
   IngestBatchRes,
   IngestTextReq,
   IngestTextRes,
+  ReprocessDocumentRes,
+  UploadDocumentRes,
 } from "@contracts/src/generated";
 import { getStoredApiKey } from "./apiKey";
 
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
 
-export type DocumentSummary = {
-  id: string;
-  title: string;
-  source?: string | null;
-  metadata: Record<string, unknown>;
-  created_at?: string | null;
-  file_name?: string | null;
-  mime_type?: string | null;
+export type DocumentSummary = Omit<DocumentSummaryRes, "status"> & {
   status?: DocumentStatus | null;
-  tags?: string[];
 };
 
-export type DocumentDetail = DocumentSummary & {
-  deleted_at?: string | null;
-  error_message?: string | null;
+export type DocumentDetail = Omit<DocumentDetailRes, "status"> & {
+  status?: DocumentStatus | null;
 };
 
-export type DocumentsListResponse = {
+export type DocumentsListResponse = Omit<DocumentsListRes, "documents"> & {
   documents: DocumentSummary[];
-  next_cursor?: string | null;
 };
 
 export type DocumentSort =
@@ -45,18 +40,9 @@ export type ListDocumentsParams = {
   limit?: number;
 };
 
-export type UploadDocumentResponse = {
-  document_id: string;
-  status: DocumentStatus;
-  file_name: string;
-  mime_type: string;
-};
+export type UploadDocumentResponse = UploadDocumentRes;
 
-export type ReprocessDocumentResponse = {
-  document_id: string;
-  status: DocumentStatus;
-  enqueued: boolean;
-};
+export type ReprocessDocumentResponse = ReprocessDocumentRes;
 
 export type CurrentUser = {
   id: string;
