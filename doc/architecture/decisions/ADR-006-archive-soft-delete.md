@@ -1,4 +1,4 @@
-# ADR-006: Politica de archive/soft-delete para workspaces y documents
+# ADR-006: Archive/soft-delete v4 de Workspaces y Documentos
 
 ## Estado
 
@@ -6,55 +6,35 @@
 
 ## Contexto
 
-- `Document` incluye `deleted_at` y `is_deleted` en el dominio. (`backend/app/domain/entities.py`)
-- El caso de uso de delete es soft delete. (`backend/app/application/use_cases/delete_document.py`)
-- El repositorio filtra `deleted_at IS NULL` en list/get y setea `deleted_at` en soft delete. (`backend/app/infrastructure/repositories/postgres_document_repo.py`)
-- El schema documentado incluye `documents.deleted_at`. (`doc/data/postgres-schema.md`)
-- La API expone `deleted_at` en el detalle de documento y tiene `DELETE /documents/{id}`. (`backend/app/routes.py`)
-- El frontend modela `deleted_at` en `DocumentDetail`. (`frontend/app/lib/api.ts`)
-- La busqueda de chunks usa solo la tabla `chunks` sin join a `documents`. (`backend/app/infrastructure/repositories/postgres_document_repo.py`)
+- El modelo de Workspace incluye `archived_at` como soft archive. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace")
+- La API propuesta incorpora `POST /v1/workspaces/{id}/archive` y la UI permite archivar. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos", "### 14.2 Pantalla Workspaces")
+- La politica de borrado propone la opcion B (soft delete de seccion y documentos asociados). (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "RB-06 Borrado de seccion")
+- El modelo conceptual incluye `deleted_at` para Section/Document. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "### 11.1 Entidades")
+- La auditoria debe registrar eventos criticos y guardar `workspace_id` cuando aplique. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "RF-E1: registrar eventos criticos", "### 12.4 Auditoria por workspace")
 
 ## Decision
 
-- **Archive == soft-delete**: un recurso archivado se marca con `deleted_at` (timestamp) y permanece en DB. (`backend/app/domain/entities.py`, `doc/data/postgres-schema.md`)
-- **Documents**:
-  - Listados y detalle excluyen archivados por defecto. (`backend/app/infrastructure/repositories/postgres_document_repo.py`, `backend/app/routes.py`)
-  - Retrieval (`/v1/query`, `/v1/ask`, `/v1/ask/stream`) no debe devolver chunks de documentos archivados. (`backend/app/routes.py`, `backend/app/infrastructure/repositories/postgres_document_repo.py`)
-- **Workspaces (cuando existan)**:
-  - `deleted_at` define archivado. (`doc/data/postgres-schema.md`)
-  - Comportamiento esperado: quedan fuera de listados y no permiten ingest/ask (implementar en `backend/app/routes.py`, `backend/app/application/use_cases/`).
+- Archive es soft-delete: se marca `archived_at` en Workspace y se marca `deleted_at` en documentos asociados, preservando historico. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace"; `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "RB-06 Borrado de seccion", "### 11.1 Entidades")
+- Workspaces archivados quedan fuera de listados por defecto y no aceptan upload/ask; los documentos archivados no participan en retrieval. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "POST /v1/workspaces/{id}/archive", "RF-D2: retrieval solo de documentos del workspace")
+- Se registra evento de auditoria para archive/unarchive con `workspace_id` como parte de la trazabilidad. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "RF-E1: registrar eventos criticos", "### 12.4 Auditoria por workspace")
 
 ## Alternativas consideradas
 
-1. Hard delete (descartado por perdida de trazabilidad y audit).
-2. Flag boolean `archived` (descartado por inconsistencia con `deleted_at` ya existente).
-3. Mantener retrieval sin filtro (descartado por leakage de contenido archivado).
+1. Opcion A: impedir borrado de seccion con documentos (descartado en favor de soft delete). (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "RB-06 Borrado de seccion")
 
 ## Consecuencias
 
-- Se alinea el comportamiento actual de list/get con el significado de archivado. (`backend/app/infrastructure/repositories/postgres_document_repo.py`, `backend/app/routes.py`)
-- Requiere ajustar la busqueda de chunks para filtrar documentos archivados. (`backend/app/infrastructure/repositories/postgres_document_repo.py`)
+- Se preserva auditabilidad y posibilidad de restore al mantener `archived_at`/`deleted_at`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace"; `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "### 11.1 Entidades")
+- La UI debe mostrar acciones de archivar y evitar operaciones sobre workspaces archivados. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 14.2 Pantalla Workspaces")
 
-## Impacto en FE/BE/DB
+## Impacto FE/BE/DB
 
-- FE: filtros y estados en listados de documentos en `frontend/app/documents/page.tsx` y tipos en `frontend/app/lib/api.ts`.
-- BE (domain/application/infrastructure/API): reglas en `backend/app/domain/entities.py`, uso en `backend/app/application/use_cases/`, filtro en `backend/app/infrastructure/repositories/postgres_document_repo.py`, endpoints en `backend/app/routes.py`.
-- DB: mantener `deleted_at` y documentar en `doc/data/postgres-schema.md`; futuras migraciones en `backend/alembic/`.
+- FE: controles de "archivar" y estados en listados de workspaces. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 14.2 Pantalla Workspaces")
+- BE/API: endpoint `POST /v1/workspaces/{id}/archive` y reglas de acceso owner/admin. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "POST /v1/workspaces/{id}/archive — archivar (owner/admin)")
+- DB: `workspaces.archived_at` y `documents.deleted_at` como marcas de soft-delete. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "`archived_at` (soft archive)"; `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "Section(... deleted_at?)", "Document(... deleted_at)")
 
-## Como validar
+## Validacion
 
-- Unit tests backend: `pnpm test:backend:unit` (ver `doc/quality/testing.md`).
-- Integration tests repo: `RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration` (ver `doc/quality/testing.md`).
-- E2E si se modifica flujo de documentos: `pnpm e2e` (ver `doc/quality/testing.md`).
-
-## Referencias
-
-- `backend/app/domain/entities.py`
-- `backend/app/application/use_cases/delete_document.py`
-- `backend/app/infrastructure/repositories/postgres_document_repo.py`
-- `doc/data/postgres-schema.md`
-- `backend/app/routes.py`
-- `frontend/app/lib/api.ts`
-- `frontend/app/documents/page.tsx`
-- `backend/alembic/`
-- `doc/quality/testing.md`
+- `pnpm test:backend:unit` (Fuente: `doc/quality/testing.md`, "Unit tests (Docker, recomendado)")
+- `pnpm --filter web test` (Fuente: `doc/quality/testing.md`, "Todos los tests")
+- `pnpm e2e` (Fuente: `doc/quality/testing.md`, "Ejecutar E2E con backend/frontend locales")

@@ -1,4 +1,4 @@
-# ADR-004: Naming de workspace en API/codigo y "seccion" solo en UI
+# ADR-004: Naming v4 de Workspace (API/codigo) y Seccion (UI)
 
 ## Estado
 
@@ -6,50 +6,33 @@
 
 ## Contexto
 
-- El API canonico usa el prefijo `/v1` y expone endpoints de documentos y query (`/v1/documents`, `/v1/ask`, `/v1/ask/stream`) en la documentacion y en el router del backend. (`doc/api/http-api.md`, `backend/app/routes.py`)
-- El frontend consume `/api/ask`, `/api/ask/stream` y `/api/documents` como proxy a `/v1/*`. (`frontend/app/hooks/useRagAsk.ts`, `frontend/app/hooks/useRagChat.ts`, `frontend/app/lib/api.ts`, `doc/api/http-api.md`)
-- El repo declara Clean Architecture con capas domain/application/infrastructure/API como base. (`doc/architecture/overview.md`, `doc/architecture/decisions/ADR-001-clean-architecture.md`)
+- La especificacion v4 define el naming tecnico: en codigo se usa Workspace, en UI se muestra Seccion, y la fuente de verdad tecnica es Workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
+- La API propuesta expone rutas bajo `/v1/workspaces`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
+- La UI propuesta usa el label "Workspaces/Secciones" y un selector de workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 14.1 Navegacion")
 
 ## Decision
 
-- Usar **workspace** como termino tecnico en API, contratos, codigo y DB. (`backend/app/domain/`, `backend/app/application/use_cases/`, `backend/app/infrastructure/`, `backend/app/routes.py`, `shared/contracts/openapi.json`, `doc/data/postgres-schema.md`)
-- Usar **seccion** solo como etiqueta de UI (copy/labels), sin aparecer en rutas, nombres de entidades o columnas. (`frontend/app/page.tsx`, `frontend/app/chat/page.tsx`, `frontend/app/documents/page.tsx`)
-- Si la UI necesita exponer el concepto, el mapping UI -> workspace es solo visual. (`frontend/app/page.tsx`, `frontend/app/chat/page.tsx`, `frontend/app/documents/page.tsx`)
+- Usar **workspace** como termino tecnico en API/contratos/BE/DB; **seccion** queda solo como copy/label en UI. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
+- Documentar el mapping UI -> workspace como convencion de producto para evitar drift entre capas. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
 
 ## Alternativas consideradas
 
-1. "Seccion" en todas las capas (descartado por mezclar UI con contratos).
-2. "Workspace" tambien en UI (descartado por preferencia de copy en espanol).
-3. "Proyecto" como termino unificado (descartado por ambiguedad).
+1. "Seccion" en API/DB/codigo (descartado porque la decision v4 fija Workspace como termino tecnico). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
+2. "Workspace" tambien en UI (descartado porque la v4 permite Seccion en UI para ser natural en espanol). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
 
 ## Consecuencias
 
-- Evita drift FE/BE/DB y reduce traducciones en contratos y nombres de dominio. (`backend/app/domain/`, `backend/app/application/use_cases/`, `backend/app/infrastructure/`, `backend/app/routes.py`, `shared/contracts/openapi.json`, `doc/data/postgres-schema.md`)
-- La UI puede mantener copy en espanol sin contaminar API/DB. (`frontend/app/page.tsx`, `frontend/app/chat/page.tsx`, `frontend/app/documents/page.tsx`)
+- Las rutas y contratos tecnicos se alinean a `/v1/workspaces` y a la entidad Workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos", "### 7.2 Entidad Workspace")
+- La UI mantiene el termino "Seccion" sin cambiar el contrato tecnico. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming", "### 14.1 Navegacion")
 
-## Impacto en FE/BE/DB
+## Impacto FE/BE/DB
 
-- FE: labels y copy en `frontend/app/page.tsx`, `frontend/app/chat/page.tsx`, `frontend/app/documents/page.tsx`, `frontend/app/components/PageHeader.tsx`.
-- BE (domain/application/infrastructure/API): naming de entidades, rutas y DTOs en `backend/app/domain/entities.py`, `backend/app/application/use_cases/`, `backend/app/infrastructure/`, `backend/app/routes.py`.
-- DB: naming de tablas/columnas y migraciones en `doc/data/postgres-schema.md`, `backend/alembic/`.
+- FE: navegacion y copy con "Workspaces/Secciones" y selector de workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 14.1 Navegacion")
+- BE/API: endpoints `/v1/workspaces/...`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
+- DB: entidad `workspaces` y atributos definidos para Workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 12.2 Tablas nuevas", "### 7.2 Entidad Workspace")
 
-## Como validar
+## Validacion
 
-- Tests backend: `pnpm test:backend:unit` (ver `doc/quality/testing.md`).
-- Tests frontend: `pnpm --filter web test` (ver `doc/quality/testing.md`).
-- E2E: `pnpm e2e` (ver `doc/quality/testing.md`).
-- Si se cambia naming en contratos: `pnpm contracts:export` + `pnpm contracts:gen` (ver `doc/README.md`, `doc/api/http-api.md`).
-
-## Referencias
-
-- `doc/api/http-api.md`
-- `backend/app/routes.py`
-- `frontend/app/hooks/useRagAsk.ts`
-- `frontend/app/hooks/useRagChat.ts`
-- `frontend/app/lib/api.ts`
-- `doc/architecture/overview.md`
-- `doc/architecture/decisions/ADR-001-clean-architecture.md`
-- `doc/data/postgres-schema.md`
-- `backend/alembic/`
-- `doc/quality/testing.md`
-- `doc/README.md`
+- `pnpm test:backend:unit` (Fuente: `doc/quality/testing.md`, "Unit tests (Docker, recomendado)")
+- `pnpm --filter web test` (Fuente: `doc/quality/testing.md`, "Todos los tests")
+- `pnpm e2e` (Fuente: `doc/quality/testing.md`, "Ejecutar E2E con backend/frontend locales")
