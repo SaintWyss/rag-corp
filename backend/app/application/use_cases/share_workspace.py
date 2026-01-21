@@ -1,8 +1,9 @@
 """
-Name: Get Workspace Use Case
+Name: Share Workspace Use Case
 
 Responsibilities:
-  - Fetch a workspace by ID with access policy
+  - Set workspace visibility to SHARED
+  - Replace workspace ACL entries
 
 Collaborators:
   - domain.repositories.WorkspaceRepository
@@ -14,12 +15,12 @@ from uuid import UUID
 
 from ...domain.entities import WorkspaceVisibility
 from ...domain.repositories import WorkspaceRepository, WorkspaceAclRepository
-from ...domain.workspace_policy import WorkspaceActor, can_read_workspace
+from ...domain.workspace_policy import WorkspaceActor, can_manage_acl
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 
-class GetWorkspaceUseCase:
-    """R: Fetch workspace by ID."""
+class ShareWorkspaceUseCase:
+    """R: Share workspace with explicit ACL entries."""
 
     def __init__(
         self,
@@ -30,8 +31,20 @@ class GetWorkspaceUseCase:
         self.acl_repository = acl_repository
 
     def execute(
-        self, workspace_id: UUID, actor: WorkspaceActor | None
+        self,
+        workspace_id: UUID,
+        actor: WorkspaceActor | None,
+        *,
+        user_ids: list[UUID],
     ) -> WorkspaceResult:
+        if not user_ids:
+            return WorkspaceResult(
+                error=WorkspaceError(
+                    code=WorkspaceErrorCode.VALIDATION_ERROR,
+                    message="Workspace ACL cannot be empty.",
+                )
+            )
+
         workspace = self.repository.get_workspace(workspace_id)
         if not workspace or workspace.is_archived:
             return WorkspaceResult(
@@ -41,13 +54,7 @@ class GetWorkspaceUseCase:
                 )
             )
 
-        shared_ids = None
-        if workspace.visibility == WorkspaceVisibility.SHARED:
-            shared_ids = self.acl_repository.list_workspace_acl(workspace.id)
-
-        if not can_read_workspace(
-            workspace, actor, shared_user_ids=shared_ids
-        ):
+        if not can_manage_acl(workspace, actor):
             return WorkspaceResult(
                 error=WorkspaceError(
                     code=WorkspaceErrorCode.FORBIDDEN,
@@ -55,4 +62,17 @@ class GetWorkspaceUseCase:
                 )
             )
 
-        return WorkspaceResult(workspace=workspace)
+        self.acl_repository.replace_workspace_acl(workspace_id, user_ids)
+        updated = self.repository.update_workspace(
+            workspace_id,
+            visibility=WorkspaceVisibility.SHARED,
+        )
+        if not updated:
+            return WorkspaceResult(
+                error=WorkspaceError(
+                    code=WorkspaceErrorCode.NOT_FOUND,
+                    message="Workspace not found.",
+                )
+            )
+
+        return WorkspaceResult(workspace=updated)

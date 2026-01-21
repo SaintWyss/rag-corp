@@ -22,7 +22,34 @@ import pytest
 from uuid import uuid4
 
 from app.application.use_cases.answer_query import AnswerQueryUseCase, AnswerQueryInput
-from app.domain.entities import Chunk, QueryResult
+from app.domain.entities import Chunk, QueryResult, Workspace, WorkspaceVisibility
+from app.domain.workspace_policy import WorkspaceActor
+from app.users import UserRole
+
+
+class _WorkspaceRepo:
+    def __init__(self, workspace: Workspace):
+        self._workspace = workspace
+
+    def get_workspace(self, workspace_id):
+        if workspace_id == self._workspace.id:
+            return self._workspace
+        return None
+
+
+class _AclRepo:
+    def list_workspace_acl(self, workspace_id):
+        return []
+
+
+_WORKSPACE = Workspace(
+    id=uuid4(),
+    name="Workspace",
+    visibility=WorkspaceVisibility.PRIVATE,
+)
+_ACTOR = WorkspaceActor(user_id=uuid4(), role=UserRole.ADMIN)
+_WORKSPACE_REPO = _WorkspaceRepo(_WORKSPACE)
+_ACL_REPO = _AclRepo()
 
 
 @pytest.mark.unit
@@ -45,26 +72,36 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
-        input_data = AnswerQueryInput(query=query, top_k=3)
+        input_data = AnswerQueryInput(
+            query=query,
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=3,
+        )
 
         # Act
         result = use_case.execute(input_data)
 
         # Assert
-        assert isinstance(result, QueryResult)
-        assert result.answer == expected_answer
-        assert len(result.chunks) == len(sample_chunks)
-        assert result.metadata["chunks_found"] == len(sample_chunks)
+        assert result.error is None
+        assert isinstance(result.result, QueryResult)
+        assert result.result.answer == expected_answer
+        assert len(result.result.chunks) == len(sample_chunks)
+        assert result.result.metadata["chunks_found"] == len(sample_chunks)
 
         # Verify dependency calls
         mock_embedding_service.embed_query.assert_called_once_with(query)
         mock_repository.find_similar_chunks.assert_called_once_with(
-            embedding=query_embedding, top_k=3
+            embedding=query_embedding,
+            top_k=3,
+            workspace_id=_WORKSPACE.id,
         )
         mock_llm_service.generate_answer.assert_called_once()
 
@@ -79,20 +116,31 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
-        input_data = AnswerQueryInput(query=query, top_k=5)
+        input_data = AnswerQueryInput(
+            query=query,
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=5,
+        )
 
         # Act
         result = use_case.execute(input_data)
 
         # Assert
-        assert result.answer == "No encontré documentos relacionados a tu pregunta."
-        assert result.chunks == []
-        assert result.metadata["chunks_found"] == 0
+        assert result.error is None
+        assert (
+            result.result.answer
+            == "No encontré documentos relacionados a tu pregunta."
+        )
+        assert result.result.chunks == []
+        assert result.result.metadata["chunks_found"] == 0
 
         # LLM should NOT be called when no chunks found
         mock_llm_service.generate_answer.assert_not_called()
@@ -108,21 +156,31 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             context_builder=mock_context_builder,
             llm_service=mock_llm_service,
         )
 
-        input_data = AnswerQueryInput(query="Test", top_k=2)
+        input_data = AnswerQueryInput(
+            query="Test",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=2,
+        )
 
         # Act
         result = use_case.execute(input_data)
 
         # Assert
         mock_repository.find_similar_chunks.assert_called_once_with(
-            embedding=[0.1] * 768, top_k=2
+            embedding=[0.1] * 768,
+            top_k=2,
+            workspace_id=_WORKSPACE.id,
         )
-        assert result.metadata["top_k"] == 2
+        assert result.error is None
+        assert result.result.metadata["top_k"] == 2
 
     def test_execute_with_mmr_enabled(
         self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
@@ -135,23 +193,36 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
-        input_data = AnswerQueryInput(query="Test query", top_k=5, use_mmr=True)
+        input_data = AnswerQueryInput(
+            query="Test query",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=5,
+            use_mmr=True,
+        )
 
         # Act
         result = use_case.execute(input_data)
 
         # Assert - should use MMR method, not standard find_similar_chunks
         mock_repository.find_similar_chunks_mmr.assert_called_once_with(
-            embedding=[0.1] * 768, top_k=5, fetch_k=20, lambda_mult=0.5
+            embedding=[0.1] * 768,
+            top_k=5,
+            fetch_k=20,
+            lambda_mult=0.5,
+            workspace_id=_WORKSPACE.id,
         )
         mock_repository.find_similar_chunks.assert_not_called()
-        assert result.answer == "Diverse answer"
-        assert result.metadata["use_mmr"] is True
+        assert result.error is None
+        assert result.result.answer == "Diverse answer"
+        assert result.result.metadata["use_mmr"] is True
 
     def test_execute_without_mmr_uses_standard_search(
         self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
@@ -164,20 +235,32 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
-        input_data = AnswerQueryInput(query="Test query", use_mmr=False)
+        input_data = AnswerQueryInput(
+            query="Test query",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            use_mmr=False,
+        )
 
         # Act
         result = use_case.execute(input_data)
 
         # Assert - should use standard method
-        mock_repository.find_similar_chunks.assert_called_once()
+        mock_repository.find_similar_chunks.assert_called_once_with(
+            embedding=[0.1] * 768,
+            top_k=5,
+            workspace_id=_WORKSPACE.id,
+        )
         mock_repository.find_similar_chunks_mmr.assert_not_called()
-        assert result.metadata["use_mmr"] is False
+        assert result.error is None
+        assert result.result.metadata["use_mmr"] is False
 
     def test_context_assembly_from_chunks(
         self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
@@ -211,13 +294,21 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
         # Act
-        use_case.execute(AnswerQueryInput(query="Test"))
+        use_case.execute(
+            AnswerQueryInput(
+                query="Test",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+            )
+        )
 
         # Assert - verify context passed to LLM contains all chunks
         call_args = mock_llm_service.generate_answer.call_args
@@ -251,18 +342,27 @@ class TestAnswerQueryUseCase:
         use_case = AnswerQueryUseCase(
             context_builder=mock_context_builder,
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
         )
 
         # Act
-        result = use_case.execute(AnswerQueryInput(query="Test"))
+        result = use_case.execute(
+            AnswerQueryInput(
+                query="Test",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+            )
+        )
 
         # Assert - chunks should be in original order
-        assert len(result.chunks) <= 5  # May be limited by context builder
-        for i, chunk in enumerate(result.chunks):
+        assert result.error is None
+        assert len(result.result.chunks) <= 5  # May be limited by context builder
+        for i, chunk in enumerate(result.result.chunks):
             assert chunk.chunk_index == i
-        for i, chunk in enumerate(result.chunks):
+        for i, chunk in enumerate(result.result.chunks):
             assert chunk.chunk_index == i
 
     def test_execute_with_single_chunk(
@@ -285,17 +385,27 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
         # Act
-        result = use_case.execute(AnswerQueryInput(query="Test", top_k=1))
+        result = use_case.execute(
+            AnswerQueryInput(
+                query="Test",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=1,
+            )
+        )
 
         # Assert
-        assert len(result.chunks) == 1
-        assert result.metadata["chunks_found"] == 1
+        assert result.error is None
+        assert len(result.result.chunks) == 1
+        assert result.result.metadata["chunks_found"] == 1
 
         # Verify context contains the chunk content
         call_args = mock_llm_service.generate_answer.call_args
@@ -315,13 +425,21 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
         # Act
-        use_case.execute(AnswerQueryInput(query=original_query))
+        use_case.execute(
+            AnswerQueryInput(
+                query=original_query,
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+            )
+        )
 
         # Assert
         call_args = mock_llm_service.generate_answer.call_args
@@ -341,13 +459,22 @@ class TestAnswerQueryUseCase:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
         # Act
-        use_case.execute(AnswerQueryInput(query=original_query, llm_query=llm_query))
+        use_case.execute(
+            AnswerQueryInput(
+                query=original_query,
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                llm_query=llm_query,
+            )
+        )
 
         # Assert
         call_args = mock_llm_service.generate_answer.call_args
@@ -360,7 +487,11 @@ class TestAnswerQueryInput:
 
     def test_create_with_defaults(self):
         """R: Should create input with default top_k=5."""
-        input_data = AnswerQueryInput(query="Test query")
+        input_data = AnswerQueryInput(
+            query="Test query",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+        )
 
         assert input_data.query == "Test query"
         assert input_data.llm_query is None
@@ -368,21 +499,35 @@ class TestAnswerQueryInput:
 
     def test_create_with_custom_top_k(self):
         """R: Should accept custom top_k value."""
-        input_data = AnswerQueryInput(query="Test", top_k=10)
+        input_data = AnswerQueryInput(
+            query="Test",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=10,
+        )
 
         assert input_data.query == "Test"
         assert input_data.top_k == 10
 
     def test_query_can_be_empty_string(self):
         """R: Should allow empty query (edge case)."""
-        input_data = AnswerQueryInput(query="")
+        input_data = AnswerQueryInput(
+            query="",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+        )
 
         assert input_data.query == ""
         assert input_data.top_k == 5
 
     def test_top_k_can_be_zero(self):
         """R: Should allow top_k=0 (edge case, no retrieval)."""
-        input_data = AnswerQueryInput(query="Test", top_k=0)
+        input_data = AnswerQueryInput(
+            query="Test",
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=0,
+        )
 
         assert input_data.top_k == 0
 
@@ -407,17 +552,27 @@ class TestAnswerQueryUseCaseEdgeCases:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
         # Act
-        result = use_case.execute(AnswerQueryInput(query="Test", top_k=100))
+        result = use_case.execute(
+            AnswerQueryInput(
+                query="Test",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=100,
+            )
+        )
 
         # Assert - chunks_found is total, but chunks returned may be limited by context builder
-        assert result.metadata["chunks_found"] == 100
-        assert len(result.chunks) <= 100  # May be limited by MAX_CONTEXT_CHARS
+        assert result.error is None
+        assert result.result.metadata["chunks_found"] == 100
+        assert len(result.result.chunks) <= 100  # May be limited by MAX_CONTEXT_CHARS
 
     def test_execute_with_very_long_query(
         self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
@@ -433,14 +588,23 @@ class TestAnswerQueryUseCaseEdgeCases:
 
         use_case = AnswerQueryUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
             embedding_service=mock_embedding_service,
             llm_service=mock_llm_service,
             context_builder=mock_context_builder,
         )
 
         # Act
-        result = use_case.execute(AnswerQueryInput(query=long_query))
+        result = use_case.execute(
+            AnswerQueryInput(
+                query=long_query,
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+            )
+        )
 
         # Assert
         mock_embedding_service.embed_query.assert_called_once_with(long_query)
-        assert result.answer == "Answer"
+        assert result.error is None
+        assert result.result.answer == "Answer"

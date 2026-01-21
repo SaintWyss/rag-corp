@@ -1,8 +1,8 @@
 """
-Name: Archive Workspace Use Case
+Name: Publish Workspace Use Case
 
 Responsibilities:
-  - Archive (soft-delete) a workspace by ID with access policy
+  - Set workspace visibility to ORG_READ
 
 Collaborators:
   - domain.repositories.WorkspaceRepository
@@ -11,51 +11,51 @@ Collaborators:
 
 from uuid import UUID
 
+from ...domain.entities import WorkspaceVisibility
 from ...domain.repositories import WorkspaceRepository
 from ...domain.workspace_policy import WorkspaceActor, can_write_workspace
-from .workspace_results import (
-    ArchiveWorkspaceResult,
-    WorkspaceError,
-    WorkspaceErrorCode,
-)
+from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 
-class ArchiveWorkspaceUseCase:
-    """R: Archive workspace."""
+class PublishWorkspaceUseCase:
+    """R: Publish workspace (ORG_READ)."""
 
     def __init__(self, repository: WorkspaceRepository):
         self.repository = repository
 
     def execute(
         self, workspace_id: UUID, actor: WorkspaceActor | None
-    ) -> ArchiveWorkspaceResult:
+    ) -> WorkspaceResult:
         workspace = self.repository.get_workspace(workspace_id)
         if not workspace or workspace.is_archived:
-            return ArchiveWorkspaceResult(
-                archived=False,
+            return WorkspaceResult(
                 error=WorkspaceError(
                     code=WorkspaceErrorCode.NOT_FOUND,
                     message="Workspace not found.",
-                ),
+                )
             )
 
         if not can_write_workspace(workspace, actor):
-            return ArchiveWorkspaceResult(
-                archived=False,
+            return WorkspaceResult(
                 error=WorkspaceError(
                     code=WorkspaceErrorCode.FORBIDDEN,
                     message="Access denied.",
-                ),
+                )
             )
 
-        archived = self.repository.archive_workspace(workspace_id)
-        if not archived:
-            return ArchiveWorkspaceResult(
-                archived=False,
+        if workspace.visibility == WorkspaceVisibility.ORG_READ:
+            return WorkspaceResult(workspace=workspace)
+
+        updated = self.repository.update_workspace(
+            workspace_id,
+            visibility=WorkspaceVisibility.ORG_READ,
+        )
+        if not updated:
+            return WorkspaceResult(
                 error=WorkspaceError(
                     code=WorkspaceErrorCode.NOT_FOUND,
                     message="Workspace not found.",
-                ),
+                )
             )
 
-        return ArchiveWorkspaceResult(archived=True)
+        return WorkspaceResult(workspace=updated)

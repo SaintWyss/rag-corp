@@ -34,6 +34,7 @@ class Document:
 
     Attributes:
         id: Unique document identifier
+        workspace_id: Workspace UUID that owns the document
         title: Document title
         source: Optional source URL or identifier
         metadata: Additional custom metadata
@@ -50,6 +51,7 @@ class Document:
     """
 
     id: UUID
+    workspace_id: Optional[UUID] = None
     title: str
     source: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -73,8 +75,9 @@ class Document:
 class WorkspaceVisibility(str, Enum):
     """R: Workspace visibility options."""
 
-    PRIVATE = "private"
-    SHARED = "shared"
+    PRIVATE = "PRIVATE"
+    ORG_READ = "ORG_READ"
+    SHARED = "SHARED"
 
 
 @dataclass
@@ -85,8 +88,9 @@ class Workspace:
     Attributes:
         id: Workspace identifier
         name: Workspace display name
-        visibility: Visibility setting (private/shared)
+        visibility: Visibility setting (PRIVATE/ORG_READ/SHARED)
         owner_user_id: Optional owner user UUID
+        description: Optional workspace description
         allowed_roles: Optional allowed roles for access control
         created_at: Creation timestamp
         updated_at: Last update timestamp
@@ -97,6 +101,7 @@ class Workspace:
     name: str
     visibility: WorkspaceVisibility = WorkspaceVisibility.PRIVATE
     owner_user_id: Optional[UUID] = None
+    description: Optional[str] = None
     allowed_roles: List[str] = field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

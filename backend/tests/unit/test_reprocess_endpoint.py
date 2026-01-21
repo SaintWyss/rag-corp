@@ -9,19 +9,23 @@ Responsibilities:
 import importlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.auth_users import create_access_token, hash_password
+from app.application.use_cases.reprocess_document import ReprocessDocumentUseCase
 from app.domain.entities import Document
+from app.domain.entities import Workspace, WorkspaceVisibility
 from app.exception_handlers import register_exception_handlers
 from app.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
+
+_LEGACY_WORKSPACE_ID = "00000000-0000-0000-0000-000000000001"
 
 
 def _auth_settings():
@@ -53,11 +57,36 @@ def _user(role: UserRole) -> User:
 def _prepare_routes(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+    monkeypatch.setenv("LEGACY_WORKSPACE_ID", _LEGACY_WORKSPACE_ID)
 
     import app.routes as routes
 
     importlib.reload(routes)
     return routes
+
+
+def _override_reprocess_use_case(
+    app: FastAPI,
+    routes_module,
+    workspace_id: UUID,
+    repo: MagicMock,
+    queue: MagicMock,
+):
+    workspace = Workspace(
+        id=workspace_id,
+        name="Legacy",
+        visibility=WorkspaceVisibility.PRIVATE,
+    )
+    workspace_repo = MagicMock()
+    workspace_repo.get_workspace.return_value = workspace
+    use_case = ReprocessDocumentUseCase(
+        repository=repo,
+        workspace_repository=workspace_repo,
+        queue=queue,
+    )
+    app.dependency_overrides[routes_module.get_reprocess_document_use_case] = (
+        lambda: use_case
+    )
 
 
 def _document(status: str) -> Document:
@@ -84,8 +113,8 @@ def test_reprocess_admin_enqueues(monkeypatch):
     repo.get_document.return_value = doc
     repo.transition_document_status.return_value = True
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: repo
-    app.dependency_overrides[routes.get_document_queue] = lambda: queue
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
+    _override_reprocess_use_case(app, routes, workspace_id, repo, queue)
 
     admin = _user(UserRole.ADMIN)
     settings = _auth_settings()
@@ -114,8 +143,8 @@ def test_reprocess_rejects_employee_jwt(monkeypatch):
     repo = MagicMock()
     queue = MagicMock()
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: repo
-    app.dependency_overrides[routes.get_document_queue] = lambda: queue
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
+    _override_reprocess_use_case(app, routes, workspace_id, repo, queue)
 
     employee = _user(UserRole.EMPLOYEE)
     settings = _auth_settings()
@@ -141,8 +170,8 @@ def test_reprocess_processing_returns_conflict(monkeypatch):
     doc = _document("PROCESSING")
     repo.get_document.return_value = doc
 
-    app.dependency_overrides[routes.get_document_repository] = lambda: repo
-    app.dependency_overrides[routes.get_document_queue] = lambda: queue
+    workspace_id = UUID(_LEGACY_WORKSPACE_ID)
+    _override_reprocess_use_case(app, routes, workspace_id, repo, queue)
 
     admin = _user(UserRole.ADMIN)
     settings = _auth_settings()

@@ -103,10 +103,19 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 conn.execute(
                     """
-                    INSERT INTO documents (id, title, source, metadata, tags, allowed_roles)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO documents (
+                        id,
+                        workspace_id,
+                        title,
+                        source,
+                        metadata,
+                        tags,
+                        allowed_roles
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE
-                    SET title = EXCLUDED.title,
+                    SET workspace_id = EXCLUDED.workspace_id,
+                        title = EXCLUDED.title,
                         source = EXCLUDED.source,
                         metadata = EXCLUDED.metadata,
                         tags = EXCLUDED.tags,
@@ -114,6 +123,7 @@ class PostgresDocumentRepository:
                     """,
                     (
                         document.id,
+                        document.workspace_id,
                         document.title,
                         document.source,
                         Json(document.metadata),
@@ -133,6 +143,7 @@ class PostgresDocumentRepository:
         limit: int = 50,
         offset: int = 0,
         *,
+        workspace_id: UUID | None = None,
         query: str | None = None,
         status: str | None = None,
         tag: str | None = None,
@@ -148,6 +159,10 @@ class PostgresDocumentRepository:
             pool = self._get_pool()
             filters = ["deleted_at IS NULL"]
             params: list[object] = []
+
+            if workspace_id:
+                filters.append("workspace_id = %s")
+                params.append(workspace_id)
 
             if query:
                 like_query = f"%{query}%"
@@ -172,7 +187,7 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 rows = conn.execute(
                     f"""
-                    SELECT id, title, source, metadata, created_at, deleted_at,
+                    SELECT id, workspace_id, title, source, metadata, created_at, deleted_at,
                            file_name, mime_type, storage_key,
                            uploaded_by_user_id, status, error_message, tags, allowed_roles
                     FROM documents
@@ -186,19 +201,20 @@ class PostgresDocumentRepository:
             return [
                 Document(
                     id=row[0],
-                    title=row[1],
-                    source=row[2],
-                    metadata=row[3] or {},
-                    created_at=row[4],
-                    deleted_at=row[5],
-                    file_name=row[6],
-                    mime_type=row[7],
-                    storage_key=row[8],
-                    uploaded_by_user_id=row[9],
-                    status=row[10],
-                    error_message=row[11],
-                    tags=row[12] or [],
-                    allowed_roles=row[13] or [],
+                    workspace_id=row[1],
+                    title=row[2],
+                    source=row[3],
+                    metadata=row[4] or {},
+                    created_at=row[5],
+                    deleted_at=row[6],
+                    file_name=row[7],
+                    mime_type=row[8],
+                    storage_key=row[9],
+                    uploaded_by_user_id=row[10],
+                    status=row[11],
+                    error_message=row[12],
+                    tags=row[13] or [],
+                    allowed_roles=row[14] or [],
                 )
                 for row in rows
             ]
@@ -206,7 +222,9 @@ class PostgresDocumentRepository:
             logger.error(f"PostgresDocumentRepository: List documents failed: {e}")
             raise DatabaseError(f"List documents failed: {e}")
 
-    def get_document(self, document_id: UUID) -> Optional[Document]:
+    def get_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> Optional[Document]:
         """
         R: Fetch a single document by ID (excluding deleted).
 
@@ -215,36 +233,40 @@ class PostgresDocumentRepository:
         """
         try:
             pool = self._get_pool()
+            query = """
+                SELECT id, workspace_id, title, source, metadata, created_at, deleted_at,
+                       file_name, mime_type, storage_key,
+                       uploaded_by_user_id, status, error_message, tags, allowed_roles
+                FROM documents
+                WHERE id = %s AND deleted_at IS NULL
+            """
+            params: list[object] = [document_id]
+            if workspace_id:
+                query += " AND workspace_id = %s"
+                params.append(workspace_id)
+
             with pool.connection() as conn:
-                row = conn.execute(
-                    """
-                    SELECT id, title, source, metadata, created_at, deleted_at,
-                           file_name, mime_type, storage_key,
-                           uploaded_by_user_id, status, error_message, tags, allowed_roles
-                    FROM documents
-                    WHERE id = %s AND deleted_at IS NULL
-                    """,
-                    (document_id,),
-                ).fetchone()
+                row = conn.execute(query, params).fetchone()
 
             if not row:
                 return None
 
             return Document(
                 id=row[0],
-                title=row[1],
-                source=row[2],
-                metadata=row[3] or {},
-                created_at=row[4],
-                deleted_at=row[5],
-                file_name=row[6],
-                mime_type=row[7],
-                storage_key=row[8],
-                uploaded_by_user_id=row[9],
-                status=row[10],
-                error_message=row[11],
-                tags=row[12] or [],
-                allowed_roles=row[13] or [],
+                workspace_id=row[1],
+                title=row[2],
+                source=row[3],
+                metadata=row[4] or {},
+                created_at=row[5],
+                deleted_at=row[6],
+                file_name=row[7],
+                mime_type=row[8],
+                storage_key=row[9],
+                uploaded_by_user_id=row[10],
+                status=row[11],
+                error_message=row[12],
+                tags=row[13] or [],
+                allowed_roles=row[14] or [],
             )
         except Exception as e:
             logger.error(
@@ -327,10 +349,19 @@ class PostgresDocumentRepository:
                     # R: Insert document
                     conn.execute(
                         """
-                        INSERT INTO documents (id, title, source, metadata, tags, allowed_roles)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        INSERT INTO documents (
+                            id,
+                            workspace_id,
+                            title,
+                            source,
+                            metadata,
+                            tags,
+                            allowed_roles
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (id) DO UPDATE
-                        SET title = EXCLUDED.title,
+                        SET workspace_id = EXCLUDED.workspace_id,
+                            title = EXCLUDED.title,
                             source = EXCLUDED.source,
                             metadata = EXCLUDED.metadata,
                             tags = EXCLUDED.tags,
@@ -338,6 +369,7 @@ class PostgresDocumentRepository:
                         """,
                         (
                             document.id,
+                            document.workspace_id,
                             document.title,
                             document.source,
                             Json(document.metadata),
@@ -492,7 +524,13 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Failed to delete chunks: {e}")
 
-    def find_similar_chunks(self, embedding: List[float], top_k: int) -> List[Chunk]:
+    def find_similar_chunks(
+        self,
+        embedding: List[float],
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> List[Chunk]:
         """
         R: Search for similar chunks using vector cosine similarity.
 
@@ -504,21 +542,31 @@ class PostgresDocumentRepository:
         """
         try:
             pool = self._get_pool()
+            filters = ["d.deleted_at IS NULL"]
+            params: list[object] = []
+
+            if workspace_id:
+                filters.append("d.workspace_id = %s")
+                params.append(workspace_id)
+
+            where_clause = " AND ".join(filters)
             with pool.connection() as conn:
                 rows = conn.execute(
-                    """
+                    f"""
                     SELECT
-                      id,
-                      document_id,
-                      chunk_index,
-                      content,
-                      embedding,
-                      (1 - (embedding <=> %s::vector)) as score
-                    FROM chunks
-                    ORDER BY embedding <=> %s::vector
+                      c.id,
+                      c.document_id,
+                      c.chunk_index,
+                      c.content,
+                      c.embedding,
+                      (1 - (c.embedding <=> %s::vector)) as score
+                    FROM chunks c
+                    JOIN documents d ON d.id = c.document_id
+                    WHERE {where_clause}
+                    ORDER BY c.embedding <=> %s::vector
                     LIMIT %s
                     """,
-                    (embedding, embedding, top_k),
+                    (embedding, *params, embedding, top_k),
                 ).fetchall()
             logger.info(f"PostgresDocumentRepository: Found {len(rows)} similar chunks")
         except Exception as e:
@@ -631,6 +679,8 @@ class PostgresDocumentRepository:
         top_k: int,
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
+        *,
+        workspace_id: UUID | None = None,
     ) -> List[Chunk]:
         """
         R: Search for similar chunks using Maximal Marginal Relevance.
@@ -652,7 +702,11 @@ class PostgresDocumentRepository:
             DatabaseError: If search query fails
         """
         # R: Fetch more candidates than needed for MMR selection
-        candidates = self.find_similar_chunks(embedding, max(fetch_k, top_k * 2))
+        candidates = self.find_similar_chunks(
+            embedding,
+            max(fetch_k, top_k * 2),
+            workspace_id=workspace_id,
+        )
 
         if len(candidates) <= top_k:
             return candidates

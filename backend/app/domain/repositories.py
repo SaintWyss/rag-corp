@@ -46,107 +46,6 @@ class DocumentRepository(Protocol):
         """
         ...
 
-
-class WorkspaceRepository(Protocol):
-    """
-    R: Interface for workspace persistence.
-
-    Implementations must provide:
-      - Workspace CRUD operations
-      - Optional archive semantics via deleted_at
-    """
-
-    def list_workspaces(
-        self,
-        *,
-        owner_user_id: UUID | None = None,
-        include_archived: bool = False,
-    ) -> List[Workspace]:
-        """
-        R: List workspaces (optionally filtered by owner).
-
-        Args:
-            owner_user_id: Optional owner filter
-            include_archived: Include archived workspaces when True
-
-        Returns:
-            List of Workspace entities
-        """
-        ...
-
-    def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
-        """
-        R: Fetch a workspace by ID.
-
-        Args:
-            workspace_id: Workspace UUID
-
-        Returns:
-            Workspace if found, otherwise None
-        """
-        ...
-
-    def get_workspace_by_owner_and_name(
-        self, owner_user_id: UUID | None, name: str
-    ) -> Optional[Workspace]:
-        """
-        R: Fetch a workspace by owner + name (for uniqueness checks).
-
-        Args:
-            owner_user_id: Owner UUID or None
-            name: Workspace name
-
-        Returns:
-            Workspace if found, otherwise None
-        """
-        ...
-
-    def create_workspace(self, workspace: Workspace) -> Workspace:
-        """
-        R: Persist a new workspace.
-
-        Args:
-            workspace: Workspace entity to create
-
-        Returns:
-            Created workspace entity
-        """
-        ...
-
-    def update_workspace(
-        self,
-        workspace_id: UUID,
-        *,
-        name: str | None = None,
-        visibility: WorkspaceVisibility | None = None,
-        allowed_roles: list[str] | None = None,
-    ) -> Optional[Workspace]:
-        """
-        R: Update workspace attributes.
-
-        Args:
-            workspace_id: Workspace UUID
-            name: New name (optional)
-            visibility: New visibility (optional)
-            allowed_roles: Updated roles (optional)
-
-        Returns:
-            Updated workspace or None if not found
-        """
-        ...
-
-    def archive_workspace(self, workspace_id: UUID) -> bool:
-        """
-        R: Archive (soft-delete) a workspace.
-
-        Args:
-            workspace_id: Workspace UUID
-
-        Returns:
-            True if archived, False if not found
-        """
-        ...
-
     def save_chunks(self, document_id: UUID, chunks: List[Chunk]) -> None:
         """
         R: Persist chunks with embeddings for a document.
@@ -172,13 +71,20 @@ class WorkspaceRepository(Protocol):
         """
         ...
 
-    def find_similar_chunks(self, embedding: List[float], top_k: int) -> List[Chunk]:
+    def find_similar_chunks(
+        self,
+        embedding: List[float],
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> List[Chunk]:
         """
         R: Search for similar chunks using vector similarity.
 
         Args:
             embedding: Query embedding vector
             top_k: Number of most similar chunks to return
+            workspace_id: Optional workspace filter
 
         Returns:
             List of Chunk entities ordered by similarity (descending)
@@ -190,6 +96,7 @@ class WorkspaceRepository(Protocol):
         limit: int = 50,
         offset: int = 0,
         *,
+        workspace_id: UUID | None = None,
         query: str | None = None,
         status: str | None = None,
         tag: str | None = None,
@@ -201,6 +108,7 @@ class WorkspaceRepository(Protocol):
         Args:
             limit: Maximum number of documents to return
             offset: Offset for pagination
+            workspace_id: Optional workspace filter
             query: Optional search query
             status: Optional status filter
             tag: Optional tag filter
@@ -211,12 +119,15 @@ class WorkspaceRepository(Protocol):
         """
         ...
 
-    def get_document(self, document_id: UUID) -> Optional[Document]:
+    def get_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> Optional[Document]:
         """
         R: Fetch a single document by ID.
 
         Args:
             document_id: Document UUID
+            workspace_id: Optional workspace filter
 
         Returns:
             Document if found, otherwise None
@@ -229,6 +140,8 @@ class WorkspaceRepository(Protocol):
         top_k: int,
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
+        *,
+        workspace_id: UUID | None = None,
     ) -> List[Chunk]:
         """
         R: Search for similar chunks using Maximal Marginal Relevance.
@@ -241,6 +154,7 @@ class WorkspaceRepository(Protocol):
             top_k: Number of chunks to return
             fetch_k: Number of candidates to fetch before reranking
             lambda_mult: Balance between relevance (1.0) and diversity (0.0)
+            workspace_id: Optional workspace filter
 
         Returns:
             List of Chunk entities ordered by MMR score
@@ -339,6 +253,141 @@ class WorkspaceRepository(Protocol):
 
         Returns:
             True if the underlying data store is reachable.
+        """
+        ...
+
+
+class WorkspaceRepository(Protocol):
+    """
+    R: Interface for workspace persistence.
+
+    Implementations must provide:
+      - Workspace CRUD operations
+      - Optional archive semantics via deleted_at
+    """
+
+    def list_workspaces(
+        self,
+        *,
+        owner_user_id: UUID | None = None,
+        include_archived: bool = False,
+    ) -> List[Workspace]:
+        """
+        R: List workspaces (optionally filtered by owner).
+
+        Args:
+            owner_user_id: Optional owner filter
+            include_archived: Include archived workspaces when True
+
+        Returns:
+            List of Workspace entities
+        """
+        ...
+
+    def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
+        """
+        R: Fetch a workspace by ID.
+
+        Args:
+            workspace_id: Workspace UUID
+
+        Returns:
+            Workspace if found, otherwise None
+        """
+        ...
+
+    def get_workspace_by_owner_and_name(
+        self, owner_user_id: UUID | None, name: str
+    ) -> Optional[Workspace]:
+        """
+        R: Fetch a workspace by owner + name (for uniqueness checks).
+
+        Args:
+            owner_user_id: Owner UUID or None
+            name: Workspace name
+
+        Returns:
+            Workspace if found, otherwise None
+        """
+        ...
+
+    def create_workspace(self, workspace: Workspace) -> Workspace:
+        """
+        R: Persist a new workspace.
+
+        Args:
+            workspace: Workspace entity to create
+
+        Returns:
+            Created workspace entity
+        """
+        ...
+
+    def update_workspace(
+        self,
+        workspace_id: UUID,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        visibility: WorkspaceVisibility | None = None,
+        allowed_roles: list[str] | None = None,
+    ) -> Optional[Workspace]:
+        """
+        R: Update workspace attributes.
+
+        Args:
+            workspace_id: Workspace UUID
+            name: New name (optional)
+            description: New description (optional)
+            visibility: New visibility (optional)
+            allowed_roles: Updated roles (optional)
+
+        Returns:
+            Updated workspace or None if not found
+        """
+        ...
+
+    def archive_workspace(self, workspace_id: UUID) -> bool:
+        """
+        R: Archive (soft-delete) a workspace.
+
+        Args:
+            workspace_id: Workspace UUID
+
+        Returns:
+            True if archived, False if not found
+        """
+        ...
+
+
+class WorkspaceAclRepository(Protocol):
+    """
+    R: Interface for workspace ACL persistence.
+
+    Implementations must provide:
+      - Read access lists for SHARED workspaces
+      - Replace access lists for share operations
+    """
+
+    def list_workspace_acl(self, workspace_id: UUID) -> List[UUID]:
+        """
+        R: List user IDs with access to a workspace.
+
+        Args:
+            workspace_id: Workspace UUID
+
+        Returns:
+            List of user UUIDs
+        """
+        ...
+
+    def replace_workspace_acl(self, workspace_id: UUID, user_ids: List[UUID]) -> None:
+        """
+        R: Replace ACL entries for a workspace.
+
+        Args:
+            workspace_id: Workspace UUID
+            user_ids: Users to grant read access
         """
         ...
 

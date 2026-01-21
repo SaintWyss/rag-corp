@@ -23,10 +23,34 @@ from uuid import UUID
 from app.application.use_cases.ingest_document import (
     IngestDocumentUseCase,
     IngestDocumentInput,
-    IngestDocumentOutput,
 )
-from app.domain.entities import Document
+from app.application.use_cases.document_results import IngestDocumentResult
+from app.domain.entities import Document, Workspace, WorkspaceVisibility
+from app.domain.workspace_policy import WorkspaceActor
 from app.domain.services import TextChunkerService
+from app.users import UserRole
+
+
+class _WorkspaceRepo:
+    def __init__(self, workspace: Workspace):
+        self._workspace = workspace
+
+    def get_workspace(self, workspace_id):
+        if workspace_id == self._workspace.id:
+            return self._workspace
+        return None
+
+
+_WORKSPACE = Workspace(
+    id=UUID("00000000-0000-0000-0000-000000000001"),
+    name="Workspace",
+    visibility=WorkspaceVisibility.PRIVATE,
+)
+_ACTOR = WorkspaceActor(
+    user_id=UUID("00000000-0000-0000-0000-000000000002"),
+    role=UserRole.ADMIN,
+)
+_WORKSPACE_REPO = _WorkspaceRepo(_WORKSPACE)
 
 
 @pytest.fixture
@@ -57,11 +81,14 @@ class TestIngestDocumentUseCase:
 
         use_case = IngestDocumentUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
             embedding_service=mock_embedding_service,
             chunker=mock_chunker,
         )
 
         input_data = IngestDocumentInput(
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
             title="Test Document",
             text="Some long text to chunk",
             source="https://example.com/doc.pdf",
@@ -71,7 +98,7 @@ class TestIngestDocumentUseCase:
         result = use_case.execute(input_data)
 
         # Assert
-        assert isinstance(result, IngestDocumentOutput)
+        assert isinstance(result, IngestDocumentResult)
         assert isinstance(result.document_id, UUID)
         assert result.chunks_created == 2
 
@@ -95,11 +122,14 @@ class TestIngestDocumentUseCase:
 
         use_case = IngestDocumentUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
             embedding_service=mock_embedding_service,
             chunker=mock_chunker,
         )
 
         input_data = IngestDocumentInput(
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
             title="Empty Document",
             text="",
         )
@@ -126,12 +156,15 @@ class TestIngestDocumentUseCase:
 
         use_case = IngestDocumentUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
             embedding_service=mock_embedding_service,
             chunker=mock_chunker,
         )
 
         custom_metadata = {"author": "John Doe", "department": "Engineering"}
         input_data = IngestDocumentInput(
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
             title="Metadata Test",
             text="Content here",
             metadata=custom_metadata,
@@ -160,11 +193,14 @@ class TestIngestDocumentUseCase:
 
         use_case = IngestDocumentUseCase(
             repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
             embedding_service=mock_embedding_service,
             chunker=mock_chunker,
         )
 
         input_data = IngestDocumentInput(
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
             title="URL Test",
             text="Content",
             source="https://docs.example.com/api-guide.pdf",
@@ -185,6 +221,8 @@ class TestIngestDocumentInput:
     def test_create_with_required_fields(self):
         """R: Should create input with only required fields."""
         input_data = IngestDocumentInput(
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
             title="Test",
             text="Content",
         )
@@ -197,6 +235,8 @@ class TestIngestDocumentInput:
     def test_create_with_all_fields(self):
         """R: Should create input with all fields."""
         input_data = IngestDocumentInput(
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
             title="Full Test",
             text="Full content",
             source="https://example.com",
