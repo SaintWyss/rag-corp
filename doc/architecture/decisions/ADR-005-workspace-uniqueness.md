@@ -1,4 +1,4 @@
-# ADR-005: Unicidad de workspace por owner_user_id + name
+# ADR-005: Unicidad v4 de Workspace por owner_user_id + name
 
 ## Estado
 
@@ -6,50 +6,32 @@
 
 ## Contexto
 
-- El schema documentado incluye tablas `documents`, `users`, `audit_events` y `chunks` y define `uploaded_by_user_id` en `documents` para ownership. (`doc/data/postgres-schema.md`)
-- La entidad `Document` expone `uploaded_by_user_id` en el dominio. (`backend/app/domain/entities.py`)
-- El API actual no modela workspaces y opera sobre `/v1/documents` y `/v1/ask`. (`doc/api/http-api.md`, `backend/app/routes.py`)
+- La entidad Workspace indica que `name` puede ser unico por owner o global (decision pendiente). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace")
+- La especificacion de secciones fija ownership por usuario (cada Seccion tiene `owner_user_id`). (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "RB-01 Ownership")
+- El caso de uso de creacion contempla 409 por duplicado si se elige unicidad por owner. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "UC-10 — Crear seccion", "Duplicado (si se decide unique por owner) -> 409")
 
 ## Decision
 
-- Cuando se agregue la entidad workspace, **la unicidad sera por `(owner_user_id, name)`**. (`backend/app/domain/`, `backend/app/application/use_cases/`, `backend/app/infrastructure/repositories/`, `backend/alembic/`, `doc/data/postgres-schema.md`)
-- El nombre puede repetirse entre owners distintos; no se exige unicidad global (documentar en `doc/data/postgres-schema.md`).
+- La unicidad de Workspace sera por `(owner_user_id, name)`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace")
+- Se permite repetir `name` entre owners distintos; si el mismo owner repite, responde 409. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "Duplicado (si se decide unique por owner) -> 409")
 
 ## Alternativas consideradas
 
-1. Nombre unico global (descartado por colisiones entre owners).
-2. Unicidad por organizacion/tenant (no existe entidad de tenant en el schema actual). (`doc/data/postgres-schema.md`)
-3. Sin constraint de unicidad (descartado por UX y conflictos de lookup).
+1. Unicidad global del `name` (descartado; el v4 explicita que puede ser por owner o global y se opta por owner). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace")
 
 ## Consecuencias
 
-- DB: agregar constraint unique compuesto en migraciones. (`backend/alembic/`, `doc/data/postgres-schema.md`)
-- API: si hay conflicto, responder 409 usando error factory existente. (`backend/app/error_responses.py`)
-- UI: mostrar error de nombre duplicado al usuario (implementar en `frontend/app/components/StatusBanner.tsx`).
+- La UI debe manejar error 409 por duplicados en creacion. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "Duplicado (si se decide unique por owner) -> 409")
+- El backend y la DB deben aplicar el constraint compuesto `(owner_user_id, name)` alineado al modelo. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "RB-01 Ownership"; `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace")
 
-## Impacto en FE/BE/DB
+## Impacto FE/BE/DB
 
-- FE: manejo de errores 409 y mensajes de validacion en `frontend/app/components/StatusBanner.tsx` y flujos de creacion en `frontend/app/page.tsx`.
-- BE (domain/application/infrastructure/API): entidad y repositorio de workspace en `backend/app/domain/`, validacion en `backend/app/application/use_cases/`, constraint en `backend/app/infrastructure/repositories/`, manejo de conflicto en `backend/app/error_responses.py`, rutas en `backend/app/routes.py`.
-- DB: migraciones en `backend/alembic/` y doc de schema en `doc/data/postgres-schema.md`.
+- FE: validar y mostrar conflicto 409 en creacion de workspace/seccion. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "UC-10 — Crear seccion", "Duplicado -> 409")
+- BE/API: aplicar unicidad por owner en el caso de uso de creacion. (Fuente: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`, "RB-01 Ownership"; `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "`owner_user_id`", "`name`")
+- DB: constraint unico en `(owner_user_id, name)` sobre `workspaces`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.2 Entidad Workspace", "### 12.2 Tablas nuevas")
 
-## Como validar
+## Validacion
 
-- Tests backend: `pnpm test:backend:unit` (ver `doc/quality/testing.md`).
-- Integration si hay DB: `RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration` (ver `doc/quality/testing.md`).
-- Tests frontend: `pnpm --filter web test` (ver `doc/quality/testing.md`).
-
-## Referencias
-
-- `doc/data/postgres-schema.md`
-- `backend/app/domain/entities.py`
-- `doc/api/http-api.md`
-- `backend/app/routes.py`
-- `backend/app/error_responses.py`
-- `frontend/app/components/StatusBanner.tsx`
-- `frontend/app/page.tsx`
-- `backend/app/domain/`
-- `backend/app/application/use_cases/`
-- `backend/app/infrastructure/repositories/`
-- `backend/alembic/`
-- `doc/quality/testing.md`
+- `pnpm test:backend:unit` (Fuente: `doc/quality/testing.md`, "Unit tests (Docker, recomendado)")
+- `pnpm --filter web test` (Fuente: `doc/quality/testing.md`, "Todos los tests")
+- `pnpm e2e` (Fuente: `doc/quality/testing.md`, "Ejecutar E2E con backend/frontend locales")

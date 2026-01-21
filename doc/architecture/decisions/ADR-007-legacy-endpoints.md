@@ -1,4 +1,4 @@
-# ADR-007: Compatibilidad de endpoints legacy vs nested workspaces
+# ADR-007: Compatibilidad v4 de endpoints legacy vs nested workspaces
 
 ## Estado
 
@@ -6,51 +6,34 @@
 
 ## Contexto
 
-- El API canonico usa `/v1` y documenta `/v1/documents`, `/v1/ask` y `/v1/ask/stream`. (`doc/api/http-api.md`)
-- El router backend define endpoints `/documents`, `/ask` y `/ask/stream` bajo el prefijo del API. (`backend/app/routes.py`)
-- El frontend llama `/api/ask`, `/api/ask/stream` y `/api/documents` via proxy. (`frontend/app/hooks/useRagAsk.ts`, `frontend/app/hooks/useRagChat.ts`, `frontend/app/lib/api.ts`, `doc/api/http-api.md`)
+- El baseline actual expone `/v1/documents`, `/v1/ask` y `/v1/ask/stream` en la API v1. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 5.2 Endpoints principales actuales")
+- Las reglas v4 requieren que toda consulta incluya `workspace_id` y que el retrieval filtre por `workspace_id`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 8.2 Reglas para consultas")
+- La API v4 propone endpoints nested por workspace y permite mantener `/v1/documents` con `workspace_id` obligatorio; ademas recomienda rutas anidadas para evitar olvidar el scope. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
 
 ## Decision
 
-- Mantener `/v1/documents` y `/v1/ask` como endpoints **legacy estables**. (`doc/api/http-api.md`, `backend/app/routes.py`)
-- Cuando se agreguen workspaces, sumar endpoints nested (`/v1/workspaces/{workspace_id}/documents`, `/v1/workspaces/{workspace_id}/ask`) sin romper los legacy. (`backend/app/routes.py`)
-- Cuando existan workspaces, los endpoints legacy operaran sobre un workspace implicito para compatibilidad (implementar en `backend/app/application/use_cases/`, `backend/app/routes.py`).
+- Los endpoints canonicos son los nested bajo `/v1/workspaces/{id}/...` (documents, ask, ask/stream, query). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
+- Los endpoints legacy `/v1/documents` y `/v1/ask` (incl. `/v1/ask/stream`) se mantienen temporalmente pero **requieren** `workspace_id` y quedan documentados como deprecated. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "GET /v1/workspaces/{id}/documents (o mantener /v1/documents con query workspace_id obligatorio)", "### 8.2 Reglas para consultas")
+- No existe workspace implicito: si falta `workspace_id` en legacy, se rechaza la solicitud. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "1. Toda consulta debe incluir un workspace_id")
 
 ## Alternativas consideradas
 
-1. Deprecar de inmediato `/v1/documents` y `/v1/ask` (descartado por romper FE actual). (`frontend/app/hooks/useRagAsk.ts`, `frontend/app/lib/api.ts`)
-2. Solo endpoints legacy sin nested (descartado por falta de aislamiento multi-workspace).
-3. Workspace via header en vez de path (descartado por menor claridad en contratos).
+1. Remover legacy de inmediato (descartado porque el baseline actual los expone). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 5.2 Endpoints principales actuales")
+2. Mantener legacy con workspace implicito (descartado por la regla v4 que exige `workspace_id`). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "1. Toda consulta debe incluir un workspace_id")
 
 ## Consecuencias
 
-- Se preserva compatibilidad con FE y clientes existentes.
-- Se habilita evolucion hacia endpoints nested sin cambios disruptivos.
+- Los clientes actuales pueden migrar gradualmente, pero deben enviar `workspace_id` desde el inicio. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 8.2 Reglas para consultas", "### 13.2 Endpoints propuestos")
+- Se evita drift de scope al preferir rutas nested para el uso futuro. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
 
-## Impacto en FE/BE/DB
+## Impacto FE/BE/DB
 
-- FE: consumo actual en `frontend/app/hooks/useRagAsk.ts`, `frontend/app/hooks/useRagChat.ts`, `frontend/app/lib/api.ts`; futuros selectores de workspace en paginas `frontend/app/page.tsx` y `frontend/app/documents/page.tsx`.
-- BE (domain/application/infrastructure/API): nuevos use cases y repos para workspace en `backend/app/domain/`, `backend/app/application/use_cases/`, `backend/app/infrastructure/`, rutas en `backend/app/routes.py`.
-- DB: futura tabla workspace y constraints en `backend/alembic/` y `doc/data/postgres-schema.md`.
+- FE: selector de workspace y envio de `workspace_id` en llamadas Ask/Docs. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 14.1 Navegacion", "### 8.2 Reglas para consultas")
+- BE/API: implementar rutas nested y validar `workspace_id` en legacy. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos", "### 8.2 Reglas para consultas")
+- DB: `documents.workspace_id` obligatorio para scoping. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 12.3 Modificaciones a documents")
 
-## Como validar
+## Validacion
 
-- Tests backend: `pnpm test:backend:unit` (ver `doc/quality/testing.md`).
-- Tests frontend: `pnpm --filter web test` (ver `doc/quality/testing.md`).
-- E2E: `pnpm e2e` (ver `doc/quality/testing.md`).
-
-## Referencias
-
-- `doc/api/http-api.md`
-- `backend/app/routes.py`
-- `frontend/app/hooks/useRagAsk.ts`
-- `frontend/app/hooks/useRagChat.ts`
-- `frontend/app/lib/api.ts`
-- `frontend/app/page.tsx`
-- `frontend/app/documents/page.tsx`
-- `backend/app/domain/`
-- `backend/app/application/use_cases/`
-- `backend/app/infrastructure/`
-- `backend/alembic/`
-- `doc/data/postgres-schema.md`
-- `doc/quality/testing.md`
+- `pnpm test:backend:unit` (Fuente: `doc/quality/testing.md`, "Unit tests (Docker, recomendado)")
+- `pnpm --filter web test` (Fuente: `doc/quality/testing.md`, "Todos los tests")
+- `pnpm e2e` (Fuente: `doc/quality/testing.md`, "Ejecutar E2E con backend/frontend locales")
