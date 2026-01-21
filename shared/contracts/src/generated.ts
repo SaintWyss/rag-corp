@@ -4,6 +4,10 @@
  * RAG Corp API
  * OpenAPI spec version: 0.1.0
  */
+export interface ArchiveWorkspaceRes {
+  archived: boolean;
+}
+
 export type AskResConversationId = string | null;
 
 export interface AskRes {
@@ -38,6 +42,60 @@ export interface BodyUploadDocumentV1DocumentsUploadPost {
   metadata?: BodyUploadDocumentV1DocumentsUploadPostMetadata;
 }
 
+export type BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostTitle = string | null;
+
+export type BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostSource = string | null;
+
+export type BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata = string | null;
+
+export interface BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost {
+  file: Blob;
+  title?: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostTitle;
+  source?: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostSource;
+  metadata?: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata;
+}
+
+export type BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostTitle = string | null;
+
+export type BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostSource = string | null;
+
+export type BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata = string | null;
+
+export interface BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost {
+  file: Blob;
+  title?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostTitle;
+  source?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostSource;
+  metadata?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata;
+}
+
+export interface CreateUserRequest {
+  /**
+   * @minLength 3
+   * @maxLength 320
+   */
+  email: string;
+  /**
+   * @minLength 8
+   * @maxLength 512
+   */
+  password: string;
+  role?: UserRole;
+}
+
+export type CreateWorkspaceReqOwnerUserId = string | null;
+
+export interface CreateWorkspaceReq {
+  /**
+   * Workspace name
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  visibility?: WorkspaceVisibility;
+  owner_user_id?: CreateWorkspaceReqOwnerUserId;
+  acl?: WorkspaceACL;
+}
+
 export interface DeleteDocumentRes {
   deleted: boolean;
 }
@@ -67,6 +125,7 @@ export interface DocumentDetailRes {
   file_name?: DocumentDetailResFileName;
   mime_type?: DocumentDetailResMimeType;
   status?: DocumentDetailResStatus;
+  tags?: string[];
   deleted_at?: DocumentDetailResDeletedAt;
   error_message?: DocumentDetailResErrorMessage;
 }
@@ -92,10 +151,56 @@ export interface DocumentSummaryRes {
   file_name?: DocumentSummaryResFileName;
   mime_type?: DocumentSummaryResMimeType;
   status?: DocumentSummaryResStatus;
+  tags?: string[];
 }
+
+export type DocumentsListResNextCursor = string | null;
 
 export interface DocumentsListRes {
   documents: DocumentSummaryRes[];
+  next_cursor?: DocumentsListResNextCursor;
+}
+
+/**
+ * Application error codes for client-side handling.
+ */
+export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ErrorCode = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  FORBIDDEN: 'FORBIDDEN',
+  NOT_FOUND: 'NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  UNSUPPORTED_MEDIA: 'UNSUPPORTED_MEDIA',
+  RATE_LIMITED: 'RATE_LIMITED',
+  PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  LLM_ERROR: 'LLM_ERROR',
+  EMBEDDING_ERROR: 'EMBEDDING_ERROR',
+  DATABASE_ERROR: 'DATABASE_ERROR',
+} as const;
+
+export type ErrorDetailInstance = string | null;
+
+export type ErrorDetailErrorsAnyOfItem = { [key: string]: unknown };
+
+export type ErrorDetailErrors = ErrorDetailErrorsAnyOfItem[] | null;
+
+/**
+ * RFC 7807 Problem Details response.
+ */
+export interface ErrorDetail {
+  type?: string;
+  title: string;
+  status: number;
+  detail: string;
+  code: ErrorCode;
+  instance?: ErrorDetailInstance;
+  errors?: ErrorDetailErrors;
 }
 
 export interface HTTPValidationError {
@@ -211,6 +316,14 @@ export interface ReprocessDocumentRes {
   enqueued: boolean;
 }
 
+export interface ResetPasswordRequest {
+  /**
+   * @minLength 8
+   * @maxLength 512
+   */
+  password: string;
+}
+
 export interface UploadDocumentRes {
   document_id: string;
   status: string;
@@ -240,6 +353,10 @@ export const UserRole = {
   employee: 'employee',
 } as const;
 
+export interface UsersListResponse {
+  users: UserResponse[];
+}
+
 export type ValidationErrorLocItem = string | number;
 
 export interface ValidationError {
@@ -248,7 +365,56 @@ export interface ValidationError {
   type: string;
 }
 
+export interface WorkspaceACL {
+  allowed_roles?: string[];
+}
+
+export type WorkspaceResOwnerUserId = string | null;
+
+export type WorkspaceResCreatedAt = string | null;
+
+export type WorkspaceResUpdatedAt = string | null;
+
+export type WorkspaceResDeletedAt = string | null;
+
+export interface WorkspaceRes {
+  id: string;
+  name: string;
+  visibility: WorkspaceVisibility;
+  owner_user_id?: WorkspaceResOwnerUserId;
+  acl: WorkspaceACL;
+  created_at?: WorkspaceResCreatedAt;
+  updated_at?: WorkspaceResUpdatedAt;
+  deleted_at?: WorkspaceResDeletedAt;
+}
+
+/**
+ * R: Workspace visibility options.
+ */
+export type WorkspaceVisibility = typeof WorkspaceVisibility[keyof typeof WorkspaceVisibility];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const WorkspaceVisibility = {
+  private: 'private',
+  shared: 'shared',
+} as const;
+
+export interface WorkspacesListRes {
+  workspaces: WorkspaceRes[];
+}
+
+export type ListWorkspacesV1WorkspacesGetParams = {
+owner_user_id?: string | null;
+include_archived?: boolean;
+};
+
 export type ListDocumentsV1DocumentsGetParams = {
+q?: string | null;
+status?: string | null;
+tag?: string | null;
+sort?: string | null;
+cursor?: string | null;
 /**
  * @minimum 1
  * @maximum 200
@@ -260,7 +426,51 @@ limit?: number;
 offset?: number;
 };
 
+export type ListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetParams = {
+q?: string | null;
+status?: string | null;
+tag?: string | null;
+sort?: string | null;
+cursor?: string | null;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListWorkspacesApiV1WorkspacesGetParams = {
+owner_user_id?: string | null;
+include_archived?: boolean;
+};
+
 export type ListDocumentsApiV1DocumentsGetParams = {
+q?: string | null;
+status?: string | null;
+tag?: string | null;
+sort?: string | null;
+cursor?: string | null;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams = {
+q?: string | null;
+status?: string | null;
+tag?: string | null;
+sort?: string | null;
+cursor?: string | null;
 /**
  * @minimum 1
  * @maximum 200
@@ -276,7 +486,219 @@ export type HealthzHealthzGetParams = {
 full?: boolean;
 };
 
+export type HTTPStatusCode1xx = 100 | 101 | 102 | 103;
+export type HTTPStatusCode2xx = 200 | 201 | 202 | 203 | 204 | 205 | 206 | 207;
+export type HTTPStatusCode3xx = 300 | 301 | 302 | 303 | 304 | 305 | 307 | 308;
+export type HTTPStatusCode4xx = 400 | 401 | 402 | 403 | 404 | 405 | 406 | 407 | 408 | 409 | 410 | 411 | 412 | 413 | 414 | 415 | 416 | 417 | 418 | 419 | 420 | 421 | 422 | 423 | 424 | 426 | 428 | 429 | 431 | 451;
+export type HTTPStatusCode5xx = 500 | 501 | 502 | 503 | 504 | 505 | 507 | 511;
+export type HTTPStatusCodes = HTTPStatusCode1xx | HTTPStatusCode2xx | HTTPStatusCode3xx | HTTPStatusCode4xx | HTTPStatusCode5xx;
+
 /**
+ * @summary List Workspaces
+ */
+export type listWorkspacesV1WorkspacesGetResponse200 = {
+  data: WorkspacesListRes
+  status: 200
+}
+
+export type listWorkspacesV1WorkspacesGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type listWorkspacesV1WorkspacesGetResponseSuccess = (listWorkspacesV1WorkspacesGetResponse200) & {
+  headers: Headers;
+};
+export type listWorkspacesV1WorkspacesGetResponseError = (listWorkspacesV1WorkspacesGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listWorkspacesV1WorkspacesGetResponse = (listWorkspacesV1WorkspacesGetResponseSuccess | listWorkspacesV1WorkspacesGetResponseError)
+
+export const getListWorkspacesV1WorkspacesGetUrl = (params?: ListWorkspacesV1WorkspacesGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/workspaces?${stringifiedParams}` : `/v1/workspaces`
+}
+
+export const listWorkspacesV1WorkspacesGet = async (params?: ListWorkspacesV1WorkspacesGetParams, options?: RequestInit): Promise<listWorkspacesV1WorkspacesGetResponse> => {
+  
+  const res = await fetch(getListWorkspacesV1WorkspacesGetUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listWorkspacesV1WorkspacesGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listWorkspacesV1WorkspacesGetResponse
+}
+
+
+
+/**
+ * @summary Create Workspace
+ */
+export type createWorkspaceV1WorkspacesPostResponse201 = {
+  data: WorkspaceRes
+  status: 201
+}
+
+export type createWorkspaceV1WorkspacesPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 201>
+}
+    
+export type createWorkspaceV1WorkspacesPostResponseSuccess = (createWorkspaceV1WorkspacesPostResponse201) & {
+  headers: Headers;
+};
+export type createWorkspaceV1WorkspacesPostResponseError = (createWorkspaceV1WorkspacesPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type createWorkspaceV1WorkspacesPostResponse = (createWorkspaceV1WorkspacesPostResponseSuccess | createWorkspaceV1WorkspacesPostResponseError)
+
+export const getCreateWorkspaceV1WorkspacesPostUrl = () => {
+
+
+  
+
+  return `/v1/workspaces`
+}
+
+export const createWorkspaceV1WorkspacesPost = async (createWorkspaceReq: CreateWorkspaceReq, options?: RequestInit): Promise<createWorkspaceV1WorkspacesPostResponse> => {
+  
+  const res = await fetch(getCreateWorkspaceV1WorkspacesPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createWorkspaceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: createWorkspaceV1WorkspacesPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createWorkspaceV1WorkspacesPostResponse
+}
+
+
+
+/**
+ * @summary Get Workspace
+ */
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseSuccess = (getWorkspaceV1WorkspacesWorkspaceIdGetResponse200) & {
+  headers: Headers;
+};
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseError = (getWorkspaceV1WorkspacesWorkspaceIdGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse = (getWorkspaceV1WorkspacesWorkspaceIdGetResponseSuccess | getWorkspaceV1WorkspacesWorkspaceIdGetResponseError)
+
+export const getGetWorkspaceV1WorkspacesWorkspaceIdGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}`
+}
+
+export const getWorkspaceV1WorkspacesWorkspaceIdGet = async (workspaceId: string, options?: RequestInit): Promise<getWorkspaceV1WorkspacesWorkspaceIdGetResponse> => {
+  
+  const res = await fetch(getGetWorkspaceV1WorkspacesWorkspaceIdGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getWorkspaceV1WorkspacesWorkspaceIdGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getWorkspaceV1WorkspacesWorkspaceIdGetResponse
+}
+
+
+
+/**
+ * @summary Archive Workspace
+ */
+export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200 = {
+  data: ArchiveWorkspaceRes
+  status: 200
+}
+
+export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseSuccess = (archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseError = (archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseDefault) & {
+  headers: Headers;
+};
+
+export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse = (archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseSuccess | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseError)
+
+export const getArchiveWorkspaceV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}`
+}
+
+export const archiveWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse> => {
+  
+  const res = await fetch(getArchiveWorkspaceV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse
+}
+
+
+
+/**
+ * @deprecated
  * @summary List Documents
  */
 export type listDocumentsV1DocumentsGetResponse200 = {
@@ -284,15 +706,15 @@ export type listDocumentsV1DocumentsGetResponse200 = {
   status: 200
 }
 
-export type listDocumentsV1DocumentsGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type listDocumentsV1DocumentsGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type listDocumentsV1DocumentsGetResponseSuccess = (listDocumentsV1DocumentsGetResponse200) & {
   headers: Headers;
 };
-export type listDocumentsV1DocumentsGetResponseError = (listDocumentsV1DocumentsGetResponse422) & {
+export type listDocumentsV1DocumentsGetResponseError = (listDocumentsV1DocumentsGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -333,6 +755,7 @@ export const listDocumentsV1DocumentsGet = async (params?: ListDocumentsV1Docume
 
 
 /**
+ * @deprecated
  * @summary Get Document
  */
 export type getDocumentV1DocumentsDocumentIdGetResponse200 = {
@@ -340,15 +763,15 @@ export type getDocumentV1DocumentsDocumentIdGetResponse200 = {
   status: 200
 }
 
-export type getDocumentV1DocumentsDocumentIdGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type getDocumentV1DocumentsDocumentIdGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type getDocumentV1DocumentsDocumentIdGetResponseSuccess = (getDocumentV1DocumentsDocumentIdGetResponse200) & {
   headers: Headers;
 };
-export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1DocumentsDocumentIdGetResponse422) & {
+export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1DocumentsDocumentIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -382,6 +805,7 @@ export const getDocumentV1DocumentsDocumentIdGet = async (documentId: string, op
 
 
 /**
+ * @deprecated
  * @summary Delete Document
  */
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponse200 = {
@@ -389,15 +813,15 @@ export type deleteDocumentV1DocumentsDocumentIdDeleteResponse200 = {
   status: 200
 }
 
-export type deleteDocumentV1DocumentsDocumentIdDeleteResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponseSuccess = (deleteDocumentV1DocumentsDocumentIdDeleteResponse200) & {
   headers: Headers;
 };
-export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentV1DocumentsDocumentIdDeleteResponse422) & {
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentV1DocumentsDocumentIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
@@ -431,6 +855,7 @@ export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: stri
 
 
 /**
+ * @deprecated
  * @summary Upload Document
  */
 export type uploadDocumentV1DocumentsUploadPostResponse200 = {
@@ -438,15 +863,15 @@ export type uploadDocumentV1DocumentsUploadPostResponse200 = {
   status: 200
 }
 
-export type uploadDocumentV1DocumentsUploadPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type uploadDocumentV1DocumentsUploadPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type uploadDocumentV1DocumentsUploadPostResponseSuccess = (uploadDocumentV1DocumentsUploadPostResponse200) & {
   headers: Headers;
 };
-export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1DocumentsUploadPostResponse422) & {
+export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1DocumentsUploadPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -492,6 +917,7 @@ if(bodyUploadDocumentV1DocumentsUploadPost.metadata !== undefined && bodyUploadD
 
 
 /**
+ * @deprecated
  * @summary Reprocess Document
  */
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse202 = {
@@ -499,15 +925,15 @@ export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse202 = {
   status: 202
 }
 
-export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 202>
 }
     
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseSuccess = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse202) & {
   headers: Headers;
 };
-export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422) & {
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -541,6 +967,7 @@ export const reprocessDocumentV1DocumentsDocumentIdReprocessPost = async (docume
 
 
 /**
+ * @deprecated
  * @summary Ingest Text
  */
 export type ingestTextV1IngestTextPostResponse200 = {
@@ -548,15 +975,15 @@ export type ingestTextV1IngestTextPostResponse200 = {
   status: 200
 }
 
-export type ingestTextV1IngestTextPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type ingestTextV1IngestTextPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type ingestTextV1IngestTextPostResponseSuccess = (ingestTextV1IngestTextPostResponse200) & {
   headers: Headers;
 };
-export type ingestTextV1IngestTextPostResponseError = (ingestTextV1IngestTextPostResponse422) & {
+export type ingestTextV1IngestTextPostResponseError = (ingestTextV1IngestTextPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -595,6 +1022,7 @@ export const ingestTextV1IngestTextPost = async (ingestTextReq: IngestTextReq, o
 
 Processes up to 10 documents sequentially.
 Returns results for all successfully ingested documents.
+ * @deprecated
  * @summary Ingest Batch
  */
 export type ingestBatchV1IngestBatchPostResponse200 = {
@@ -602,15 +1030,15 @@ export type ingestBatchV1IngestBatchPostResponse200 = {
   status: 200
 }
 
-export type ingestBatchV1IngestBatchPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type ingestBatchV1IngestBatchPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type ingestBatchV1IngestBatchPostResponseSuccess = (ingestBatchV1IngestBatchPostResponse200) & {
   headers: Headers;
 };
-export type ingestBatchV1IngestBatchPostResponseError = (ingestBatchV1IngestBatchPostResponse422) & {
+export type ingestBatchV1IngestBatchPostResponseError = (ingestBatchV1IngestBatchPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -645,6 +1073,7 @@ export const ingestBatchV1IngestBatchPost = async (ingestBatchReq: IngestBatchRe
 
 
 /**
+ * @deprecated
  * @summary Query
  */
 export type queryV1QueryPostResponse200 = {
@@ -652,15 +1081,15 @@ export type queryV1QueryPostResponse200 = {
   status: 200
 }
 
-export type queryV1QueryPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type queryV1QueryPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type queryV1QueryPostResponseSuccess = (queryV1QueryPostResponse200) & {
   headers: Headers;
 };
-export type queryV1QueryPostResponseError = (queryV1QueryPostResponse422) & {
+export type queryV1QueryPostResponseError = (queryV1QueryPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -704,6 +1133,7 @@ This endpoint demonstrates the architecture improvement:
 
 Uses the same query contract as /query with a generation step.
 Set use_mmr=true for diverse results (reduces redundant chunks).
+ * @deprecated
  * @summary Ask
  */
 export type askV1AskPostResponse200 = {
@@ -711,15 +1141,15 @@ export type askV1AskPostResponse200 = {
   status: 200
 }
 
-export type askV1AskPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type askV1AskPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type askV1AskPostResponseSuccess = (askV1AskPostResponse200) & {
   headers: Headers;
 };
-export type askV1AskPostResponseError = (askV1AskPostResponse422) & {
+export type askV1AskPostResponseError = (askV1AskPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -764,6 +1194,7 @@ SSE Events:
 - token: Individual tokens as generated
 - done: Final event with complete answer
 - error: Error event if generation fails
+ * @deprecated
  * @summary Ask Stream
  */
 export type askStreamV1AskStreamPostResponse200 = {
@@ -771,15 +1202,15 @@ export type askStreamV1AskStreamPostResponse200 = {
   status: 200
 }
 
-export type askStreamV1AskStreamPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type askStreamV1AskStreamPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type askStreamV1AskStreamPostResponseSuccess = (askStreamV1AskStreamPostResponse200) & {
   headers: Headers;
 };
-export type askStreamV1AskStreamPostResponseError = (askStreamV1AskStreamPostResponse422) & {
+export type askStreamV1AskStreamPostResponseError = (askStreamV1AskStreamPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -814,6 +1245,534 @@ export const askStreamV1AskStreamPost = async (queryReq: QueryReq, options?: Req
 
 
 /**
+ * @summary List Workspace Documents
+ */
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse200 = {
+  data: DocumentsListRes
+  status: 200
+}
+
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseSuccess = (listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse200) & {
+  headers: Headers;
+};
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseError = (listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse = (listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseSuccess | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseError)
+
+export const getListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetUrl = (workspaceId: string,
+    params?: ListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/workspaces/${workspaceId}/documents?${stringifiedParams}` : `/v1/workspaces/${workspaceId}/documents`
+}
+
+export const listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGet = async (workspaceId: string,
+    params?: ListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetParams, options?: RequestInit): Promise<listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse> => {
+  
+  const res = await fetch(getListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetUrl(workspaceId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse
+}
+
+
+
+/**
+ * @summary Get Workspace Document
+ */
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse200 = {
+  data: DocumentDetailRes
+  status: 200
+}
+
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseSuccess = (getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse200) & {
+  headers: Headers;
+};
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError = (getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse = (getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseSuccess | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError)
+
+export const getGetWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/documents/${documentId}`
+}
+
+export const getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGet = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse> => {
+  
+  const res = await fetch(getGetWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse
+}
+
+
+
+/**
+ * @summary Delete Workspace Document
+ */
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse200 = {
+  data: DeleteDocumentRes
+  status: 200
+}
+
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseSuccess = (deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError = (deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault) & {
+  headers: Headers;
+};
+
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse = (deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseSuccess | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError)
+
+export const getDeleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/documents/${documentId}`
+}
+
+export const deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDelete = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse> => {
+  
+  const res = await fetch(getDeleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Upload Workspace Document
+ */
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse200 = {
+  data: UploadDocumentRes
+  status: 200
+}
+
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseSuccess = (uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse200) & {
+  headers: Headers;
+};
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError = (uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse = (uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseSuccess | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError)
+
+export const getUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/documents/upload`
+}
+
+export const uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost = async (workspaceId: string,
+    bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost, options?: RequestInit): Promise<uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse> => {
+    const formData = new FormData();
+formData.append(`file`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.file)
+if(bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== undefined && bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== null) {
+ formData.append(`title`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title)
+ }
+if(bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== undefined && bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== null) {
+ formData.append(`source`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.source)
+ }
+if(bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.metadata !== undefined && bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.metadata !== null) {
+ formData.append(`metadata`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.metadata)
+ }
+
+  const res = await fetch(getUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    ,
+    body: 
+      formData,
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse
+}
+
+
+
+/**
+ * @summary Reprocess Workspace Document
+ */
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202 = {
+  data: ReprocessDocumentRes
+  status: 202
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 202>
+}
+    
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202) & {
+  headers: Headers;
+};
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError)
+
+export const getReprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/documents/${documentId}/reprocess`
+}
+
+export const reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPost = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse> => {
+  
+  const res = await fetch(getReprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse
+}
+
+
+
+/**
+ * @summary Ingest Workspace Text
+ */
+export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse200 = {
+  data: IngestTextRes
+  status: 200
+}
+
+export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess = (ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse200) & {
+  headers: Headers;
+};
+export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseError = (ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse = (ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseError)
+
+export const getIngestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/ingest/text`
+}
+
+export const ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPost = async (workspaceId: string,
+    ingestTextReq: IngestTextReq, options?: RequestInit): Promise<ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse> => {
+  
+  const res = await fetch(getIngestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      ingestTextReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse
+}
+
+
+
+/**
+ * @summary Ingest Workspace Batch
+ */
+export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse200 = {
+  data: IngestBatchRes
+  status: 200
+}
+
+export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess = (ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse200) & {
+  headers: Headers;
+};
+export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseError = (ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse = (ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseError)
+
+export const getIngestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/ingest/batch`
+}
+
+export const ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPost = async (workspaceId: string,
+    ingestBatchReq: IngestBatchReq, options?: RequestInit): Promise<ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse> => {
+  
+  const res = await fetch(getIngestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      ingestBatchReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse
+}
+
+
+
+/**
+ * @summary Query Workspace
+ */
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse200 = {
+  data: QueryRes
+  status: 200
+}
+
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseSuccess = (queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse200) & {
+  headers: Headers;
+};
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseError = (queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse = (queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseSuccess | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseError)
+
+export const getQueryWorkspaceV1WorkspacesWorkspaceIdQueryPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/query`
+}
+
+export const queryWorkspaceV1WorkspacesWorkspaceIdQueryPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse> => {
+  
+  const res = await fetch(getQueryWorkspaceV1WorkspacesWorkspaceIdQueryPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse
+}
+
+
+
+/**
+ * @summary Ask Workspace
+ */
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse200 = {
+  data: AskRes
+  status: 200
+}
+
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseSuccess = (askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse200) & {
+  headers: Headers;
+};
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseError = (askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse = (askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseSuccess | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseError)
+
+export const getAskWorkspaceV1WorkspacesWorkspaceIdAskPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/ask`
+}
+
+export const askWorkspaceV1WorkspacesWorkspaceIdAskPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse> => {
+  
+  const res = await fetch(getAskWorkspaceV1WorkspacesWorkspaceIdAskPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse
+}
+
+
+
+/**
+ * @summary Ask Workspace Stream
+ */
+export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess = (askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse200) & {
+  headers: Headers;
+};
+export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseError = (askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse = (askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseError)
+
+export const getAskWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/ask/stream`
+}
+
+export const askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse> => {
+  
+  const res = await fetch(getAskWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse
+}
+
+
+
+/**
  * @summary Login
  */
 export type loginAuthLoginPostResponse200 = {
@@ -821,15 +1780,15 @@ export type loginAuthLoginPostResponse200 = {
   status: 200
 }
 
-export type loginAuthLoginPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type loginAuthLoginPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type loginAuthLoginPostResponseSuccess = (loginAuthLoginPostResponse200) & {
   headers: Headers;
 };
-export type loginAuthLoginPostResponseError = (loginAuthLoginPostResponse422) & {
+export type loginAuthLoginPostResponseError = (loginAuthLoginPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -871,15 +1830,15 @@ export type meAuthMeGetResponse200 = {
   status: 200
 }
 
-export type meAuthMeGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type meAuthMeGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type meAuthMeGetResponseSuccess = (meAuthMeGetResponse200) & {
   headers: Headers;
 };
-export type meAuthMeGetResponseError = (meAuthMeGetResponse422) & {
+export type meAuthMeGetResponseError = (meAuthMeGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -919,13 +1878,20 @@ export type logoutAuthLogoutPostResponse200 = {
   data: unknown
   status: 200
 }
+
+export type logoutAuthLogoutPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
     
 export type logoutAuthLogoutPostResponseSuccess = (logoutAuthLogoutPostResponse200) & {
   headers: Headers;
 };
-;
+export type logoutAuthLogoutPostResponseError = (logoutAuthLogoutPostResponseDefault) & {
+  headers: Headers;
+};
 
-export type logoutAuthLogoutPostResponse = (logoutAuthLogoutPostResponseSuccess)
+export type logoutAuthLogoutPostResponse = (logoutAuthLogoutPostResponseSuccess | logoutAuthLogoutPostResponseError)
 
 export const getLogoutAuthLogoutPostUrl = () => {
 
@@ -955,6 +1921,410 @@ export const logoutAuthLogoutPost = async ( options?: RequestInit): Promise<logo
 
 
 /**
+ * @summary List Users Admin
+ */
+export type listUsersAdminAuthUsersGetResponse200 = {
+  data: UsersListResponse
+  status: 200
+}
+
+export type listUsersAdminAuthUsersGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type listUsersAdminAuthUsersGetResponseSuccess = (listUsersAdminAuthUsersGetResponse200) & {
+  headers: Headers;
+};
+export type listUsersAdminAuthUsersGetResponseError = (listUsersAdminAuthUsersGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listUsersAdminAuthUsersGetResponse = (listUsersAdminAuthUsersGetResponseSuccess | listUsersAdminAuthUsersGetResponseError)
+
+export const getListUsersAdminAuthUsersGetUrl = () => {
+
+
+  
+
+  return `/auth/users`
+}
+
+export const listUsersAdminAuthUsersGet = async ( options?: RequestInit): Promise<listUsersAdminAuthUsersGetResponse> => {
+  
+  const res = await fetch(getListUsersAdminAuthUsersGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listUsersAdminAuthUsersGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listUsersAdminAuthUsersGetResponse
+}
+
+
+
+/**
+ * @summary Create User Admin
+ */
+export type createUserAdminAuthUsersPostResponse201 = {
+  data: UserResponse
+  status: 201
+}
+
+export type createUserAdminAuthUsersPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 201>
+}
+    
+export type createUserAdminAuthUsersPostResponseSuccess = (createUserAdminAuthUsersPostResponse201) & {
+  headers: Headers;
+};
+export type createUserAdminAuthUsersPostResponseError = (createUserAdminAuthUsersPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type createUserAdminAuthUsersPostResponse = (createUserAdminAuthUsersPostResponseSuccess | createUserAdminAuthUsersPostResponseError)
+
+export const getCreateUserAdminAuthUsersPostUrl = () => {
+
+
+  
+
+  return `/auth/users`
+}
+
+export const createUserAdminAuthUsersPost = async (createUserRequest: CreateUserRequest, options?: RequestInit): Promise<createUserAdminAuthUsersPostResponse> => {
+  
+  const res = await fetch(getCreateUserAdminAuthUsersPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createUserRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: createUserAdminAuthUsersPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createUserAdminAuthUsersPostResponse
+}
+
+
+
+/**
+ * @summary Disable User Admin
+ */
+export type disableUserAdminAuthUsersUserIdDisablePostResponse200 = {
+  data: UserResponse
+  status: 200
+}
+
+export type disableUserAdminAuthUsersUserIdDisablePostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type disableUserAdminAuthUsersUserIdDisablePostResponseSuccess = (disableUserAdminAuthUsersUserIdDisablePostResponse200) & {
+  headers: Headers;
+};
+export type disableUserAdminAuthUsersUserIdDisablePostResponseError = (disableUserAdminAuthUsersUserIdDisablePostResponseDefault) & {
+  headers: Headers;
+};
+
+export type disableUserAdminAuthUsersUserIdDisablePostResponse = (disableUserAdminAuthUsersUserIdDisablePostResponseSuccess | disableUserAdminAuthUsersUserIdDisablePostResponseError)
+
+export const getDisableUserAdminAuthUsersUserIdDisablePostUrl = (userId: string,) => {
+
+
+  
+
+  return `/auth/users/${userId}/disable`
+}
+
+export const disableUserAdminAuthUsersUserIdDisablePost = async (userId: string, options?: RequestInit): Promise<disableUserAdminAuthUsersUserIdDisablePostResponse> => {
+  
+  const res = await fetch(getDisableUserAdminAuthUsersUserIdDisablePostUrl(userId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: disableUserAdminAuthUsersUserIdDisablePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as disableUserAdminAuthUsersUserIdDisablePostResponse
+}
+
+
+
+/**
+ * @summary Reset Password Admin
+ */
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse200 = {
+  data: UserResponse
+  status: 200
+}
+
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseSuccess = (resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse200) & {
+  headers: Headers;
+};
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseError = (resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse = (resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseSuccess | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseError)
+
+export const getResetPasswordAdminAuthUsersUserIdResetPasswordPostUrl = (userId: string,) => {
+
+
+  
+
+  return `/auth/users/${userId}/reset-password`
+}
+
+export const resetPasswordAdminAuthUsersUserIdResetPasswordPost = async (userId: string,
+    resetPasswordRequest: ResetPasswordRequest, options?: RequestInit): Promise<resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse> => {
+  
+  const res = await fetch(getResetPasswordAdminAuthUsersUserIdResetPasswordPostUrl(userId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      resetPasswordRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse
+}
+
+
+
+/**
+ * @summary List Workspaces
+ */
+export type listWorkspacesApiV1WorkspacesGetResponse200 = {
+  data: WorkspacesListRes
+  status: 200
+}
+
+export type listWorkspacesApiV1WorkspacesGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type listWorkspacesApiV1WorkspacesGetResponseSuccess = (listWorkspacesApiV1WorkspacesGetResponse200) & {
+  headers: Headers;
+};
+export type listWorkspacesApiV1WorkspacesGetResponseError = (listWorkspacesApiV1WorkspacesGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listWorkspacesApiV1WorkspacesGetResponse = (listWorkspacesApiV1WorkspacesGetResponseSuccess | listWorkspacesApiV1WorkspacesGetResponseError)
+
+export const getListWorkspacesApiV1WorkspacesGetUrl = (params?: ListWorkspacesApiV1WorkspacesGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/workspaces?${stringifiedParams}` : `/api/v1/workspaces`
+}
+
+export const listWorkspacesApiV1WorkspacesGet = async (params?: ListWorkspacesApiV1WorkspacesGetParams, options?: RequestInit): Promise<listWorkspacesApiV1WorkspacesGetResponse> => {
+  
+  const res = await fetch(getListWorkspacesApiV1WorkspacesGetUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listWorkspacesApiV1WorkspacesGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listWorkspacesApiV1WorkspacesGetResponse
+}
+
+
+
+/**
+ * @summary Create Workspace
+ */
+export type createWorkspaceApiV1WorkspacesPostResponse201 = {
+  data: WorkspaceRes
+  status: 201
+}
+
+export type createWorkspaceApiV1WorkspacesPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 201>
+}
+    
+export type createWorkspaceApiV1WorkspacesPostResponseSuccess = (createWorkspaceApiV1WorkspacesPostResponse201) & {
+  headers: Headers;
+};
+export type createWorkspaceApiV1WorkspacesPostResponseError = (createWorkspaceApiV1WorkspacesPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type createWorkspaceApiV1WorkspacesPostResponse = (createWorkspaceApiV1WorkspacesPostResponseSuccess | createWorkspaceApiV1WorkspacesPostResponseError)
+
+export const getCreateWorkspaceApiV1WorkspacesPostUrl = () => {
+
+
+  
+
+  return `/api/v1/workspaces`
+}
+
+export const createWorkspaceApiV1WorkspacesPost = async (createWorkspaceReq: CreateWorkspaceReq, options?: RequestInit): Promise<createWorkspaceApiV1WorkspacesPostResponse> => {
+  
+  const res = await fetch(getCreateWorkspaceApiV1WorkspacesPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createWorkspaceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: createWorkspaceApiV1WorkspacesPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createWorkspaceApiV1WorkspacesPostResponse
+}
+
+
+
+/**
+ * @summary Get Workspace
+ */
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse200 = {
+  data: WorkspaceRes
+  status: 200
+}
+
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseSuccess = (getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse200) & {
+  headers: Headers;
+};
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseError = (getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse = (getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseSuccess | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseError)
+
+export const getGetWorkspaceApiV1WorkspacesWorkspaceIdGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}`
+}
+
+export const getWorkspaceApiV1WorkspacesWorkspaceIdGet = async (workspaceId: string, options?: RequestInit): Promise<getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse> => {
+  
+  const res = await fetch(getGetWorkspaceApiV1WorkspacesWorkspaceIdGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse
+}
+
+
+
+/**
+ * @summary Archive Workspace
+ */
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200 = {
+  data: ArchiveWorkspaceRes
+  status: 200
+}
+
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseSuccess = (archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseError = (archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseDefault) & {
+  headers: Headers;
+};
+
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse = (archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseSuccess | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseError)
+
+export const getArchiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}`
+}
+
+export const archiveWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse> => {
+  
+  const res = await fetch(getArchiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse
+}
+
+
+
+/**
+ * @deprecated
  * @summary List Documents
  */
 export type listDocumentsApiV1DocumentsGetResponse200 = {
@@ -962,15 +2332,15 @@ export type listDocumentsApiV1DocumentsGetResponse200 = {
   status: 200
 }
 
-export type listDocumentsApiV1DocumentsGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type listDocumentsApiV1DocumentsGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type listDocumentsApiV1DocumentsGetResponseSuccess = (listDocumentsApiV1DocumentsGetResponse200) & {
   headers: Headers;
 };
-export type listDocumentsApiV1DocumentsGetResponseError = (listDocumentsApiV1DocumentsGetResponse422) & {
+export type listDocumentsApiV1DocumentsGetResponseError = (listDocumentsApiV1DocumentsGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -1011,6 +2381,7 @@ export const listDocumentsApiV1DocumentsGet = async (params?: ListDocumentsApiV1
 
 
 /**
+ * @deprecated
  * @summary Get Document
  */
 export type getDocumentApiV1DocumentsDocumentIdGetResponse200 = {
@@ -1018,15 +2389,15 @@ export type getDocumentApiV1DocumentsDocumentIdGetResponse200 = {
   status: 200
 }
 
-export type getDocumentApiV1DocumentsDocumentIdGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type getDocumentApiV1DocumentsDocumentIdGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type getDocumentApiV1DocumentsDocumentIdGetResponseSuccess = (getDocumentApiV1DocumentsDocumentIdGetResponse200) & {
   headers: Headers;
 };
-export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentApiV1DocumentsDocumentIdGetResponse422) & {
+export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentApiV1DocumentsDocumentIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -1060,6 +2431,7 @@ export const getDocumentApiV1DocumentsDocumentIdGet = async (documentId: string,
 
 
 /**
+ * @deprecated
  * @summary Delete Document
  */
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse200 = {
@@ -1067,15 +2439,15 @@ export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse200 = {
   status: 200
 }
 
-export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseSuccess = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse200) & {
   headers: Headers;
 };
-export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422) & {
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
@@ -1109,6 +2481,7 @@ export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: s
 
 
 /**
+ * @deprecated
  * @summary Upload Document
  */
 export type uploadDocumentApiV1DocumentsUploadPostResponse200 = {
@@ -1116,15 +2489,15 @@ export type uploadDocumentApiV1DocumentsUploadPostResponse200 = {
   status: 200
 }
 
-export type uploadDocumentApiV1DocumentsUploadPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type uploadDocumentApiV1DocumentsUploadPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type uploadDocumentApiV1DocumentsUploadPostResponseSuccess = (uploadDocumentApiV1DocumentsUploadPostResponse200) & {
   headers: Headers;
 };
-export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumentApiV1DocumentsUploadPostResponse422) & {
+export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumentApiV1DocumentsUploadPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1170,6 +2543,7 @@ if(bodyUploadDocumentApiV1DocumentsUploadPost.metadata !== undefined && bodyUplo
 
 
 /**
+ * @deprecated
  * @summary Reprocess Document
  */
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse202 = {
@@ -1177,15 +2551,15 @@ export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse202 = 
   status: 202
 }
 
-export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 202>
 }
     
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseSuccess = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse202) & {
   headers: Headers;
 };
-export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422) & {
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1219,6 +2593,7 @@ export const reprocessDocumentApiV1DocumentsDocumentIdReprocessPost = async (doc
 
 
 /**
+ * @deprecated
  * @summary Ingest Text
  */
 export type ingestTextApiV1IngestTextPostResponse200 = {
@@ -1226,15 +2601,15 @@ export type ingestTextApiV1IngestTextPostResponse200 = {
   status: 200
 }
 
-export type ingestTextApiV1IngestTextPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type ingestTextApiV1IngestTextPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type ingestTextApiV1IngestTextPostResponseSuccess = (ingestTextApiV1IngestTextPostResponse200) & {
   headers: Headers;
 };
-export type ingestTextApiV1IngestTextPostResponseError = (ingestTextApiV1IngestTextPostResponse422) & {
+export type ingestTextApiV1IngestTextPostResponseError = (ingestTextApiV1IngestTextPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1273,6 +2648,7 @@ export const ingestTextApiV1IngestTextPost = async (ingestTextReq: IngestTextReq
 
 Processes up to 10 documents sequentially.
 Returns results for all successfully ingested documents.
+ * @deprecated
  * @summary Ingest Batch
  */
 export type ingestBatchApiV1IngestBatchPostResponse200 = {
@@ -1280,15 +2656,15 @@ export type ingestBatchApiV1IngestBatchPostResponse200 = {
   status: 200
 }
 
-export type ingestBatchApiV1IngestBatchPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type ingestBatchApiV1IngestBatchPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type ingestBatchApiV1IngestBatchPostResponseSuccess = (ingestBatchApiV1IngestBatchPostResponse200) & {
   headers: Headers;
 };
-export type ingestBatchApiV1IngestBatchPostResponseError = (ingestBatchApiV1IngestBatchPostResponse422) & {
+export type ingestBatchApiV1IngestBatchPostResponseError = (ingestBatchApiV1IngestBatchPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1323,6 +2699,7 @@ export const ingestBatchApiV1IngestBatchPost = async (ingestBatchReq: IngestBatc
 
 
 /**
+ * @deprecated
  * @summary Query
  */
 export type queryApiV1QueryPostResponse200 = {
@@ -1330,15 +2707,15 @@ export type queryApiV1QueryPostResponse200 = {
   status: 200
 }
 
-export type queryApiV1QueryPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type queryApiV1QueryPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type queryApiV1QueryPostResponseSuccess = (queryApiV1QueryPostResponse200) & {
   headers: Headers;
 };
-export type queryApiV1QueryPostResponseError = (queryApiV1QueryPostResponse422) & {
+export type queryApiV1QueryPostResponseError = (queryApiV1QueryPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1382,6 +2759,7 @@ This endpoint demonstrates the architecture improvement:
 
 Uses the same query contract as /query with a generation step.
 Set use_mmr=true for diverse results (reduces redundant chunks).
+ * @deprecated
  * @summary Ask
  */
 export type askApiV1AskPostResponse200 = {
@@ -1389,15 +2767,15 @@ export type askApiV1AskPostResponse200 = {
   status: 200
 }
 
-export type askApiV1AskPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type askApiV1AskPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type askApiV1AskPostResponseSuccess = (askApiV1AskPostResponse200) & {
   headers: Headers;
 };
-export type askApiV1AskPostResponseError = (askApiV1AskPostResponse422) & {
+export type askApiV1AskPostResponseError = (askApiV1AskPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1442,6 +2820,7 @@ SSE Events:
 - token: Individual tokens as generated
 - done: Final event with complete answer
 - error: Error event if generation fails
+ * @deprecated
  * @summary Ask Stream
  */
 export type askStreamApiV1AskStreamPostResponse200 = {
@@ -1449,15 +2828,15 @@ export type askStreamApiV1AskStreamPostResponse200 = {
   status: 200
 }
 
-export type askStreamApiV1AskStreamPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
+export type askStreamApiV1AskStreamPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
 }
     
 export type askStreamApiV1AskStreamPostResponseSuccess = (askStreamApiV1AskStreamPostResponse200) & {
   headers: Headers;
 };
-export type askStreamApiV1AskStreamPostResponseError = (askStreamApiV1AskStreamPostResponse422) & {
+export type askStreamApiV1AskStreamPostResponseError = (askStreamApiV1AskStreamPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1487,6 +2866,534 @@ export const askStreamApiV1AskStreamPost = async (queryReq: QueryReq, options?: 
   
   const data: askStreamApiV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as askStreamApiV1AskStreamPostResponse
+}
+
+
+
+/**
+ * @summary List Workspace Documents
+ */
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse200 = {
+  data: DocumentsListRes
+  status: 200
+}
+
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseSuccess = (listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse200) & {
+  headers: Headers;
+};
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseError = (listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse = (listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseSuccess | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseError)
+
+export const getListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetUrl = (workspaceId: string,
+    params?: ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/workspaces/${workspaceId}/documents?${stringifiedParams}` : `/api/v1/workspaces/${workspaceId}/documents`
+}
+
+export const listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGet = async (workspaceId: string,
+    params?: ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams, options?: RequestInit): Promise<listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse> => {
+  
+  const res = await fetch(getListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetUrl(workspaceId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse
+}
+
+
+
+/**
+ * @summary Get Workspace Document
+ */
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse200 = {
+  data: DocumentDetailRes
+  status: 200
+}
+
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseSuccess = (getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse200) & {
+  headers: Headers;
+};
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError = (getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse = (getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseSuccess | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError)
+
+export const getGetWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/documents/${documentId}`
+}
+
+export const getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGet = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse> => {
+  
+  const res = await fetch(getGetWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse
+}
+
+
+
+/**
+ * @summary Delete Workspace Document
+ */
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse200 = {
+  data: DeleteDocumentRes
+  status: 200
+}
+
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseSuccess = (deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError = (deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault) & {
+  headers: Headers;
+};
+
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse = (deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseSuccess | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError)
+
+export const getDeleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/documents/${documentId}`
+}
+
+export const deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDelete = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse> => {
+  
+  const res = await fetch(getDeleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Upload Workspace Document
+ */
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse200 = {
+  data: UploadDocumentRes
+  status: 200
+}
+
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseSuccess = (uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse200) & {
+  headers: Headers;
+};
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError = (uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse = (uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseSuccess | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError)
+
+export const getUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/documents/upload`
+}
+
+export const uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost = async (workspaceId: string,
+    bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost, options?: RequestInit): Promise<uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse> => {
+    const formData = new FormData();
+formData.append(`file`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.file)
+if(bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== undefined && bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== null) {
+ formData.append(`title`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title)
+ }
+if(bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== undefined && bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== null) {
+ formData.append(`source`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.source)
+ }
+if(bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.metadata !== undefined && bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.metadata !== null) {
+ formData.append(`metadata`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.metadata)
+ }
+
+  const res = await fetch(getUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    ,
+    body: 
+      formData,
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse
+}
+
+
+
+/**
+ * @summary Reprocess Workspace Document
+ */
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202 = {
+  data: ReprocessDocumentRes
+  status: 202
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 202>
+}
+    
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202) & {
+  headers: Headers;
+};
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError)
+
+export const getReprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/documents/${documentId}/reprocess`
+}
+
+export const reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPost = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse> => {
+  
+  const res = await fetch(getReprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse
+}
+
+
+
+/**
+ * @summary Ingest Workspace Text
+ */
+export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse200 = {
+  data: IngestTextRes
+  status: 200
+}
+
+export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess = (ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse200) & {
+  headers: Headers;
+};
+export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseError = (ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse = (ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseError)
+
+export const getIngestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/ingest/text`
+}
+
+export const ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPost = async (workspaceId: string,
+    ingestTextReq: IngestTextReq, options?: RequestInit): Promise<ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse> => {
+  
+  const res = await fetch(getIngestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      ingestTextReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse
+}
+
+
+
+/**
+ * @summary Ingest Workspace Batch
+ */
+export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse200 = {
+  data: IngestBatchRes
+  status: 200
+}
+
+export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess = (ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse200) & {
+  headers: Headers;
+};
+export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseError = (ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse = (ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseError)
+
+export const getIngestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/ingest/batch`
+}
+
+export const ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPost = async (workspaceId: string,
+    ingestBatchReq: IngestBatchReq, options?: RequestInit): Promise<ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse> => {
+  
+  const res = await fetch(getIngestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      ingestBatchReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse
+}
+
+
+
+/**
+ * @summary Query Workspace
+ */
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse200 = {
+  data: QueryRes
+  status: 200
+}
+
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseSuccess = (queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse200) & {
+  headers: Headers;
+};
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseError = (queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse = (queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseSuccess | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseError)
+
+export const getQueryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/query`
+}
+
+export const queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse> => {
+  
+  const res = await fetch(getQueryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse
+}
+
+
+
+/**
+ * @summary Ask Workspace
+ */
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse200 = {
+  data: AskRes
+  status: 200
+}
+
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseSuccess = (askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse200) & {
+  headers: Headers;
+};
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseError = (askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse = (askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseSuccess | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseError)
+
+export const getAskWorkspaceApiV1WorkspacesWorkspaceIdAskPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/ask`
+}
+
+export const askWorkspaceApiV1WorkspacesWorkspaceIdAskPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse> => {
+  
+  const res = await fetch(getAskWorkspaceApiV1WorkspacesWorkspaceIdAskPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse
+}
+
+
+
+/**
+ * @summary Ask Workspace Stream
+ */
+export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200>
+}
+    
+export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess = (askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse200) & {
+  headers: Headers;
+};
+export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseError = (askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse = (askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseError)
+
+export const getAskWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/ask/stream`
+}
+
+export const askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse> => {
+  
+  const res = await fetch(getAskWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse
 }
 
 

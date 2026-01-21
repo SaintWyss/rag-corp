@@ -21,7 +21,7 @@ from .auth_users import (
     require_user,
 )
 from .dual_auth import require_admin, require_principal
-from .error_responses import conflict, not_found, unauthorized
+from .error_responses import OPENAPI_ERROR_RESPONSES, conflict, not_found, unauthorized
 from .rbac import Permission
 from .audit import emit_audit_event
 from .container import get_audit_repository
@@ -35,7 +35,7 @@ from .infrastructure.repositories.postgres_user_repo import (
 )
 from .users import User, UserRole
 
-router = APIRouter()
+router = APIRouter(responses=OPENAPI_ERROR_RESPONSES)
 
 
 class LoginRequest(BaseModel):

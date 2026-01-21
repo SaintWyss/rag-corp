@@ -46,6 +46,15 @@ class ErrorDetail(BaseModel):
     errors: list[dict[str, Any]] | None = None
 
 
+# R: Reusable OpenAPI response entry for RFC 7807 errors
+OPENAPI_ERROR_RESPONSES = {
+    "default": {
+        "model": ErrorDetail,
+        "description": "Error response (RFC 7807 Problem Details)",
+    }
+}
+
+
 class AppHTTPException(HTTPException):
     """Application-specific HTTP exception with error code."""
 

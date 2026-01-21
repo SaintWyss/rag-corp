@@ -37,6 +37,7 @@ from .dual_auth import (
     require_principal,
 )
 from .error_responses import (
+    OPENAPI_ERROR_RESPONSES,
     conflict,
     forbidden,
     not_found,
@@ -95,7 +96,7 @@ from .dual_auth import PrincipalType, Principal
 from .container import get_audit_repository
 
 # R: Create API router for RAG endpoints
-router = APIRouter()
+router = APIRouter(responses=OPENAPI_ERROR_RESPONSES)
 
 # R: Request model for text ingestion (document metadata + content)
 # R: Limits are loaded from Settings at module load time for Pydantic schema

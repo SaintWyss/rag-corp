@@ -17,6 +17,15 @@
 
 > OpenAPI se exporta desde el backend (`pnpm contracts:export`).
 
+## Regenerar contratos (OpenAPI + cliente)
+
+```bash
+pnpm contracts:export
+pnpm contracts:gen
+```
+
+Genera `shared/contracts/openapi.json` y `shared/contracts/src/generated.ts`.
+
 ---
 
 ## Authentication + Authorization
