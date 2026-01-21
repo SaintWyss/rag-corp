@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Database:** PostgreSQL 16  
 **Extension:** pgvector 0.8.1  
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-21
 
 ---
 
@@ -37,6 +37,8 @@ RAG Corp uses PostgreSQL with the `pgvector` extension to store document chunks 
 | `documents` | Document metadata + upload status | 1K-1M |
 | `chunks` | Document chunks with embeddings | 10K-1M |
 | `users` | JWT users (admin/employee) | 10-10K |
+| `workspaces` | Containers de documentos por owner/visibilidad | 1K-1M |
+| `workspace_acl` | ACL por workspace/usuario | 1K-1M |
 | `audit_events` | Audit trail | 1K-1M |
 
 ---
@@ -127,6 +129,66 @@ CHECK (role IN ('admin', 'employee'));
 | `is_active` | BOOLEAN | NO | Soft disable |
 | `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
 
+### Table: workspaces
+
+```sql
+CREATE TABLE workspaces (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    visibility TEXT NOT NULL DEFAULT 'PRIVATE',
+    owner_user_id UUID NOT NULL REFERENCES users(id),
+    archived_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE workspaces ADD CONSTRAINT ck_workspaces_visibility
+CHECK (visibility IN ('PRIVATE', 'ORG_READ', 'SHARED'));
+
+ALTER TABLE workspaces ADD CONSTRAINT uq_workspaces_owner_user_id_name
+UNIQUE (owner_user_id, name);
+```
+
+**Column Details:**
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Workspace identifier |
+| `name` | TEXT | NO | Workspace name |
+| `description` | TEXT | YES | Optional description |
+| `visibility` | TEXT | NO | PRIVATE/ORG_READ/SHARED |
+| `owner_user_id` | UUID | NO | Owner user |
+| `archived_at` | TIMESTAMPTZ | YES | Archive timestamp |
+| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NO | Update timestamp |
+
+### Table: workspace_acl
+
+```sql
+CREATE TABLE workspace_acl (
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    access TEXT NOT NULL DEFAULT 'READ',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE workspace_acl ADD CONSTRAINT uq_workspace_acl_workspace_id_user_id
+UNIQUE (workspace_id, user_id);
+
+ALTER TABLE workspace_acl ADD CONSTRAINT ck_workspace_acl_access
+CHECK (access IN ('READ'));
+```
+
+**Column Details:**
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `workspace_id` | UUID | NO | Workspace reference |
+| `user_id` | UUID | NO | User reference |
+| `access` | TEXT | NO | Access level (READ) |
+| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+
 ### Table: audit_events
 
 ```sql
@@ -189,7 +251,7 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-Note: Alembic creates `chunks_embedding_idx`. Primary keys and `users.email` unique index are implicit, and the optional indexes below are not created by default.
+Note: Alembic creates `chunks_embedding_idx` and the workspace indexes below. Primary keys and `users.email` unique index are implicit, and the optional indexes below are not created by default.
 
 ### Primary Key Indexes (Implicit)
 
@@ -245,6 +307,20 @@ CREATE INDEX chunks_document_chunk_idx ON chunks (document_id, chunk_index);
 
 **Purpose:** Retrieve all chunks for a document in order (not created by default)  
 **Usage:** `SELECT * FROM chunks WHERE document_id = '...' ORDER BY chunk_index`
+
+### Workspace Indexes
+
+```sql
+CREATE INDEX ix_workspaces_owner_user_id ON workspaces (owner_user_id);
+CREATE INDEX ix_workspaces_visibility ON workspaces (visibility);
+CREATE INDEX ix_workspaces_archived_at ON workspaces (archived_at);
+
+CREATE INDEX ix_workspace_acl_workspace_id ON workspace_acl (workspace_id);
+CREATE INDEX ix_workspace_acl_user_id ON workspace_acl (user_id);
+```
+
+**Purpose:** Filtrar workspaces por owner/visibilidad/estado y ACL por usuario.  
+**Usage:** `SELECT * FROM workspaces WHERE owner_user_id = '...'`
 
 ---
 
