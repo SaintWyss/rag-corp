@@ -71,11 +71,14 @@ from .application.use_cases import (
     ListDocumentsUseCase,
     ListDocumentsResult,
     ListWorkspacesUseCase,
+    PublishWorkspaceUseCase,
     ReprocessDocumentUseCase,
     ReprocessDocumentInput,
     SearchChunksUseCase,
     SearchChunksInput,
     SearchChunksResult,
+    ShareWorkspaceUseCase,
+    UpdateWorkspaceUseCase,
     UploadDocumentUseCase,
     UploadDocumentInput,
     UploadDocumentResult,
@@ -85,7 +88,9 @@ from .container import (
     get_archive_workspace_use_case,
     get_create_workspace_use_case,
     get_ingest_document_use_case,
+    get_publish_workspace_use_case,
     get_search_chunks_use_case,
+    get_share_workspace_use_case,
     get_llm_service,
     get_conversation_repository,
     get_list_documents_use_case,
@@ -93,6 +98,7 @@ from .container import (
     get_get_document_use_case,
     get_get_workspace_use_case,
     get_delete_document_use_case,
+    get_update_workspace_use_case,
     get_upload_document_use_case,
     get_reprocess_document_use_case,
 )
@@ -241,6 +247,32 @@ class CreateWorkspaceReq(BaseModel):
 
 class ArchiveWorkspaceRes(BaseModel):
     archived: bool
+
+
+class UpdateWorkspaceReq(BaseModel):
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=_settings.max_title_chars,
+        description="Workspace name",
+    )
+    description: str | None = Field(
+        default=None,
+        max_length=_settings.max_source_chars,
+        description="Workspace description",
+    )
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, v: str | None) -> str | None:
+        return v.strip() if v is not None else None
+
+
+class ShareWorkspaceReq(BaseModel):
+    user_ids: list[UUID] = Field(
+        ...,
+        description="List of user IDs to grant read access",
+    )
 
 
 _ALLOWED_MIME_TYPES = {
@@ -424,6 +456,98 @@ def get_workspace(
         _raise_workspace_error(result.error.code, result.error.message, workspace_id)
     workspace = result.workspace
     return _to_workspace_res(workspace)
+
+
+@router.patch(
+    "/workspaces/{workspace_id}",
+    response_model=WorkspaceRes,
+    tags=["workspaces"],
+)
+def update_workspace(
+    workspace_id: UUID,
+    req: UpdateWorkspaceReq,
+    use_case: UpdateWorkspaceUseCase = Depends(get_update_workspace_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(
+        workspace_id,
+        actor,
+        name=req.name,
+        description=req.description,
+    )
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+    return _to_workspace_res(result.workspace)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/publish",
+    response_model=WorkspaceRes,
+    tags=["workspaces"],
+)
+def publish_workspace(
+    workspace_id: UUID,
+    use_case: PublishWorkspaceUseCase = Depends(get_publish_workspace_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(workspace_id, actor)
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+    return _to_workspace_res(result.workspace)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/share",
+    response_model=WorkspaceRes,
+    tags=["workspaces"],
+)
+def share_workspace(
+    workspace_id: UUID,
+    req: ShareWorkspaceReq,
+    use_case: ShareWorkspaceUseCase = Depends(get_share_workspace_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(
+        workspace_id,
+        actor,
+        user_ids=req.user_ids,
+    )
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+    return _to_workspace_res(result.workspace)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/archive",
+    response_model=ArchiveWorkspaceRes,
+    tags=["workspaces"],
+)
+def archive_workspace_action(
+    workspace_id: UUID,
+    use_case: ArchiveWorkspaceUseCase = Depends(get_archive_workspace_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    _role: None = Depends(require_employee_or_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    actor = _to_workspace_actor(principal)
+    result: ArchiveWorkspaceResult = use_case.execute(workspace_id, actor)
+    if result.error:
+        _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+
+    emit_audit_event(
+        audit_repo,
+        action="workspaces.archive",
+        principal=principal,
+        target_id=workspace_id,
+    )
+
+    return ArchiveWorkspaceRes(archived=result.archived)
 
 
 @router.delete(
