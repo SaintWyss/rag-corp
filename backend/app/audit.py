@@ -50,20 +50,25 @@ def emit_audit_event(
     principal: Principal | None = None,
     actor: str | None = None,
     target_id: UUID | None = None,
+    workspace_id: UUID | None = None,
     metadata: dict | None = None,
 ) -> None:
     if repository is None:
         return
+
+    payload = {
+        **_metadata_from_principal(principal),
+        **(metadata or {}),
+    }
+    if workspace_id is not None:
+        payload["workspace_id"] = str(workspace_id)
 
     event = AuditEvent(
         id=uuid4(),
         actor=actor or _actor_from_principal(principal),
         action=action,
         target_id=target_id,
-        metadata={
-            **_metadata_from_principal(principal),
-            **(metadata or {}),
-        },
+        metadata=payload,
     )
 
     try:

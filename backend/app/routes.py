@@ -432,6 +432,7 @@ def create_workspace(
         action="workspaces.create",
         principal=principal,
         target_id=workspace.id,
+        workspace_id=workspace.id,
     )
 
     return _to_workspace_res(workspace)
@@ -467,6 +468,7 @@ def update_workspace(
     use_case: UpdateWorkspaceUseCase = Depends(get_update_workspace_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_employee_or_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
     result = use_case.execute(
@@ -477,6 +479,16 @@ def update_workspace(
     )
     if result.error:
         _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+
+    emit_audit_event(
+        audit_repo,
+        action="workspaces.update",
+        principal=principal,
+        target_id=workspace_id,
+        workspace_id=workspace_id,
+        metadata={"updated_fields": [key for key, value in req.model_dump().items() if value is not None]},
+    )
+
     return _to_workspace_res(result.workspace)
 
 
@@ -490,11 +502,20 @@ def publish_workspace(
     use_case: PublishWorkspaceUseCase = Depends(get_publish_workspace_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_employee_or_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
     result = use_case.execute(workspace_id, actor)
     if result.error:
         _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+
+    emit_audit_event(
+        audit_repo,
+        action="workspaces.publish",
+        principal=principal,
+        target_id=workspace_id,
+        workspace_id=workspace_id,
+    )
     return _to_workspace_res(result.workspace)
 
 
@@ -509,6 +530,7 @@ def share_workspace(
     use_case: ShareWorkspaceUseCase = Depends(get_share_workspace_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
     _role: None = Depends(require_employee_or_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
     result = use_case.execute(
@@ -518,6 +540,17 @@ def share_workspace(
     )
     if result.error:
         _raise_workspace_error(result.error.code, result.error.message, workspace_id)
+
+    emit_audit_event(
+        audit_repo,
+        action="workspaces.share",
+        principal=principal,
+        target_id=workspace_id,
+        workspace_id=workspace_id,
+        metadata={
+            "shared_user_ids": [str(user_id) for user_id in req.user_ids],
+        },
+    )
     return _to_workspace_res(result.workspace)
 
 
@@ -543,6 +576,7 @@ def archive_workspace_action(
         action="workspaces.archive",
         principal=principal,
         target_id=workspace_id,
+        workspace_id=workspace_id,
     )
 
     return ArchiveWorkspaceRes(archived=result.archived)
@@ -570,6 +604,7 @@ def archive_workspace(
         action="workspaces.archive",
         principal=principal,
         target_id=workspace_id,
+        workspace_id=workspace_id,
     )
 
     return ArchiveWorkspaceRes(archived=result.archived)
@@ -726,6 +761,7 @@ def delete_document(
         action="documents.delete",
         principal=principal,
         target_id=document_id,
+        workspace_id=resolved_workspace_id,
     )
     return DeleteDocumentRes(deleted=True)
 
@@ -810,6 +846,7 @@ async def upload_document(
         action="documents.upload",
         principal=principal,
         target_id=result.document_id,
+        workspace_id=resolved_workspace_id,
         metadata={"file_name": file_name, "mime_type": mime_type},
     )
 
@@ -859,6 +896,7 @@ def reprocess_document(
         action="documents.reprocess",
         principal=principal,
         target_id=document_id,
+        workspace_id=resolved_workspace_id,
     )
 
     return ReprocessDocumentRes(
