@@ -12,7 +12,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { getStoredApiKey, setStoredApiKey } from "../lib/apiKey";
+import { getStoredApiKey, setStoredApiKey } from "@/shared/lib/apiKey";
 
 export function useApiKey() {
   const [apiKey, setApiKeyState] = useState(() => getStoredApiKey());

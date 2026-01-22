@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { WorkspaceVisibility } from "@contracts/src/generated";
-import { AppShell } from "../components/AppShell";
-import { NoticeBanner } from "../components/NoticeBanner";
-import { StatusBanner } from "../components/StatusBanner";
+import { AppShell } from "@/shared/ui/AppShell";
+import { NoticeBanner } from "@/shared/ui/NoticeBanner";
+import { StatusBanner } from "@/shared/ui/StatusBanner";
 import {
   archiveWorkspace,
   createWorkspace,
@@ -14,8 +14,8 @@ import {
   shareWorkspace,
   type CurrentUser,
   type WorkspaceSummary,
-} from "../lib/api";
-import { getStoredApiKey } from "../lib/apiKey";
+} from "@/shared/api/api";
+import { getStoredApiKey } from "@/shared/api/apiKey";
 
 type WorkspaceDraft = {
   name: string;

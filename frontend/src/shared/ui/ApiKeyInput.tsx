@@ -1,6 +1,6 @@
 "use client";
 
-import { useApiKey } from "../hooks/useApiKey";
+import { useApiKey } from "@/shared/hooks/useApiKey";
 
 export function ApiKeyInput() {
   const { apiKey, setApiKey } = useApiKey();

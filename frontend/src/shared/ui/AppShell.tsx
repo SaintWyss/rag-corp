@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listWorkspaces, type WorkspaceSummary } from "../lib/api";
+import { listWorkspaces, type WorkspaceSummary } from "@/shared/api/api";
 import { ApiKeyInput } from "./ApiKeyInput";
 
 type AppShellProps = {
