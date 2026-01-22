@@ -414,3 +414,95 @@ TAREAS
 SALIDA FINAL
 - Archivos tocados + resumen ≤10 bullets + comandos corridos.
 ```
+
+@workspace
+# PRON v6-Clean — LIMPIEZA TOTAL DEL REPO (higiene + consistencia) (1 COMMIT)
+QUIERO HACER UNA LIMPIEZA PROFESIONAL DEL PROYECTO (v6) PARA DEJARLO ORDENADO, CONSISTENTE Y “CI-READY”, SIN CAMBIAR LÓGICA DE NEGOCIO, Y HACER 1 SOLO COMMIT (SIN RAMA / SIN PR).
+
+OBJETIVO
+Mejorar higiene del repo: archivos basura, duplicaciones, drift menor, naming, estructura, configs, tooling, y consistencia FE/BE/Docs — manteniendo comportamiento idéntico.
+
+REGLAS (OBLIGATORIAS)
+- NO crear ramas ni PRs.
+- Hacer cambios directos y cerrar con 1 commit final.
+- PROHIBIDO: cambios funcionales (endpoints, reglas de authz, queries, lógica de pipeline, comportamiento UI).
+- Permitido: higiene y mantenimiento (formato, lint fixes, dead code obvio no referenciado, imports, paths, scripts, docs menores, configs, ignores, tooling).
+- CERO INVENCIÓN: antes de borrar/renombrar algo, demostrar con evidencia que no se usa:
+  - búsquedas en el repo, imports/references, scripts, workflows, docker compose, docs.
+- No pegar archivos completos: entregar diff/patch.
+- Si aparece un caso dudoso: no borrar; marcar TODO y explicar.
+- Mantener Clean Architecture: no mover código entre capas salvo que sea puramente organizativo y sin impacto (y con pruebas).
+
+ALCANCE (IN-SCOPE)
+1) Basura / artefactos
+- Eliminar: `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.coverage*`, `coverage/`, `dist/`, `build/`, `.next/`, `node_modules/`, `playwright-report/`, `test-results/`, `*.log`, `*.tmp`, `*.bak`, `*.DS_Store`, etc. (solo si están trackeados).
+- Verificar `.gitignore` y `.dockerignore` para FE/BE/monorepo.
+
+2) Duplicaciones y drift menor
+- Detectar docs duplicadas o archivos “viejos” (v4 vs v6) y:
+  - mover a `doc/history/` o `doc/archive/` si deben quedar,
+  - o eliminar si están obsoletos y no referenciados.
+- Normalizar links internos relativos.
+
+3) Consistencia de tooling
+- Backend: asegurar `ruff check` + `ruff format` pasan sin cambios funcionales.
+- Frontend: `pnpm lint` + `pnpm tsc --noEmit` pasan.
+- Contracts: `pnpm contracts:gen` deja repo sin diff.
+- E2E: no romper paths de artefactos.
+
+4) Calidad “obvia” sin tocar lógica
+- Ordenar imports (si el formateador lo hace).
+- Quitar `print`/debug logs no necesarios (solo si está claro que es debug y no parte del sistema).
+- Corregir typos, nombres de archivos, headers, comentarios.
+- Eliminar variables no usadas / dead code trivial (solo con evidencia de no uso y tests verdes).
+
+5) Config y CI hygiene
+- Revisar `.github/workflows/**` para paths correctos y consistencia (sin cambios de comportamiento).
+- Revisar `dependabot.yml`: coherencia de directorios/ecosistemas (sin rediseñar política).
+- Revisar `compose*.yaml` para consistencia de nombres/servicios y perfiles (sin cambiar runtime; solo comentarios/docs y orden).
+
+OUT-OF-SCOPE (NO HACER)
+- No cambiar endpoints, contratos OpenAPI, payloads, schemas, migraciones.
+- No cambiar decisiones ADR ni el “contrato v6” (solo mover/ordenar si está duplicado).
+- No refactors grandes ni re-arquitectura.
+- No cambiar imágenes Docker ni despliegue salvo `.dockerignore` y comentarios.
+
+PROCESO (OBLIGATORIO, EN ESTE ORDEN)
+(1) INVENTARIO + HALLAZGOS (antes de tocar nada)
+- Listar:
+  - archivos grandes/basura trackeados
+  - duplicados (docs/configs)
+  - carpetas sospechosas/huérfanas
+  - inconsistencias de naming
+- Para cada hallazgo, citar rutas exactas.
+
+(2) PLAN DE LIMPIEZA (máximo 12 bullets)
+- Qué vas a hacer y por qué, con riesgo bajo.
+
+(3) EJECUCIÓN (cambios reales)
+- Aplicar limpieza en lotes pequeños, pero dentro del mismo commit final.
+
+(4) VALIDACIÓN (obligatoria)
+Correr y registrar salida/resumen (si no se puede correr, explicar por qué):
+- Backend:
+  - `cd backend && ruff check . && ruff format --check .`
+  - `cd backend && pytest -q`
+- Frontend:
+  - `cd frontend && pnpm install --frozen-lockfile`
+  - `cd frontend && pnpm lint && pnpm tsc --noEmit`
+- Contracts (si existe):
+  - `pnpm contracts:gen`
+  - `git diff --exit-code shared/contracts/`
+- E2E (si es razonable):
+  - `pnpm -C tests/e2e test` (opcional si es muy pesado, pero preferible)
+
+(5) COMMIT ÚNICO
+- Mensaje: `chore(repo): cleanup hygiene (v6)`
+
+SALIDA FINAL (FORMATO OBLIGATORIO)
+- ✅/⚠️ Estado general
+- Archivos tocados (rutas)
+- Resumen (≤10 bullets) de lo que mejoró
+- Qué eliminaste y por qué (con evidencia)
+- Comandos corridos + resultado
+- TODOs que quedaron (si hubo dudas)
