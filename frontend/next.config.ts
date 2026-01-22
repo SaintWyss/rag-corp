@@ -25,6 +25,8 @@ import type { NextConfig } from "next";
 const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
+  // R: Produce standalone output for the production Docker image.
+  output: "standalone",
   // R: Configure URL rewrites for development proxy
   async rewrites() {
     return [

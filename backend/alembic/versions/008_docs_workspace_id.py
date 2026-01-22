@@ -18,34 +18,77 @@ down_revision: Union[str, None] = "007_add_workspaces_and_acl"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+LEGACY_WORKSPACE_NAME = "Legacy"
+LEGACY_WORKSPACE_BOOTSTRAP_NAME = "Legacy Workspace"
+SYSTEM_USER_EMAIL = "system@ragcorp.local"
+SYSTEM_USER_PASSWORD_HASH = "disabled"
+SYSTEM_USER_ROLE = "admin"
 
-def _select_owner_user_id(conn) -> str:
+
+def _has_rows(conn, table_name: str) -> bool:
+    row = conn.execute(sa.text(f"SELECT 1 FROM {table_name} LIMIT 1")).fetchone()
+    return row is not None
+
+
+def _create_system_user(conn) -> str:
+    # R: Bootstrap-safe owner for fresh installs/legacy DBs with no users.
+    system_user_id = str(uuid4())
+    conn.execute(
+        sa.text(
+            """
+            INSERT INTO users (id, email, password_hash, role, is_active)
+            VALUES (:id, :email, :password_hash, :role, :is_active)
+            """
+        ),
+        {
+            "id": system_user_id,
+            "email": SYSTEM_USER_EMAIL,
+            "password_hash": SYSTEM_USER_PASSWORD_HASH,
+            # R: Admin role ensures workspace ownership passes checks; user stays inactive.
+            "role": SYSTEM_USER_ROLE,
+            "is_active": False,
+        },
+    )
+    return system_user_id
+
+
+def _select_owner_user_id(conn) -> tuple[str, bool]:
     row = conn.execute(
         sa.text(
             "SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
         )
     ).fetchone()
     if row:
-        return row[0]
+        return row[0], False
     row = conn.execute(
         sa.text("SELECT id FROM users ORDER BY created_at ASC LIMIT 1")
     ).fetchone()
     if row:
-        return row[0]
-    raise RuntimeError(
-        "No users found for legacy workspace ownership. "
-        "Create an admin with backend/scripts/create_admin.py before migrating."
+        return row[0], False
+
+    documents_empty = not _has_rows(conn, "documents")
+    # R: Avoid blocking fresh installs (no users/documents) or legacy DBs without users.
+    return _create_system_user(conn), documents_empty
+
+
+def _get_or_create_legacy_workspace(conn, owner_user_id: str, name: str) -> str:
+    legacy_alias = (
+        LEGACY_WORKSPACE_BOOTSTRAP_NAME
+        if name == LEGACY_WORKSPACE_NAME
+        else LEGACY_WORKSPACE_NAME
     )
-
-
-def _get_or_create_legacy_workspace(conn, owner_user_id: str) -> str:
     row = conn.execute(
         sa.text(
             "SELECT id FROM workspaces "
-            "WHERE owner_user_id = :owner_user_id AND name = :name "
+            "WHERE owner_user_id = :owner_user_id "
+            "AND (name = :name OR name = :legacy_alias) "
             "LIMIT 1"
         ),
-        {"owner_user_id": owner_user_id, "name": "Legacy"},
+        {
+            "owner_user_id": owner_user_id,
+            "name": name,
+            "legacy_alias": legacy_alias,
+        },
     ).fetchone()
     if row:
         return row[0]
@@ -72,7 +115,7 @@ def _get_or_create_legacy_workspace(conn, owner_user_id: str) -> str:
             )
             """
         ),
-        {"id": legacy_id, "name": "Legacy", "owner_user_id": owner_user_id},
+        {"id": legacy_id, "name": name, "owner_user_id": owner_user_id},
     )
     return legacy_id
 
@@ -84,8 +127,17 @@ def upgrade() -> None:
     )
 
     conn = op.get_bind()
-    owner_user_id = _select_owner_user_id(conn)
-    legacy_workspace_id = _get_or_create_legacy_workspace(conn, owner_user_id)
+    owner_user_id, is_fresh_install = _select_owner_user_id(conn)
+    legacy_name = (
+        LEGACY_WORKSPACE_BOOTSTRAP_NAME
+        if is_fresh_install
+        else LEGACY_WORKSPACE_NAME
+    )
+    legacy_workspace_id = _get_or_create_legacy_workspace(
+        conn,
+        owner_user_id,
+        legacy_name,
+    )
 
     conn.execute(
         sa.text(

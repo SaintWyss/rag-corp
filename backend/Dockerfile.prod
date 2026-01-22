@@ -30,6 +30,7 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 COPY --chown=appuser:appuser alembic/ ./alembic/
 COPY --chown=appuser:appuser alembic.ini ./alembic.ini
 COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser scripts/ ./scripts/
 
 USER appuser
 

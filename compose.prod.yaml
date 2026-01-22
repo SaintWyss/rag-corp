@@ -11,7 +11,7 @@ services:
     command:
       - sh
       - -c
-      - alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+      - uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     environment:
       APP_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -28,6 +28,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -54,7 +56,7 @@ services:
     command:
       - sh
       - -c
-      - alembic upgrade head && python -m app.worker
+      - python -m app.worker
     environment:
       APP_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -70,6 +72,8 @@ services:
       RBAC_CONFIG: ${RBAC_CONFIG:-}
       WORKER_HTTP_PORT: ${WORKER_HTTP_PORT:-8001}
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -87,10 +91,36 @@ services:
           cpus: "1"
           memory: 1G
 
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - alembic upgrade head
+    environment:
+      APP_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      OTEL_ENABLED: ${OTEL_ENABLED:-0}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_COOKIE_SECURE: ${JWT_COOKIE_SECURE:-true}
+      METRICS_REQUIRE_AUTH: "true"
+      API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
+      RBAC_CONFIG: ${RBAC_CONFIG:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8000}
     restart: unless-stopped

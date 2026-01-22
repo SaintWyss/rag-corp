@@ -36,6 +36,17 @@ Notas:
 
 Para Docker Compose prod, inyectar estas variables desde el entorno o un env-file externo (ej: `docker compose --env-file /path/.env.prod -f compose.prod.yaml up -d`). No commitear secretos.
 
+## Fresh install bootstrap
+
+1) `docker compose --env-file .env.prod.local -f compose.prod.yaml up -d postgres redis`
+2) `docker compose --env-file .env.prod.local -f compose.prod.yaml run --rm migrate`
+3) `docker compose --env-file .env.prod.local -f compose.prod.yaml run --rm backend python scripts/create_admin.py --email you@example.com --password change-me`
+4) `docker compose --env-file .env.prod.local -f compose.prod.yaml up -d backend worker frontend`
+
+Notas:
+- No usar `.env` de dev dentro de contenedores: suele tener `DATABASE_URL` con `localhost`, y en Docker el host correcto es el service name (`postgres`).
+- Usar `.env.prod.local` basado en `.env.prod.local.example` (placeholders, sin secretos).
+
 ## Endpoints verificados
 
 Health checks (si hay `*_BASE_URL`):

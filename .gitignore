@@ -27,6 +27,7 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.prod.local.example
 
 # Pytest / Coverage
 .pytest_cache/
