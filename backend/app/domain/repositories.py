@@ -21,6 +21,7 @@ Notes:
   - Enables testing with mock repositories
 """
 
+from datetime import datetime
 from typing import Protocol, List, Optional
 from uuid import UUID
 from .entities import Document, Chunk, ConversationMessage, Workspace, WorkspaceVisibility
@@ -437,6 +438,31 @@ class AuditEventRepository(Protocol):
 
         Args:
             event: Audit event data
+        """
+        ...
+
+    def list_events(
+        self,
+        *,
+        workspace_id: UUID | None = None,
+        actor_id: str | None = None,
+        action_prefix: str | None = None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[AuditEvent]:
+        """
+        R: Fetch audit events with optional filters.
+
+        Args:
+            workspace_id: Filter events by workspace_id metadata
+            actor_id: Filter events by actor (full or suffix match)
+            action_prefix: Filter events by action prefix
+            start_at: Inclusive start timestamp
+            end_at: Inclusive end timestamp
+            limit: Page size
+            offset: Page offset
         """
         ...
 

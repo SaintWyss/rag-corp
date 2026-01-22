@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, Request, Query, File, Form, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from datetime import datetime
+from typing import Any
 import json
 import os
 from .config import get_settings
@@ -102,6 +103,7 @@ from .container import (
     get_upload_document_use_case,
     get_reprocess_document_use_case,
 )
+from .domain.audit import AuditEvent
 from .domain.entities import ConversationMessage, Workspace, WorkspaceVisibility
 from .domain.workspace_policy import WorkspaceActor
 from .application.use_cases.document_results import DocumentErrorCode
@@ -228,6 +230,20 @@ class WorkspacesListRes(BaseModel):
     workspaces: list[WorkspaceRes]
 
 
+class AuditEventRes(BaseModel):
+    id: UUID
+    actor: str
+    action: str
+    target_id: UUID | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = None
+
+
+class AuditEventsRes(BaseModel):
+    events: list[AuditEventRes]
+    next_offset: int | None = None
+
+
 class CreateWorkspaceReq(BaseModel):
     name: str = Field(
         ...,
@@ -310,6 +326,17 @@ def _to_workspace_res(workspace: Workspace) -> WorkspaceRes:
         created_at=workspace.created_at,
         updated_at=workspace.updated_at,
         deleted_at=workspace.deleted_at,
+    )
+
+
+def _to_audit_event_res(event: AuditEvent) -> AuditEventRes:
+    return AuditEventRes(
+        id=event.id,
+        actor=event.actor,
+        action=event.action,
+        target_id=event.target_id,
+        metadata=event.metadata or {},
+        created_at=event.created_at,
     )
 
 
@@ -1511,4 +1538,43 @@ async def ask_workspace_stream(
         use_case=use_case,
         principal=principal,
         _role=_role,
+    )
+
+
+@router.get(
+    "/admin/audit",
+    response_model=AuditEventsRes,
+    tags=["admin"],
+)
+def list_audit_events(
+    workspace_id: UUID | None = Query(None),
+    actor_id: str | None = Query(None),
+    action_prefix: str | None = Query(None),
+    start_at: datetime | None = Query(None),
+    end_at: datetime | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+    principal: Principal | None = Depends(require_principal(Permission.ADMIN_CONFIG)),
+    _role: None = Depends(require_admin()),
+):
+    if audit_repo is None:
+        raise service_unavailable("Audit repository")
+    if start_at and end_at and start_at > end_at:
+        raise validation_error("start_at must be before end_at.")
+
+    events = audit_repo.list_events(
+        workspace_id=workspace_id,
+        actor_id=actor_id,
+        action_prefix=action_prefix,
+        start_at=start_at,
+        end_at=end_at,
+        limit=limit,
+        offset=offset,
+    )
+
+    next_offset = offset + limit if len(events) == limit else None
+    return AuditEventsRes(
+        events=[_to_audit_event_res(event) for event in events],
+        next_offset=next_offset,
     )
