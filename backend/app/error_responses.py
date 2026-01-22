@@ -46,12 +46,52 @@ class ErrorDetail(BaseModel):
     errors: list[dict[str, Any]] | None = None
 
 
+PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
+
 # R: Reusable OpenAPI response entry for RFC 7807 errors
-OPENAPI_ERROR_RESPONSES = {
-    "default": {
-        "model": ErrorDetail,
-        "description": "Error response (RFC 7807 Problem Details)",
+_OPENAPI_ERROR_SCHEMA = {"$ref": "#/components/schemas/ErrorDetail"}
+_OPENAPI_ERROR_CONTENT = {
+    PROBLEM_JSON_MEDIA_TYPE: {
+        "schema": _OPENAPI_ERROR_SCHEMA,
     }
+}
+
+OPENAPI_ERROR_RESPONSES = {
+    "400": {
+        "description": "Bad Request (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "401": {
+        "description": "Unauthorized (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "403": {
+        "description": "Forbidden (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "404": {
+        "description": "Not Found (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "409": {
+        "description": "Conflict (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "422": {
+        "description": "Validation Error (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "default": {
+        "description": "Error response (RFC 7807 Problem Details)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
 }
 
 
@@ -154,6 +194,7 @@ async def app_exception_handler(
         status_code=exc.status_code,
         content=error.model_dump(exclude_none=True),
         headers=headers,
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
     )
 
 
@@ -167,4 +208,8 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
         code=ErrorCode.INTERNAL_ERROR,
         instance=str(request.url),
     )
-    return JSONResponse(status_code=500, content=error.model_dump(exclude_none=True))
+    return JSONResponse(
+        status_code=500,
+        content=error.model_dump(exclude_none=True),
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
+    )

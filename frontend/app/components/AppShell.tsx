@@ -78,7 +78,7 @@ export function AppShell({ children }: AppShellProps) {
   }, [pathname, router]);
 
   const visibleWorkspaces = useMemo(
-    () => workspaces.filter((workspace) => !workspace.deleted_at),
+    () => workspaces.filter((workspace) => !workspace.archived_at),
     [workspaces]
   );
 

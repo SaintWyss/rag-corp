@@ -73,7 +73,7 @@ function formatDate(value?: string | null): string {
 }
 
 function isArchived(workspace: WorkspaceSummary): boolean {
-  return Boolean(workspace.deleted_at);
+  return Boolean(workspace.archived_at);
 }
 
 export default function WorkspacesPage() {

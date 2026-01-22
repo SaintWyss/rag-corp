@@ -59,8 +59,7 @@ def _settings(
 
 @pytest.mark.unit
 def test_auth_missing_key_rfc7807():
-    settings = _settings(api_keys_config='{"valid-key": ["ask"]}')
-    with patch("app.config.get_settings", return_value=settings):
+    with patch("app.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
         clear_keys_cache()
         reset_rate_limiter()
         client = TestClient(_build_app())
@@ -68,6 +67,7 @@ def test_auth_missing_key_rfc7807():
         response = client.get("/protected")
 
     assert response.status_code == 401
+    assert response.headers["content-type"].startswith("application/problem+json")
     body = response.json()
     assert body["type"].endswith("/unauthorized")
     assert body["title"] == "Unauthorized"
