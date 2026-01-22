@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -59,7 +62,7 @@ jobs:
       - run: pytest --cov=app --cov-report=xml -q
       - uses: codecov/codecov-action@v4
         with:
-          files: coverage.xml
+          files: backend/coverage.xml
         continue-on-error: true
 
   frontend-lint:
@@ -114,12 +117,14 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: pip
       - uses: pnpm/action-setup@v4
         with:
           version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: pnpm
       - run: |
           cd backend && pip install -r requirements.txt
           python scripts/export_openapi.py --out ../shared/contracts/openapi.json
@@ -131,6 +136,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    timeout-minutes: 35
     env:
       FAKE_LLM: "1"
       FAKE_EMBEDDINGS: "1"
@@ -149,6 +155,7 @@ jobs:
         with:
           node-version: "20"
           cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Install Playwright dependencies
         run: |
           pnpm e2e:install
@@ -191,6 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    timeout-minutes: 45
     env:
       FAKE_LLM: "1"
       FAKE_EMBEDDINGS: "1"
@@ -216,6 +224,7 @@ jobs:
         with:
           node-version: "20"
           cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Install Playwright dependencies
         run: |
           pnpm e2e:install

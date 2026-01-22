@@ -1,0 +1,416 @@
+```md
+# =========================
+# PRON v6 — CATALOGO DEFINITIVO (Senior)
+# Reglas globales:
+# - Si el prompt es “SIN CAMBIOS”: NO modificar archivos, NO commits.
+# - Si el prompt es “1 COMMIT”: aplicar cambios directos (sin rama/PR) y hacer 1 commit final.
+# - CERO INVENCIÓN: todo debe citar rutas reales. Si no existe: NO ENCONTRADO + TODO(verify).
+# =========================
+
+
+@workspace
+# PRON v6-A1 — AUDITORÍA + % PROGRESO (SIN CAMBIOS)
+QUIERO UN INFORME MAESTRO v6 (AUDITORÍA + CONFORMIDAD + % PROGRESO + GAPS) SIN MODIFICAR ARCHIVOS.
+
+OBJETIVO
+Medir de forma verificable cuánto falta para “100% v6”, qué está alineado, qué no, y cuál es el próximo paso más eficiente y seguro.
+
+REGLAS (OBLIGATORIAS)
+- NO CAMBIES EL CÓDIGO. NO CREES COMMITS. NO MODIFIQUES ARCHIVOS.
+- CERO ALUCINACIÓN: cada afirmación importante debe citar rutas exactas del repo.
+- Fuente de verdad (prioridad):
+  1) `doc/system/**` (informe/contrato v6)
+  2) `shared/contracts/openapi.json`
+  3) `backend/alembic/versions/**`
+  4) `backend/app/main.py`, `backend/app/routes.py`, `backend/app/auth_routes.py`
+  5) `compose*.yaml`, `package.json`, `.github/workflows/**`
+  6) `doc/architecture/decisions/ADR-*.md`
+- Si algo no se encuentra: decir “NO ENCONTRADO” y proponer dónde debería estar.
+- Formato obligatorio: secciones numeradas, tablas pequeñas, bullets claros.
+
+ENTREGABLES (EN ESTE ORDEN)
+(1) CONTRATO v6 (TO-BE)
+- Extraer 15–30 bullets: funcionalidades, invariantes, reglas de negocio, RNFs, Definition of Done.
+- Citar rutas/headers/secciones exactas del doc v6.
+
+(2) SNAPSHOT AS-IS (repo real)
+- Stack detectado (FE/BE/DB/Queue/Storage/Obs/CI/Deploy) con evidencia.
+- “Mapa de ejecución”: comandos reales (scripts) + cómo se corre local/CI/e2e/deploy.
+
+(3) MATRIZ DE CUMPLIMIENTO (TO-BE vs AS-IS)
+- Tabla por áreas (mínimo):
+  - Producto/Funcional (Workspaces/ACL/Scoping/RAG)
+  - Seguridad/Gobernanza (Auth, RBAC, hardening, metrics)
+  - Operación/Confiabilidad (worker, retries, migraciones, storage)
+  - Calidad (tests, CI, contratos, RFC7807)
+  - Observabilidad (health/ready/metrics/logs)
+  - Documentación (drift y completitud)
+- Para cada fila: ✅/⚠️/❌ + evidencia + riesgo + qué falta.
+
+(4) % PROGRESO (RÚBRICA SENIOR)
+- Definir pesos justificados (en función del contrato v6).
+- Calcular % con fórmula visible y explicar el porqué en 5–10 bullets.
+
+(5) TOP GAPS BLOQUEANTES (Top 10)
+- Para cada gap: impacto, riesgo (seguridad/perf/mantenibilidad/UX), evidencia, recomendación concreta.
+
+(6) CHECKLIST DE “DONE v6”
+- Lista verificable con comandos/evidencia (curl, psql, scripts, CI).
+
+SALIDA FINAL
+- % total + resumen ejecutivo (3 fortalezas, 3 riesgos, 1 próximo paso concreto).
+
+
+@workspace
+# PRON v6-A2 — DEUDA TÉCNICA + QUICK WINS (SIN CAMBIOS)
+QUIERO UN BACKLOG SENIOR DE DEUDA TÉCNICA v6 Y QUICK WINS, SIN MODIFICAR ARCHIVOS.
+
+OBJETIVO
+Construir un backlog accionable (Top 10) + quick wins (1–2h) + mejoras medianas (1–2 días), basado solo en evidencia.
+
+REGLAS
+- Solo análisis. No editar archivos, no commits.
+- Citar rutas exactas por cada ítem.
+- Prohibido: “reescrituras grandes”. Todo incremental.
+
+ENTREGABLES
+(1) TOP 10 DEUDA TÉCNICA
+Para cada ítem:
+- Impacto (Alto/Medio/Bajo)
+- Riesgo (Seguridad/Perf/Mantenibilidad/UX)
+- Evidencia (rutas)
+- Por qué es un problema (1–3 bullets)
+- Fix recomendado (1–3 bullets)
+- Cómo validar (comando real del repo)
+
+(2) QUICK WINS (1–2h)
+- Lista separada, cada item con pasos y rutas + validación.
+
+(3) MEJORAS MEDIANAS (1–2 días)
+- Lista separada, cada item con pasos y rutas + validación.
+
+(4) “NO TOCAR TODAVÍA”
+- 3–5 ítems que conviene postergar por riesgo/falta de info.
+
+SALIDA FINAL
+- Orden sugerido de ejecución (1..N) con dependencias explícitas.
+
+
+@workspace
+# PRON v6-A3 — DOCS INVENTARIO + DRIFT (SIN CAMBIOS)
+QUIERO INVENTARIO COMPLETO DE DOCUMENTACIÓN Y DRIFT CHECK v6, SIN MODIFICAR ARCHIVOS.
+
+OBJETIVO
+Identificar qué docs existen, cuáles son canónicas, dónde hay drift, qué falta para documentación “auditable”.
+
+REGLAS
+- Sin cambios. Sin commits.
+- Citar rutas exactas.
+- Comparar contra: OpenAPI, migraciones, compose, workflows.
+
+ENTREGABLES
+(1) INVENTARIO
+- Listar `README.md`, `doc/**`, ADRs, runbooks, API docs, data docs, diagrams, .github docs.
+- Clasificar: Canonical / Supporting / Historical / Deprecated.
+
+(2) DRIFT REPORT (15–30 hallazgos)
+- Por cada hallazgo:
+  - Doc afectado (ruta)
+  - Evidencia real contradictoria (ruta)
+  - Fix esperado (1–2 bullets)
+
+(3) MAPA DE DOCS OBJETIVO v6
+- Lista de documentos “mínimos canónicos” (paths) + propósito.
+
+SALIDA FINAL
+- Priorización (qué actualizar primero y por qué).
+
+
+@workspace
+# PRON v6-A4 — CRC DRAFT (SIN CAMBIOS)
+QUIERO CRC CARDS v6 LISTAS PARA PEGAR (BACKEND+FRONTEND), SIN MODIFICAR ARCHIVOS.
+
+OBJETIVO
+Definir responsabilidades/límites por archivo crítico para mejorar mantenibilidad, revisión de PRs y evitar drift de arquitectura.
+
+REGLAS
+- No editar archivos, no commits.
+- Citar rutas exactas.
+- N=12..16 archivos críticos (balance BE/FE).
+
+ENTREGABLES
+(1) SELECCIÓN DE ARCHIVOS CRÍTICOS
+- Lista N con justificación (1 línea) por archivo.
+
+(2) CRC LISTOS
+- Para cada archivo:
+  - Python: docstring triple-quote listo para insertar.
+  - TS/React: bloque JSDoc listo para insertar.
+Estructura obligatoria:
+- Name
+- Responsibilities (3–7)
+- Collaborators
+- Notes/Constraints (invariantes, seguridad, perf, decisiones)
+
+(3) SUGERENCIAS DE RENAME (NO ejecutar)
+- Solo si hay evidencia de naming confuso/contradictorio.
+
+
+@workspace
+# PRON v6-D1 — DOCS: ACTUALIZACIÓN TOTAL (SOLO DOCS) (1 COMMIT)
+QUIERO ACTUALIZAR/CREAR TODA LA DOCUMENTACIÓN v6 (SOLO docs) ALINEADA AL ESTADO REAL DEL REPO, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+Dejar documentación profesional, navegable y 100% verificable: portal + índice + arquitectura + API + DB + runbook + calidad + diagramas.
+
+REGLAS (OBLIGATORIAS)
+- SOLO modificar documentación: `README.md`, `doc/**` (y archivos estrictamente de docs).
+- NO tocar runtime/negocio.
+- CERO INVENCIÓN: comandos/endpoints/env/scripts deben venir de archivos reales.
+- Si no se puede verificar: `TODO(verify)` + 1 línea explicando qué falta.
+- Links internos relativos, sin URLs externas salvo necesidad.
+- Entregar: diff/patch + archivos tocados + resumen ≤10 bullets + comandos de validación.
+- NO crear rama ni PR. Hacer 1 commit final.
+
+TAREAS (ORDEN OBLIGATORIO)
+(1) Ejecutar inventario + drift (como en PRON v6-A3) y usarlo para guiar cambios.
+(2) `README.md` como PORTAL (corto, navegable, real):
+- Qué es (3–6 bullets reales)
+- Features reales (solo implementado)
+- Stack (tabla)
+- Arquitectura high-level + flujos (bullets)
+- Quickstart (requisitos + env mínima + comandos reales + validación por curl)
+- Repo structure (1 línea por carpeta)
+- Links a `doc/README.md`
+- Roadmap (5–10 TODOs reales)
+(3) `doc/README.md` como ÍNDICE canónico (links vivos).
+(4) Alinear docs canónicas con evidencia:
+- `doc/architecture/overview.md`
+- `doc/architecture/decisions/ADR-*.md` (sin renumerar)
+- `doc/api/http-api.md` (desde OpenAPI)
+- `doc/data/postgres-schema.md` (desde migraciones)
+- `doc/runbook/local-dev.md` (desde compose/scripts)
+- `doc/quality/testing.md` (desde workflows/scripts)
+(5) Mermaid (2–3) en `doc/diagrams/`:
+- Component diagram
+- Sequence ingest→process→ready
+- Sequence ask/stream (conversation_id si existe)
+(6) Verificación final:
+- Links internos: asegurar paths existentes.
+- Comandos: existen como scripts/compose o `TODO(verify)`.
+- Endpoints: existen en OpenAPI o routers.
+(7) Commit único:
+- `docs(v6): align documentation with repo state`
+
+VALIDACIÓN (CORRER SI ES POSIBLE)
+- `pnpm -w lint` (si existe workspace)
+- `pnpm contracts:gen`
+- Checks básicos de links (manual mínima)
+
+SALIDA FINAL
+- Archivos tocados
+- Top 10 fixes de drift
+- Comandos corridos (o por qué no)
+- TODOs explícitos que quedan
+
+
+@workspace
+# PRON v6-F1 — FRONTEND: WORKSPACES + SCOPING UI (1 COMMIT)
+QUIERO IMPLEMENTAR/ALINEAR EL FRONTEND v6 PARA WORKSPACES/SECCIONES, SCOPING, PERMISOS Y CONTRATOS, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+UI completa para workspaces: listar/crear/seleccionar, scoping en Sources/Chat, permisos owner/admin vs viewer, y 0 drift con contracts.
+
+REGLAS
+- NO crear rama/PR. 1 commit final.
+- Usar `shared/contracts/src/generated.ts` como única fuente de tipos.
+- No hardcodear hosts: usar rutas relativas + proxy de Next.
+- Errores: mapear RFC7807 y mensajes claros; nunca stack traces.
+- No pegar archivos completos: diff/patch.
+
+TAREAS (ORDEN OBLIGATORIO)
+(1) Verificar contratos reales:
+- `shared/contracts/openapi.json` y `generated.ts` (endpoints y tipos).
+(2) UI Workspaces:
+- Ruta `/workspaces`: listado + crear + acciones permitidas.
+- Selector global de workspace (layout/header) con persistencia segura (query param o storage no sensible).
+(3) Scoping:
+- Sources/Documents y Chat/Ask deben operar siempre en un workspace seleccionado.
+- Si no hay workspace seleccionado: UX clara (empty state + CTA).
+(4) Permisos:
+- Owner/Admin: write (upload/delete/reprocess/share/publish)
+- Viewer: read+chat only
+- Deshabilitar botones y mostrar explicación.
+(5) Integración API:
+- Llamar endpoints canónicos (nested) si existen.
+- Legacy: solo si contrato lo mantiene, con etiqueta “deprecated”.
+(6) Calidad:
+- Ajustar hooks/state siguiendo arquitectura del repo.
+- Tests FE (si existen) para: selector + rutas + permisos (mínimo).
+(7) Validación:
+- `cd frontend && pnpm install --frozen-lockfile && pnpm lint && pnpm tsc --noEmit`
+- `cd frontend && pnpm test --coverage` (si aplica)
+
+COMMIT
+- `feat(web): workspace-scoped UI (v6)`
+
+SALIDA FINAL
+- Archivos tocados + resumen ≤10 bullets + comandos corridos.
+
+
+@workspace
+# PRON v6-F2 — E2E: FULL PIPELINE + WORKSPACE (1 COMMIT)
+QUIERO CREAR/ACTUALIZAR E2E PARA FLUJO COMPLETO v6 CON WORKSPACES, SIN FLAKES, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+E2E robusto: bootstrap admin → crear workspace → upload → READY → ask/stream scoped → verificar no cross-workspace.
+
+REGLAS
+- No rama/PR. 1 commit final.
+- Reusar compose profiles existentes.
+- Determinismo: usar `FAKE_LLM/FAKE_EMBEDDINGS` si existen.
+- No inventar endpoints: leer OpenAPI + routes.
+
+TAREAS
+(1) Identificar flujo real y endpoints desde `shared/contracts/openapi.json`.
+(2) Implementar specs Playwright:
+- Caso 1: workspace happy path + ask scoped (sources del workspace).
+- Caso 2: cross-workspace negative (docs en WS1 no aparecen en WS2).
+- Caso 3: permisos (viewer no puede upload/delete).
+(3) Asegurar readiness/waits correctos:
+- healthz/readyz reales, timeouts razonables, logs artifacts.
+(4) Integración CI:
+- Alinear grep/tag con `e2e-full` si existe.
+(5) Validación:
+- `pnpm -C tests/e2e test`
+- `pnpm -C tests/e2e test --grep "Full pipeline"` (si aplica)
+
+COMMIT
+- `test(e2e): full pipeline workspace-scoped (v6)`
+
+
+@workspace
+# PRON v6-O1 — BACKEND: HARDENING + READYNESS (1 COMMIT)
+QUIERO COMPLETAR HARDENING v6 EN BACKEND (fail-fast prod, /readyz, metrics auth), CON TESTS, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+Cerrar gaps de seguridad/operación sin romper producto: defaults seguros, readiness real, métricas protegidas según config.
+
+REGLAS
+- No rama/PR. 1 commit final.
+- Cambios incrementales, sin reescribir módulos grandes.
+- CERO invento: seguir config real y docs v6.
+- Mantener Clean Architecture (no mezclar lógica en routes).
+
+TAREAS
+(1) Fail-fast (prod):
+- Detectar “modo prod” según config real.
+- Si secretos/flags inseguros: abortar startup con mensaje claro.
+(2) /readyz (API):
+- Implementar si falta: chequear DB + dependencias mínimas.
+- Separar healthz (liveness) vs readyz (readiness).
+(3) /metrics protegido:
+- Asegurar enforcement real según flag/config.
+(4) Tests:
+- Unit tests para checks de config + endpoints (si existe harness).
+(5) Validación:
+- `cd backend && ruff check . && ruff format --check .`
+- `cd backend && pytest -q`
+
+COMMIT
+- `feat(backend): production hardening + readiness (v6)`
+
+
+@workspace
+# PRON v6-O2 — OBSERVABILIDAD: MÉTRICAS + AUDIT (1 COMMIT)
+QUIERO COMPLETAR OBSERVABILIDAD v6 (AUDITORÍA + MÉTRICAS) ALINEADA A WORKSPACES, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+Trazabilidad y métricas accionables: eventos auditables con workspace_id, métricas para ingest/ask/retrieval/worker, sin ruido.
+
+REGLAS
+- No rama/PR. 1 commit final.
+- No inventar eventos/métricas: basarse en flujos reales y docs v6.
+- Labels razonables (evitar cardinalidad alta).
+- Mantener Clean Architecture: emission en app layer cuando corresponda.
+
+TAREAS
+(1) Auditoría:
+- Asegurar eventos críticos: workspace.*, doc.*, auth.*, admin.user.* (solo si existen en contrato).
+- `workspace_id` donde aplique.
+(2) Métricas:
+- Counters/histograms para:
+  - ask latency, retrieval latency, ingest pipeline, worker processing, errors
+  - cache hit/miss si existe
+- Proteger /metrics según config.
+(3) Docs:
+- Actualizar docs de observabilidad si existe sección; sino, agregar doc mínimo en `doc/observability/**` y linkear en índice.
+(4) Tests mínimos:
+- Que la emisión de audit no rompa y que métricas expongan nombres esperados.
+(5) Validación:
+- `cd backend && pytest -q`
+
+COMMIT
+- `feat(obs): workspace audit + metrics alignment (v6)`
+
+
+@workspace
+# PRON v6-M1 — CI/DEPLOY HYGIENE (1 COMMIT)
+QUIERO ALINEAR CI/DEPLOY CON SCRIPTS REALES v6 (sin cambiar producto), MINIMIZAR FLAKES, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+Workflows consistentes: caches correctos, paths correctos, timeouts razonables, codecov paths correctos, contracts-check determinista.
+
+REGLAS
+- No rama/PR. 1 commit final.
+- Cambios chicos y verificables.
+- No inventar comandos: usar scripts reales del repo.
+
+TAREAS
+(1) Verificar `.github/workflows/*.yml` vs:
+- `package.json` scripts
+- `shared/contracts/**`
+- `compose*.yaml`
+(2) Fixes típicos (solo si aplica por evidencia):
+- codecov: paths correctos a coverage.xml / lcov.info
+- caches: `cache-dependency-path` correcto
+- timeouts: e2e/e2e-full
+- permisos mínimos (`permissions:`)
+(3) Documentar en `doc/quality/testing.md` si cambia algo visible.
+(4) Validación:
+- Asegurar que el workflow no referencia paths inexistentes.
+- Si hay comando local equivalente, listarlo.
+
+COMMIT
+- `chore(ci): align workflows with repo scripts (v6)`
+
+
+@workspace
+# PRON v6-X1 — CRC APPLY (SOLO COMENTARIOS) (1 COMMIT)
+QUIERO APLICAR CRC CARDS COMO COMENTARIOS (docstrings/JSDoc) EN ARCHIVOS CRÍTICOS, SIN CAMBIAR LÓGICA, Y HACER 1 SOLO COMMIT.
+
+OBJETIVO
+Mejorar mantenibilidad inmediata con documentación interna: responsabilidades/límites en el propio código.
+
+REGLAS
+- PROHIBIDO cambiar comportamiento. Solo comentarios.
+- No rama/PR. 1 commit final.
+- No duplicar CRC si ya existe; actualizar/normalizar.
+- Diff/patch, no pegar archivos completos.
+
+TAREAS
+(1) Seleccionar N=12..16 archivos críticos (balance BE/FE) con evidencia.
+(2) Insertar CRC:
+- Python: docstring al inicio del módulo o clase principal.
+- TS/React: JSDoc sobre el componente/hook principal.
+(3) Mantener formato uniforme y conciso.
+(4) Validación:
+- `cd backend && ruff check . && ruff format --check .`
+- `cd backend && pytest -q`
+- `cd frontend && pnpm lint && pnpm tsc --noEmit`
+(5) Commit:
+- `docs(crc): add CRC cards to critical modules (v6)`
+
+SALIDA FINAL
+- Archivos tocados + resumen ≤10 bullets + comandos corridos.
+```

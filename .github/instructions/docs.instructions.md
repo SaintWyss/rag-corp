@@ -2,18 +2,31 @@
 applyTo: "doc/**"
 ---
 
-# Docs — reglas específicas del repo
+# Docs — reglas específicas del repo (v6)
+
+## Estado / Versión (v6)
+- La documentación vigente del proyecto es **v6**.
+- “v4” solo puede aparecer como **HISTORICAL** (origen/especificación pasada), claramente marcado.
 
 ## Modo de trabajo
 - Ejecutar cambios directamente (sin pedir confirmación), salvo: ambigüedad bloqueante, cambio destructivo, o riesgo de seguridad.
 - No pegar archivos completos: entregar **diff/patch** + **archivos tocados** + **resumen (≤10 bullets)** + **comandos de validación**.
 
+## Source of Truth (anti-drift)
+Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, tablas, scripts), verificar en este orden:
+1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/...`) si existe.
+2) **Contracts**: `shared/contracts/openapi.json` (y client generado si aplica).
+3) **DB/Migraciones**: `backend/alembic/versions/*` + `doc/data/postgres-schema.md`.
+4) **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
+5) **Decisiones**: `doc/architecture/decisions/ADR-*.md`.
+
 ## Veracidad / No alucinaciones
 - No inventar features/endpoints/comandos. Si algo no existe en el repo, marcarlo como **TODO/Planned**.
 - Verificar siempre contra:
-  - API: `backend/app/routes.py` y `backend/app/main.py` (prefijos y endpoints)
-  - Docker: `compose.yaml`, `compose.prod.yaml`, `compose.observability.yaml`
-  - Contracts: `shared/contracts/openapi.json`
+  - API: `shared/contracts/openapi.json` (primario) y luego `backend/app/routes.py`, `backend/app/main.py`.
+  - Docker/Infra: `compose*.yaml` (incluye prod/observability si existen).
+  - Scripts: `package.json` (root y workspaces relevantes).
+  - DB: `backend/alembic/versions/*` (primario) + `doc/data/postgres-schema.md`.
 
 ## Índices y rutas canónicas
 - `doc/README.md` es el índice principal (mantener links vivos).
@@ -26,17 +39,23 @@ applyTo: "doc/**"
 
 ## Convenciones de comandos (este repo)
 - Usar `docker compose` (no `docker-compose`).
-- Services actuales en `compose.yaml`: `db` y `rag-api`.
-- Si mencionás generación de contratos:
-  - `pnpm contracts:export` (usa `docker compose run rag-api ...`)
+- Nunca asumir services: listar los **services reales** leyendo `compose.yaml` (y `compose.*.yaml` si aplican) antes de documentarlos.
+- Si mencionás generación de contratos, usar los scripts reales del repo (verificar en `package.json`):
+  - `pnpm contracts:export`
   - `pnpm contracts:gen`
 
+## Regla v6 (si aplica): workspaces + scoping
+- Si la documentación describe documentos/chat/RAG, debe reflejar scoping por `workspace_id` si existe en v6.
+- Endpoints canónicos (si existen): `/v1/workspaces/{id}/...`
+- Endpoints legacy (si existen): **DEPRECATED** y siempre con `workspace_id` explícito (nunca implícito).
+
 ## Regla de actualización
-- Si un cambio toca API, DB o compose:
-  - actualizar docs correspondientes en el mismo PR.
+- Si un cambio toca API, DB, contracts o compose:
+  - actualizar docs correspondientes en el mismo **commit**.
 
 ## Comandos de validación (cuando aplique)
 - Links y rutas: revisar que los paths existan.
-- API examples:
+- API examples (ajustar a lo que exista en OpenAPI):
   - `curl http://localhost:8000/healthz`
-  - `curl -X POST http://localhost:8000/v1/ask -H 'Content-Type: application/json' -d '{"query":"...","top_k":3}'`
+  - `curl http://localhost:8000/readyz`
+  - Si existen endpoints de ask/chat: usar ejemplos que incluyan `workspace_id` cuando aplique.
