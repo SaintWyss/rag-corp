@@ -337,7 +337,10 @@ def get_create_workspace_use_case() -> CreateWorkspaceUseCase:
 
 def get_archive_workspace_use_case() -> ArchiveWorkspaceUseCase:
     """R: Create ArchiveWorkspaceUseCase."""
-    return ArchiveWorkspaceUseCase(repository=get_workspace_repository())
+    return ArchiveWorkspaceUseCase(
+        repository=get_workspace_repository(),
+        document_repository=get_document_repository(),
+    )
 
 
 def get_update_workspace_use_case() -> UpdateWorkspaceUseCase:

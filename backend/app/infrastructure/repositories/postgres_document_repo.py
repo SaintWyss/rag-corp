@@ -695,6 +695,38 @@ class PostgresDocumentRepository:
             )
             raise DatabaseError(f"Soft delete failed: {e}")
 
+    def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
+        """
+        R: Soft delete all documents for a workspace.
+
+        Args:
+            workspace_id: Workspace UUID to delete documents for
+
+        Returns:
+            Number of documents soft-deleted
+        """
+        try:
+            scoped_workspace_id = self._require_workspace_id(
+                workspace_id, "soft_delete_documents_by_workspace"
+            )
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NOW()
+                    WHERE workspace_id = %s AND deleted_at IS NULL
+                    """,
+                    (scoped_workspace_id,),
+                )
+                return result.rowcount or 0
+        except Exception as e:
+            logger.error(
+                "PostgresDocumentRepository: Workspace soft delete failed",
+                extra={"workspace_id": str(workspace_id), "error": str(e)},
+            )
+            raise DatabaseError(f"Workspace soft delete failed: {e}")
+
     def restore_document(
         self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> bool:

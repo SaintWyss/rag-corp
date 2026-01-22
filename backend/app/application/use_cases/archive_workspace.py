@@ -11,7 +11,7 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.repositories import WorkspaceRepository
+from ...domain.repositories import DocumentRepository, WorkspaceRepository
 from ...domain.workspace_policy import WorkspaceActor, can_write_workspace
 from .workspace_results import (
     ArchiveWorkspaceResult,
@@ -23,8 +23,13 @@ from .workspace_results import (
 class ArchiveWorkspaceUseCase:
     """R: Archive workspace."""
 
-    def __init__(self, repository: WorkspaceRepository):
+    def __init__(
+        self,
+        repository: WorkspaceRepository,
+        document_repository: DocumentRepository,
+    ):
         self.repository = repository
+        self.document_repository = document_repository
 
     def execute(
         self, workspace_id: UUID, actor: WorkspaceActor | None
@@ -57,5 +62,7 @@ class ArchiveWorkspaceUseCase:
                     message="Workspace not found.",
                 ),
             )
+
+        self.document_repository.soft_delete_documents_by_workspace(workspace_id)
 
         return ArchiveWorkspaceResult(archived=True)

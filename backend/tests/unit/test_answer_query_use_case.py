@@ -19,9 +19,11 @@ Notes:
 """
 
 import pytest
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.application.use_cases.answer_query import AnswerQueryUseCase, AnswerQueryInput
+from app.application.use_cases.document_results import DocumentErrorCode
 from app.domain.entities import Chunk, QueryResult, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.users import UserRole
@@ -141,6 +143,38 @@ class TestAnswerQueryUseCase:
         )
         assert result.result.chunks == []
         assert result.result.metadata["chunks_found"] == 0
+
+    def test_execute_rejects_archived_workspace(
+        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+    ):
+        """R: Archived workspaces are treated as not found."""
+        archived_workspace = Workspace(
+            id=uuid4(),
+            name="Archived",
+            visibility=WorkspaceVisibility.PRIVATE,
+            archived_at=datetime.now(timezone.utc),
+        )
+        workspace_repo = _WorkspaceRepo(archived_workspace)
+        use_case = AnswerQueryUseCase(
+            repository=mock_repository,
+            workspace_repository=workspace_repo,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            llm_service=mock_llm_service,
+            context_builder=mock_context_builder,
+        )
+
+        input_data = AnswerQueryInput(
+            query="test",
+            workspace_id=archived_workspace.id,
+            actor=_ACTOR,
+            top_k=3,
+        )
+
+        result = use_case.execute(input_data)
+
+        assert result.error is not None
+        assert result.error.code == DocumentErrorCode.NOT_FOUND
 
         # LLM should NOT be called when no chunks found
         mock_llm_service.generate_answer.assert_not_called()

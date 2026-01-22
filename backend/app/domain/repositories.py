@@ -184,6 +184,18 @@ class DocumentRepository(Protocol):
         """
         ...
 
+    def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
+        """
+        R: Soft delete all documents for a workspace.
+
+        Args:
+            workspace_id: Workspace UUID whose documents should be deleted
+
+        Returns:
+            Number of documents soft-deleted
+        """
+        ...
+
     def update_document_file_metadata(
         self,
         document_id: UUID,

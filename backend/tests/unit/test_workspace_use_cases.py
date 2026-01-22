@@ -135,6 +135,15 @@ class FakeWorkspaceAclRepository:
         self._acl[workspace_id] = unique
 
 
+class FakeDocumentRepository:
+    def __init__(self) -> None:
+        self.soft_deleted_workspace_ids: list[UUID] = []
+
+    def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
+        self.soft_deleted_workspace_ids.append(workspace_id)
+        return 1
+
+
 def _actor(user_id: UUID, role: UserRole) -> WorkspaceActor:
     return WorkspaceActor(user_id=user_id, role=role)
 
@@ -451,7 +460,8 @@ def test_publish_share_and_archive_use_cases():
     assert shared.workspace.visibility == WorkspaceVisibility.SHARED
     assert acl_repo.list_workspace_acl(workspace.id) == [shared_user]
 
-    archive = ArchiveWorkspaceUseCase(repository=repo)
+    doc_repo = FakeDocumentRepository()
+    archive = ArchiveWorkspaceUseCase(repository=repo, document_repository=doc_repo)
     forbidden_archive = archive.execute(
         workspace.id, _actor(outsider_id, UserRole.EMPLOYEE)
     )
@@ -459,3 +469,4 @@ def test_publish_share_and_archive_use_cases():
     archived = archive.execute(workspace.id, _actor(owner_id, UserRole.EMPLOYEE))
     assert archived.error is None
     assert archived.archived is True
+    assert doc_repo.soft_deleted_workspace_ids == [workspace.id]
