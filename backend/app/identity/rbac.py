@@ -31,8 +31,8 @@ from typing import Callable, Optional, Set
 
 from fastapi import Header, HTTPException, Request
 
-from .logger import logger
-from .error_responses import forbidden, unauthorized
+from .platform.logger import logger
+from .platform.error_responses import forbidden, unauthorized
 
 
 class Permission(Enum):
@@ -256,7 +256,7 @@ def require_permissions(*permissions: Permission) -> Callable:
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
-        from .auth import APIKeyValidator, get_keys_config, _hash_key
+        from .identity.auth import APIKeyValidator, get_keys_config, _hash_key
 
         keys_config = get_keys_config()
         rbac_config = get_rbac_config()
@@ -361,7 +361,7 @@ def require_metrics_permission() -> Callable:
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
-        from .config import get_settings
+        from .platform.config import get_settings
 
         if not get_settings().metrics_require_auth:
             return None
@@ -391,7 +391,7 @@ def require_role(role_name: str) -> Callable:
         key_hash = getattr(request.state, "api_key_hash", None)
 
         if not key_hash:
-            from .auth import is_auth_enabled
+            from .identity.auth import is_auth_enabled
 
             if is_auth_enabled():
                 raise HTTPException(

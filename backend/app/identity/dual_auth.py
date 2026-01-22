@@ -15,10 +15,10 @@ from uuid import UUID
 from fastapi import Header, Request
 
 from . import auth
-from .auth_users import extract_access_token, get_current_user
-from .error_responses import forbidden
-from .rbac import Permission, SCOPE_PERMISSIONS, get_rbac_config, require_permissions
-from .users import UserRole
+from .identity.auth_users import extract_access_token, get_current_user
+from .platform.error_responses import forbidden
+from .identity.rbac import Permission, SCOPE_PERMISSIONS, get_rbac_config, require_permissions
+from .identity.users import UserRole
 
 
 class PrincipalType(str, Enum):

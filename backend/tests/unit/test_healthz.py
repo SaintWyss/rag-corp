@@ -47,7 +47,7 @@ class TestCheckGoogleApi:
     def test_returns_disabled_without_api_key(self):
         """Should return 'disabled' when no API key."""
         # Import first while env vars are set
-        from app.main import _check_google_api
+        from app.api.main import _check_google_api
 
         # Then clear the key for the test
         saved_key = os.environ.pop("GOOGLE_API_KEY", None)
@@ -70,7 +70,7 @@ class TestCheckGoogleApi:
         mock_response.embeddings = [mock_embedding]
         mock_client.models.embed_content.return_value = mock_response
 
-        from app.main import _check_google_api
+        from app.api.main import _check_google_api
 
         result = _check_google_api()
 
@@ -85,7 +85,7 @@ class TestCheckGoogleApi:
         mock_client = mock_client_cls.return_value
         mock_client.models.embed_content.side_effect = Exception("API error")
 
-        from app.main import _check_google_api
+        from app.api.main import _check_google_api
 
         result = _check_google_api()
 
@@ -103,7 +103,7 @@ class TestHealthzEndpoint:
         mock_get_repo.return_value = mock_repo
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         # Get underlying FastAPI app (unwrap middleware)
         actual_app = fastapi_app
@@ -130,7 +130,7 @@ class TestHealthzEndpoint:
         mock_check_google.return_value = "available"
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         actual_app = fastapi_app
         if hasattr(fastapi_app, "app"):
@@ -156,7 +156,7 @@ class TestHealthzEndpoint:
         mock_check_google.return_value = "unavailable"
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         actual_app = fastapi_app
         if hasattr(fastapi_app, "app"):
@@ -182,7 +182,7 @@ class TestHealthzEndpoint:
         mock_check_google.return_value = "disabled"
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         actual_app = fastapi_app
         if hasattr(fastapi_app, "app"):

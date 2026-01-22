@@ -29,14 +29,14 @@ from datetime import datetime
 from typing import Any
 import json
 import os
-from .config import get_settings
-from .rbac import Permission
-from .dual_auth import (
+from ..platform.config import get_settings
+from ..identity.rbac import Permission
+from ..identity.dual_auth import (
     require_admin,
     require_employee_or_admin,
     require_principal,
 )
-from .error_responses import (
+from ..platform.error_responses import (
     OPENAPI_ERROR_RESPONSES,
     conflict,
     forbidden,
@@ -46,9 +46,9 @@ from .error_responses import (
     unsupported_media,
     validation_error,
 )
-from .access_control import can_access_document, filter_documents
+from ..identity.access_control import can_access_document, filter_documents
 from .audit import emit_audit_event
-from .streaming import stream_answer
+from ..platform.streaming import stream_answer
 from .application.conversations import (
     format_conversation_query,
     resolve_conversation_id,
@@ -110,9 +110,9 @@ from .domain.workspace_policy import WorkspaceActor
 from .application.use_cases.document_results import DocumentErrorCode
 from .application.use_cases.workspace_results import WorkspaceErrorCode
 from .domain.repositories import AuditEventRepository
-from .dual_auth import PrincipalType, Principal
+from ..identity.dual_auth import PrincipalType, Principal
 from .container import get_audit_repository
-from .users import UserRole
+from ..identity.users import UserRole
 
 # R: Create API router for RAG endpoints
 router = APIRouter(responses=OPENAPI_ERROR_RESPONSES)

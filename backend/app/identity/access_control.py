@@ -8,8 +8,8 @@ Responsibilities:
 from __future__ import annotations
 
 from .domain.entities import Document
-from .dual_auth import Principal, PrincipalType
-from .users import UserRole
+from .identity.dual_auth import Principal, PrincipalType
+from .identity.users import UserRole
 
 
 def can_access_document(document: Document, principal: Principal | None) -> bool:

@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field, field_validator
 
-from .auth_users import (
+from ..identity.auth_users import (
     ACCESS_TOKEN_COOKIE,
     authenticate_user,
     create_access_token,
@@ -20,9 +20,9 @@ from .auth_users import (
     hash_password,
     require_user,
 )
-from .dual_auth import require_admin, require_principal
-from .error_responses import OPENAPI_ERROR_RESPONSES, conflict, not_found, unauthorized
-from .rbac import Permission
+from ..identity.dual_auth import require_admin, require_principal
+from ..platform.error_responses import OPENAPI_ERROR_RESPONSES, conflict, not_found, unauthorized
+from ..identity.rbac import Permission
 from .audit import emit_audit_event
 from .container import get_audit_repository
 from .domain.repositories import AuditEventRepository
@@ -33,7 +33,7 @@ from .infrastructure.repositories.postgres_user_repo import (
     set_user_active,
     update_user_password,
 )
-from .users import User, UserRole
+from ..identity.users import User, UserRole
 
 router = APIRouter(responses=OPENAPI_ERROR_RESPONSES)
 

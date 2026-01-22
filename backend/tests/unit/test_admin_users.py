@@ -15,7 +15,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_routes import router as auth_router
+from app.api.auth_routes import router as auth_router
 from app.auth_users import create_access_token, hash_password
 from app.exception_handlers import register_exception_handlers
 from app.users import User, UserRole

@@ -12,12 +12,12 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from .logger import logger
-from .auth import APIKeyValidator, get_keys_config, _hash_key
-from .config import get_settings
-from .metrics import get_metrics_response
-from .rbac import Permission, get_rbac_config
-from .worker_health import health_payload, readiness_payload
+from ..platform.logger import logger
+from ..identity.auth import APIKeyValidator, get_keys_config, _hash_key
+from ..platform.config import get_settings
+from ..platform.metrics import get_metrics_response
+from ..identity.rbac import Permission, get_rbac_config
+from .worker.worker_health import health_payload, readiness_payload
 
 
 class _WorkerHandler(BaseHTTPRequestHandler):

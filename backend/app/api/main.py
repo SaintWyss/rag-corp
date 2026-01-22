@@ -36,17 +36,17 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
 from .auth_routes import router as auth_router
-from .logger import logger
+from ..platform.logger import logger
 from .container import get_document_repository
-from .config import get_settings
-from .middleware import RequestContextMiddleware, BodyLimitMiddleware
-from .rate_limit import RateLimitMiddleware
-from .auth import is_auth_enabled
-from .rbac import require_metrics_permission
+from ..platform.config import get_settings
+from ..platform.middleware import RequestContextMiddleware, BodyLimitMiddleware
+from ..platform.rate_limit import RateLimitMiddleware
+from ..identity.auth import is_auth_enabled
+from ..identity.rbac import require_metrics_permission
 from .versioning import include_versioned_routes
 from .infrastructure.db.pool import init_pool, close_pool
 from .exception_handlers import register_exception_handlers
-from .security import SecurityHeadersMiddleware
+from ..platform.security import SecurityHeadersMiddleware
 
 
 @asynccontextmanager
@@ -366,7 +366,7 @@ def metrics(_auth: None = Depends(require_metrics_permission())):
     Returns:
         Prometheus text format metrics
     """
-    from .metrics import get_metrics_response, is_prometheus_available
+    from ..platform.metrics import get_metrics_response, is_prometheus_available
 
     if not is_prometheus_available():
         return Response(

@@ -60,7 +60,7 @@ def _prepare_routes(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
 
-    import app.routes as routes
+    import app.api.routes as routes
 
     importlib.reload(routes)
     return routes

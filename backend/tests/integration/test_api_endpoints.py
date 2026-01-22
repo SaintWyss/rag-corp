@@ -39,7 +39,7 @@ if not os.getenv("GOOGLE_API_KEY"):
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.api.main import app
 
 pytestmark = pytest.mark.integration
 

@@ -22,13 +22,13 @@ from .container import (
     get_file_storage,
     get_text_chunker,
 )
-from .logger import logger
-from .metrics import (
+from ..platform.logger import logger
+from ..platform.metrics import (
     observe_worker_duration,
     record_worker_failed,
     record_worker_processed,
 )
-from .tracing import span
+from ..platform.tracing import span
 
 
 def process_document_job(document_id: str, workspace_id: str) -> None:
