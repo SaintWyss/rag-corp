@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "../../components/AppShell";
-import { NoticeBanner } from "../../components/NoticeBanner";
-import { StatusBanner } from "../../components/StatusBanner";
+import { AppShell } from "@/shared/ui/AppShell";
+import { NoticeBanner } from "@/shared/ui/NoticeBanner";
+import { StatusBanner } from "@/shared/ui/StatusBanner";
 import {
   createUser,
   disableUser,
@@ -13,7 +13,7 @@ import {
   type AdminUser,
   type CreateUserPayload,
   type CurrentUser,
-} from "../../lib/api";
+} from "@/shared/api/api";
 
 type DraftUser = {
   email: string;

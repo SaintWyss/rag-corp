@@ -11,8 +11,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getWorkspaceDocument, queryWorkspace } from "../lib/api";
-import { getStoredApiKey } from "../lib/apiKey";
+import { getWorkspaceDocument, queryWorkspace } from "@/shared/api/api";
+import { getStoredApiKey } from "@/shared/api/apiKey";
 
 type ChatRole = "user" | "assistant";
 type MessageStatus = "streaming" | "complete" | "error" | "cancelled";

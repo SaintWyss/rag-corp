@@ -10,9 +10,9 @@
 "use client";
 
 import Link from "next/link";
-import { AppShell } from "../../../components/AppShell";
-import { StatusBanner } from "../../../components/StatusBanner";
-import { useRagChat } from "../../../hooks/useRagChat";
+import { AppShell } from "@/shared/ui/AppShell";
+import { StatusBanner } from "@/shared/ui/StatusBanner";
+import { useRagChat } from "@/features/rag/useRagChat";
 
 type PageProps = {
   params: {

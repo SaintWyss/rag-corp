@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AppShell } from "../../../components/AppShell";
-import { NoticeBanner } from "../../../components/NoticeBanner";
-import { StatusBanner } from "../../../components/StatusBanner";
+import { AppShell } from "@/shared/ui/AppShell";
+import { NoticeBanner } from "@/shared/ui/NoticeBanner";
+import { StatusBanner } from "@/shared/ui/StatusBanner";
 import {
   getCurrentUser,
   deleteWorkspaceDocument,
@@ -17,8 +17,8 @@ import {
   type DocumentStatus,
   type DocumentSummary,
   type DocumentSort,
-} from "../../../lib/api";
-import { getStoredApiKey } from "../../../lib/apiKey";
+} from "@/shared/api/api";
+import { getStoredApiKey } from "@/shared/api/apiKey";
 
 type UploadDraft = {
   title: string;

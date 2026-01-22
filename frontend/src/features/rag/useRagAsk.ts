@@ -28,7 +28,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getStoredApiKey } from "../lib/apiKey";
+import { getStoredApiKey } from "@/shared/lib/apiKey";
 
 /** Request timeout in milliseconds (30 seconds) */
 const REQUEST_TIMEOUT_MS = 30_000;
