@@ -139,16 +139,53 @@ jobs:
           # Backup recommended
           # docker compose -f compose.staging.yaml exec rag-api alembic upgrade head
 
+      - name: Resolve base URL
+        id: staging-base-url
+        env:
+          BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "SKIPPED: missing STAGING_BASE_URL"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+
       - name: Health check
+        if: steps.staging-base-url.outputs.base_url != ''
+        env:
+          BASE_URL: ${{ steps.staging-base-url.outputs.base_url }}
         run: |
           echo "🏥 Checking staging health"
-          # curl -f https://staging.ragcorp.example.com/healthz
-          # curl -f https://staging.ragcorp.example.com/readyz
+          BASE_URL="${BASE_URL%/}"
+          curl -f "$BASE_URL/healthz"
+          curl -f "$BASE_URL/readyz"
+
+      - name: Resolve smoke config
+        id: staging-smoke
+        if: steps.staging-base-url.outputs.base_url != ''
+        env:
+          SMOKE_API_KEY: ${{ secrets.STAGING_SMOKE_API_KEY }}
+          SMOKE_PATH: ${{ vars.STAGING_SMOKE_PATH }}
+        run: |
+          if [ -z "$SMOKE_API_KEY" ] || [ -z "$SMOKE_PATH" ]; then
+            echo "SKIPPED: missing STAGING_SMOKE_API_KEY or STAGING_SMOKE_PATH"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "smoke_path=$SMOKE_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Run smoke tests
+        if: steps.staging-smoke.outputs.smoke_path != ''
+        env:
+          BASE_URL: ${{ steps.staging-base-url.outputs.base_url }}
+          SMOKE_API_KEY: ${{ secrets.STAGING_SMOKE_API_KEY }}
+          SMOKE_PATH: ${{ steps.staging-smoke.outputs.smoke_path }}
         run: |
           echo "🧪 Running smoke tests against staging"
-          # pnpm -C tests/e2e test --grep "Smoke"
+          BASE_URL="${BASE_URL%/}"
+          SMOKE_PATH="${SMOKE_PATH#/}"
+          curl -f -H "X-API-Key: $SMOKE_API_KEY" "$BASE_URL/$SMOKE_PATH"
 
   deploy-production:
     name: Deploy to Production
@@ -181,11 +218,53 @@ jobs:
           # Backup DB first!
           # docker compose -f compose.prod.yaml exec rag-api alembic upgrade head
 
+      - name: Resolve base URL
+        id: prod-base-url
+        env:
+          BASE_URL: ${{ vars.PROD_BASE_URL }}
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "SKIPPED: missing PROD_BASE_URL"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+
       - name: Health check
+        if: steps.prod-base-url.outputs.base_url != ''
+        env:
+          BASE_URL: ${{ steps.prod-base-url.outputs.base_url }}
         run: |
           echo "🏥 Checking production health"
-          # curl -f https://app.ragcorp.example.com/healthz
-          # curl -f https://app.ragcorp.example.com/readyz
+          BASE_URL="${BASE_URL%/}"
+          curl -f "$BASE_URL/healthz"
+          curl -f "$BASE_URL/readyz"
+
+      - name: Resolve smoke config
+        id: prod-smoke
+        if: steps.prod-base-url.outputs.base_url != ''
+        env:
+          SMOKE_API_KEY: ${{ secrets.PROD_SMOKE_API_KEY }}
+          SMOKE_PATH: ${{ vars.PROD_SMOKE_PATH }}
+        run: |
+          if [ -z "$SMOKE_API_KEY" ] || [ -z "$SMOKE_PATH" ]; then
+            echo "SKIPPED: missing PROD_SMOKE_API_KEY or PROD_SMOKE_PATH"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "smoke_path=$SMOKE_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Run smoke tests
+        if: steps.prod-smoke.outputs.smoke_path != ''
+        env:
+          BASE_URL: ${{ steps.prod-base-url.outputs.base_url }}
+          SMOKE_API_KEY: ${{ secrets.PROD_SMOKE_API_KEY }}
+          SMOKE_PATH: ${{ steps.prod-smoke.outputs.smoke_path }}
+        run: |
+          echo "🧪 Running smoke tests against production"
+          BASE_URL="${BASE_URL%/}"
+          SMOKE_PATH="${SMOKE_PATH#/}"
+          curl -f -H "X-API-Key: $SMOKE_API_KEY" "$BASE_URL/$SMOKE_PATH"
 
       - name: Notify deployment
         run: |
