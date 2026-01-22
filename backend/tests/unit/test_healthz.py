@@ -95,7 +95,7 @@ class TestCheckGoogleApi:
 class TestHealthzEndpoint:
     """Tests for /healthz endpoint behavior."""
 
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_returns_db_status(self, mock_get_repo):
         """Should return database connection status."""
         mock_repo = Mock()
@@ -118,8 +118,8 @@ class TestHealthzEndpoint:
         assert "db" in data
         assert "ok" in data
 
-    @patch("app.main._check_google_api")
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main._check_google_api")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_full_includes_google_status(
         self, mock_get_repo, mock_check_google
     ):
@@ -144,8 +144,8 @@ class TestHealthzEndpoint:
         assert "google" in data
         assert data["google"] == "available"
 
-    @patch("app.main._check_google_api")
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main._check_google_api")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_full_google_unavailable_sets_ok_false(
         self, mock_get_repo, mock_check_google
     ):
@@ -170,8 +170,8 @@ class TestHealthzEndpoint:
         assert data["ok"] is False
         assert data["google"] == "unavailable"
 
-    @patch("app.main._check_google_api")
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main._check_google_api")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_full_google_disabled_keeps_ok_true(
         self, mock_get_repo, mock_check_google
     ):
