@@ -1,4 +1,3 @@
-```yaml
 name: Deploy
 
 on:
@@ -6,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - "**.md"
+      - "**/*.md"
       - "doc/**"
   workflow_dispatch:
     inputs:
@@ -41,12 +40,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend_tags: ${{ steps.meta_backend.outputs.tags }}
-      frontend_tag: ${{ steps.meta_frontend.outputs.tags }}
+      frontend_tags: ${{ steps.meta_frontend.outputs.tags }}
       version: ${{ steps.meta_backend.outputs.version }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -91,7 +90,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_DATE=${{ github.run_id }}
             GIT_SHA=${{ github.sha }}
 
       - name: Build and push frontend image
@@ -112,75 +111,50 @@ jobs:
     if: github.event_name == 'push' || github.event.inputs.environment == 'staging'
     environment:
       name: staging
-      url: https://staging.ragcorp.example.com
+      url: ${{ vars.STAGING_BASE_URL }}
     env:
-      BACKEND_IMAGE: ${{ needs.build.outputs.backend_tags }}
-      FRONTEND_IMAGE: ${{ needs.build.outputs.frontend_tag }}
+      BACKEND_IMAGE_TAGS: ${{ needs.build.outputs.backend_tags }}
+      FRONTEND_IMAGE_TAGS: ${{ needs.build.outputs.frontend_tags }}
       DEPLOY_VERSION: ${{ github.event.inputs.version || github.sha }}
+      BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      DEPLOY_COMMAND: ${{ vars.STAGING_DEPLOY_COMMAND }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Deploy to staging
+      - name: Guardrails (staging)
         run: |
-          echo "🚀 Deploying to staging environment"
-          echo "Backend image tags: $BACKEND_IMAGE"
-          echo "Frontend image tags: $FRONTEND_IMAGE"
-          echo "Deploy version: $DEPLOY_VERSION"
-          # Add your deployment commands here:
-          # - SSH to staging server
-          # - docker compose pull && docker compose up -d
-          # - Or kubectl apply for Kubernetes
-
-      - name: Run database migrations
-        run: |
-          echo "📦 Running database migrations"
-          # Backup recommended
-          # docker compose -f compose.staging.yaml exec rag-api alembic upgrade head
-
-      - name: Resolve base URL
-        id: staging-base-url
-        env:
-          BASE_URL: ${{ vars.STAGING_BASE_URL }}
-        run: |
-          if [ -z "$BASE_URL" ]; then
-            echo "SKIPPED: missing STAGING_BASE_URL"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ -z "$DEPLOY_COMMAND" ]; then
+            echo "::error::Missing vars.STAGING_DEPLOY_COMMAND. Define how to deploy (ssh/compose/kubectl)."
+            exit 1
           fi
-          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          if [ -z "$BASE_URL" ]; then
+            echo "::warning::Missing vars.STAGING_BASE_URL. Health checks will be skipped."
+          fi
 
-      - name: Health check
-        if: steps.staging-base-url.outputs.base_url != ''
-        env:
-          BASE_URL: ${{ steps.staging-base-url.outputs.base_url }}
+      - name: Deploy to staging (real command required)
+        run: |
+          echo "🚀 Deploying to staging"
+          echo "Backend tags: $BACKEND_IMAGE_TAGS"
+          echo "Frontend tags: $FRONTEND_IMAGE_TAGS"
+          echo "Version: $DEPLOY_VERSION"
+          echo "Running deploy command..."
+          bash -lc "$DEPLOY_COMMAND"
+
+      - name: Health check (staging)
+        if: env.BASE_URL != ''
         run: |
           echo "🏥 Checking staging health"
           BASE_URL="${BASE_URL%/}"
           curl -f "$BASE_URL/healthz"
           curl -f "$BASE_URL/readyz"
 
-      - name: Resolve smoke config
-        id: staging-smoke
-        if: steps.staging-base-url.outputs.base_url != ''
+      - name: Smoke test (staging)
+        if: env.BASE_URL != '' && secrets.STAGING_SMOKE_API_KEY != '' && vars.STAGING_SMOKE_PATH != ''
         env:
           SMOKE_API_KEY: ${{ secrets.STAGING_SMOKE_API_KEY }}
           SMOKE_PATH: ${{ vars.STAGING_SMOKE_PATH }}
-        run: |
-          if [ -z "$SMOKE_API_KEY" ] || [ -z "$SMOKE_PATH" ]; then
-            echo "SKIPPED: missing STAGING_SMOKE_API_KEY or STAGING_SMOKE_PATH"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "smoke_path=$SMOKE_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Run smoke tests
-        if: steps.staging-smoke.outputs.smoke_path != ''
-        env:
-          BASE_URL: ${{ steps.staging-base-url.outputs.base_url }}
-          SMOKE_API_KEY: ${{ secrets.STAGING_SMOKE_API_KEY }}
-          SMOKE_PATH: ${{ steps.staging-smoke.outputs.smoke_path }}
         run: |
           echo "🧪 Running smoke tests against staging"
           BASE_URL="${BASE_URL%/}"
@@ -191,98 +165,55 @@ jobs:
     name: Deploy to Production
     needs: [build, deploy-staging]
     runs-on: ubuntu-latest
-    if: github.event.inputs.environment == 'production'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     environment:
       name: production
-      url: https://app.ragcorp.example.com
+      url: ${{ vars.PROD_BASE_URL }}
     env:
-      BACKEND_IMAGE: ${{ needs.build.outputs.backend_tags }}
-      FRONTEND_IMAGE: ${{ needs.build.outputs.frontend_tag }}
+      BACKEND_IMAGE_TAGS: ${{ needs.build.outputs.backend_tags }}
+      FRONTEND_IMAGE_TAGS: ${{ needs.build.outputs.frontend_tags }}
       DEPLOY_VERSION: ${{ github.event.inputs.version || github.sha }}
+      BASE_URL: ${{ vars.PROD_BASE_URL }}
+      DEPLOY_COMMAND: ${{ vars.PROD_DEPLOY_COMMAND }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Deploy to production
+      - name: Guardrails (production)
         run: |
-          echo "🚀 Deploying to production environment"
-          echo "Backend image tags: $BACKEND_IMAGE"
-          echo "Frontend image tags: $FRONTEND_IMAGE"
-          echo "Deploy version: $DEPLOY_VERSION"
-          # Add your production deployment commands here
-
-      - name: Run database migrations
-        run: |
-          echo "📦 Running database migrations"
-          # Backup DB first!
-          # docker compose -f compose.prod.yaml exec rag-api alembic upgrade head
-
-      - name: Resolve base URL
-        id: prod-base-url
-        env:
-          BASE_URL: ${{ vars.PROD_BASE_URL }}
-        run: |
-          if [ -z "$BASE_URL" ]; then
-            echo "SKIPPED: missing PROD_BASE_URL"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ -z "$DEPLOY_COMMAND" ]; then
+            echo "::error::Missing vars.PROD_DEPLOY_COMMAND. Define how to deploy (ssh/compose/kubectl)."
+            exit 1
           fi
-          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          if [ -z "$BASE_URL" ]; then
+            echo "::warning::Missing vars.PROD_BASE_URL. Health checks will be skipped."
+          fi
 
-      - name: Health check
-        if: steps.prod-base-url.outputs.base_url != ''
-        env:
-          BASE_URL: ${{ steps.prod-base-url.outputs.base_url }}
+      - name: Deploy to production (real command required)
+        run: |
+          echo "🚀 Deploying to production"
+          echo "Backend tags: $BACKEND_IMAGE_TAGS"
+          echo "Frontend tags: $FRONTEND_IMAGE_TAGS"
+          echo "Version: $DEPLOY_VERSION"
+          echo "Running deploy command..."
+          bash -lc "$DEPLOY_COMMAND"
+
+      - name: Health check (production)
+        if: env.BASE_URL != ''
         run: |
           echo "🏥 Checking production health"
           BASE_URL="${BASE_URL%/}"
           curl -f "$BASE_URL/healthz"
           curl -f "$BASE_URL/readyz"
 
-      - name: Resolve smoke config
-        id: prod-smoke
-        if: steps.prod-base-url.outputs.base_url != ''
+      - name: Smoke test (production)
+        if: env.BASE_URL != '' && secrets.PROD_SMOKE_API_KEY != '' && vars.PROD_SMOKE_PATH != ''
         env:
           SMOKE_API_KEY: ${{ secrets.PROD_SMOKE_API_KEY }}
           SMOKE_PATH: ${{ vars.PROD_SMOKE_PATH }}
-        run: |
-          if [ -z "$SMOKE_API_KEY" ] || [ -z "$SMOKE_PATH" ]; then
-            echo "SKIPPED: missing PROD_SMOKE_API_KEY or PROD_SMOKE_PATH"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "smoke_path=$SMOKE_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Run smoke tests
-        if: steps.prod-smoke.outputs.smoke_path != ''
-        env:
-          BASE_URL: ${{ steps.prod-base-url.outputs.base_url }}
-          SMOKE_API_KEY: ${{ secrets.PROD_SMOKE_API_KEY }}
-          SMOKE_PATH: ${{ steps.prod-smoke.outputs.smoke_path }}
         run: |
           echo "🧪 Running smoke tests against production"
           BASE_URL="${BASE_URL%/}"
           SMOKE_PATH="${SMOKE_PATH#/}"
           curl -f -H "X-API-Key: $SMOKE_API_KEY" "$BASE_URL/$SMOKE_PATH"
-
-      - name: Notify deployment
-        run: |
-          echo "📢 Deployment completed successfully"
-          # Send notification to Slack/Discord/etc.
-
-  rollback:
-    name: Rollback Production
-    runs-on: ubuntu-latest
-    if: failure() && github.event.inputs.environment == 'production'
-    needs: deploy-production
-    environment:
-      name: production
-
-    steps:
-      - name: Rollback to previous version
-        run: |
-          echo "⚠️ Rolling back production deployment"
-          # kubectl rollout undo deployment/ragcorp-backend
-          # Or: docker compose -f compose.prod.yaml pull previous-tag && up -d
-```
