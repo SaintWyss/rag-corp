@@ -21,6 +21,21 @@ Notas:
 - Los smoke tests se ejecutan solo si existen ambos `*_SMOKE_PATH` y `*_SMOKE_API_KEY`.
 - El workflow no hace curl contra URLs ejemplo.
 
+## Required env in production
+
+| Nombre | Componente | Por qué es required | Ejemplo seguro (placeholder) |
+| --- | --- | --- | --- |
+| `APP_ENV` | backend/worker | Activa `is_production()` para hardening y CSP estricto | `production` |
+| `JWT_SECRET` | backend/worker | Firma de JWT; validado fuerte en prod | `replace-with-32+char-secret` |
+| `JWT_COOKIE_SECURE` | backend/worker | Requerido `true` en prod para cookies `Secure` | `true` |
+| `METRICS_REQUIRE_AUTH` | backend/worker | Requerido `true` en prod para proteger `/metrics` | `true` |
+| `API_KEYS_CONFIG` | backend/worker | Requerido si no hay `RBAC_CONFIG` para auth de métricas | `{"example-key":["metrics:read"]}` |
+| `RBAC_CONFIG` | backend/worker | Alternativa a `API_KEYS_CONFIG` para RBAC | `{"roles":{},"key_roles":{}}` |
+| `ALLOWED_ORIGINS` | backend | CORS: evita default local en prod | `https://app.example.com` |
+| `CORS_ALLOW_CREDENTIALS` | backend | CORS: habilita cookies cross-origin solo si aplica | `false` |
+
+Para Docker Compose prod, inyectar estas variables desde el entorno o un env-file externo (ej: `docker compose --env-file /path/.env.prod -f compose.prod.yaml up -d`). No commitear secretos.
+
 ## Endpoints verificados
 
 Health checks (si hay `*_BASE_URL`):
