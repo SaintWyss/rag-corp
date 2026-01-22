@@ -55,6 +55,8 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle. Validates settings and initializes pool."""
     # This will raise ValidationError if env vars are missing/invalid
     settings = get_settings()
+    if settings.is_production():
+        settings.validate_security_requirements()
 
     # R: Initialize connection pool
     init_pool(

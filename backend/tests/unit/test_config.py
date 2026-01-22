@@ -211,6 +211,35 @@ class TestSettings:
 
         assert settings.chunk_overlap == 0
 
+    def test_production_rejects_default_jwt_secret(self, monkeypatch):
+        """Production must fail-fast with insecure default JWT secret."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("APP_ENV", "production")
+        monkeypatch.setenv("JWT_COOKIE_SECURE", "1")
+        monkeypatch.setenv("METRICS_REQUIRE_AUTH", "1")
+        monkeypatch.setenv("API_KEYS_CONFIG", '{"valid-key": ["metrics"]}')
+        monkeypatch.delenv("JWT_SECRET", raising=False)
+
+        from pydantic import ValidationError
+        from app.config import Settings
+
+        with pytest.raises(ValidationError):
+            Settings()
+
+    def test_development_allows_default_jwt_secret(self, monkeypatch):
+        """Development should allow default JWT secret for local usage."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("APP_ENV", "development")
+        monkeypatch.delenv("JWT_SECRET", raising=False)
+
+        from app.config import Settings
+
+        settings = Settings()
+
+        assert settings.jwt_secret == "dev-secret"
+
 
 class TestChunkerValidation:
     """Test SimpleTextChunker parameter validation."""
