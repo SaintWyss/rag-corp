@@ -44,6 +44,7 @@ class Settings(BaseSettings):
         max_source_chars: Maximum source length (default: 500)
         otel_enabled: Enable OpenTelemetry tracing (default: False)
         api_keys_config: JSON with API keys and scopes
+        app_env: Application environment (development/production)
         rate_limit_rps: Requests per second (default: 10)
         rate_limit_burst: Max burst tokens (default: 20)
         max_body_bytes: Max request body size (default: 10MB)
@@ -67,6 +68,9 @@ class Settings(BaseSettings):
     # Required (no defaults)
     database_url: str
     google_api_key: str = ""
+
+    # Environment
+    app_env: str = "development"
 
     # CORS configuration
     allowed_origins: str = "http://localhost:3000"
@@ -182,6 +186,37 @@ class Settings(BaseSettings):
                 "GOOGLE_API_KEY is required unless FAKE_LLM=1 and FAKE_EMBEDDINGS=1"
             )
         return self
+
+    @model_validator(mode="after")
+    def validate_security_requirements(self):
+        if not self.is_production():
+            return self
+
+        insecure_secrets = {"dev-secret", "changeme", "change-me", "password"}
+        jwt_secret = (self.jwt_secret or "").strip()
+        if not jwt_secret or jwt_secret in insecure_secrets:
+            raise ValueError(
+                "JWT_SECRET must be set to a strong, non-default value in production"
+            )
+        if len(jwt_secret) < 32:
+            raise ValueError("JWT_SECRET must be at least 32 characters in production")
+        if not self.jwt_cookie_secure:
+            raise ValueError("JWT_COOKIE_SECURE must be true in production")
+        if not self.metrics_require_auth:
+            raise ValueError("METRICS_REQUIRE_AUTH must be true in production")
+
+        import os
+
+        rbac_config = os.getenv("RBAC_CONFIG", "").strip()
+        if not self.api_keys_config.strip() and not rbac_config:
+            raise ValueError(
+                "API_KEYS_CONFIG or RBAC_CONFIG is required in production to protect /metrics"
+            )
+
+        return self
+
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() == "production"
 
     class Config:
         env_file = ".env"

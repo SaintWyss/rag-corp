@@ -1,20 +1,33 @@
 const STORAGE_KEY = "ragcorp_api_key";
 
-export function getStoredApiKey(): string {
+function getStorage(): Storage | null {
   if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredApiKey(): string {
+  const storage = getStorage();
+  if (!storage) {
     return "";
   }
-  return window.localStorage.getItem(STORAGE_KEY) ?? "";
+  return storage.getItem(STORAGE_KEY) ?? "";
 }
 
 export function setStoredApiKey(value: string) {
-  if (typeof window === "undefined") {
+  const storage = getStorage();
+  if (!storage) {
     return;
   }
   const trimmed = value.trim();
   if (trimmed) {
-    window.localStorage.setItem(STORAGE_KEY, trimmed);
+    storage.setItem(STORAGE_KEY, trimmed);
   } else {
-    window.localStorage.removeItem(STORAGE_KEY);
+    storage.removeItem(STORAGE_KEY);
   }
 }

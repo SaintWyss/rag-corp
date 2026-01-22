@@ -3,11 +3,11 @@
  * Name: useApiKey Hook
  *
  * Responsibilities:
- *   - Read/write API key from localStorage
+ *   - Read/write API key from sessionStorage
  *   - Provide state for UI input
  *
  * Notes:
- *   - Client-only (uses localStorage)
+ *   - Client-only (uses sessionStorage)
  */
 "use client";
 

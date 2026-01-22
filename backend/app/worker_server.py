@@ -13,11 +13,43 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from .logger import logger
+from .auth import APIKeyValidator, get_keys_config, _hash_key
+from .config import get_settings
 from .metrics import get_metrics_response
+from .rbac import Permission, get_rbac_config
 from .worker_health import health_payload, readiness_payload
 
 
 class _WorkerHandler(BaseHTTPRequestHandler):
+    def _metrics_authorized(self) -> tuple[bool, int]:
+        settings = get_settings()
+        if not settings.metrics_require_auth:
+            return True, 200
+
+        api_key = self.headers.get("X-API-Key")
+        if not api_key:
+            return False, 401
+
+        keys_config = get_keys_config()
+        rbac_config = get_rbac_config()
+
+        if not keys_config and not rbac_config:
+            return False, 403
+
+        if keys_config:
+            validator = APIKeyValidator(keys_config)
+            if validator.validate_key(api_key) and validator.validate_scope(
+                api_key, "metrics"
+            ):
+                return True, 200
+
+        if rbac_config:
+            key_hash = _hash_key(api_key)
+            if rbac_config.check_permission(key_hash, Permission.ADMIN_METRICS):
+                return True, 200
+
+        return False, 403
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
 
@@ -32,6 +64,10 @@ class _WorkerHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/metrics":
+            allowed, status = self._metrics_authorized()
+            if not allowed:
+                self._write_json(status, {"detail": "Metrics access denied"})
+                return
             body, content_type = get_metrics_response()
             self.send_response(200)
             self.send_header("Content-Type", content_type)
