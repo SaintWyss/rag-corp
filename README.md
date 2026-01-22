@@ -9,20 +9,21 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 
 ## Features
 
-- ✅ Ingesta de documentos via API REST (`POST /v1/ingest/text`, `/v1/ingest/batch`)
-- ✅ Documentos + pipeline async (`POST /v1/documents/upload`, estados PENDING/PROCESSING/READY/FAILED)
-- ✅ CRUD de documentos (`GET /v1/documents`, `GET /v1/documents/{id}`, `DELETE /v1/documents/{id}`)
+- ✅ Workspaces v4 (visibilidad + ACL) (`/v1/workspaces`)
+- ✅ Documentos scoped por workspace (`/v1/workspaces/{id}/documents/*`, estados PENDING/PROCESSING/READY/FAILED)
+- ✅ Query/Ask scoped (`/v1/workspaces/{id}/query`, `/ask`, `/ask/stream`)
+- ✅ Legacy endpoints soportados y deprecated (`/v1/documents`, `/v1/ask`; `workspace_id` requerido)
 - ✅ Busqueda vectorial con PostgreSQL + pgvector (indice IVFFlat)
 - ✅ RAG con Gemini 1.5 Flash y prompts versionados
-- ✅ Chat streaming SSE con multi-turn (`POST /v1/ask/stream`, `conversation_id`)
+- ✅ Chat streaming SSE con multi-turn (`/v1/workspaces/{id}/ask/stream`, `conversation_id`)
 - ✅ Cache de embeddings (memory por defecto, Redis opcional)
-- ✅ UI en Next.js (Sources, Ask, Chat)
+- ✅ UI en Next.js (Workspaces, Documents, Chat)
 - ✅ Auth dual: JWT (admin/employee) + API keys (CI/E2E)
 - ✅ Storage S3/MinIO + worker Redis (procesamiento en background)
 - ✅ Contratos tipados (OpenAPI -> TypeScript via Orval)
 - ✅ Clean Architecture (Domain/Application/Infrastructure)
 - ✅ Seguridad: API keys + scopes, RBAC por permisos, rate limiting
-- ✅ Observabilidad: /healthz, /metrics, logs JSON
+- ✅ Observabilidad: /healthz, /readyz, /metrics, logs JSON
 
 ---
 
@@ -46,9 +47,9 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 
 ```
 1. Usuario envía query → Frontend (useRagAsk hook)
-2. Frontend llama POST /v1/ask → Backend (routes.py)
+2. Frontend llama POST /v1/workspaces/{id}/ask → Backend (routes.py)
 3. AnswerQueryUseCase embebe la query → GoogleEmbeddingService
-4. Búsqueda vectorial top-k → PostgresDocumentRepository
+4. Búsqueda vectorial top-k (scoped por workspace) → PostgresDocumentRepository
 5. ContextBuilder arma contexto con chunks recuperados
 6. GoogleLLMService genera respuesta grounded en contexto
 7. Response con answer + sources → Usuario
@@ -57,7 +58,7 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 ### Flujo "Chat streaming" (multi-turn)
 
 ```
-1. Usuario envia query → /v1/ask/stream con conversation_id opcional
+1. Usuario envia query → /v1/workspaces/{id}/ask/stream con conversation_id opcional
 2. Backend recupera historial (in-memory) y arma llm_query
 3. Se emite evento "sources" + tokens SSE
 4. "done" incluye answer y conversation_id
@@ -67,7 +68,7 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 ### Flujo "Ingest" (ingesta de documentos)
 
 ```
-1. Cliente envía documento → POST /v1/ingest/text
+1. Cliente envía documento → POST /v1/workspaces/{id}/ingest/text
 2. IngestDocumentUseCase valida y chunkea → SimpleTextChunker
 3. GoogleEmbeddingService genera embeddings por chunk
 4. PostgresDocumentRepository guarda documento + chunks (transacción atómica)
@@ -77,10 +78,10 @@ Sistema de **Retrieval-Augmented Generation** (RAG) empresarial que permite inge
 ### Flujo "Upload" (async con worker)
 
 ```
-1. Admin sube archivo → POST /v1/documents/upload (multipart)
+1. Admin sube archivo → POST /v1/workspaces/{id}/documents/upload (multipart)
 2. API guarda binario en S3/MinIO y metadata en Postgres (status=PENDING)
 3. Worker (RQ) procesa en background → PROCESSING → READY/FAILED
-4. UI Sources muestra estado + permite reprocess
+4. UI Documents muestra estado + permite reprocess
 ```
 
 ---
@@ -148,9 +149,9 @@ docker compose ps
 ```bash
 # 1) Configurar storage para MinIO (compose)
 export S3_ENDPOINT_URL=http://minio:9000
-export S3_BUCKET=rag-documents
-export S3_ACCESS_KEY=minioadmin
-export S3_SECRET_KEY=minioadmin
+export S3_BUCKET=<S3_BUCKET>
+export S3_ACCESS_KEY=<S3_ACCESS_KEY>
+export S3_SECRET_KEY=<S3_SECRET_KEY>
 
 # 2) Levantar stack completo
 pnpm stack:full
@@ -159,7 +160,7 @@ pnpm stack:full
 pnpm db:migrate
 
 # 4) Crear admin (idempotente)
-pnpm admin:bootstrap -- --email admin@example.com --password admin-pass-123
+pnpm admin:bootstrap -- --email "<ADMIN_EMAIL>" --password "<ADMIN_PASSWORD>"
 ```
 
 > Si corres el backend fuera de Docker, usa `S3_ENDPOINT_URL=http://localhost:9000`.
@@ -190,33 +191,46 @@ pnpm dev
 curl http://localhost:8000/healthz
 # Esperado: {"ok":true,"db":"connected","request_id":"..."}
 
+# API readiness (dep core)
+curl http://localhost:8000/readyz
+
 # Worker readiness (solo con perfil worker/full)
 curl http://localhost:8001/readyz
 
 # Métricas (si METRICS_REQUIRE_AUTH=false)
 curl http://localhost:8000/metrics | head -5
 
-# Ingestar documento
-API_KEY="dev-key"
-## Si queres auth, define API_KEYS_CONFIG en .env con este valor.
-curl -X POST http://localhost:8000/v1/ingest/text \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: ${API_KEY}" \
-  -d '{"title":"Test","text":"RAG Corp es un sistema de busqueda semantica."}'
-
 # Login JWT (UI / auth)
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"admin-pass-123"}'
+  -d '{"email":"<ADMIN_EMAIL>","password":"<ADMIN_PASSWORD>"}'
 
-# Listar documentos
-curl -H "X-API-Key: ${API_KEY}" http://localhost:8000/v1/documents
+# Workspace v4 (scoped)
+API_KEY="<API_KEY>"
 
-# Consulta RAG
-curl -X POST http://localhost:8000/v1/ask \
+# Crear workspace (toma workspace_id del response)
+curl -X POST http://localhost:8000/v1/workspaces \
   -H "Content-Type: application/json" \
   -H "X-API-Key: ${API_KEY}" \
-  -d '{"query":"¿Qué es RAG Corp?","top_k":3}'
+  -d '{"name":"Workspace Demo","visibility":"PRIVATE"}'
+
+WORKSPACE_ID="<WORKSPACE_ID>"
+
+# Subir documento (async)
+curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents/upload \
+  -H "X-API-Key: ${API_KEY}" \
+  -F "file=@/path/to/file.pdf" \
+  -F "title=Documento demo"
+
+# Listar documentos del workspace
+curl -H "X-API-Key: ${API_KEY}" \
+  "http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents"
+
+# Consulta RAG (scoped)
+curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/ask \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"query":"¿Que dice el documento?","top_k":3}'
 ```
 
 ### URLs de Acceso
@@ -226,9 +240,30 @@ curl -X POST http://localhost:8000/v1/ask \
 | Frontend | http://localhost:3000 |
 | API | http://localhost:8000 |
 | Swagger UI | http://localhost:8000/docs |
+| API Readiness | http://localhost:8000/readyz |
 | Métricas | http://localhost:8000/metrics |
 | Worker Health | http://localhost:8001/healthz |
 | MinIO (console) | http://localhost:9001 |
+
+---
+
+## Hardening Produccion (v4)
+
+Para activar validaciones estrictas, definir `APP_ENV=production`.
+
+Requisitos minimos:
+- `JWT_SECRET` >= 32 chars y no default (fail-fast en prod).
+- `JWT_COOKIE_SECURE=true` para cookies de auth.
+- `METRICS_REQUIRE_AUTH=true` y `API_KEYS_CONFIG` o `RBAC_CONFIG` configurados (protege `/metrics`).
+- CSP en prod sin `unsafe-inline` (ver `backend/app/security.py`).
+
+Observabilidad:
+- `/readyz` verifica dependencias core (DB).
+- `/healthz?full=true` agrega chequeo de Google API si esta habilitado.
+- `/metrics` exige API key con scope `metrics` o permiso `admin:metrics` cuando `METRICS_REQUIRE_AUTH=true`.
+
+Seguridad frontend:
+- La API key de servicio se guarda en `sessionStorage` (no persiste en `localStorage`).
 
 ---
 
@@ -247,6 +282,18 @@ curl -X POST http://localhost:8000/v1/ask \
 | `pnpm lint` | Lint del monorepo |
 | `pnpm e2e` | Ejecutar Playwright (tests/e2e) |
 | `pnpm e2e:ui` | Playwright UI |
+
+### E2E (Playwright)
+
+```bash
+# Local (usa playwright.config.ts)
+pnpm e2e
+
+# Stack compose
+E2E_USE_COMPOSE=1 TEST_API_KEY=<E2E_API_KEY> pnpm e2e
+```
+
+Ver `tests/e2e/README.md` para variables y detalles del stack.
 
 ### Backend (Python)
 
@@ -338,6 +385,16 @@ pnpm e2e
 
 ---
 
+## Checklist v4 (100%)
+
+- [x] Workspaces v4 + rutas nested para documentos y queries.
+- [x] Scoping por workspace en repos y retrieval (SQL-level).
+- [x] Legacy endpoints deprecated con `workspace_id` requerido.
+- [x] Observabilidad: `/healthz`, `/readyz`, `/metrics` con auth en prod.
+- [x] Hardening prod (APP_ENV, JWT_SECRET, JWT_COOKIE_SECURE, METRICS_REQUIRE_AUTH).
+- [x] E2E v4: create -> upload -> READY -> chat scoped.
+- [x] Docs actualizados (README + API + testing + e2e).
+
 ## Roadmap
 
 ### ✅ Implementado
@@ -351,19 +408,18 @@ pnpm e2e
 - [x] UI de documentos (ingesta + CRUD)
 - [x] CI con lint/test y E2E Playwright
 
-### Post-v3 (ideas)
+### Post-v4 (ideas)
 
 - [ ] Persistir conversaciones en Postgres (hoy in-memory)
 - [ ] Admin UI avanzada (roles, claves, auditoria)
 - [ ] Streaming observability (latency por token)
 
-## Release Notes v3
+## Release Notes v4
 
-- Chat streaming + multi-turn con conversation_id (SSE en `/v1/ask/stream`).
-- UI de documentos (listado, detalle, delete) + ingesta desde la web.
-- RBAC por permisos con fallback a scopes legacy.
-- Cache de embeddings con backend memory/Redis y metricas hit/miss.
-- Pipeline CI con Playwright E2E y artifacts en falla.
+- Workspaces v4 con rutas nested (`/v1/workspaces/{id}/*`) y ACL.
+- Retrieval y documentos scopiados por workspace (sin cross-sources).
+- Readiness `/readyz` y hardening prod para `/metrics`.
+- E2E v4 con flujo create -> upload -> READY -> chat scoped.
 
 ---
 

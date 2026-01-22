@@ -22,7 +22,7 @@ cd backend
 pytest -m unit
 
 # Integration tests (requieren DB + GOOGLE_API_KEY)
-RUN_INTEGRATION=1 GOOGLE_API_KEY=your-key pytest -m integration
+RUN_INTEGRATION=1 GOOGLE_API_KEY=<GOOGLE_API_KEY> pytest -m integration
 
 # Reporte de cobertura (usa la configuracion de pytest.ini)
 pytest
@@ -88,13 +88,14 @@ pnpm e2e:install:browsers
 pnpm e2e
 
 # Ejecutar con stack Docker Compose
-E2E_USE_COMPOSE=1 TEST_API_KEY=e2e-key pnpm e2e
+E2E_USE_COMPOSE=1 TEST_API_KEY=<E2E_API_KEY> pnpm e2e
 ```
 
 Tests principales:
 - `tests/e2e/tests/documents.spec.ts`
 - `tests/e2e/tests/chat.spec.ts`
 - `tests/e2e/tests/full-pipeline.spec.ts` (upload -> READY -> chat)
+- `tests/e2e/tests/workspace-flow.spec.ts` (workspace v4 end-to-end)
 
 Ver `tests/e2e/README.md` para detalles de stack y variables.
 

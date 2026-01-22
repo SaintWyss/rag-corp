@@ -5,7 +5,7 @@
 **API Prefix:** `/v1` (canonical; `/api/v1` alias legacy)  
 **Frontend Proxy:** `/api/*` -> `/v1/*`, `/auth/*` -> `/auth/*`  
 **Version:** 0.1.0  
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-21
 
 ---
 
@@ -46,7 +46,7 @@ Ejemplo:
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"secret"}'
+  -d '{"email":"<ADMIN_EMAIL>","password":"<ADMIN_PASSWORD>"}'
 ```
 
 Usar token:
@@ -64,7 +64,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/auth/me
 #### API_KEYS_CONFIG (scopes)
 
 ```bash
-API_KEYS_CONFIG='{"prod-ingest-key":["ingest"],"prod-query-key":["ask"],"admin-key":["ingest","ask","metrics"]}'
+API_KEYS_CONFIG='{"<INGEST_KEY>":["ingest"],"<QUERY_KEY>":["ask"],"<ADMIN_KEY>":["ingest","ask","metrics"]}'
 ```
 
 Scopes soportados:
@@ -152,6 +152,14 @@ curl http://localhost:8000/healthz
 curl "http://localhost:8000/healthz?full=true"
 ```
 
+### Readiness
+
+`GET /readyz`
+
+```bash
+curl http://localhost:8000/readyz
+```
+
 ### Metrics
 
 `GET /metrics`
@@ -173,7 +181,7 @@ Si `METRICS_REQUIRE_AUTH=true`, requiere `X-API-Key` con scope `metrics` o permi
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"secret"}'
+  -d '{"email":"<ADMIN_EMAIL>","password":"<ADMIN_PASSWORD>"}'
 ```
 
 Response:
@@ -226,16 +234,65 @@ Body: `password`
 
 ---
 
-## Ingest (admin-only)
+## Workspaces (v4)
+
+Visibilidad:
+- `PRIVATE`
+- `ORG_READ`
+- `SHARED`
+
+### List
+
+`GET /v1/workspaces`
+
+Query params:
+- `owner_user_id` (UUID, opcional)
+- `include_archived` (bool, default false)
+
+```bash
+curl -H "X-API-Key: <API_KEY>" http://localhost:8000/v1/workspaces
+```
+
+### Create
+
+`POST /v1/workspaces`
+
+```bash
+curl -X POST http://localhost:8000/v1/workspaces \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: <API_KEY>" \
+  -d '{"name":"Workspace Demo","visibility":"PRIVATE"}'
+```
+
+### Detail / Update
+
+`GET /v1/workspaces/{workspace_id}`  
+`PATCH /v1/workspaces/{workspace_id}`
+
+### Publish / Share / Archive (owner/admin)
+
+`POST /v1/workspaces/{workspace_id}/publish`  
+`POST /v1/workspaces/{workspace_id}/share`  
+`POST /v1/workspaces/{workspace_id}/archive`
+
+Payload para share:
+
+```json
+{"user_ids":["<USER_ID>"]}
+```
+
+---
+
+## Ingest (admin-only, scoped)
 
 ### Ingest Text
 
-`POST /v1/ingest/text`
+`POST /v1/workspaces/{workspace_id}/ingest/text`
 
 ```bash
-curl -X POST http://localhost:8000/v1/ingest/text \
+curl -X POST http://localhost:8000/v1/workspaces/<WORKSPACE_ID>/ingest/text \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-key" \
+  -H "X-API-Key: <API_KEY>" \
   -d '{"title":"Doc","text":"Contenido...","source":"https://...","metadata":{"team":"docs"}}'
 ```
 
@@ -247,12 +304,12 @@ Response:
 
 ### Ingest Batch
 
-`POST /v1/ingest/batch`
+`POST /v1/workspaces/{workspace_id}/ingest/batch`
 
 ```bash
-curl -X POST http://localhost:8000/v1/ingest/batch \
+curl -X POST http://localhost:8000/v1/workspaces/<WORKSPACE_ID>/ingest/batch \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-key" \
+  -H "X-API-Key: <API_KEY>" \
   -d '{"documents":[{"title":"Doc","text":"Contenido"}]}'
 ```
 
@@ -264,11 +321,11 @@ Response:
 
 ---
 
-## Documents
+## Documents (scoped)
 
 ### List
 
-`GET /v1/documents`
+`GET /v1/workspaces/{workspace_id}/documents`
 
 Query params:
 - `q`: texto libre (busca en title/source/file_name/metadata)
@@ -279,7 +336,8 @@ Query params:
 - `limit` (1-200)
 
 ```bash
-curl -H "X-API-Key: your-key" http://localhost:8000/v1/documents?status=READY
+curl -H "X-API-Key: <API_KEY>" \
+  "http://localhost:8000/v1/workspaces/<WORKSPACE_ID>/documents?status=READY"
 ```
 
 Response:
@@ -299,10 +357,11 @@ ACL:
 
 ### Detail
 
-`GET /v1/documents/{document_id}`
+`GET /v1/workspaces/{workspace_id}/documents/{document_id}`
 
 ```bash
-curl -H "X-API-Key: your-key" http://localhost:8000/v1/documents/UUID
+curl -H "X-API-Key: <API_KEY>" \
+  http://localhost:8000/v1/workspaces/<WORKSPACE_ID>/documents/<DOCUMENT_ID>
 ```
 
 Response:
@@ -325,10 +384,11 @@ Response:
 
 ### Delete (admin-only)
 
-`DELETE /v1/documents/{document_id}`
+`DELETE /v1/workspaces/{workspace_id}/documents/{document_id}`
 
 ```bash
-curl -X DELETE -H "X-API-Key: your-key" http://localhost:8000/v1/documents/UUID
+curl -X DELETE -H "X-API-Key: <API_KEY>" \
+  http://localhost:8000/v1/workspaces/<WORKSPACE_ID>/documents/<DOCUMENT_ID>
 ```
 
 Response:
@@ -339,7 +399,7 @@ Response:
 
 ### Upload (admin-only, async)
 
-`POST /v1/documents/upload` (multipart)
+`POST /v1/workspaces/{workspace_id}/documents/upload` (multipart)
 
 Campos:
 - `file` (required)
@@ -359,7 +419,7 @@ Response:
 
 ### Reprocess (admin-only)
 
-`POST /v1/documents/{document_id}/reprocess`
+`POST /v1/workspaces/{workspace_id}/documents/{document_id}/reprocess`
 
 Respuesta 202 si se encola. Si esta en PROCESSING devuelve 409.
 
@@ -369,7 +429,7 @@ Respuesta 202 si se encola. Si esta en PROCESSING devuelve 409.
 
 ### Query Documents
 
-`POST /v1/query`
+`POST /v1/workspaces/{workspace_id}/query`
 
 Body:
 - `query` (string, required)
@@ -388,7 +448,7 @@ Response:
 
 ### Ask (RAG)
 
-`POST /v1/ask`
+`POST /v1/workspaces/{workspace_id}/ask`
 
 Body:
 - `query` (string, required)
@@ -404,7 +464,7 @@ Response:
 
 ### Ask (Streaming)
 
-`POST /v1/ask/stream`
+`POST /v1/workspaces/{workspace_id}/ask/stream`
 
 Body igual a `/v1/ask`. Respuesta SSE (`text/event-stream`).
 
@@ -417,9 +477,34 @@ Eventos:
 Ejemplo (fetch):
 
 ```ts
-const res = await fetch("/v1/ask/stream", {
+const res = await fetch("/v1/workspaces/<WORKSPACE_ID>/ask/stream", {
   method: "POST",
-  headers: { "Content-Type": "application/json", "X-API-Key": "your-key" },
+  headers: { "Content-Type": "application/json", "X-API-Key": "<API_KEY>" },
   body: JSON.stringify({ query: "Que es RAG?", top_k: 3 })
 });
 ```
+
+---
+
+## Legacy endpoints (deprecated)
+
+Los endpoints legacy se mantienen por compatibilidad pero **requieren** `workspace_id`.
+Se recomienda migrar a las rutas nested.
+
+### Documents (legacy)
+
+`GET /v1/documents?workspace_id=...`  
+`POST /v1/documents/upload?workspace_id=...`  
+`DELETE /v1/documents/{document_id}?workspace_id=...`  
+`POST /v1/documents/{document_id}/reprocess?workspace_id=...`
+
+### Query / Ask (legacy)
+
+`POST /v1/query?workspace_id=...`  
+`POST /v1/ask?workspace_id=...`  
+`POST /v1/ask/stream?workspace_id=...`
+
+### Ingest (legacy)
+
+`POST /v1/ingest/text?workspace_id=...`  
+`POST /v1/ingest/batch?workspace_id=...`
