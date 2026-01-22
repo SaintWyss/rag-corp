@@ -49,3 +49,4 @@ htmlcov/
 # Playwright artifacts
 playwright-report/
 test-results/
+compose.prod.local.yaml
