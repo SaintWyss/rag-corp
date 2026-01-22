@@ -1,7 +1,7 @@
 # Local Development Runbook
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-22
 
 ---
 
@@ -22,7 +22,7 @@ pnpm docker:up
 pnpm db:migrate
 
 # 3.2) Bootstrap admin (optional, for UI login)
-pnpm admin:bootstrap -- --email admin@example.com --password supersecret
+pnpm admin:bootstrap -- --email <ADMIN_EMAIL> --password <ADMIN_PASSWORD>
 
 # 4) Export contracts (OpenAPI -> TS)
 pnpm contracts:export
@@ -103,16 +103,16 @@ pnpm db:migrate
 Bootstrap admin (idempotent):
 
 ```bash
-pnpm admin:bootstrap -- --email admin@example.com --password supersecret
+pnpm admin:bootstrap -- --email <ADMIN_EMAIL> --password <ADMIN_PASSWORD>
 ```
 
 Para storage local con MinIO (profile `full`), exporta:
 
 ```bash
 export S3_ENDPOINT_URL=http://minio:9000
-export S3_BUCKET=rag-documents
-export S3_ACCESS_KEY=minioadmin
-export S3_SECRET_KEY=minioadmin
+export S3_BUCKET=<S3_BUCKET>
+export S3_ACCESS_KEY=<S3_ACCESS_KEY>
+export S3_SECRET_KEY=<S3_SECRET_KEY>
 ```
 
 Si corres el backend fuera de Docker, usa `http://localhost:9000`.
@@ -129,22 +129,22 @@ docker compose --profile e2e up -d --build
 ## Environment Variables
 
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
-GOOGLE_API_KEY=your-google-api-key-here
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@localhost:5432/<DB_NAME>
+GOOGLE_API_KEY=<GOOGLE_API_KEY>
 FAKE_LLM=1
 FAKE_EMBEDDINGS=1
 NEXT_PUBLIC_API_URL=http://localhost:8000
 API_KEYS_CONFIG=
 RBAC_CONFIG=
 METRICS_REQUIRE_AUTH=false
-JWT_SECRET=dev-secret
+JWT_SECRET=<JWT_SECRET>
 JWT_ACCESS_TTL_MINUTES=30
 JWT_COOKIE_NAME=access_token
 JWT_COOKIE_SECURE=false
 EMBEDDING_CACHE_BACKEND=memory
 REDIS_URL=
 S3_ENDPOINT_URL=
-S3_BUCKET=rag-documents
+S3_BUCKET=
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
 S3_REGION=
@@ -159,16 +159,16 @@ MAX_CONVERSATION_MESSAGES=12
 Crear el primer admin (idempotente):
 
 ```bash
-pnpm admin:bootstrap -- --email admin@example.com --password supersecret
+pnpm admin:bootstrap -- --email <ADMIN_EMAIL> --password <ADMIN_PASSWORD>
 ```
 
 Alternativas:
 
 ```bash
 cd backend
-python3 scripts/create_admin.py --email admin@example.com
+python3 scripts/create_admin.py --email <ADMIN_EMAIL>
 
-docker compose run --rm rag-api python scripts/create_admin.py --email admin@example.com
+docker compose run --rm rag-api python scripts/create_admin.py --email <ADMIN_EMAIL>
 ```
 
 ---
@@ -241,19 +241,21 @@ pnpm test:coverage
 
 ```bash
 # Install Playwright browsers (first time only)
-cd tests/e2e && pnpm install && pnpm install:browsers
+pnpm e2e:install
+pnpm e2e:install:browsers
 
 # Run E2E (local dev servers)
 pnpm e2e
 
 # Run E2E with Docker Compose stack
-E2E_USE_COMPOSE=1 TEST_API_KEY=e2e-key pnpm e2e
+E2E_USE_COMPOSE=1 TEST_API_KEY=<E2E_API_KEY> pnpm e2e
 ```
 
 Tests:
 - `tests/e2e/tests/documents.spec.ts`
 - `tests/e2e/tests/chat.spec.ts`
 - `tests/e2e/tests/full-pipeline.spec.ts`
+- `tests/e2e/tests/workspace-flow.spec.ts`
 
 Nota: el backend debe tener `API_KEYS_CONFIG` con la key usada en `TEST_API_KEY`.
 
@@ -278,7 +280,7 @@ pnpm stack:full
 
 ### Metrics
 
-`/metrics` es publico si `METRICS_REQUIRE_AUTH=false`.
+`/metrics` es publico solo si `METRICS_REQUIRE_AUTH=false`. En prod debe estar protegido.
 
 Metricas relevantes:
 - `rag_requests_total`

@@ -130,6 +130,10 @@ Editar `.env` con valores minimos:
 | `S3_BUCKET` | Bucket S3/MinIO | Opcional |
 | `S3_ACCESS_KEY` | Access key S3/MinIO | Opcional |
 | `S3_SECRET_KEY` | Secret key S3/MinIO | Opcional |
+| `APP_ENV` | `development` o `production` | Opcional |
+| `JWT_SECRET` | JWT secret (>=32 chars en prod) | Opcional |
+| `JWT_COOKIE_SECURE` | Cookies Secure (true en prod) | Opcional |
+| `METRICS_REQUIRE_AUTH` | Protege `/metrics` con API key | Opcional |
 
 ### Levantar Servicios
 
@@ -222,12 +226,22 @@ curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents/uploa
   -F "file=@/path/to/file.pdf" \
   -F "title=Documento demo"
 
-# Listar documentos del workspace
+# Listar documentos del workspace (poll hasta READY)
 curl -H "X-API-Key: ${API_KEY}" \
   "http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents"
 
+# Filtrar solo READY (opcional)
+curl -H "X-API-Key: ${API_KEY}" \
+  "http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents?status=READY"
+
 # Consulta RAG (scoped)
 curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/ask \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"query":"¿Que dice el documento?","top_k":3}'
+
+# Verificar fuentes (sin cross-sources) con /query
+curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/query \
   -H "Content-Type: application/json" \
   -H "X-API-Key: ${API_KEY}" \
   -d '{"query":"¿Que dice el documento?","top_k":3}'
@@ -287,6 +301,8 @@ Seguridad frontend:
 
 ```bash
 # Local (usa playwright.config.ts)
+pnpm e2e:install
+pnpm e2e:install:browsers
 pnpm e2e
 
 # Stack compose
@@ -385,15 +401,27 @@ pnpm e2e
 
 ---
 
-## Checklist v4 (100%)
+## Checklist v4 (100%) - Validacion paso a paso
 
-- [x] Workspaces v4 + rutas nested para documentos y queries.
-- [x] Scoping por workspace en repos y retrieval (SQL-level).
-- [x] Legacy endpoints deprecated con `workspace_id` requerido.
-- [x] Observabilidad: `/healthz`, `/readyz`, `/metrics` con auth en prod.
-- [x] Hardening prod (APP_ENV, JWT_SECRET, JWT_COOKIE_SECURE, METRICS_REQUIRE_AUTH).
-- [x] E2E v4: create -> upload -> READY -> chat scoped.
-- [x] Docs actualizados (README + API + testing + e2e).
+1) **Infra local**
+   - `pnpm docker:up` y `pnpm db:migrate`
+2) **Auth**
+   - Tener `API_KEYS_CONFIG` o JWT admin (ver `/auth/login`)
+3) **Workspace-first flow**
+   - `POST /v1/workspaces` -> obtener `workspace_id`
+   - `POST /v1/workspaces/{id}/documents/upload`
+   - `GET /v1/workspaces/{id}/documents?status=READY` (poll)
+   - `POST /v1/workspaces/{id}/ask`
+4) **No cross-sources**
+   - `POST /v1/workspaces/{id}/query` y verificar `document_id` en las fuentes
+5) **Observabilidad**
+   - `/healthz`, `/readyz`, `/metrics` (auth si `METRICS_REQUIRE_AUTH=true`)
+6) **Tests**
+   - `pnpm test:backend:unit`
+   - `pnpm e2e` (workspace-flow.spec.ts)
+7) **Contratos**
+   - `pnpm contracts:export`
+   - `pnpm contracts:gen`
 
 ## Roadmap
 

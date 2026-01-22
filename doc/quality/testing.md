@@ -97,6 +97,10 @@ Tests principales:
 - `tests/e2e/tests/full-pipeline.spec.ts` (upload -> READY -> chat)
 - `tests/e2e/tests/workspace-flow.spec.ts` (workspace v4 end-to-end)
 
+Checklist v4 (no cross-sources):
+- Usar `workspace-flow.spec.ts` para validar que las fuentes no mezclan workspaces.
+- Si haces verificacion manual, usa `/v1/workspaces/{id}/query` y confirma `document_id` del workspace.
+
 Ver `tests/e2e/README.md` para detalles de stack y variables.
 
 ## Load Testing (k6)

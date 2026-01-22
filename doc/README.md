@@ -1,6 +1,6 @@
 # Documentacion RAG Corp
 
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-22
 
 Esta carpeta contiene la documentacion viva del proyecto. El quickstart esta en `../README.md`.
 Este README concentra solo informacion vigente y enlaces; los reportes historicos se resumen al final.
@@ -90,17 +90,17 @@ UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
                 Redis Queue -> Worker -> Gemini (embeddings + LLM)
 ```
 
-## Flujos principales
+## Flujos principales (workspace-first)
 
 - **Auth JWT** (`POST /auth/login`, `GET /auth/me`, `POST /auth/logout`): login UI con JWT + cookie.
-- **Ingest** (`POST /v1/ingest/text`): valida, chunking, genera embeddings y guarda documento + chunks.
-- **Upload async** (`POST /v1/documents/upload`): guarda archivo en S3/MinIO y deja `status=PENDING`.
+- **Workspaces** (`POST /v1/workspaces`, `GET /v1/workspaces`): crea y lista workspaces v4.
+- **Upload async** (`POST /v1/workspaces/{id}/documents/upload`): guarda archivo en S3/MinIO y deja `status=PENDING`.
 - **Worker** (`python -m app.worker`): procesa documentos PENDING → READY/FAILED.
-- **Documentos** (`GET /v1/documents`, `GET/DELETE /v1/documents/{id}`): lista, detalle y borrado.
-- **Reprocess** (`POST /v1/documents/{id}/reprocess`): reintenta pipeline async.
-- **Query** (`POST /v1/query`): embebe la consulta y recupera los top-k chunks mas similares.
-- **Ask** (`POST /v1/ask`): recupera chunks, arma contexto y el LLM genera la respuesta con fuentes.
-- **Ask Stream** (`POST /v1/ask/stream`): igual que Ask pero con streaming SSE token-by-token y conversation_id.
+- **Documentos** (`GET /v1/workspaces/{id}/documents`, `DELETE /v1/workspaces/{id}/documents/{doc_id}`).
+- **Reprocess** (`POST /v1/workspaces/{id}/documents/{doc_id}/reprocess`).
+- **Query** (`POST /v1/workspaces/{id}/query`): retrieval con `document_id` para validar fuentes.
+- **Ask** (`POST /v1/workspaces/{id}/ask`): respuesta generada con contexto.
+- **Ask Stream** (`POST /v1/workspaces/{id}/ask/stream`): SSE con conversation_id.
 
 ## Arquitectura (resumen)
 
@@ -124,6 +124,7 @@ UI (Next.js) -> API (FastAPI) -> PostgreSQL + pgvector
 ## Release Notes v4
 
 - Auth JWT (admin/employee) + dual-auth con X-API-Key.
+- Workspace-first con rutas nested (`/v1/workspaces/{id}/*`) y scoping estricto.
 - Upload async a S3/MinIO con pipeline worker (PENDING/PROCESSING/READY/FAILED).
 - ACL basico por documento (`allowed_roles`, owner).
 - Audit log de eventos clave.

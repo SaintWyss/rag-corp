@@ -5,7 +5,7 @@
 **API Prefix:** `/v1` (canonical; `/api/v1` alias legacy)  
 **Frontend Proxy:** `/api/*` -> `/v1/*`, `/auth/*` -> `/auth/*`  
 **Version:** 0.1.0  
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-22
 
 ---
 
@@ -124,6 +124,7 @@ Headers cuando aplica:
 ## Error Responses (RFC 7807)
 
 Todas las respuestas de error usan Problem Details.
+Content-Type: `application/problem+json`.
 
 ```json
 {
@@ -134,6 +135,44 @@ Todas las respuestas de error usan Problem Details.
   "code": "FORBIDDEN",
   "instance": "http://localhost:8000/v1/ask"
 }
+```
+
+---
+
+## Workspace-first quick flow (v4)
+
+```bash
+API_KEY="<API_KEY>"
+
+# 1) Crear workspace
+curl -X POST http://localhost:8000/v1/workspaces \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"name":"Workspace Demo","visibility":"PRIVATE"}'
+
+WORKSPACE_ID="<WORKSPACE_ID>"
+
+# 2) Upload async
+curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents/upload \
+  -H "X-API-Key: ${API_KEY}" \
+  -F "file=@/path/to/file.pdf" \
+  -F "title=Documento demo"
+
+# 3) Poll hasta READY
+curl -H "X-API-Key: ${API_KEY}" \
+  "http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents?status=READY"
+
+# 4) Ask scoped
+curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/ask \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"query":"¿Que dice el documento?","top_k":3}'
+
+# 5) Verificar fuentes (sin cross-sources) con /query
+curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/query \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"query":"¿Que dice el documento?","top_k":3}'
 ```
 
 ---
