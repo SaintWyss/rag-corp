@@ -367,6 +367,84 @@ class TestPostgresDocumentRepositoryVectorSearch:
                 (other_workspace_id,),
             )
 
+    def test_find_similar_chunks_mmr_scoped_to_workspace(
+        self, db_repository, db_conn, workspace_context
+    ):
+        """R: MMR search should not return chunks from other workspaces."""
+        workspace_id = workspace_context["workspace_id"]
+        owner_user_id = workspace_context["owner_user_id"]
+        other_workspace_id = uuid4()
+
+        _insert_workspace(
+            db_conn,
+            other_workspace_id,
+            owner_user_id,
+            f"Repo Workspace {other_workspace_id}",
+        )
+
+        doc_id = uuid4()
+        other_doc_id = uuid4()
+
+        try:
+            db_repository.save_document(
+                Document(
+                    id=doc_id,
+                    title="MMR Scoped Search Doc",
+                    workspace_id=workspace_id,
+                )
+            )
+            db_repository.save_document(
+                Document(
+                    id=other_doc_id,
+                    title="MMR Other Workspace Doc",
+                    workspace_id=other_workspace_id,
+                )
+            )
+
+            db_repository.save_chunks(
+                doc_id,
+                [
+                    Chunk(
+                        content="Workspace 1 chunk",
+                        embedding=[0.1] * 768,
+                        document_id=doc_id,
+                        chunk_index=0,
+                    )
+                ],
+                workspace_id=workspace_id,
+            )
+            db_repository.save_chunks(
+                other_doc_id,
+                [
+                    Chunk(
+                        content="Workspace 2 chunk",
+                        embedding=[0.9] * 768,
+                        document_id=other_doc_id,
+                        chunk_index=0,
+                    )
+                ],
+                workspace_id=other_workspace_id,
+            )
+
+            results = db_repository.find_similar_chunks_mmr(
+                embedding=[0.9] * 768,
+                top_k=1,
+                fetch_k=4,
+                workspace_id=workspace_id,
+            )
+
+            assert results
+            assert all(chunk.document_id == doc_id for chunk in results)
+        finally:
+            db_conn.execute(
+                "DELETE FROM documents WHERE id = ANY(%s)",
+                ([doc_id, other_doc_id],),
+            )
+            db_conn.execute(
+                "DELETE FROM workspaces WHERE id = %s",
+                (other_workspace_id,),
+            )
+
     def test_find_similar_chunks_respects_top_k(
         self, db_repository, cleanup_test_data, workspace_context
     ):
@@ -500,6 +578,63 @@ class TestPostgresDocumentRepositoryRetrievalOperations:
 
         # Assert
         assert result is None
+
+
+@pytest.mark.integration
+class TestPostgresDocumentRepositoryScopedQueries:
+    """Test workspace scoping behavior on list queries."""
+
+    def test_list_documents_scoped_to_workspace(
+        self, db_repository, db_conn, workspace_context
+    ):
+        workspace_id = workspace_context["workspace_id"]
+        owner_user_id = workspace_context["owner_user_id"]
+        other_workspace_id = uuid4()
+
+        _insert_workspace(
+            db_conn,
+            other_workspace_id,
+            owner_user_id,
+            f"Repo Workspace {other_workspace_id}",
+        )
+
+        doc_id = uuid4()
+        other_doc_id = uuid4()
+
+        try:
+            db_repository.save_document(
+                Document(
+                    id=doc_id,
+                    title="Scoped List Doc",
+                    workspace_id=workspace_id,
+                )
+            )
+            db_repository.save_document(
+                Document(
+                    id=other_doc_id,
+                    title="Other Workspace List Doc",
+                    workspace_id=other_workspace_id,
+                )
+            )
+
+            results = db_repository.list_documents(
+                workspace_id=workspace_id,
+                limit=10,
+                offset=0,
+            )
+
+            result_ids = {doc.id for doc in results}
+            assert doc_id in result_ids
+            assert other_doc_id not in result_ids
+        finally:
+            db_conn.execute(
+                "DELETE FROM documents WHERE id = ANY(%s)",
+                ([doc_id, other_doc_id],),
+            )
+            db_conn.execute(
+                "DELETE FROM workspaces WHERE id = %s",
+                (other_workspace_id,),
+            )
 
 
 @pytest.mark.integration
