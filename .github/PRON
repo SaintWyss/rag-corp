@@ -5,7 +5,7 @@
 # - Si el prompt es “SIN CAMBIOS”: NO modificar archivos, NO commits.
 # - Si el prompt es “1 COMMIT”: aplicar cambios directos (sin rama/PR) y hacer 1 commit final.
 # - CERO INVENCIÓN: todo debe citar rutas reales. Si no existe: NO ENCONTRADO + TODO(verify).
-# Fuente de verdad (prioridad): `.github/informe_de_sistemas_rag_corp.md`(Maxima prioridad, detalle v6 y Total fuente de verdad)
+# Fuente de verdad (prioridad): `doc/system/informe_de_sistemas_rag_corp.md` (Maxima prioridad, detalle v6 y fuente de verdad)
 # =========================
 
 
@@ -20,7 +20,7 @@ REGLAS (OBLIGATORIAS)
 - NO CAMBIES EL CÓDIGO. NO CREES COMMITS. NO MODIFIQUES ARCHIVOS.
 - CERO ALUCINACIÓN: cada afirmación importante debe citar rutas exactas del repo.
 - Fuente de verdad (prioridad):
-  0) `.github/informe_de_sistemas_rag_corp.md`(Maxima prioridad, detalle v6 y Total fuente de verdad)
+  0) `doc/system/informe_de_sistemas_rag_corp.md` (Maxima prioridad, detalle v6 y fuente de verdad)
   1) `doc/system/**` (informe/contrato v6)
   2) `shared/contracts/openapi.json`
   3) `backend/alembic/versions/**`
