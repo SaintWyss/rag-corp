@@ -1,17 +1,25 @@
 import path from "path";
 import { expect, test } from "@playwright/test";
+import { createWorkspace, setSessionApiKey } from "./helpers";
 
 test.describe("Sources flow", () => {
     const apiKey = process.env.TEST_API_KEY || "e2e-key";
 
     test.beforeEach(async ({ page }) => {
-        await page.addInitScript((key) => {
-            window.localStorage.setItem("ragcorp_api_key", key);
-        }, apiKey);
+        await setSessionApiKey(page, apiKey);
         await page.goto("/documents");
+        await expect(page).toHaveURL(/\/workspaces$/);
+        await expect(page.getByTestId("workspaces-page")).toBeVisible();
     });
 
     test("upload -> list -> detail -> ready", async ({ page }) => {
+        const workspaceName = `E2E WS ${Date.now()}`;
+        const workspaceId = await createWorkspace(page, workspaceName);
+        await page.goto(`/workspaces/${workspaceId}/documents`);
+        await expect(page.getByTestId("sources-workspace")).toContainText(
+            workspaceId
+        );
+
         const docTitle = `Source ${Date.now()}`;
         const filePath = path.join(__dirname, "..", "fixtures", "sample.pdf");
 
