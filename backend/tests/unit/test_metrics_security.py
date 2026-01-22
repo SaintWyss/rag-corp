@@ -32,7 +32,7 @@ def _load_app(monkeypatch):
 
     get_settings.cache_clear()
 
-    import app.main as main
+    import app.api.main as main
 
     importlib.reload(main)
     fastapi_app = main.app

@@ -8,7 +8,7 @@ Responsibilities:
   - Test Google API check helper
 
 Collaborators:
-  - app.main: Module under test (healthz endpoint)
+  - app.api.main: Module under test (healthz endpoint)
   - pytest: Testing framework
   - fastapi.testclient: HTTP testing
 
@@ -47,7 +47,7 @@ class TestCheckGoogleApi:
     def test_returns_disabled_without_api_key(self):
         """Should return 'disabled' when no API key."""
         # Import first while env vars are set
-        from app.main import _check_google_api
+        from app.api.main import _check_google_api
 
         # Then clear the key for the test
         saved_key = os.environ.pop("GOOGLE_API_KEY", None)
@@ -70,7 +70,7 @@ class TestCheckGoogleApi:
         mock_response.embeddings = [mock_embedding]
         mock_client.models.embed_content.return_value = mock_response
 
-        from app.main import _check_google_api
+        from app.api.main import _check_google_api
 
         result = _check_google_api()
 
@@ -85,7 +85,7 @@ class TestCheckGoogleApi:
         mock_client = mock_client_cls.return_value
         mock_client.models.embed_content.side_effect = Exception("API error")
 
-        from app.main import _check_google_api
+        from app.api.main import _check_google_api
 
         result = _check_google_api()
 
@@ -95,7 +95,7 @@ class TestCheckGoogleApi:
 class TestHealthzEndpoint:
     """Tests for /healthz endpoint behavior."""
 
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_returns_db_status(self, mock_get_repo):
         """Should return database connection status."""
         mock_repo = Mock()
@@ -103,7 +103,7 @@ class TestHealthzEndpoint:
         mock_get_repo.return_value = mock_repo
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         # Get underlying FastAPI app (unwrap middleware)
         actual_app = fastapi_app
@@ -118,8 +118,8 @@ class TestHealthzEndpoint:
         assert "db" in data
         assert "ok" in data
 
-    @patch("app.main._check_google_api")
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main._check_google_api")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_full_includes_google_status(
         self, mock_get_repo, mock_check_google
     ):
@@ -130,7 +130,7 @@ class TestHealthzEndpoint:
         mock_check_google.return_value = "available"
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         actual_app = fastapi_app
         if hasattr(fastapi_app, "app"):
@@ -144,8 +144,8 @@ class TestHealthzEndpoint:
         assert "google" in data
         assert data["google"] == "available"
 
-    @patch("app.main._check_google_api")
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main._check_google_api")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_full_google_unavailable_sets_ok_false(
         self, mock_get_repo, mock_check_google
     ):
@@ -156,7 +156,7 @@ class TestHealthzEndpoint:
         mock_check_google.return_value = "unavailable"
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         actual_app = fastapi_app
         if hasattr(fastapi_app, "app"):
@@ -170,8 +170,8 @@ class TestHealthzEndpoint:
         assert data["ok"] is False
         assert data["google"] == "unavailable"
 
-    @patch("app.main._check_google_api")
-    @patch("app.main.get_document_repository")
+    @patch("app.api.main._check_google_api")
+    @patch("app.api.main.get_document_repository")
     def test_healthz_full_google_disabled_keeps_ok_true(
         self, mock_get_repo, mock_check_google
     ):
@@ -182,7 +182,7 @@ class TestHealthzEndpoint:
         mock_check_google.return_value = "disabled"
 
         from fastapi.testclient import TestClient
-        from app.main import app as fastapi_app
+        from app.api.main import app as fastapi_app
 
         actual_app = fastapi_app
         if hasattr(fastapi_app, "app"):

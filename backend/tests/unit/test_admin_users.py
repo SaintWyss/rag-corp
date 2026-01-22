@@ -15,7 +15,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_routes import router as auth_router
+from app.api.auth_routes import router as auth_router
 from app.auth_users import create_access_token, hash_password
 from app.exception_handlers import register_exception_handlers
 from app.users import User, UserRole
@@ -70,7 +70,7 @@ def test_list_users_admin_ok():
 
     with patch("app.auth_users.get_auth_settings", return_value=settings):
         with patch("app.auth_users.get_user_by_id", return_value=admin):
-            with patch("app.auth_routes.list_users", return_value=[admin]):
+            with patch("app.api.auth_routes.list_users", return_value=[admin]):
                 client = TestClient(app)
                 response = client.get("/auth/users", headers=headers)
 
@@ -100,7 +100,7 @@ def test_create_user_conflict():
 
     with patch("app.auth_users.get_auth_settings", return_value=settings):
         with patch("app.auth_users.get_user_by_id", return_value=admin):
-            with patch("app.auth_routes.get_user_by_email", return_value=existing):
+            with patch("app.api.auth_routes.get_user_by_email", return_value=existing):
                 client = TestClient(app)
                 response = client.post(
                     "/auth/users",
@@ -124,8 +124,8 @@ def test_create_user_ok():
 
     with patch("app.auth_users.get_auth_settings", return_value=settings):
         with patch("app.auth_users.get_user_by_id", return_value=admin):
-            with patch("app.auth_routes.get_user_by_email", return_value=None):
-                with patch("app.auth_routes.create_user", return_value=created):
+            with patch("app.api.auth_routes.get_user_by_email", return_value=None):
+                with patch("app.api.auth_routes.create_user", return_value=created):
                     client = TestClient(app)
                     response = client.post(
                         "/auth/users",
@@ -149,7 +149,7 @@ def test_disable_user_not_found():
 
     with patch("app.auth_users.get_auth_settings", return_value=settings):
         with patch("app.auth_users.get_user_by_id", return_value=admin):
-            with patch("app.auth_routes.set_user_active", return_value=None):
+            with patch("app.api.auth_routes.set_user_active", return_value=None):
                 client = TestClient(app)
                 response = client.post(
                     f"/auth/users/{missing_id}/disable",
@@ -168,7 +168,7 @@ def test_reset_password_ok():
 
     with patch("app.auth_users.get_auth_settings", return_value=settings):
         with patch("app.auth_users.get_user_by_id", return_value=admin):
-            with patch("app.auth_routes.update_user_password", return_value=target):
+            with patch("app.api.auth_routes.update_user_password", return_value=target):
                 client = TestClient(app)
                 response = client.post(
                     f"/auth/users/{target.id}/reset-password",

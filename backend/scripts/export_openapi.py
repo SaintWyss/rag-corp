@@ -6,7 +6,7 @@ Responsibilities:
   - Serialize schema with readable format (indent=2, UTF-8)
 
 Collaborators:
-  - app.main.app: FastAPI instance with defined endpoints
+  - app.api.main.app: FastAPI instance with defined endpoints
   - argparse: CLI argument parsing
 
 Constraints:
@@ -28,7 +28,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from app.main import app  # noqa: E402
+from app.api.main import app  # noqa: E402
 
 
 def _resolve_app(candidate):

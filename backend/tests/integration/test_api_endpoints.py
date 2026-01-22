@@ -8,8 +8,8 @@ Responsibilities:
   - Validate API behavior with real dependencies
 
 Collaborators:
-  - app.main: FastAPI application
-  - app.routes: API endpoints
+  - app.api.main: FastAPI application
+  - app.api.routes: API endpoints
   - httpx: HTTP client for testing
   - pytest: Test framework
 
@@ -39,7 +39,7 @@ if not os.getenv("GOOGLE_API_KEY"):
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.api.main import app
 
 pytestmark = pytest.mark.integration
 
