@@ -80,9 +80,7 @@ class UploadDocumentUseCase:
 
         document_id = uuid4()
         storage_key = f"documents/{document_id}/{input_data.file_name}"
-        self.storage.upload_file(
-            storage_key, input_data.content, input_data.mime_type
-        )
+        self.storage.upload_file(storage_key, input_data.content, input_data.mime_type)
 
         metadata_payload = input_data.metadata or {}
         tags = normalize_tags(metadata_payload)

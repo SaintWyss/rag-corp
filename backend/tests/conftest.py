@@ -167,16 +167,16 @@ def mock_context_builder() -> Mock:
     - build() returns assembled context and chunks_used count
     """
     mock = Mock()
-    
+
     def build_side_effect(chunks):
         """Assemble context from chunks with FRAGMENTO format."""
         if not chunks:
             return "", 0
         context_parts = []
         for i, chunk in enumerate(chunks):
-            context_parts.append(f"--- FRAGMENTO {i+1} ---\n{chunk.content}")
+            context_parts.append(f"--- FRAGMENTO {i + 1} ---\n{chunk.content}")
         return "\n\n".join(context_parts), len(chunks)
-    
+
     mock.build.side_effect = build_side_effect
     return mock
 

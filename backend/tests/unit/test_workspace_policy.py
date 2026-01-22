@@ -77,9 +77,7 @@ def test_workspace_access_policy_matrix():
                     expected_manage = False
 
                 label = f"{role_name}_{visibility.value}_member_{is_member}"
-                read = can_read_workspace(
-                    workspace, actor, shared_user_ids=shared_ids
-                )
+                read = can_read_workspace(workspace, actor, shared_user_ids=shared_ids)
                 write = can_write_workspace(workspace, actor)
                 manage = can_manage_acl(workspace, actor)
 

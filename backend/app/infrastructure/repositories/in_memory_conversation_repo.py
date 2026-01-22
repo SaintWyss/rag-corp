@@ -29,21 +29,19 @@ class InMemoryConversationRepository(ConversationRepository):
     def create_conversation(self) -> str:
         conversation_id = str(uuid4())
         with self._lock:
-            self._conversations[conversation_id] = deque(
-                maxlen=self._max_messages
-            )
+            self._conversations[conversation_id] = deque(maxlen=self._max_messages)
         return conversation_id
 
     def conversation_exists(self, conversation_id: str) -> bool:
         with self._lock:
             return conversation_id in self._conversations
 
-    def append_message(self, conversation_id: str, message: ConversationMessage) -> None:
+    def append_message(
+        self, conversation_id: str, message: ConversationMessage
+    ) -> None:
         with self._lock:
             if conversation_id not in self._conversations:
-                self._conversations[conversation_id] = deque(
-                    maxlen=self._max_messages
-                )
+                self._conversations[conversation_id] = deque(maxlen=self._max_messages)
             self._conversations[conversation_id].append(message)
 
     def get_messages(

@@ -72,7 +72,9 @@ class ProcessUploadedDocumentUseCase:
             document_id, workspace_id=input_data.workspace_id
         )
         if not document:
-            logger.warning("Process document: not found", extra={"document_id": str(document_id)})
+            logger.warning(
+                "Process document: not found", extra={"document_id": str(document_id)}
+            )
             return ProcessUploadedDocumentOutput(status="MISSING", chunks_created=0)
         workspace_id = document.workspace_id
 
@@ -89,7 +91,9 @@ class ProcessUploadedDocumentUseCase:
             error_message=None,
         )
         if not transitioned:
-            return ProcessUploadedDocumentOutput(status=document.status or "UNKNOWN", chunks_created=0)
+            return ProcessUploadedDocumentOutput(
+                status=document.status or "UNKNOWN", chunks_created=0
+            )
 
         chunks_created = 0
 
@@ -132,7 +136,9 @@ class ProcessUploadedDocumentUseCase:
                 to_status="READY",
                 error_message=None,
             )
-            return ProcessUploadedDocumentOutput(status="READY", chunks_created=chunks_created)
+            return ProcessUploadedDocumentOutput(
+                status="READY", chunks_created=chunks_created
+            )
         except Exception as exc:
             error_message = _truncate_error(str(exc))
             self.repository.transition_document_status(

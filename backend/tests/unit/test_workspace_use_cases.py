@@ -344,9 +344,7 @@ def test_list_workspaces_filters_by_policy():
     acl_repo = FakeWorkspaceAclRepository({ws_shared.id: [shared_member]})
     use_case = ListWorkspacesUseCase(repo, acl_repo)
 
-    member_result = use_case.execute(
-        actor=_actor(shared_member, UserRole.EMPLOYEE)
-    )
+    member_result = use_case.execute(actor=_actor(shared_member, UserRole.EMPLOYEE))
     assert {ws.id for ws in member_result.workspaces} == {
         ws_org.id,
         ws_shared.id,

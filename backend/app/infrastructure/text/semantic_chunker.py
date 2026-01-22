@@ -3,7 +3,7 @@ Name: Semantic Text Chunker
 
 ⚠️  EXPERIMENTAL: This module is experimental and not used in production.
     The default chunker (SimpleTextChunker in chunker.py) is used instead.
-    
+
     This semantic chunker preserves document structure (headers, lists, code blocks)
     but requires more testing before production use.
 
@@ -22,7 +22,7 @@ Status:
 
 Usage (when ready for production):
   from .semantic_chunker import chunk_semantically, SemanticChunk
-  
+
   chunks = chunk_semantically(text, max_chunk_size=900)
   for chunk in chunks:
       print(chunk.content, chunk.section, chunk.chunk_type)

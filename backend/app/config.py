@@ -131,7 +131,9 @@ class Settings(BaseSettings):
     db_statement_timeout_ms: int = 30000  # 30 seconds
 
     # RAG Quality
-    prompt_version: str = "v2"  # R: v2 includes better grounding and injection protection
+    prompt_version: str = (
+        "v2"  # R: v2 includes better grounding and injection protection
+    )
     max_context_chars: int = 12000
     default_use_mmr: bool = False  # R: MMR for diverse retrieval (default off for perf)
     max_conversation_messages: int = 12
@@ -179,9 +181,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_ai_requirements(self):
-        if not self.google_api_key and not (
-            self.fake_llm and self.fake_embeddings
-        ):
+        if not self.google_api_key and not (self.fake_llm and self.fake_embeddings):
             raise ValueError(
                 "GOOGLE_API_KEY is required unless FAKE_LLM=1 and FAKE_EMBEDDINGS=1"
             )

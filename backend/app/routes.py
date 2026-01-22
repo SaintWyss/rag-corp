@@ -75,6 +75,7 @@ from .application.use_cases import (
     PublishWorkspaceUseCase,
     ReprocessDocumentUseCase,
     ReprocessDocumentInput,
+    ReprocessDocumentResult,
     SearchChunksUseCase,
     SearchChunksInput,
     SearchChunksResult,
@@ -437,7 +438,9 @@ def list_workspaces(
 def create_workspace(
     req: CreateWorkspaceReq,
     use_case: CreateWorkspaceUseCase = Depends(get_create_workspace_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -493,7 +496,9 @@ def update_workspace(
     workspace_id: UUID,
     req: UpdateWorkspaceReq,
     use_case: UpdateWorkspaceUseCase = Depends(get_update_workspace_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -513,7 +518,11 @@ def update_workspace(
         principal=principal,
         target_id=workspace_id,
         workspace_id=workspace_id,
-        metadata={"updated_fields": [key for key, value in req.model_dump().items() if value is not None]},
+        metadata={
+            "updated_fields": [
+                key for key, value in req.model_dump().items() if value is not None
+            ]
+        },
     )
 
     return _to_workspace_res(result.workspace)
@@ -527,7 +536,9 @@ def update_workspace(
 def publish_workspace(
     workspace_id: UUID,
     use_case: PublishWorkspaceUseCase = Depends(get_publish_workspace_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -555,7 +566,9 @@ def share_workspace(
     workspace_id: UUID,
     req: ShareWorkspaceReq,
     use_case: ShareWorkspaceUseCase = Depends(get_share_workspace_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -589,7 +602,9 @@ def share_workspace(
 def archive_workspace_action(
     workspace_id: UUID,
     use_case: ArchiveWorkspaceUseCase = Depends(get_archive_workspace_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_DELETE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -617,7 +632,9 @@ def archive_workspace_action(
 def archive_workspace(
     workspace_id: UUID,
     use_case: ArchiveWorkspaceUseCase = Depends(get_archive_workspace_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_DELETE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -764,7 +781,9 @@ def delete_document(
     document_id: UUID,
     workspace_id: UUID | None = Query(None),
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_DELETE)
+    ),
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -896,7 +915,9 @@ def reprocess_document(
     document_id: UUID,
     workspace_id: UUID | None = Query(None),
     use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -1344,7 +1365,9 @@ def delete_workspace_document(
     document_id: UUID,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_DELETE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -1407,7 +1430,9 @@ def reprocess_workspace_document(
     document_id: UUID,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
@@ -1433,7 +1458,9 @@ def ingest_workspace_text(
     req: IngestTextReq,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_admin()),
 ):
     actor = _to_workspace_actor(principal)
@@ -1457,7 +1484,9 @@ def ingest_workspace_batch(
     req: IngestBatchReq,
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: IngestDocumentUseCase = Depends(get_ingest_document_use_case),
-    principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
     _role: None = Depends(require_admin()),
 ):
     actor = _to_workspace_actor(principal)

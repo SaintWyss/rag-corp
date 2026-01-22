@@ -106,8 +106,6 @@ class CachingEmbeddingService:
                     results[idx] = embedding
 
         if any(embedding is None for embedding in results):
-            raise EmbeddingError(
-                "Embedding cache failed to resolve all batch results"
-            )
+            raise EmbeddingError("Embedding cache failed to resolve all batch results")
 
         return [embedding for embedding in results if embedding is not None]

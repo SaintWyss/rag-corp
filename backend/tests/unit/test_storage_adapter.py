@@ -18,7 +18,10 @@ pytestmark = pytest.mark.unit
 
 def test_upload_file_uses_put_object():
     mock_client = MagicMock()
-    with patch("app.infrastructure.storage.s3_file_storage.boto3.client", return_value=mock_client):
+    with patch(
+        "app.infrastructure.storage.s3_file_storage.boto3.client",
+        return_value=mock_client,
+    ):
         adapter = S3FileStorageAdapter(
             S3Config(
                 bucket="bucket",
@@ -40,7 +43,10 @@ def test_upload_file_uses_put_object():
 
 def test_delete_file_uses_delete_object():
     mock_client = MagicMock()
-    with patch("app.infrastructure.storage.s3_file_storage.boto3.client", return_value=mock_client):
+    with patch(
+        "app.infrastructure.storage.s3_file_storage.boto3.client",
+        return_value=mock_client,
+    ):
         adapter = S3FileStorageAdapter(
             S3Config(
                 bucket="bucket",
@@ -62,7 +68,10 @@ def test_download_file_uses_get_object():
     mock_body.read.return_value = b"data"
     mock_client.get_object.return_value = {"Body": mock_body}
 
-    with patch("app.infrastructure.storage.s3_file_storage.boto3.client", return_value=mock_client):
+    with patch(
+        "app.infrastructure.storage.s3_file_storage.boto3.client",
+        return_value=mock_client,
+    ):
         adapter = S3FileStorageAdapter(
             S3Config(
                 bucket="bucket",

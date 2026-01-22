@@ -24,7 +24,13 @@ Notes:
 from datetime import datetime
 from typing import Protocol, List, Optional
 from uuid import UUID
-from .entities import Document, Chunk, ConversationMessage, Workspace, WorkspaceVisibility
+from .entities import (
+    Document,
+    Chunk,
+    ConversationMessage,
+    Workspace,
+    WorkspaceVisibility,
+)
 from .audit import AuditEvent
 
 
@@ -484,7 +490,9 @@ class AuditEventRepository(Protocol):
         """
         ...
 
-    def append_message(self, conversation_id: str, message: ConversationMessage) -> None:
+    def append_message(
+        self, conversation_id: str, message: ConversationMessage
+    ) -> None:
         """
         R: Append a message to a conversation.
         """

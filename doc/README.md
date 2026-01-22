@@ -44,3 +44,4 @@ Los endpoints canonicos viven bajo `/v1/workspaces/{workspace_id}/...` y los leg
 
 - `doc/hitos/` (specs y reportes HISTORICAL v4)
 - `doc/audits/` y `doc/reviews/` (auditorias internas)
+- `doc/archive/` (logs y reportes historicos consolidados)

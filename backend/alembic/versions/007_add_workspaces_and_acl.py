@@ -109,9 +109,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_workspace_acl_user_id", table_name="workspace_acl")
     op.drop_index("ix_workspace_acl_workspace_id", table_name="workspace_acl")
-    op.drop_constraint(
-        "ck_workspace_acl_access", "workspace_acl", type_="check"
-    )
+    op.drop_constraint("ck_workspace_acl_access", "workspace_acl", type_="check")
     op.drop_constraint(
         "uq_workspace_acl_workspace_id_user_id",
         "workspace_acl",
@@ -122,10 +120,6 @@ def downgrade() -> None:
     op.drop_index("ix_workspaces_archived_at", table_name="workspaces")
     op.drop_index("ix_workspaces_visibility", table_name="workspaces")
     op.drop_index("ix_workspaces_owner_user_id", table_name="workspaces")
-    op.drop_constraint(
-        "ck_workspaces_visibility", "workspaces", type_="check"
-    )
-    op.drop_constraint(
-        "uq_workspaces_owner_user_id_name", "workspaces", type_="unique"
-    )
+    op.drop_constraint("ck_workspaces_visibility", "workspaces", type_="check")
+    op.drop_constraint("uq_workspaces_owner_user_id_name", "workspaces", type_="unique")
     op.drop_table("workspaces")

@@ -63,6 +63,7 @@ __all__ = [
     "ProcessUploadedDocumentOutput",
     "ReprocessDocumentUseCase",
     "ReprocessDocumentInput",
+    "ReprocessDocumentResult",
     "SearchChunksUseCase",
     "SearchChunksInput",
     "SearchChunksResult",

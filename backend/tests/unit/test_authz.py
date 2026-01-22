@@ -102,9 +102,10 @@ class TestRequirePermissions:
             key_roles={key_hash: "readonly"},
         )
 
-        with patch("app.auth.get_keys_config") as mock_config, patch(
-            "app.rbac.get_rbac_config"
-        ) as mock_rbac:
+        with (
+            patch("app.auth.get_keys_config") as mock_config,
+            patch("app.rbac.get_rbac_config") as mock_rbac,
+        ):
             mock_config.return_value = {key: ["ask"]}
             mock_rbac.return_value = rbac_config
 
@@ -125,9 +126,7 @@ class TestRoutePermissions:
     """Ensure routes use RBAC permissions."""
 
     def test_routes_include_expected_permissions(self, monkeypatch):
-        monkeypatch.setenv(
-            "DATABASE_URL", "postgresql://test:test@localhost/test"
-        )
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
         monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
 
         import app.routes as routes

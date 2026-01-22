@@ -22,8 +22,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def _select_owner_user_id(conn) -> str:
     row = conn.execute(
         sa.text(
-            "SELECT id FROM users WHERE role = 'admin' "
-            "ORDER BY created_at ASC LIMIT 1"
+            "SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
         )
     ).fetchone()
     if row:
@@ -114,7 +113,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_documents_workspace_id", table_name="documents")
-    op.drop_constraint(
-        "fk_documents_workspace_id", "documents", type_="foreignkey"
-    )
+    op.drop_constraint("fk_documents_workspace_id", "documents", type_="foreignkey")
     op.drop_column("documents", "workspace_id")

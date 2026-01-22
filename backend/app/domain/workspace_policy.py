@@ -26,8 +26,7 @@ class WorkspaceActor:
 
 def _is_owner(workspace: Workspace, actor: WorkspaceActor) -> bool:
     return (
-        workspace.owner_user_id is not None
-        and actor.user_id == workspace.owner_user_id
+        workspace.owner_user_id is not None and actor.user_id == workspace.owner_user_id
     )
 
 

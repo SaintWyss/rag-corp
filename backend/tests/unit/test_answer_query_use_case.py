@@ -59,7 +59,12 @@ class TestAnswerQueryUseCase:
     """Test suite for AnswerQueryUseCase."""
 
     def test_execute_complete_rag_flow(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should execute complete RAG flow successfully."""
         # Arrange
@@ -108,7 +113,11 @@ class TestAnswerQueryUseCase:
         mock_llm_service.generate_answer.assert_called_once()
 
     def test_execute_with_no_chunks_found(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
     ):
         """R: Should return fallback message when no chunks are found."""
         # Arrange
@@ -138,14 +147,17 @@ class TestAnswerQueryUseCase:
         # Assert
         assert result.error is None
         assert (
-            result.result.answer
-            == "No encontré documentos relacionados a tu pregunta."
+            result.result.answer == "No encontré documentos relacionados a tu pregunta."
         )
         assert result.result.chunks == []
         assert result.result.metadata["chunks_found"] == 0
 
     def test_execute_rejects_archived_workspace(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
     ):
         """R: Archived workspaces are treated as not found."""
         archived_workspace = Workspace(
@@ -180,7 +192,12 @@ class TestAnswerQueryUseCase:
         mock_llm_service.generate_answer.assert_not_called()
 
     def test_execute_with_custom_top_k(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should respect custom top_k parameter."""
         # Arrange
@@ -217,7 +234,12 @@ class TestAnswerQueryUseCase:
         assert result.result.metadata["top_k"] == 2
 
     def test_execute_with_mmr_enabled(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should use MMR search when use_mmr=True for diverse results."""
         # Arrange
@@ -259,7 +281,12 @@ class TestAnswerQueryUseCase:
         assert result.result.metadata["use_mmr"] is True
 
     def test_execute_without_mmr_uses_standard_search(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should use standard search when use_mmr=False (default)."""
         # Arrange
@@ -297,7 +324,11 @@ class TestAnswerQueryUseCase:
         assert result.result.metadata["use_mmr"] is False
 
     def test_context_assembly_from_chunks(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
     ):
         """R: Should correctly assemble context from chunk contents."""
         # Arrange
@@ -355,7 +386,11 @@ class TestAnswerQueryUseCase:
         assert "FRAGMENTO" in context  # Uses new delimiter format
 
     def test_execute_preserves_chunk_order(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
     ):
         """R: Should preserve order of chunks from repository (relevance)."""
         # Arrange
@@ -400,7 +435,11 @@ class TestAnswerQueryUseCase:
             assert chunk.chunk_index == i
 
     def test_execute_with_single_chunk(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
     ):
         """R: Should handle case with single chunk found."""
         # Arrange
@@ -447,7 +486,12 @@ class TestAnswerQueryUseCase:
         assert "Only chunk" in context
 
     def test_execute_passes_query_to_llm(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should pass original query to LLM for answer generation."""
         # Arrange
@@ -480,7 +524,12 @@ class TestAnswerQueryUseCase:
         assert call_args.kwargs["query"] == original_query
 
     def test_execute_uses_llm_query_override(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should allow overriding the LLM query with conversation context."""
         # Arrange
@@ -571,7 +620,11 @@ class TestAnswerQueryUseCaseEdgeCases:
     """Test edge cases and error scenarios."""
 
     def test_execute_with_large_top_k(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
     ):
         """R: Should handle large top_k values (e.g., 100)."""
         # Arrange
@@ -609,7 +662,12 @@ class TestAnswerQueryUseCaseEdgeCases:
         assert len(result.result.chunks) <= 100  # May be limited by MAX_CONTEXT_CHARS
 
     def test_execute_with_very_long_query(
-        self, mock_repository, mock_embedding_service, mock_llm_service, mock_context_builder, sample_chunks
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
     ):
         """R: Should handle long queries (edge case)."""
         # Arrange

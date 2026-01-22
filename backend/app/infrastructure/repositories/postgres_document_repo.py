@@ -547,9 +547,7 @@ class PostgresDocumentRepository:
                 result = conn.execute(query, params)
             return result.rowcount > 0
         except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Status transition failed: {e}"
-            )
+            logger.error(f"PostgresDocumentRepository: Status transition failed: {e}")
             raise DatabaseError(f"Failed to transition status: {e}")
 
     def delete_chunks_for_document(
@@ -865,7 +863,9 @@ class PostgresDocumentRepository:
                     diversity_penalty = max_sim
 
                 # R: MMR score
-                mmr_score = lambda_mult * relevance - (1 - lambda_mult) * diversity_penalty
+                mmr_score = (
+                    lambda_mult * relevance - (1 - lambda_mult) * diversity_penalty
+                )
 
                 if mmr_score > best_score:
                     best_score = mmr_score

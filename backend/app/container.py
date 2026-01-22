@@ -229,6 +229,7 @@ def get_document_queue() -> DocumentProcessingQueue | None:
         retry_max_attempts=settings.retry_max_attempts,
     )
 
+
 # R: AnswerQuery use case factory (creates new instance per request)
 def get_answer_query_use_case() -> AnswerQueryUseCase:
     """

@@ -55,7 +55,10 @@ class CreateWorkspaceUseCase:
                 )
             )
 
-        if input_data.visibility and input_data.visibility != WorkspaceVisibility.PRIVATE:
+        if (
+            input_data.visibility
+            and input_data.visibility != WorkspaceVisibility.PRIVATE
+        ):
             return WorkspaceResult(
                 error=WorkspaceError(
                     code=WorkspaceErrorCode.VALIDATION_ERROR,

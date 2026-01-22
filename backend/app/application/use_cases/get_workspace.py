@@ -45,9 +45,7 @@ class GetWorkspaceUseCase:
         if workspace.visibility == WorkspaceVisibility.SHARED:
             shared_ids = self.acl_repository.list_workspace_acl(workspace.id)
 
-        if not can_read_workspace(
-            workspace, actor, shared_user_ids=shared_ids
-        ):
+        if not can_read_workspace(workspace, actor, shared_user_ids=shared_ids):
             return WorkspaceResult(
                 error=WorkspaceError(
                     code=WorkspaceErrorCode.FORBIDDEN,

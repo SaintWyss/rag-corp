@@ -207,9 +207,7 @@ class AnswerQueryUseCase:
         llm_query = input_data.llm_query or input_data.query
 
         with timings.measure("llm"):
-            answer = self.llm_service.generate_answer(
-                query=llm_query, context=context
-            )
+            answer = self.llm_service.generate_answer(query=llm_query, context=context)
 
         # R: Get final timing data
         timing_data = timings.to_dict()

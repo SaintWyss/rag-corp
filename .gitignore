@@ -10,6 +10,7 @@ Thumbs.db
 node_modules/
 .pnpm-store/
 dist/
+build/
 .next/
 .turbo/
 npm-debug.log*
@@ -19,6 +20,8 @@ frontend/pnpm-lock.yaml
 # Python
 __pycache__/
 *.pyc
+.ruff_cache/
+.mypy_cache/
 .venv/
 venv/
 .env
@@ -28,7 +31,9 @@ venv/
 # Pytest / Coverage
 .pytest_cache/
 .coverage
+.coverage.*
 coverage.xml
+coverage/
 htmlcov/
 
 # Jupyter
@@ -36,7 +41,10 @@ htmlcov/
 
 # Docker / local
 *.log
+*.tmp
+*.bak
+*:Zone.Identifier
 
-# Local audits
-doc/audits/audit-2026-01-13.md
-
+# Playwright artifacts
+playwright-report/
+test-results/

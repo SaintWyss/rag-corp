@@ -259,7 +259,7 @@ PROCESO
 3) Documentar Settings de config.py
 4) Referenciar PATTERN_MAP existente
 5) Verificar links internos al finalizar
-6) Generar doc/runbook/docs-update-report.md
+6) Generar doc/archive/runbook/docs-update-report.md
 
 NO HACER
 - No inventar endpoints/comandos

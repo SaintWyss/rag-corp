@@ -138,8 +138,7 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
                         status_code=413,
                         code=ErrorCode.PAYLOAD_TOO_LARGE,
                         detail=(
-                            "Request body too large. "
-                            f"Maximum size: {max_bytes} bytes"
+                            f"Request body too large. Maximum size: {max_bytes} bytes"
                         ),
                     )
                     return await app_exception_handler(request, exc)

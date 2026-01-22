@@ -45,9 +45,7 @@ class DeleteDocumentUseCase:
         if error:
             return DeleteDocumentResult(deleted=False, error=error)
 
-        document = self.repository.get_document(
-            document_id, workspace_id=workspace_id
-        )
+        document = self.repository.get_document(document_id, workspace_id=workspace_id)
         if not document:
             return DeleteDocumentResult(
                 deleted=False,

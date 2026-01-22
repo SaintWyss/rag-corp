@@ -41,7 +41,9 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
     return await app_exception_handler(request, app_exc)
 
 
-async def embedding_error_handler(request: Request, exc: EmbeddingError) -> JSONResponse:
+async def embedding_error_handler(
+    request: Request, exc: EmbeddingError
+) -> JSONResponse:
     """Handle embedding service errors."""
     logger.error(
         "Embedding error",

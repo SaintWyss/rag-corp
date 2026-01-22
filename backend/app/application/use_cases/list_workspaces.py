@@ -63,9 +63,7 @@ class ListWorkspacesUseCase:
             shared_ids = None
             if workspace.visibility == WorkspaceVisibility.SHARED:
                 shared_ids = self.acl_repository.list_workspace_acl(workspace.id)
-            if can_read_workspace(
-                workspace, actor, shared_user_ids=shared_ids
-            ):
+            if can_read_workspace(workspace, actor, shared_user_ids=shared_ids):
                 visible.append(workspace)
 
         return WorkspaceListResult(workspaces=visible)

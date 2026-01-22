@@ -2,8 +2,10 @@ import { act, renderHook } from "@testing-library/react";
 import { TextDecoder, TextEncoder } from "util";
 
 const globalWithText = global as typeof globalThis;
-globalWithText.TextEncoder = TextEncoder;
-globalWithText.TextDecoder = TextDecoder;
+globalWithText.TextEncoder =
+    TextEncoder as unknown as typeof globalThis.TextEncoder;
+globalWithText.TextDecoder =
+    TextDecoder as unknown as typeof globalThis.TextDecoder;
 import { useRagChat } from "../../app/hooks/useRagChat";
 
 describe("useRagChat Hook", () => {

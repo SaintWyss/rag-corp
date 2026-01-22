@@ -53,9 +53,7 @@ class GetDocumentUseCase:
         if error:
             return GetDocumentResult(error=error)
 
-        document = self.repository.get_document(
-            document_id, workspace_id=workspace_id
-        )
+        document = self.repository.get_document(document_id, workspace_id=workspace_id)
         if not document:
             return GetDocumentResult(
                 error=DocumentError(
