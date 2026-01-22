@@ -9,6 +9,8 @@
 | E2E | Playwright | Flujos workspace-first |
 | Load | k6 | Benchmarks (CI main) |
 
+Tooling: el repo fija `pnpm@10.0.0` en `package.json` (usar Corepack o instalar esa version).
+
 ---
 
 ## Backend (pytest)
@@ -64,4 +66,3 @@ Ver `tests/e2e/README.md` para variables (`TEST_API_KEY`, `E2E_ADMIN_EMAIL`, etc
 ```bash
 k6 run tests/load/api.k6.js --env BASE_URL=http://localhost:8000
 ```
-
