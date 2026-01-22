@@ -95,7 +95,7 @@ class Workspace:
         shared_user_ids: Optional user IDs granted read access in SHARED
         created_at: Creation timestamp
         updated_at: Last update timestamp
-        deleted_at: Archive timestamp (None if active)
+        archived_at: Archive timestamp (None if active)
     """
 
     id: UUID
@@ -107,12 +107,12 @@ class Workspace:
     shared_user_ids: List[UUID] = field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    deleted_at: Optional[datetime] = None
+    archived_at: Optional[datetime] = None
 
     @property
     def is_archived(self) -> bool:
         """Check if workspace is archived."""
-        return self.deleted_at is not None
+        return self.archived_at is not None
 
 
 @dataclass

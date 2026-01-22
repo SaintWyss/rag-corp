@@ -223,7 +223,7 @@ class WorkspaceRes(BaseModel):
     acl: WorkspaceACL
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    deleted_at: datetime | None = None
+    archived_at: datetime | None = None
 
 
 class WorkspacesListRes(BaseModel):
@@ -325,7 +325,7 @@ def _to_workspace_res(workspace: Workspace) -> WorkspaceRes:
         acl=WorkspaceACL(allowed_roles=list(workspace.allowed_roles or [])),
         created_at=workspace.created_at,
         updated_at=workspace.updated_at,
-        deleted_at=workspace.deleted_at,
+        archived_at=workspace.archived_at,
     )
 
 

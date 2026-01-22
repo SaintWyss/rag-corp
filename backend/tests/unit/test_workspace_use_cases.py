@@ -49,7 +49,7 @@ class FakeWorkspaceRepository:
         if owner_user_id is not None:
             result = [ws for ws in result if ws.owner_user_id == owner_user_id]
         if not include_archived:
-            result = [ws for ws in result if ws.deleted_at is None]
+            result = [ws for ws in result if ws.archived_at is None]
         return result
 
     def get_workspace(self, workspace_id: UUID) -> Workspace | None:
@@ -97,7 +97,7 @@ class FakeWorkspaceRepository:
             ),
             created_at=current.created_at,
             updated_at=datetime.now(timezone.utc),
-            deleted_at=current.deleted_at,
+            archived_at=current.archived_at,
         )
         self._workspaces[workspace_id] = updated
         return updated
@@ -106,7 +106,7 @@ class FakeWorkspaceRepository:
         current = self._workspaces.get(workspace_id)
         if not current:
             return False
-        if current.deleted_at is not None:
+        if current.archived_at is not None:
             return True
         updated = Workspace(
             id=current.id,
@@ -117,7 +117,7 @@ class FakeWorkspaceRepository:
             allowed_roles=list(current.allowed_roles or []),
             created_at=current.created_at,
             updated_at=datetime.now(timezone.utc),
-            deleted_at=datetime.now(timezone.utc),
+            archived_at=datetime.now(timezone.utc),
         )
         self._workspaces[workspace_id] = updated
         return True
@@ -145,7 +145,7 @@ def _workspace(
     owner_user_id: UUID,
     visibility: WorkspaceVisibility,
     description: str | None = None,
-    deleted_at: datetime | None = None,
+    archived_at: datetime | None = None,
 ) -> Workspace:
     return Workspace(
         id=uuid4(),
@@ -153,7 +153,7 @@ def _workspace(
         visibility=visibility,
         owner_user_id=owner_user_id,
         description=description,
-        deleted_at=deleted_at,
+        archived_at=archived_at,
     )
 
 
@@ -404,7 +404,7 @@ def test_get_workspace_not_found_when_archived():
         name="Archived",
         owner_user_id=owner_id,
         visibility=WorkspaceVisibility.PRIVATE,
-        deleted_at=datetime.now(timezone.utc),
+        archived_at=datetime.now(timezone.utc),
     )
     repo = FakeWorkspaceRepository([archived])
     acl_repo = FakeWorkspaceAclRepository()

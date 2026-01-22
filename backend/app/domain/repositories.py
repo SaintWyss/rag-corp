@@ -284,7 +284,7 @@ class WorkspaceRepository(Protocol):
 
     Implementations must provide:
       - Workspace CRUD operations
-      - Optional archive semantics via deleted_at
+      - Optional archive semantics via archived_at
     """
 
     def list_workspaces(

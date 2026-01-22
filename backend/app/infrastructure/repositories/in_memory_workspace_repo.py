@@ -38,7 +38,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
         for workspace in workspaces:
             if owner_user_id is not None and workspace.owner_user_id != owner_user_id:
                 continue
-            if not include_archived and workspace.deleted_at is not None:
+            if not include_archived and workspace.archived_at is not None:
                 continue
             result.append(workspace)
 
@@ -72,7 +72,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
             allowed_roles=list(workspace.allowed_roles or []),
             created_at=now,
             updated_at=now,
-            deleted_at=workspace.deleted_at,
+            archived_at=workspace.archived_at,
         )
         with self._lock:
             self._workspaces[workspace.id] = created
@@ -106,7 +106,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
                 ),
                 created_at=current.created_at,
                 updated_at=datetime.now(timezone.utc),
-                deleted_at=current.deleted_at,
+                archived_at=current.archived_at,
             )
             self._workspaces[workspace_id] = updated
             return updated
@@ -116,7 +116,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
             current = self._workspaces.get(workspace_id)
             if not current:
                 return False
-            if current.deleted_at is not None:
+            if current.archived_at is not None:
                 return True
             updated = Workspace(
                 id=current.id,
@@ -127,7 +127,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
                 allowed_roles=list(current.allowed_roles or []),
                 created_at=current.created_at,
                 updated_at=datetime.now(timezone.utc),
-                deleted_at=datetime.now(timezone.utc),
+                archived_at=datetime.now(timezone.utc),
             )
             self._workspaces[workspace_id] = updated
             return True

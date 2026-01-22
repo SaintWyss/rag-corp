@@ -26,6 +26,7 @@ Notes:
 """
 
 from functools import lru_cache
+import os
 
 from .config import get_settings
 from .domain.repositories import (
@@ -47,6 +48,8 @@ from .infrastructure.cache import get_embedding_cache
 from .infrastructure.repositories import (
     PostgresDocumentRepository,
     PostgresAuditEventRepository,
+    PostgresWorkspaceRepository,
+    PostgresWorkspaceAclRepository,
     InMemoryConversationRepository,
     InMemoryWorkspaceRepository,
     InMemoryWorkspaceAclRepository,
@@ -110,13 +113,17 @@ def get_conversation_repository() -> ConversationRepository:
 @lru_cache
 def get_workspace_repository() -> WorkspaceRepository:
     """R: Get singleton instance of workspace repository."""
-    return InMemoryWorkspaceRepository()
+    if os.getenv("APP_ENV", "development").strip().lower() in {"test", "testing"}:
+        return InMemoryWorkspaceRepository()
+    return PostgresWorkspaceRepository()
 
 
 @lru_cache
 def get_workspace_acl_repository() -> WorkspaceAclRepository:
     """R: Get singleton instance of workspace ACL repository."""
-    return InMemoryWorkspaceAclRepository()
+    if os.getenv("APP_ENV", "development").strip().lower() in {"test", "testing"}:
+        return InMemoryWorkspaceAclRepository()
+    return PostgresWorkspaceAclRepository()
 
 
 @lru_cache

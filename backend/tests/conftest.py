@@ -19,6 +19,7 @@ Notes:
 """
 
 import pytest
+import os
 from unittest.mock import Mock
 from uuid import uuid4, UUID
 from typing import List
@@ -27,6 +28,7 @@ from app.domain.entities import Document, Chunk, QueryResult
 from app.domain.repositories import DocumentRepository
 from app.domain.services import EmbeddingService, LLMService
 
+os.environ.setdefault("APP_ENV", "test")
 
 # ============================================================================
 # Domain Entity Fixtures
