@@ -1,4 +1,6 @@
-# Hito: feat/v4-db-documents-workspace
+# Hito (HISTORICAL v4): feat/v4-db-documents-workspace
+
+> HISTORICAL v4: referencia de origen para la migracion a workspaces.
 
 ## Objetivo
 

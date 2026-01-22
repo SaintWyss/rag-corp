@@ -80,4 +80,4 @@ En CI se suben en falla.
 - `tests/e2e/tests/documents.spec.ts` - Ingesta, listado, detalle y delete
 - `tests/e2e/tests/chat.spec.ts` - Chat streaming multi-turn
 - `tests/e2e/tests/full-pipeline.spec.ts` - Upload -> READY -> chat (requiere worker + storage)
-- `tests/e2e/tests/workspace-flow.spec.ts` - Workspace v4 (create -> upload -> READY -> chat scoped)
+- `tests/e2e/tests/workspace-flow.spec.ts` - Workspace v6 (HISTORICAL v4 origin, create -> upload -> READY -> chat scoped)

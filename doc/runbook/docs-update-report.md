@@ -1,4 +1,6 @@
-# Documentation Update Report
+# Documentation Update Report (HISTORICAL)
+
+> HISTORICAL: reporte de actualizacion anterior.
 
 **Fecha**: 2026-01-03  
 **Branch**: `docs/hard-refresh`  

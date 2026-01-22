@@ -1,12 +1,14 @@
-# Hito: chore/v4-openapi-contract
+# Hito (HISTORICAL v4): chore/v4-openapi-contract
+
+> HISTORICAL v4: referencia de origen para la alineacion de contratos.
 
 ## Objetivo
 
-- Alinear el contrato OpenAPI v4 con workspaces/ACL y regenerar el cliente FE.
+- Alinear el contrato OpenAPI (HISTORICAL v4) con workspaces/ACL y regenerar el cliente FE.
 
 ## Cambios
 
-- Actualizar OpenAPI con rutas v4 de workspaces y respuestas RFC 7807.
+- Actualizar OpenAPI con rutas (HISTORICAL v4) de workspaces y respuestas RFC 7807.
 - Regenerar `shared/contracts/openapi.json` y `shared/contracts/src/generated.ts`.
 - Documentar como regenerar contratos en `doc/api/http-api.md`.
 

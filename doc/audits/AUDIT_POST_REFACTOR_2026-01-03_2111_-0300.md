@@ -1,4 +1,6 @@
-# Auditoría Post-Refactor — RAG Corp
+# Auditoría Post-Refactor — RAG Corp (HISTORICAL)
+
+> HISTORICAL: este reporte incluye versiones de herramientas (ej. `@v4`) sin relacion con el versionado del producto.
 
 **Fecha**: 2026-01-03 21:11:24 -0300  
 **Branch**: `main`  

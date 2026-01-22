@@ -1,7 +1,7 @@
 # Kubernetes Deployment Guide
 
 **Project:** RAG Corp  
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-22
 
 ---
 

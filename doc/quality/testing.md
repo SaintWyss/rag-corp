@@ -1,17 +1,17 @@
-# Estrategia de Testing
+# Estrategia de Testing (v6)
 
 ## Overview
 
-| Capa | Framework | Cobertura objetivo |
-|------|-----------|-------------------|
-| Backend | pytest | >=70% |
-| Frontend | Jest + Testing Library | >=70% |
-| E2E | Playwright | Flujos criticos |
-| Load | k6 | Benchmarks |
+| Capa | Framework | Objetivo |
+|------|-----------|----------|
+| Backend | pytest | Unit + integration |
+| Frontend | Jest | UI + hooks |
+| E2E | Playwright | Flujos workspace-first |
+| Load | k6 | Benchmarks (CI main) |
+
+---
 
 ## Backend (pytest)
-
-### Ejecutar tests
 
 ```bash
 # Unit tests (Docker, recomendado)
@@ -21,91 +21,47 @@ pnpm test:backend:unit
 cd backend
 pytest -m unit
 
-# Integration tests (requieren DB + GOOGLE_API_KEY)
+# Integration tests (requiere DB)
 RUN_INTEGRATION=1 GOOGLE_API_KEY=<GOOGLE_API_KEY> pytest -m integration
-
-# Reporte de cobertura (usa la configuracion de pytest.ini)
-pytest
 ```
 
-### Estructura
-
-```
-backend/tests/
-├── unit/
-│   ├── test_upload_endpoint.py
-│   ├── test_reprocess_endpoint.py
-│   ├── test_dual_authz.py
-│   ├── test_user_auth.py
-│   └── test_jobs.py
-├── integration/
-│   ├── test_api_endpoints.py
-│   └── test_postgres_document_repo.py
-└── conftest.py
-```
-
-### Configuracion (pytest.ini)
-
-- Cobertura aplica a: `app/domain`, `app/application`, `app/infrastructure/text`.
-- Umbral de cobertura: `--cov-fail-under=70`.
-- Markers disponibles: `unit`, `integration`, `slow`, `api`.
+---
 
 ## Frontend (Jest)
 
-### Ejecutar tests
-
 ```bash
-# Todos los tests
-pnpm --filter web test
-
-# Watch mode
-pnpm --filter web test:watch
-
-# Con cobertura
-pnpm --filter web test:coverage
+pnpm -C frontend test
+pnpm -C frontend test:watch
+pnpm -C frontend test:coverage
 ```
 
-### Estructura
-
-```
-frontend/__tests__/
-├── page.test.tsx
-├── documents.page.test.tsx
-├── chat.page.test.tsx
-└── hooks/
-    ├── useRagAsk.test.tsx
-    └── useRagChat.test.tsx
-```
+---
 
 ## E2E (Playwright)
 
 ```bash
-# Instalar Playwright (primera vez)
 pnpm e2e:install
 pnpm e2e:install:browsers
-
-# Ejecutar E2E con backend/frontend locales (usa playwright.config.ts)
 pnpm e2e
-
-# Ejecutar con stack Docker Compose
-E2E_USE_COMPOSE=1 TEST_API_KEY=<E2E_API_KEY> pnpm e2e
 ```
 
-Tests principales:
-- `tests/e2e/tests/documents.spec.ts`
-- `tests/e2e/tests/chat.spec.ts`
-- `tests/e2e/tests/full-pipeline.spec.ts` (upload -> READY -> chat)
-- `tests/e2e/tests/workspace-flow.spec.ts` (workspace v4 end-to-end)
+### E2E full pipeline (upload -> READY -> chat)
 
-Checklist v4 (no cross-sources):
-- Usar `workspace-flow.spec.ts` para validar que las fuentes no mezclan workspaces.
-- Si haces verificacion manual, usa `/v1/workspaces/{id}/query` y confirma `document_id` del workspace.
-
-Ver `tests/e2e/README.md` para detalles de stack y variables.
-
-## Load Testing (k6)
+Requiere worker + storage:
 
 ```bash
-# Contra ambiente local
+docker compose --profile e2e --profile worker --profile storage up -d --build
+pnpm -C tests/e2e test --grep "Full pipeline"
+docker compose --profile e2e --profile worker --profile storage down -v
+```
+
+Ver `tests/e2e/README.md` para variables (`TEST_API_KEY`, `E2E_ADMIN_EMAIL`, etc.).
+
+---
+
+## Load testing (k6)
+
+```bash
 k6 run tests/load/api.k6.js --env BASE_URL=http://localhost:8000
 ```
+

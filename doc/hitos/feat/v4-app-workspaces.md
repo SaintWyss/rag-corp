@@ -1,8 +1,10 @@
-# Hito: feat/v4-app-workspaces
+# Hito (HISTORICAL v4): feat/v4-app-workspaces
+
+> HISTORICAL v4: referencia de origen para use cases de workspaces.
 
 ## Objetivo
 
-- Implementar use cases v4 de Workspaces con policy de acceso.
+- Implementar use cases (HISTORICAL v4) de Workspaces con policy de acceso.
 
 ## Cambios
 

@@ -1,8 +1,8 @@
-# ADR-006: Archive/soft-delete v4 de Workspaces y Documentos
+# ADR-006: Archive/soft-delete de Workspaces y Documentos
 
 ## Estado
 
-**Aceptado** (2026-01-15)
+**Aceptado** (2026-01-15) — Vigente en v6
 
 ## Contexto
 

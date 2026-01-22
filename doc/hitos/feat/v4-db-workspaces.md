@@ -1,8 +1,10 @@
-# Hito: feat/v4-db-workspaces
+# Hito (HISTORICAL v4): feat/v4-db-workspaces
+
+> HISTORICAL v4: referencia de origen para tablas `workspaces` y `workspace_acl`.
 
 ## Objetivo
 
-- Agregar tablas `workspaces` y `workspace_acl` con constraints e indices v4.
+- Agregar tablas `workspaces` y `workspace_acl` con constraints e indices (HISTORICAL v4).
 
 ## Cambios
 

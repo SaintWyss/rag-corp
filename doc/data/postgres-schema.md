@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Database:** PostgreSQL 16  
 **Extension:** pgvector 0.8.1  
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-22
 
 ---
 
@@ -253,7 +253,7 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-Note: Alembic creates `chunks_embedding_idx` and the workspace indexes below. Primary keys and `users.email` unique index are implicit, and the optional indexes below are not created by default.
+Note: Alembic creates `chunks_embedding_idx` and the workspace indexes below. Primary keys and the `users.email` unique index are implicit, and the optional indexes below are not created by default.
 
 ### Primary Key Indexes (Implicit)
 
@@ -600,6 +600,11 @@ SELECT pg_size_pretty(pg_total_relation_size('chunks')) AS total_size;
 ---
 
 ## Schema Migrations
+
+### Legacy workspace backfill (v6)
+
+La migracion `008_docs_workspace_id.py` crea un workspace **Legacy** y backfillea `documents.workspace_id`.
+Si no existen usuarios, la migracion falla con un mensaje explicito (se debe crear un admin con `scripts/create_admin.py`).
 
 ### Add New Column
 

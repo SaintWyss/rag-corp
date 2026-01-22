@@ -1,4 +1,6 @@
-# Hito: feat/v4-domain-workspace-policy
+# Hito (HISTORICAL v4): feat/v4-domain-workspace-policy
+
+> HISTORICAL v4: referencia de origen para politicas de workspace.
 
 ## Objetivo
 
