@@ -8,8 +8,8 @@ Responsibilities:
   - Validate API behavior with real dependencies
 
 Collaborators:
-  - app.main: FastAPI application
-  - app.routes: API endpoints
+  - app.api.main: FastAPI application
+  - app.api.routes: API endpoints
   - httpx: HTTP client for testing
   - pytest: Test framework
 

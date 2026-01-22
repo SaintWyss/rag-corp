@@ -8,7 +8,7 @@ Responsibilities:
   - Test Google API check helper
 
 Collaborators:
-  - app.main: Module under test (healthz endpoint)
+  - app.api.main: Module under test (healthz endpoint)
   - pytest: Testing framework
   - fastapi.testclient: HTTP testing
 

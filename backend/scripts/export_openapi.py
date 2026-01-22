@@ -6,7 +6,7 @@ Responsibilities:
   - Serialize schema with readable format (indent=2, UTF-8)
 
 Collaborators:
-  - app.main.app: FastAPI instance with defined endpoints
+  - app.api.main.app: FastAPI instance with defined endpoints
   - argparse: CLI argument parsing
 
 Constraints:
