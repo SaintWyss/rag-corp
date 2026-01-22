@@ -14,6 +14,22 @@
 
 `/metrics` requiere auth si `METRICS_REQUIRE_AUTH=true`.
 
+## Worker HTTP endpoints
+
+El worker expone endpoints HTTP propios en `WORKER_HTTP_PORT` (default `8001`):
+
+- `GET /healthz`
+- `GET /readyz`
+- `GET /metrics` (respeta `METRICS_REQUIRE_AUTH`)
+
+Validacion rapida:
+
+```bash
+curl http://localhost:8001/healthz
+curl http://localhost:8001/readyz
+curl -H "X-API-Key: <METRICS_KEY>" http://localhost:8001/metrics
+```
+
 ---
 
 ## Docker Compose perfiles
@@ -47,4 +63,3 @@ curl http://localhost:8000/healthz
 curl http://localhost:8000/readyz
 curl -H "X-API-Key: <METRICS_KEY>" http://localhost:8000/metrics | head -20
 ```
-

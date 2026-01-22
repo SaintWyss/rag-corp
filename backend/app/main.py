@@ -147,10 +147,9 @@ def custom_openapi():
             "scheme": "bearer",
             "bearerFormat": "JWT",
             "description": (
-                "JWT access token via Authorization: Bearer <token> "
-                "or httpOnly cookie."
+                "JWT access token via Authorization: Bearer <token> or httpOnly cookie."
             ),
-        }
+        },
     }
     # R: Apply dual-mode security globally (endpoints can override)
     openapi_schema["security"] = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
@@ -179,9 +178,7 @@ def custom_openapi():
                 note = "Requires X-API-Key when METRICS_REQUIRE_AUTH=true."
                 description = operation.get("description", "")
                 if note not in description:
-                    operation["description"] = (
-                        f"{description}\n\n{note}".strip()
-                    )
+                    operation["description"] = f"{description}\n\n{note}".strip()
                 continue
             if path.startswith("/v1/") or path.startswith("/api/v1/"):
                 operation["security"] = dual_security
@@ -201,10 +198,7 @@ def custom_openapi():
             if not isinstance(operation, dict):
                 continue
             for param in operation.get("parameters", []):
-                if (
-                    param.get("name") == "workspace_id"
-                    and param.get("in") == "query"
-                ):
+                if param.get("name") == "workspace_id" and param.get("in") == "query":
                     param["required"] = True
     fastapi_app.openapi_schema = openapi_schema
     return fastapi_app.openapi_schema
