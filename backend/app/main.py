@@ -141,10 +141,71 @@ def custom_openapi():
             "in": "header",
             "name": "X-API-Key",
             "description": "API key with appropriate scope (ingest, ask, metrics)",
+        },
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": (
+                "JWT access token via Authorization: Bearer <token> "
+                "or httpOnly cookie."
+            ),
         }
     }
-    # R: Apply security globally (endpoints can override)
-    openapi_schema["security"] = [{"ApiKeyAuth": []}]
+    # R: Apply dual-mode security globally (endpoints can override)
+    openapi_schema["security"] = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
+
+    dual_security = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
+    bearer_security = [{"BearerAuth": []}]
+    api_key_security = [{"ApiKeyAuth": []}]
+    public_paths = {"/healthz", "/readyz", "/auth/login", "/auth/logout"}
+    jwt_only_paths = {"/auth/me"}
+
+    for path, methods in openapi_schema.get("paths", {}).items():
+        for operation in methods.values():
+            if not isinstance(operation, dict):
+                continue
+            if path in public_paths:
+                operation["security"] = []
+                continue
+            if path in jwt_only_paths:
+                operation["security"] = bearer_security
+                continue
+            if path.startswith("/auth/users"):
+                operation["security"] = dual_security
+                continue
+            if path == "/metrics":
+                operation["security"] = api_key_security
+                note = "Requires X-API-Key when METRICS_REQUIRE_AUTH=true."
+                description = operation.get("description", "")
+                if note not in description:
+                    operation["description"] = (
+                        f"{description}\n\n{note}".strip()
+                    )
+                continue
+            if path.startswith("/v1/") or path.startswith("/api/v1/"):
+                operation["security"] = dual_security
+
+    legacy_exclusions = {
+        "/v1/workspaces",
+        "/api/v1/workspaces",
+        "/v1/admin/audit",
+        "/api/v1/admin/audit",
+    }
+    for path, methods in openapi_schema.get("paths", {}).items():
+        if not (path.startswith("/v1/") or path.startswith("/api/v1/")):
+            continue
+        if "/workspaces/" in path or path in legacy_exclusions:
+            continue
+        for operation in methods.values():
+            if not isinstance(operation, dict):
+                continue
+            for param in operation.get("parameters", []):
+                if (
+                    param.get("name") == "workspace_id"
+                    and param.get("in") == "query"
+                ):
+                    param["required"] = True
     fastapi_app.openapi_schema = openapi_schema
     return fastapi_app.openapi_schema
 

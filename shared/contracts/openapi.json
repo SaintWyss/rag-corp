@@ -189,7 +189,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -357,7 +365,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}": {
@@ -527,7 +543,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "patch": {
         "tags": [
@@ -705,7 +729,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -873,7 +905,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/publish": {
@@ -1043,7 +1083,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/share": {
@@ -1223,7 +1271,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/archive": {
@@ -1393,7 +1449,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/documents": {
@@ -1408,7 +1472,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -1677,7 +1741,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/documents/{document_id}": {
@@ -1702,7 +1774,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -1865,7 +1937,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -1888,7 +1968,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -2051,7 +2131,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/documents/upload": {
@@ -2066,7 +2154,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -2239,7 +2327,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/documents/{document_id}/reprocess": {
@@ -2264,7 +2360,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -2427,7 +2523,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/ingest/text": {
@@ -2442,7 +2546,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -2615,7 +2719,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/ingest/batch": {
@@ -2631,7 +2743,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -2804,7 +2916,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/query": {
@@ -2819,7 +2939,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -2992,7 +3112,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/ask": {
@@ -3008,7 +3136,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -3181,7 +3309,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/ask/stream": {
@@ -3197,7 +3333,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -3368,7 +3504,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/documents": {
@@ -3644,7 +3788,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/documents/{document_id}": {
@@ -3824,7 +3976,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -4002,7 +4162,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/documents/upload": {
@@ -4182,7 +4350,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/documents/{document_id}/reprocess": {
@@ -4362,7 +4538,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/ingest/text": {
@@ -4542,7 +4726,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/ingest/batch": {
@@ -4722,7 +4914,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/query": {
@@ -4902,7 +5102,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/ask": {
@@ -5082,7 +5290,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspace_id}/ask/stream": {
@@ -5260,7 +5476,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/admin/audit": {
@@ -5526,7 +5750,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/auth/login": {
@@ -5662,7 +5894,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/auth/me": {
@@ -5806,7 +6039,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/auth/logout": {
@@ -5930,7 +6168,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/auth/users": {
@@ -6090,7 +6329,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -6258,7 +6505,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/auth/users/{user_id}/disable": {
@@ -6428,7 +6683,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/auth/users/{user_id}/reset-password": {
@@ -6608,7 +6871,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces": {
@@ -6796,7 +7067,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -6965,7 +7244,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}": {
@@ -7136,7 +7423,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "patch": {
         "tags": [
@@ -7315,7 +7610,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -7484,7 +7787,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/publish": {
@@ -7655,7 +7966,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/share": {
@@ -7836,7 +8155,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/archive": {
@@ -8007,7 +8334,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/documents": {
@@ -8023,7 +8358,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -8292,7 +8627,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/documents/{document_id}": {
@@ -8318,7 +8661,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -8481,7 +8824,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -8505,7 +8856,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -8668,7 +9019,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/documents/upload": {
@@ -8684,7 +9043,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -8857,7 +9216,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/documents/{document_id}/reprocess": {
@@ -8883,7 +9250,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -9046,7 +9413,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/ingest/text": {
@@ -9062,7 +9437,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -9235,7 +9610,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/ingest/batch": {
@@ -9252,7 +9635,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -9425,7 +9808,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/query": {
@@ -9441,7 +9832,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -9614,7 +10005,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/ask": {
@@ -9631,7 +10030,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -9804,7 +10203,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/ask/stream": {
@@ -9821,7 +10228,7 @@
           {
             "name": "workspace_id",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "anyOf": [
                 {
@@ -9992,7 +10399,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/documents": {
@@ -10269,7 +10684,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/documents/{document_id}": {
@@ -10450,7 +10873,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -10629,7 +11060,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/documents/upload": {
@@ -10810,7 +11249,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/documents/{document_id}/reprocess": {
@@ -10991,7 +11438,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/ingest/text": {
@@ -11172,7 +11627,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/ingest/batch": {
@@ -11353,7 +11816,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/query": {
@@ -11534,7 +12005,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/ask": {
@@ -11715,7 +12194,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/ask/stream": {
@@ -11894,7 +12381,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/audit": {
@@ -12161,7 +12656,15 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/healthz": {
@@ -12200,7 +12703,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/readyz": {
@@ -12217,13 +12721,14 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/metrics": {
       "get": {
         "summary": "Metrics",
-        "description": "R: Expose Prometheus metrics.\n\nReturns:\n    Prometheus text format metrics",
+        "description": "R: Expose Prometheus metrics.\n\nReturns:\n    Prometheus text format metrics\n\nRequires X-API-Key when METRICS_REQUIRE_AUTH=true.",
         "operationId": "metrics_metrics_get",
         "parameters": [
           {
@@ -12262,7 +12767,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
       }
     }
   },
@@ -13555,12 +14065,21 @@
         "in": "header",
         "name": "X-API-Key",
         "description": "API key with appropriate scope (ingest, ask, metrics)"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token via Authorization: Bearer <token> or httpOnly cookie."
       }
     }
   },
   "security": [
     {
       "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
     }
   ]
 }

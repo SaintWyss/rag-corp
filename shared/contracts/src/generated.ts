@@ -455,7 +455,7 @@ include_archived?: boolean;
 };
 
 export type ListDocumentsV1DocumentsGetParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 q?: string | null;
 status?: string | null;
 tag?: string | null;
@@ -473,39 +473,39 @@ offset?: number;
 };
 
 export type GetDocumentV1DocumentsDocumentIdGetParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type DeleteDocumentV1DocumentsDocumentIdDeleteParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type UploadDocumentV1DocumentsUploadPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type IngestTextV1IngestTextPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type IngestBatchV1IngestBatchPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type QueryV1QueryPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type AskV1AskPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type AskStreamV1AskStreamPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type ListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetParams = {
@@ -548,7 +548,7 @@ include_archived?: boolean;
 };
 
 export type ListDocumentsApiV1DocumentsGetParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 q?: string | null;
 status?: string | null;
 tag?: string | null;
@@ -566,39 +566,39 @@ offset?: number;
 };
 
 export type GetDocumentApiV1DocumentsDocumentIdGetParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type DeleteDocumentApiV1DocumentsDocumentIdDeleteParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type UploadDocumentApiV1DocumentsUploadPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type IngestTextApiV1IngestTextPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type IngestBatchApiV1IngestBatchPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type QueryApiV1QueryPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type AskApiV1AskPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type AskStreamApiV1AskStreamPostParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 };
 
 export type ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams = {
@@ -1343,7 +1343,7 @@ export type listDocumentsV1DocumentsGetResponseError = (listDocumentsV1Documents
 
 export type listDocumentsV1DocumentsGetResponse = (listDocumentsV1DocumentsGetResponseSuccess | listDocumentsV1DocumentsGetResponseError)
 
-export const getListDocumentsV1DocumentsGetUrl = (params?: ListDocumentsV1DocumentsGetParams,) => {
+export const getListDocumentsV1DocumentsGetUrl = (params: ListDocumentsV1DocumentsGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1358,7 +1358,7 @@ export const getListDocumentsV1DocumentsGetUrl = (params?: ListDocumentsV1Docume
   return stringifiedParams.length > 0 ? `/v1/documents?${stringifiedParams}` : `/v1/documents`
 }
 
-export const listDocumentsV1DocumentsGet = async (params?: ListDocumentsV1DocumentsGetParams, options?: RequestInit): Promise<listDocumentsV1DocumentsGetResponse> => {
+export const listDocumentsV1DocumentsGet = async (params: ListDocumentsV1DocumentsGetParams, options?: RequestInit): Promise<listDocumentsV1DocumentsGetResponse> => {
   
   const res = await fetch(getListDocumentsV1DocumentsGetUrl(params),
   {      
@@ -1431,7 +1431,7 @@ export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1Doc
 export type getDocumentV1DocumentsDocumentIdGetResponse = (getDocumentV1DocumentsDocumentIdGetResponseSuccess | getDocumentV1DocumentsDocumentIdGetResponseError)
 
 export const getGetDocumentV1DocumentsDocumentIdGetUrl = (documentId: string,
-    params?: GetDocumentV1DocumentsDocumentIdGetParams,) => {
+    params: GetDocumentV1DocumentsDocumentIdGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1447,7 +1447,7 @@ export const getGetDocumentV1DocumentsDocumentIdGetUrl = (documentId: string,
 }
 
 export const getDocumentV1DocumentsDocumentIdGet = async (documentId: string,
-    params?: GetDocumentV1DocumentsDocumentIdGetParams, options?: RequestInit): Promise<getDocumentV1DocumentsDocumentIdGetResponse> => {
+    params: GetDocumentV1DocumentsDocumentIdGetParams, options?: RequestInit): Promise<getDocumentV1DocumentsDocumentIdGetResponse> => {
   
   const res = await fetch(getGetDocumentV1DocumentsDocumentIdGetUrl(documentId,params),
   {      
@@ -1520,7 +1520,7 @@ export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocu
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponse = (deleteDocumentV1DocumentsDocumentIdDeleteResponseSuccess | deleteDocumentV1DocumentsDocumentIdDeleteResponseError)
 
 export const getDeleteDocumentV1DocumentsDocumentIdDeleteUrl = (documentId: string,
-    params?: DeleteDocumentV1DocumentsDocumentIdDeleteParams,) => {
+    params: DeleteDocumentV1DocumentsDocumentIdDeleteParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1536,7 +1536,7 @@ export const getDeleteDocumentV1DocumentsDocumentIdDeleteUrl = (documentId: stri
 }
 
 export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: string,
-    params?: DeleteDocumentV1DocumentsDocumentIdDeleteParams, options?: RequestInit): Promise<deleteDocumentV1DocumentsDocumentIdDeleteResponse> => {
+    params: DeleteDocumentV1DocumentsDocumentIdDeleteParams, options?: RequestInit): Promise<deleteDocumentV1DocumentsDocumentIdDeleteResponse> => {
   
   const res = await fetch(getDeleteDocumentV1DocumentsDocumentIdDeleteUrl(documentId,params),
   {      
@@ -1608,7 +1608,7 @@ export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1
 
 export type uploadDocumentV1DocumentsUploadPostResponse = (uploadDocumentV1DocumentsUploadPostResponseSuccess | uploadDocumentV1DocumentsUploadPostResponseError)
 
-export const getUploadDocumentV1DocumentsUploadPostUrl = (params?: UploadDocumentV1DocumentsUploadPostParams,) => {
+export const getUploadDocumentV1DocumentsUploadPostUrl = (params: UploadDocumentV1DocumentsUploadPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1624,7 +1624,7 @@ export const getUploadDocumentV1DocumentsUploadPostUrl = (params?: UploadDocumen
 }
 
 export const uploadDocumentV1DocumentsUploadPost = async (bodyUploadDocumentV1DocumentsUploadPost: BodyUploadDocumentV1DocumentsUploadPost,
-    params?: UploadDocumentV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
+    params: UploadDocumentV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadDocumentV1DocumentsUploadPost.file)
 if(bodyUploadDocumentV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentV1DocumentsUploadPost.title !== null) {
@@ -1709,7 +1709,7 @@ export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseSuccess | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError)
 
 export const getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,
-    params?: ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams,) => {
+    params: ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1725,7 +1725,7 @@ export const getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl = (docume
 }
 
 export const reprocessDocumentV1DocumentsDocumentIdReprocessPost = async (documentId: string,
-    params?: ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams, options?: RequestInit): Promise<reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse> => {
+    params: ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams, options?: RequestInit): Promise<reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse> => {
   
   const res = await fetch(getReprocessDocumentV1DocumentsDocumentIdReprocessPostUrl(documentId,params),
   {      
@@ -1797,7 +1797,7 @@ export type ingestTextV1IngestTextPostResponseError = (ingestTextV1IngestTextPos
 
 export type ingestTextV1IngestTextPostResponse = (ingestTextV1IngestTextPostResponseSuccess | ingestTextV1IngestTextPostResponseError)
 
-export const getIngestTextV1IngestTextPostUrl = (params?: IngestTextV1IngestTextPostParams,) => {
+export const getIngestTextV1IngestTextPostUrl = (params: IngestTextV1IngestTextPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1813,7 +1813,7 @@ export const getIngestTextV1IngestTextPostUrl = (params?: IngestTextV1IngestText
 }
 
 export const ingestTextV1IngestTextPost = async (ingestTextReq: IngestTextReq,
-    params?: IngestTextV1IngestTextPostParams, options?: RequestInit): Promise<ingestTextV1IngestTextPostResponse> => {
+    params: IngestTextV1IngestTextPostParams, options?: RequestInit): Promise<ingestTextV1IngestTextPostResponse> => {
   
   const res = await fetch(getIngestTextV1IngestTextPostUrl(params),
   {      
@@ -1890,7 +1890,7 @@ export type ingestBatchV1IngestBatchPostResponseError = (ingestBatchV1IngestBatc
 
 export type ingestBatchV1IngestBatchPostResponse = (ingestBatchV1IngestBatchPostResponseSuccess | ingestBatchV1IngestBatchPostResponseError)
 
-export const getIngestBatchV1IngestBatchPostUrl = (params?: IngestBatchV1IngestBatchPostParams,) => {
+export const getIngestBatchV1IngestBatchPostUrl = (params: IngestBatchV1IngestBatchPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1906,7 +1906,7 @@ export const getIngestBatchV1IngestBatchPostUrl = (params?: IngestBatchV1IngestB
 }
 
 export const ingestBatchV1IngestBatchPost = async (ingestBatchReq: IngestBatchReq,
-    params?: IngestBatchV1IngestBatchPostParams, options?: RequestInit): Promise<ingestBatchV1IngestBatchPostResponse> => {
+    params: IngestBatchV1IngestBatchPostParams, options?: RequestInit): Promise<ingestBatchV1IngestBatchPostResponse> => {
   
   const res = await fetch(getIngestBatchV1IngestBatchPostUrl(params),
   {      
@@ -1979,7 +1979,7 @@ export type queryV1QueryPostResponseError = (queryV1QueryPostResponse400 | query
 
 export type queryV1QueryPostResponse = (queryV1QueryPostResponseSuccess | queryV1QueryPostResponseError)
 
-export const getQueryV1QueryPostUrl = (params?: QueryV1QueryPostParams,) => {
+export const getQueryV1QueryPostUrl = (params: QueryV1QueryPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1995,7 +1995,7 @@ export const getQueryV1QueryPostUrl = (params?: QueryV1QueryPostParams,) => {
 }
 
 export const queryV1QueryPost = async (queryReq: QueryReq,
-    params?: QueryV1QueryPostParams, options?: RequestInit): Promise<queryV1QueryPostResponse> => {
+    params: QueryV1QueryPostParams, options?: RequestInit): Promise<queryV1QueryPostResponse> => {
   
   const res = await fetch(getQueryV1QueryPostUrl(params),
   {      
@@ -2077,7 +2077,7 @@ export type askV1AskPostResponseError = (askV1AskPostResponse400 | askV1AskPostR
 
 export type askV1AskPostResponse = (askV1AskPostResponseSuccess | askV1AskPostResponseError)
 
-export const getAskV1AskPostUrl = (params?: AskV1AskPostParams,) => {
+export const getAskV1AskPostUrl = (params: AskV1AskPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2093,7 +2093,7 @@ export const getAskV1AskPostUrl = (params?: AskV1AskPostParams,) => {
 }
 
 export const askV1AskPost = async (queryReq: QueryReq,
-    params?: AskV1AskPostParams, options?: RequestInit): Promise<askV1AskPostResponse> => {
+    params: AskV1AskPostParams, options?: RequestInit): Promise<askV1AskPostResponse> => {
   
   const res = await fetch(getAskV1AskPostUrl(params),
   {      
@@ -2176,7 +2176,7 @@ export type askStreamV1AskStreamPostResponseError = (askStreamV1AskStreamPostRes
 
 export type askStreamV1AskStreamPostResponse = (askStreamV1AskStreamPostResponseSuccess | askStreamV1AskStreamPostResponseError)
 
-export const getAskStreamV1AskStreamPostUrl = (params?: AskStreamV1AskStreamPostParams,) => {
+export const getAskStreamV1AskStreamPostUrl = (params: AskStreamV1AskStreamPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2192,7 +2192,7 @@ export const getAskStreamV1AskStreamPostUrl = (params?: AskStreamV1AskStreamPost
 }
 
 export const askStreamV1AskStreamPost = async (queryReq: QueryReq,
-    params?: AskStreamV1AskStreamPostParams, options?: RequestInit): Promise<askStreamV1AskStreamPostResponse> => {
+    params: AskStreamV1AskStreamPostParams, options?: RequestInit): Promise<askStreamV1AskStreamPostResponse> => {
   
   const res = await fetch(getAskStreamV1AskStreamPostUrl(params),
   {      
@@ -4380,7 +4380,7 @@ export type listDocumentsApiV1DocumentsGetResponseError = (listDocumentsApiV1Doc
 
 export type listDocumentsApiV1DocumentsGetResponse = (listDocumentsApiV1DocumentsGetResponseSuccess | listDocumentsApiV1DocumentsGetResponseError)
 
-export const getListDocumentsApiV1DocumentsGetUrl = (params?: ListDocumentsApiV1DocumentsGetParams,) => {
+export const getListDocumentsApiV1DocumentsGetUrl = (params: ListDocumentsApiV1DocumentsGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4395,7 +4395,7 @@ export const getListDocumentsApiV1DocumentsGetUrl = (params?: ListDocumentsApiV1
   return stringifiedParams.length > 0 ? `/api/v1/documents?${stringifiedParams}` : `/api/v1/documents`
 }
 
-export const listDocumentsApiV1DocumentsGet = async (params?: ListDocumentsApiV1DocumentsGetParams, options?: RequestInit): Promise<listDocumentsApiV1DocumentsGetResponse> => {
+export const listDocumentsApiV1DocumentsGet = async (params: ListDocumentsApiV1DocumentsGetParams, options?: RequestInit): Promise<listDocumentsApiV1DocumentsGetResponse> => {
   
   const res = await fetch(getListDocumentsApiV1DocumentsGetUrl(params),
   {      
@@ -4468,7 +4468,7 @@ export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentAp
 export type getDocumentApiV1DocumentsDocumentIdGetResponse = (getDocumentApiV1DocumentsDocumentIdGetResponseSuccess | getDocumentApiV1DocumentsDocumentIdGetResponseError)
 
 export const getGetDocumentApiV1DocumentsDocumentIdGetUrl = (documentId: string,
-    params?: GetDocumentApiV1DocumentsDocumentIdGetParams,) => {
+    params: GetDocumentApiV1DocumentsDocumentIdGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4484,7 +4484,7 @@ export const getGetDocumentApiV1DocumentsDocumentIdGetUrl = (documentId: string,
 }
 
 export const getDocumentApiV1DocumentsDocumentIdGet = async (documentId: string,
-    params?: GetDocumentApiV1DocumentsDocumentIdGetParams, options?: RequestInit): Promise<getDocumentApiV1DocumentsDocumentIdGetResponse> => {
+    params: GetDocumentApiV1DocumentsDocumentIdGetParams, options?: RequestInit): Promise<getDocumentApiV1DocumentsDocumentIdGetResponse> => {
   
   const res = await fetch(getGetDocumentApiV1DocumentsDocumentIdGetUrl(documentId,params),
   {      
@@ -4557,7 +4557,7 @@ export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteD
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponseSuccess | deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError)
 
 export const getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl = (documentId: string,
-    params?: DeleteDocumentApiV1DocumentsDocumentIdDeleteParams,) => {
+    params: DeleteDocumentApiV1DocumentsDocumentIdDeleteParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4573,7 +4573,7 @@ export const getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl = (documentId: s
 }
 
 export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: string,
-    params?: DeleteDocumentApiV1DocumentsDocumentIdDeleteParams, options?: RequestInit): Promise<deleteDocumentApiV1DocumentsDocumentIdDeleteResponse> => {
+    params: DeleteDocumentApiV1DocumentsDocumentIdDeleteParams, options?: RequestInit): Promise<deleteDocumentApiV1DocumentsDocumentIdDeleteResponse> => {
   
   const res = await fetch(getDeleteDocumentApiV1DocumentsDocumentIdDeleteUrl(documentId,params),
   {      
@@ -4645,7 +4645,7 @@ export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumen
 
 export type uploadDocumentApiV1DocumentsUploadPostResponse = (uploadDocumentApiV1DocumentsUploadPostResponseSuccess | uploadDocumentApiV1DocumentsUploadPostResponseError)
 
-export const getUploadDocumentApiV1DocumentsUploadPostUrl = (params?: UploadDocumentApiV1DocumentsUploadPostParams,) => {
+export const getUploadDocumentApiV1DocumentsUploadPostUrl = (params: UploadDocumentApiV1DocumentsUploadPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4661,7 +4661,7 @@ export const getUploadDocumentApiV1DocumentsUploadPostUrl = (params?: UploadDocu
 }
 
 export const uploadDocumentApiV1DocumentsUploadPost = async (bodyUploadDocumentApiV1DocumentsUploadPost: BodyUploadDocumentApiV1DocumentsUploadPost,
-    params?: UploadDocumentApiV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
+    params: UploadDocumentApiV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadDocumentApiV1DocumentsUploadPost.file)
 if(bodyUploadDocumentApiV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.title !== null) {
@@ -4746,7 +4746,7 @@ export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError 
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseSuccess | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError)
 
 export const getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl = (documentId: string,
-    params?: ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams,) => {
+    params: ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4762,7 +4762,7 @@ export const getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl = (doc
 }
 
 export const reprocessDocumentApiV1DocumentsDocumentIdReprocessPost = async (documentId: string,
-    params?: ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams, options?: RequestInit): Promise<reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse> => {
+    params: ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams, options?: RequestInit): Promise<reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse> => {
   
   const res = await fetch(getReprocessDocumentApiV1DocumentsDocumentIdReprocessPostUrl(documentId,params),
   {      
@@ -4834,7 +4834,7 @@ export type ingestTextApiV1IngestTextPostResponseError = (ingestTextApiV1IngestT
 
 export type ingestTextApiV1IngestTextPostResponse = (ingestTextApiV1IngestTextPostResponseSuccess | ingestTextApiV1IngestTextPostResponseError)
 
-export const getIngestTextApiV1IngestTextPostUrl = (params?: IngestTextApiV1IngestTextPostParams,) => {
+export const getIngestTextApiV1IngestTextPostUrl = (params: IngestTextApiV1IngestTextPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4850,7 +4850,7 @@ export const getIngestTextApiV1IngestTextPostUrl = (params?: IngestTextApiV1Inge
 }
 
 export const ingestTextApiV1IngestTextPost = async (ingestTextReq: IngestTextReq,
-    params?: IngestTextApiV1IngestTextPostParams, options?: RequestInit): Promise<ingestTextApiV1IngestTextPostResponse> => {
+    params: IngestTextApiV1IngestTextPostParams, options?: RequestInit): Promise<ingestTextApiV1IngestTextPostResponse> => {
   
   const res = await fetch(getIngestTextApiV1IngestTextPostUrl(params),
   {      
@@ -4927,7 +4927,7 @@ export type ingestBatchApiV1IngestBatchPostResponseError = (ingestBatchApiV1Inge
 
 export type ingestBatchApiV1IngestBatchPostResponse = (ingestBatchApiV1IngestBatchPostResponseSuccess | ingestBatchApiV1IngestBatchPostResponseError)
 
-export const getIngestBatchApiV1IngestBatchPostUrl = (params?: IngestBatchApiV1IngestBatchPostParams,) => {
+export const getIngestBatchApiV1IngestBatchPostUrl = (params: IngestBatchApiV1IngestBatchPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4943,7 +4943,7 @@ export const getIngestBatchApiV1IngestBatchPostUrl = (params?: IngestBatchApiV1I
 }
 
 export const ingestBatchApiV1IngestBatchPost = async (ingestBatchReq: IngestBatchReq,
-    params?: IngestBatchApiV1IngestBatchPostParams, options?: RequestInit): Promise<ingestBatchApiV1IngestBatchPostResponse> => {
+    params: IngestBatchApiV1IngestBatchPostParams, options?: RequestInit): Promise<ingestBatchApiV1IngestBatchPostResponse> => {
   
   const res = await fetch(getIngestBatchApiV1IngestBatchPostUrl(params),
   {      
@@ -5016,7 +5016,7 @@ export type queryApiV1QueryPostResponseError = (queryApiV1QueryPostResponse400 |
 
 export type queryApiV1QueryPostResponse = (queryApiV1QueryPostResponseSuccess | queryApiV1QueryPostResponseError)
 
-export const getQueryApiV1QueryPostUrl = (params?: QueryApiV1QueryPostParams,) => {
+export const getQueryApiV1QueryPostUrl = (params: QueryApiV1QueryPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -5032,7 +5032,7 @@ export const getQueryApiV1QueryPostUrl = (params?: QueryApiV1QueryPostParams,) =
 }
 
 export const queryApiV1QueryPost = async (queryReq: QueryReq,
-    params?: QueryApiV1QueryPostParams, options?: RequestInit): Promise<queryApiV1QueryPostResponse> => {
+    params: QueryApiV1QueryPostParams, options?: RequestInit): Promise<queryApiV1QueryPostResponse> => {
   
   const res = await fetch(getQueryApiV1QueryPostUrl(params),
   {      
@@ -5114,7 +5114,7 @@ export type askApiV1AskPostResponseError = (askApiV1AskPostResponse400 | askApiV
 
 export type askApiV1AskPostResponse = (askApiV1AskPostResponseSuccess | askApiV1AskPostResponseError)
 
-export const getAskApiV1AskPostUrl = (params?: AskApiV1AskPostParams,) => {
+export const getAskApiV1AskPostUrl = (params: AskApiV1AskPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -5130,7 +5130,7 @@ export const getAskApiV1AskPostUrl = (params?: AskApiV1AskPostParams,) => {
 }
 
 export const askApiV1AskPost = async (queryReq: QueryReq,
-    params?: AskApiV1AskPostParams, options?: RequestInit): Promise<askApiV1AskPostResponse> => {
+    params: AskApiV1AskPostParams, options?: RequestInit): Promise<askApiV1AskPostResponse> => {
   
   const res = await fetch(getAskApiV1AskPostUrl(params),
   {      
@@ -5213,7 +5213,7 @@ export type askStreamApiV1AskStreamPostResponseError = (askStreamApiV1AskStreamP
 
 export type askStreamApiV1AskStreamPostResponse = (askStreamApiV1AskStreamPostResponseSuccess | askStreamApiV1AskStreamPostResponseError)
 
-export const getAskStreamApiV1AskStreamPostUrl = (params?: AskStreamApiV1AskStreamPostParams,) => {
+export const getAskStreamApiV1AskStreamPostUrl = (params: AskStreamApiV1AskStreamPostParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -5229,7 +5229,7 @@ export const getAskStreamApiV1AskStreamPostUrl = (params?: AskStreamApiV1AskStre
 }
 
 export const askStreamApiV1AskStreamPost = async (queryReq: QueryReq,
-    params?: AskStreamApiV1AskStreamPostParams, options?: RequestInit): Promise<askStreamApiV1AskStreamPostResponse> => {
+    params: AskStreamApiV1AskStreamPostParams, options?: RequestInit): Promise<askStreamApiV1AskStreamPostResponse> => {
   
   const res = await fetch(getAskStreamApiV1AskStreamPostUrl(params),
   {      
@@ -6283,6 +6283,8 @@ export const readyzReadyzGet = async ( options?: RequestInit): Promise<readyzRea
 
 Returns:
     Prometheus text format metrics
+
+Requires X-API-Key when METRICS_REQUIRE_AUTH=true.
  * @summary Metrics
  */
 export type metricsMetricsGetResponse200 = {
