@@ -1345,7 +1345,7 @@ def delete_workspace_document(
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
-    _role: None = Depends(require_admin()),
+    _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -1377,7 +1377,7 @@ async def upload_workspace_document(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_admin()),
+    _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -1408,7 +1408,7 @@ def reprocess_workspace_document(
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
-    _role: None = Depends(require_admin()),
+    _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
