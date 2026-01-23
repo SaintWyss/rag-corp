@@ -28,7 +28,7 @@ import threading
 from psycopg_pool import ConnectionPool
 from pgvector.psycopg import register_vector
 
-from ...logger import logger
+from ...platform.logger import logger
 
 
 # R: Singleton pool instance
@@ -47,7 +47,7 @@ def _configure_connection(conn) -> None:
     register_vector(conn)
 
     # R: Set statement timeout if configured
-    from ...config import get_settings
+    from ...platform.config import get_settings
 
     timeout_ms = get_settings().db_statement_timeout_ms
     if timeout_ms > 0:

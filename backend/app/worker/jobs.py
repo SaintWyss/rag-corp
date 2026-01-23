@@ -10,12 +10,12 @@ from uuid import UUID
 
 from rq import get_current_job
 
-from .application.use_cases import (
+from ..application.use_cases import (
     ProcessUploadedDocumentInput,
     ProcessUploadedDocumentUseCase,
 )
-from .context import clear_context, request_id_var
-from .container import (
+from ..context import clear_context, request_id_var
+from ..container import (
     get_document_repository,
     get_document_text_extractor,
     get_embedding_service,

@@ -19,8 +19,8 @@ from typing import List
 
 from ...domain.cache import EmbeddingCachePort
 from ...domain.services import EmbeddingService
-from ...exceptions import EmbeddingError
-from ...metrics import record_embedding_cache_hit, record_embedding_cache_miss
+from ...platform.exceptions import EmbeddingError
+from ...platform.metrics import record_embedding_cache_hit, record_embedding_cache_miss
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _TEXT_NORMALIZATION_VERSION = "v1"

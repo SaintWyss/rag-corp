@@ -20,7 +20,7 @@ from ...domain.repositories import (
     WorkspaceAclRepository,
 )
 from ...domain.workspace_policy import WorkspaceActor
-from ...pagination import decode_cursor, encode_cursor
+from ...platform.pagination import decode_cursor, encode_cursor
 from .document_results import ListDocumentsResult
 from .workspace_access import resolve_workspace_for_read
 

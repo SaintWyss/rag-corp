@@ -19,7 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from ...logger import logger
+from ...platform.logger import logger
 
 
 # R: Directory containing prompt templates
@@ -96,7 +96,7 @@ def get_prompt_loader() -> PromptLoader:
     """
     R: Get singleton PromptLoader with configured version.
     """
-    from ...config import get_settings
+    from ...platform.config import get_settings
 
     settings = get_settings()
     return PromptLoader(version=settings.prompt_version)

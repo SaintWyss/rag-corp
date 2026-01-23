@@ -1,21 +1,21 @@
+import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
-  ArchiveWorkspaceRes,
-  CreateWorkspaceReq,
-  DocumentDetailRes,
-  DocumentSummaryRes,
-  DocumentsListRes,
-  IngestBatchReq,
-  IngestBatchRes,
-  IngestTextReq,
-  IngestTextRes,
-  QueryReq,
-  QueryRes,
-  ReprocessDocumentRes,
-  UploadDocumentRes,
-  WorkspaceRes,
-  WorkspacesListRes,
+    ArchiveWorkspaceRes,
+    CreateWorkspaceReq,
+    DocumentDetailRes,
+    DocumentSummaryRes,
+    DocumentsListRes,
+    IngestBatchReq,
+    IngestBatchRes,
+    IngestTextReq,
+    IngestTextRes,
+    QueryReq,
+    QueryRes,
+    ReprocessDocumentRes,
+    UploadDocumentRes,
+    WorkspaceRes,
+    WorkspacesListRes,
 } from "@contracts/src/generated";
-import { getStoredApiKey } from "./apiKey";
 
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
 

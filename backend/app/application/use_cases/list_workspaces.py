@@ -15,7 +15,7 @@ from uuid import UUID
 
 from ...domain.repositories import WorkspaceRepository, WorkspaceAclRepository
 from ...domain.workspace_policy import WorkspaceActor, can_read_workspace
-from ...users import UserRole
+from ...identity.users import UserRole
 from ...domain.entities import WorkspaceVisibility
 from .workspace_results import (
     WorkspaceError,

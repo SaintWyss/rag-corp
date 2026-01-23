@@ -1,21 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { WorkspaceVisibility } from "@contracts/src/generated";
+import {
+    archiveWorkspace,
+    createWorkspace,
+    getCurrentUser,
+    listWorkspaces,
+    publishWorkspace,
+    shareWorkspace,
+    type CurrentUser,
+    type WorkspaceSummary,
+} from "@/shared/api/api";
+import { getStoredApiKey } from "@/shared/lib/apiKey";
 import { AppShell } from "@/shared/ui/AppShell";
 import { NoticeBanner } from "@/shared/ui/NoticeBanner";
 import { StatusBanner } from "@/shared/ui/StatusBanner";
-import {
-  archiveWorkspace,
-  createWorkspace,
-  getCurrentUser,
-  listWorkspaces,
-  publishWorkspace,
-  shareWorkspace,
-  type CurrentUser,
-  type WorkspaceSummary,
-} from "@/shared/api/api";
-import { getStoredApiKey } from "@/shared/api/apiKey";
+import { WorkspaceVisibility } from "@contracts/src/generated";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type WorkspaceDraft = {
   name: string;

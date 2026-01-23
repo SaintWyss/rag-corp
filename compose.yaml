@@ -47,7 +47,12 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/healthz')"]
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as u; u.urlopen('http://localhost:8000/healthz')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,7 +81,7 @@ services:
     command:
       - sh
       - -c
-      - alembic upgrade head && python -m app.worker
+      - alembic upgrade head && python -m app.worker.worker
     depends_on:
       db:
         condition: service_healthy
@@ -86,7 +91,12 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8001/readyz')"]
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as u; u.urlopen('http://localhost:8001/readyz')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -97,7 +107,8 @@ services:
 
   web:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://rag-api:8000}
     ports:
@@ -131,9 +142,9 @@ services:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
     ports:
       - "9090:9090"
     restart: unless-stopped

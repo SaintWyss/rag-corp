@@ -21,7 +21,7 @@ from typing import List, Set
 from uuid import UUID
 
 from ..domain.entities import Chunk
-from ..logger import logger
+from ..platform.logger import logger
 
 
 # R: Delimiter to separate chunks (hard to inject)
@@ -147,7 +147,7 @@ def get_context_builder() -> ContextBuilder:
     """
     R: Get ContextBuilder with configured max_chars.
     """
-    from ..config import get_settings
+    from ..platform.config import get_settings
 
     settings = get_settings()
     return ContextBuilder(max_chars=settings.max_context_chars)

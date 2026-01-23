@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..users import UserRole
+from ..identity.users import UserRole
 
 
 _VALID_ROLES = {role.value for role in UserRole}

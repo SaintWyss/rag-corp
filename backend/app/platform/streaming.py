@@ -19,9 +19,9 @@ from typing import AsyncGenerator, List, Optional
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 
-from .domain.entities import Chunk, ConversationMessage
-from .domain.repositories import ConversationRepository
-from .domain.services import LLMService
+from ..domain.entities import Chunk, ConversationMessage
+from ..domain.repositories import ConversationRepository
+from ..domain.services import LLMService
 from .logger import logger
 
 

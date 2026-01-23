@@ -10,9 +10,9 @@
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { getWorkspaceDocument, queryWorkspace } from "@/shared/api/api";
-import { getStoredApiKey } from "@/shared/api/apiKey";
+import { getStoredApiKey } from "@/shared/lib/apiKey";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ChatRole = "user" | "assistant";
 type MessageStatus = "streaming" | "complete" | "error" | "cancelled";

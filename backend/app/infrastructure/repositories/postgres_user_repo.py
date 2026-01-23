@@ -11,9 +11,9 @@ from uuid import UUID, uuid4
 
 from psycopg_pool import ConnectionPool
 
-from ...exceptions import DatabaseError
-from ...logger import logger
-from ...users import User, UserRole
+from ...platform.exceptions import DatabaseError
+from ...platform.logger import logger
+from ...identity.users import User, UserRole
 
 
 def _get_pool() -> ConnectionPool:

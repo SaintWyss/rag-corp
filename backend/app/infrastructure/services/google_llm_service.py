@@ -33,8 +33,8 @@ from typing import Optional, List, AsyncGenerator
 from google import genai
 
 from ...domain.entities import Chunk
-from ...logger import logger
-from ...exceptions import LLMError
+from ...platform.logger import logger
+from ...platform.exceptions import LLMError
 from ..prompts import PromptLoader, get_prompt_loader
 from .retry import create_retry_decorator
 from ...application.context_builder import get_context_builder

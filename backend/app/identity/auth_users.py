@@ -17,11 +17,11 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
 from fastapi import Header, Request
 
-from .platform.config import get_settings
-from .platform.error_responses import forbidden, unauthorized
-from .platform.logger import logger
-from .identity.users import User, UserRole
-from .infrastructure.repositories.postgres_user_repo import (
+from ..platform.config import get_settings
+from ..platform.error_responses import forbidden, unauthorized
+from ..platform.logger import logger
+from .users import User, UserRole
+from ..infrastructure.repositories.postgres_user_repo import (
     get_user_by_email,
     get_user_by_id,
 )

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Iterable
 from uuid import UUID
 
-from ..users import UserRole
+from ..identity.users import UserRole
 from .entities import Workspace, WorkspaceVisibility
 
 

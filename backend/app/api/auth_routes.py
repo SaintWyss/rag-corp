@@ -23,10 +23,10 @@ from ..identity.auth_users import (
 from ..identity.dual_auth import require_admin, require_principal
 from ..platform.error_responses import OPENAPI_ERROR_RESPONSES, conflict, not_found, unauthorized
 from ..identity.rbac import Permission
-from .audit import emit_audit_event
-from .container import get_audit_repository
-from .domain.repositories import AuditEventRepository
-from .infrastructure.repositories.postgres_user_repo import (
+from ..audit import emit_audit_event
+from ..container import get_audit_repository
+from ..domain.repositories import AuditEventRepository
+from ..infrastructure.repositories.postgres_user_repo import (
     create_user,
     get_user_by_email,
     list_users,

@@ -16,7 +16,7 @@ from uuid import UUID
 from ..domain.entities import Chunk
 from ..domain.repositories import DocumentRepository
 from ..domain.services import EmbeddingService
-from ..timing import StageTimings
+from ..platform.timing import StageTimings
 from .context_builder import ContextBuilder, get_context_builder
 
 NO_RESULTS_ANSWER = "No encontré documentos relacionados a tu pregunta."

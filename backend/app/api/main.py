@@ -37,14 +37,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
 from .auth_routes import router as auth_router
 from ..platform.logger import logger
-from .container import get_document_repository
+from ..container import get_document_repository
 from ..platform.config import get_settings
 from ..platform.middleware import RequestContextMiddleware, BodyLimitMiddleware
 from ..platform.rate_limit import RateLimitMiddleware
 from ..identity.auth import is_auth_enabled
 from ..identity.rbac import require_metrics_permission
 from .versioning import include_versioned_routes
-from .infrastructure.db.pool import init_pool, close_pool
+from ..infrastructure.db.pool import init_pool, close_pool
 from .exception_handlers import register_exception_handlers
 from ..platform.security import SecurityHeadersMiddleware
 

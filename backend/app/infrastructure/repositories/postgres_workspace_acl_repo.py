@@ -13,8 +13,8 @@ from uuid import UUID
 
 from psycopg_pool import ConnectionPool
 
-from ...exceptions import DatabaseError
-from ...logger import logger
+from ...platform.exceptions import DatabaseError
+from ...platform.logger import logger
 
 
 class PostgresWorkspaceAclRepository:

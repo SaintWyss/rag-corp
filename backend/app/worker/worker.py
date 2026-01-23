@@ -12,8 +12,8 @@ from rq import Worker
 
 from ..platform.config import get_settings
 from ..platform.logger import logger
-from .worker.worker_server import start_worker_http_server
-from .infrastructure.db.pool import init_pool, close_pool
+from .worker_server import start_worker_http_server
+from ..infrastructure.db.pool import init_pool, close_pool
 
 
 def main() -> None:

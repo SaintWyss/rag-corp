@@ -13,7 +13,7 @@ import hashlib
 from typing import AsyncGenerator, List
 
 from ...domain.entities import Chunk
-from ...logger import logger
+from ...platform.logger import logger
 
 _STREAM_CHUNK_SIZE = 16
 

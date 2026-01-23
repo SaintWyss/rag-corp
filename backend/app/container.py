@@ -28,7 +28,7 @@ Notes:
 from functools import lru_cache
 import os
 
-from .config import get_settings
+from .platform.config import get_settings
 from .domain.repositories import (
     DocumentRepository,
     ConversationRepository,
