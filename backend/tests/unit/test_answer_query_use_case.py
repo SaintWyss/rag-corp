@@ -26,7 +26,7 @@ from app.application.use_cases.answer_query import AnswerQueryUseCase, AnswerQue
 from app.application.use_cases.document_results import DocumentErrorCode
 from app.domain.entities import Chunk, QueryResult, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
-from app.users import UserRole
+from app.identity.users import UserRole
 
 
 class _WorkspaceRepo:

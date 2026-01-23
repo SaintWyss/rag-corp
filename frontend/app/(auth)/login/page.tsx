@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,8 +34,12 @@ export default function LoginPage() {
       // Backend sets HttpOnly cookie. We don't need to store tokens in JS.
       router.replace(next);
       router.refresh();
-    } catch (err: any) {
-      setError(err?.message ?? "Login failed");
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Login failed");
+      }
     } finally {
       setLoading(false);
     }

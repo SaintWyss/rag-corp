@@ -25,7 +25,7 @@ from app.application.use_cases.search_chunks import (
 )
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
-from app.users import UserRole
+from app.identity.users import UserRole
 
 
 class _WorkspaceRepo:

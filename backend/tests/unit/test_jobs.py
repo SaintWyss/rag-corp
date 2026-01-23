@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.jobs import process_document_job
+from app.worker.jobs import process_document_job
 
 
 pytestmark = pytest.mark.unit
@@ -21,17 +21,17 @@ def test_process_document_job_invokes_use_case():
     workspace_id = uuid4()
     mock_use_case = MagicMock()
 
-    with patch("app.jobs.get_document_repository", return_value=MagicMock()):
-        with patch("app.jobs.get_file_storage", return_value=MagicMock()):
+    with patch("app.worker.jobs.get_document_repository", return_value=MagicMock()):
+        with patch("app.worker.jobs.get_file_storage", return_value=MagicMock()):
             with patch(
-                "app.jobs.get_document_text_extractor", return_value=MagicMock()
+                "app.worker.jobs.get_document_text_extractor", return_value=MagicMock()
             ):
-                with patch("app.jobs.get_text_chunker", return_value=MagicMock()):
+                with patch("app.worker.jobs.get_text_chunker", return_value=MagicMock()):
                     with patch(
-                        "app.jobs.get_embedding_service", return_value=MagicMock()
+                        "app.worker.jobs.get_embedding_service", return_value=MagicMock()
                     ):
                         with patch(
-                            "app.jobs.ProcessUploadedDocumentUseCase",
+                            "app.worker.jobs.ProcessUploadedDocumentUseCase",
                             return_value=mock_use_case,
                         ):
                             process_document_job(

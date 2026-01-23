@@ -15,12 +15,12 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_users import create_access_token, hash_password
+from app.identity.auth_users import create_access_token, hash_password
 from app.application.use_cases.reprocess_document import ReprocessDocumentUseCase
 from app.domain.entities import Document
 from app.domain.entities import Workspace, WorkspaceVisibility
-from app.exception_handlers import register_exception_handlers
-from app.users import User, UserRole
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
@@ -120,8 +120,8 @@ def test_reprocess_admin_enqueues(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(admin, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             client = TestClient(app)
             response = client.post(
                 f"/v1/documents/{doc.id}/reprocess",
@@ -153,8 +153,8 @@ def test_reprocess_rejects_employee_jwt(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(employee, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=employee):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             client = TestClient(app)
             response = client.post(
                 f"/v1/documents/{uuid4()}/reprocess",
@@ -181,8 +181,8 @@ def test_reprocess_processing_returns_conflict(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(admin, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             client = TestClient(app)
             response = client.post(
                 f"/v1/documents/{doc.id}/reprocess",

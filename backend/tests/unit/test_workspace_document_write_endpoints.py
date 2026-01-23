@@ -17,14 +17,14 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_users import create_access_token, hash_password
+from app.identity.auth_users import create_access_token, hash_password
 from app.application.use_cases.delete_document import DeleteDocumentUseCase
 from app.application.use_cases.get_workspace import GetWorkspaceUseCase
 from app.application.use_cases.reprocess_document import ReprocessDocumentUseCase
 from app.application.use_cases.upload_document import UploadDocumentUseCase
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
-from app.exception_handlers import register_exception_handlers
-from app.users import User, UserRole
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
@@ -183,8 +183,8 @@ def test_workspace_upload_allows_owner_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(owner, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=owner):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=owner):
             client = TestClient(app)
             response = client.post(
                 f"/v1/workspaces/{workspace_id}/documents/upload",
@@ -224,8 +224,8 @@ def test_workspace_upload_denies_viewer_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(viewer, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=viewer):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=viewer):
             client = TestClient(app)
             response = client.post(
                 f"/v1/workspaces/{workspace_id}/documents/upload",
@@ -264,8 +264,8 @@ def test_workspace_upload_allows_admin(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(admin, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             client = TestClient(app)
             response = client.post(
                 f"/v1/workspaces/{workspace_id}/documents/upload",
@@ -301,8 +301,8 @@ def test_workspace_delete_allows_owner_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(owner, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=owner):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=owner):
             client = TestClient(app)
             response = client.delete(
                 f"/v1/workspaces/{workspace_id}/documents/{uuid4()}",
@@ -334,8 +334,8 @@ def test_workspace_delete_denies_viewer_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(viewer, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=viewer):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=viewer):
             client = TestClient(app)
             response = client.delete(
                 f"/v1/workspaces/{workspace_id}/documents/{uuid4()}",
@@ -367,8 +367,8 @@ def test_workspace_delete_allows_admin(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(admin, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             client = TestClient(app)
             response = client.delete(
                 f"/v1/workspaces/{workspace_id}/documents/{uuid4()}",
@@ -401,8 +401,8 @@ def test_workspace_reprocess_allows_owner_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(owner, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=owner):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=owner):
             client = TestClient(app)
             response = client.post(
                 f"/v1/workspaces/{workspace_id}/documents/{uuid4()}/reprocess",
@@ -435,8 +435,8 @@ def test_workspace_reprocess_denies_viewer_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(viewer, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=viewer):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=viewer):
             client = TestClient(app)
             response = client.post(
                 f"/v1/workspaces/{workspace_id}/documents/{uuid4()}/reprocess",
@@ -469,8 +469,8 @@ def test_workspace_reprocess_allows_admin(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(admin, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             client = TestClient(app)
             response = client.post(
                 f"/v1/workspaces/{workspace_id}/documents/{uuid4()}/reprocess",

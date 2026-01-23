@@ -9,8 +9,8 @@ import pytest
 from fastapi import HTTPException
 from fastapi.routing import APIRoute
 
-from app.auth import _hash_key, clear_keys_cache
-from app.rbac import (
+from app.identity.auth import _hash_key, clear_keys_cache
+from app.identity.rbac import (
     DEFAULT_ROLES,
     Permission,
     RBACConfig,
@@ -28,7 +28,7 @@ class TestRequirePermissions:
         clear_keys_cache()
         clear_rbac_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
             mock_request = MagicMock()
             mock_request.url.path = "/v1/ask"
@@ -45,7 +45,7 @@ class TestRequirePermissions:
         clear_keys_cache()
         clear_rbac_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
             mock_request = MagicMock()
             mock_request.url.path = "/v1/ask"
@@ -62,7 +62,7 @@ class TestRequirePermissions:
         clear_keys_cache()
         clear_rbac_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ingest"]}
             mock_request = MagicMock()
             mock_request.url.path = "/v1/ask"
@@ -79,7 +79,7 @@ class TestRequirePermissions:
         clear_keys_cache()
         clear_rbac_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
             mock_request = MagicMock()
             mock_request.url.path = "/v1/ask"
@@ -103,8 +103,8 @@ class TestRequirePermissions:
         )
 
         with (
-            patch("app.auth.get_keys_config") as mock_config,
-            patch("app.rbac.get_rbac_config") as mock_rbac,
+            patch("app.identity.auth.get_keys_config") as mock_config,
+            patch("app.identity.rbac.get_rbac_config") as mock_rbac,
         ):
             mock_config.return_value = {key: ["ask"]}
             mock_rbac.return_value = rbac_config

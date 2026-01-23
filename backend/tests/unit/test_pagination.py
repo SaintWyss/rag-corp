@@ -1,6 +1,6 @@
 """Unit tests for pagination utilities."""
 
-from app.pagination import encode_cursor, decode_cursor, paginate
+from app.platform.pagination import encode_cursor, decode_cursor, paginate
 
 
 class TestCursor:

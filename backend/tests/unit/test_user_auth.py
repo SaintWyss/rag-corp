@@ -17,9 +17,9 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.auth_routes import router as auth_router
-from app.auth_users import create_access_token, hash_password, require_role
-from app.exception_handlers import register_exception_handlers
-from app.users import User, UserRole
+from app.identity.auth_users import create_access_token, hash_password, require_role
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
@@ -73,8 +73,8 @@ def test_login_ok():
     user = _user(role=UserRole.EMPLOYEE, email="user@example.com", password="secret")
     app = _build_auth_app()
 
-    with patch("app.auth_users.get_auth_settings", return_value=_auth_settings()):
-        with patch("app.auth_users.get_user_by_email", return_value=user):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=_auth_settings()):
+        with patch("app.identity.auth_users.get_user_by_email", return_value=user):
             client = TestClient(app)
             response = client.post(
                 "/auth/login",
@@ -93,8 +93,8 @@ def test_login_fail_wrong_password():
     user = _user(role=UserRole.EMPLOYEE, email="user@example.com", password="secret")
     app = _build_auth_app()
 
-    with patch("app.auth_users.get_auth_settings", return_value=_auth_settings()):
-        with patch("app.auth_users.get_user_by_email", return_value=user):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=_auth_settings()):
+        with patch("app.identity.auth_users.get_user_by_email", return_value=user):
             client = TestClient(app)
             response = client.post(
                 "/auth/login",
@@ -125,16 +125,16 @@ def test_require_role_checks():
     app = _build_role_app()
     client = TestClient(app)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin_user):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin_user):
             response = client.get(
                 "/admin", headers={"Authorization": f"Bearer {admin_token}"}
             )
             assert response.status_code == 200
             assert response.json() == {"ok": True}
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=employee_user):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=employee_user):
             response = client.get(
                 "/admin", headers={"Authorization": f"Bearer {employee_token}"}
             )

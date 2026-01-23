@@ -15,11 +15,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_users import create_access_token, hash_password
+from app.identity.auth_users import create_access_token, hash_password
 from app.application.use_cases.upload_document import UploadDocumentUseCase
 from app.domain.entities import Workspace, WorkspaceVisibility
-from app.exception_handlers import register_exception_handlers
-from app.users import User, UserRole
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
@@ -103,8 +103,8 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
         app, routes, workspace_id, mock_repo, mock_storage, mock_queue
     )
 
-    with patch("app.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
-        with patch("app.rbac.get_rbac_config", return_value=None):
+    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
+        with patch("app.identity.rbac.get_rbac_config", return_value=None):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
@@ -146,8 +146,8 @@ def test_upload_rejects_invalid_mime(monkeypatch):
         app, routes, workspace_id, mock_repo, mock_storage, mock_queue
     )
 
-    with patch("app.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
-        with patch("app.rbac.get_rbac_config", return_value=None):
+    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
+        with patch("app.identity.rbac.get_rbac_config", return_value=None):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
@@ -182,8 +182,8 @@ def test_upload_rejects_employee_jwt(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(employee, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=employee):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",
@@ -213,8 +213,8 @@ def test_upload_rejects_api_key_without_permission(monkeypatch):
         app, routes, workspace_id, mock_repo, mock_storage, mock_queue
     )
 
-    with patch("app.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
-        with patch("app.rbac.get_rbac_config", return_value=None):
+    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
+        with patch("app.identity.rbac.get_rbac_config", return_value=None):
             client = TestClient(app)
             response = client.post(
                 "/v1/documents/upload",

@@ -14,12 +14,12 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_users import create_access_token, hash_password
+from app.identity.auth_users import create_access_token, hash_password
 from app.dual_auth import require_admin, require_employee_or_admin, require_principal
-from app.exception_handlers import register_exception_handlers
-from app.rbac import DEFAULT_ROLES, Permission, RBACConfig
-from app.users import User, UserRole
-from app.auth import _hash_key
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.rbac import DEFAULT_ROLES, Permission, RBACConfig
+from app.identity.users import User, UserRole
+from app.identity.auth import _hash_key
 
 
 pytestmark = pytest.mark.unit
@@ -87,8 +87,8 @@ def test_jwt_admin_allowed_for_admin_endpoints():
     settings = _auth_settings()
     token, _ = create_access_token(admin, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             response = client.post(
                 "/ingest",
                 headers={"Authorization": f"Bearer {token}"},
@@ -109,8 +109,8 @@ def test_jwt_employee_denied_for_admin_endpoints():
     settings = _auth_settings()
     token, _ = create_access_token(employee, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=employee):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             response = client.post(
                 "/ingest",
                 headers={"Authorization": f"Bearer {token}"},
@@ -131,8 +131,8 @@ def test_jwt_employee_allowed_for_read_endpoints():
     settings = _auth_settings()
     token, _ = create_access_token(employee, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=employee):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             response = client.get(
                 "/documents",
                 headers={"Authorization": f"Bearer {token}"},
@@ -150,8 +150,8 @@ def test_api_key_allows_permissions_legacy_scopes():
     app = _build_app()
     client = TestClient(app)
 
-    with patch("app.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
-        with patch("app.rbac.get_rbac_config", return_value=None):
+    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
+        with patch("app.identity.rbac.get_rbac_config", return_value=None):
             response = client.post("/ask", headers={"X-API-Key": "valid-key"})
             assert response.status_code == 200
 
@@ -167,7 +167,7 @@ def test_api_key_allows_permissions_rbac():
     roles = DEFAULT_ROLES.copy()
     rbac_config = RBACConfig(roles=roles, key_roles={key_hash: "admin"})
 
-    with patch("app.auth.get_keys_config", return_value={}):
-        with patch("app.rbac.get_rbac_config", return_value=rbac_config):
+    with patch("app.identity.auth.get_keys_config", return_value={}):
+        with patch("app.identity.rbac.get_rbac_config", return_value=rbac_config):
             response = client.post("/ingest", headers={"X-API-Key": api_key})
             assert response.status_code == 200

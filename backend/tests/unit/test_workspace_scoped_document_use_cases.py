@@ -15,7 +15,7 @@ from app.application.use_cases.list_documents import ListDocumentsUseCase
 from app.application.use_cases.document_results import DocumentErrorCode
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
-from app.users import UserRole
+from app.identity.users import UserRole
 
 
 class _WorkspaceRepo:

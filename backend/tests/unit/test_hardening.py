@@ -37,7 +37,7 @@ class TestBodyLimitMiddleware:
 
         middleware = BodyLimitMiddleware(app=MagicMock())
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.max_body_bytes = 10_000_000  # 10MB
 
             response = await middleware.dispatch(mock_request, mock_call_next)
@@ -60,7 +60,7 @@ class TestBodyLimitMiddleware:
 
         middleware = BodyLimitMiddleware(app=MagicMock())
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.max_body_bytes = 10_000_000  # 10MB limit
 
             response = await middleware.dispatch(mock_request, mock_call_next)
@@ -87,7 +87,7 @@ class TestBodyLimitMiddleware:
 
         middleware = BodyLimitMiddleware(app=MagicMock())
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.max_body_bytes = 10_000_000
 
             response = await middleware.dispatch(mock_request, mock_call_next)

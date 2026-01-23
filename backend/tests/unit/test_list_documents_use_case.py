@@ -12,8 +12,8 @@ import pytest
 from app.application.use_cases.list_documents import ListDocumentsUseCase
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
-from app.pagination import encode_cursor
-from app.users import UserRole
+from app.platform.pagination import encode_cursor
+from app.identity.users import UserRole
 
 
 pytestmark = pytest.mark.unit

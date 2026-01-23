@@ -17,7 +17,7 @@ from app.domain.workspace_policy import (
     can_read_workspace,
     can_write_workspace,
 )
-from app.users import UserRole
+from app.identity.users import UserRole
 
 
 pytestmark = pytest.mark.unit

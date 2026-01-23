@@ -4,7 +4,7 @@ Tests for RBAC (Role-Based Access Control)
 
 from unittest.mock import patch
 
-from app.rbac import (
+from app.identity.rbac import (
     Permission,
     Role,
     RBACConfig,

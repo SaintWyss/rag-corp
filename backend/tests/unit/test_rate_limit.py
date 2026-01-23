@@ -217,7 +217,7 @@ class TestRateLimitHelpers:
         """Should return True when rate limit is configured."""
         from app.rate_limit import is_rate_limiting_enabled
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.rate_limit_rps = 10.0
             mock_settings.return_value.rate_limit_burst = 20
 
@@ -227,7 +227,7 @@ class TestRateLimitHelpers:
         """Should return False when RPS is 0."""
         from app.rate_limit import is_rate_limiting_enabled
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.rate_limit_rps = 0
             mock_settings.return_value.rate_limit_burst = 20
 
@@ -237,7 +237,7 @@ class TestRateLimitHelpers:
         """Reset should clear the global limiter."""
         from app.rate_limit import get_rate_limiter, reset_rate_limiter
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.rate_limit_rps = 10.0
             mock_settings.return_value.rate_limit_burst = 20
 

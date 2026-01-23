@@ -22,28 +22,28 @@ class TestAPIKeyValidator:
 
     def test_validate_key_returns_true_for_valid_key(self):
         """Valid key should be accepted."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ask"]})
         assert validator.validate_key("test-key") is True
 
     def test_validate_key_returns_false_for_invalid_key(self):
         """Invalid key should be rejected."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ask"]})
         assert validator.validate_key("wrong-key") is False
 
     def test_validate_key_returns_false_for_empty_key(self):
         """Empty key should be rejected."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ask"]})
         assert validator.validate_key("") is False
 
     def test_validate_scope_returns_true_when_has_scope(self):
         """Key with required scope should pass."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ingest", "ask"]})
         assert validator.validate_scope("test-key", "ingest") is True
@@ -51,14 +51,14 @@ class TestAPIKeyValidator:
 
     def test_validate_scope_returns_false_when_missing_scope(self):
         """Key without required scope should fail."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ask"]})
         assert validator.validate_scope("test-key", "ingest") is False
 
     def test_wildcard_scope_grants_all_access(self):
         """Wildcard scope '*' should grant all access."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"admin-key": ["*"]})
         assert validator.validate_scope("admin-key", "ingest") is True
@@ -67,7 +67,7 @@ class TestAPIKeyValidator:
 
     def test_get_scopes_returns_scopes_for_valid_key(self):
         """Get scopes should return list for valid key."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ingest", "ask"]})
         scopes = validator.get_scopes("test-key")
@@ -75,7 +75,7 @@ class TestAPIKeyValidator:
 
     def test_get_scopes_returns_empty_for_invalid_key(self):
         """Get scopes should return empty list for invalid key."""
-        from app.auth import APIKeyValidator
+        from app.identity.auth import APIKeyValidator
 
         validator = APIKeyValidator({"test-key": ["ask"]})
         assert validator.get_scopes("wrong-key") == []
@@ -87,19 +87,19 @@ class TestConstantTimeCompare:
 
     def test_constant_time_compare_equal_strings(self):
         """Equal strings should return True."""
-        from app.auth import _constant_time_compare
+        from app.identity.auth import _constant_time_compare
 
         assert _constant_time_compare("abc", "abc") is True
 
     def test_constant_time_compare_different_strings(self):
         """Different strings should return False."""
-        from app.auth import _constant_time_compare
+        from app.identity.auth import _constant_time_compare
 
         assert _constant_time_compare("abc", "xyz") is False
 
     def test_constant_time_compare_different_lengths(self):
         """Strings of different length should return False."""
-        from app.auth import _constant_time_compare
+        from app.identity.auth import _constant_time_compare
 
         assert _constant_time_compare("abc", "abcd") is False
 
@@ -111,7 +111,7 @@ class TestConstantTimeCompare:
         We verify the implementation uses the correct algorithm.
         """
         import hmac
-        from app.auth import _constant_time_compare
+        from app.identity.auth import _constant_time_compare
 
         # R: Verify our function behaves like hmac.compare_digest
         test_cases = [
@@ -134,14 +134,14 @@ class TestHashKey:
 
     def test_hash_key_returns_12_char_string(self):
         """Hash should be truncated to 12 characters."""
-        from app.auth import _hash_key
+        from app.identity.auth import _hash_key
 
         result = _hash_key("test-key")
         assert len(result) == 12
 
     def test_hash_key_is_deterministic(self):
         """Same input should produce same hash."""
-        from app.auth import _hash_key
+        from app.identity.auth import _hash_key
 
         hash1 = _hash_key("test-key")
         hash2 = _hash_key("test-key")
@@ -149,7 +149,7 @@ class TestHashKey:
 
     def test_hash_key_different_for_different_keys(self):
         """Different keys should produce different hashes."""
-        from app.auth import _hash_key
+        from app.identity.auth import _hash_key
 
         hash1 = _hash_key("key-1")
         hash2 = _hash_key("key-2")
@@ -162,11 +162,11 @@ class TestParseKeysConfig:
 
     def test_parse_valid_json_config(self):
         """Valid JSON should be parsed correctly."""
-        from app.auth import _parse_keys_config, clear_keys_cache
+        from app.identity.auth import _parse_keys_config, clear_keys_cache
 
         clear_keys_cache()
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.api_keys_config = (
                 '{"key1": ["ask"], "key2": ["ingest"]}'
             )
@@ -178,11 +178,11 @@ class TestParseKeysConfig:
 
     def test_parse_empty_config_returns_empty_dict(self):
         """Empty config should return empty dict (auth disabled)."""
-        from app.auth import _parse_keys_config, clear_keys_cache
+        from app.identity.auth import _parse_keys_config, clear_keys_cache
 
         clear_keys_cache()
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.api_keys_config = ""
             result = _parse_keys_config()
 
@@ -192,11 +192,11 @@ class TestParseKeysConfig:
 
     def test_parse_invalid_json_returns_empty_dict(self):
         """Invalid JSON should return empty dict with warning."""
-        from app.auth import _parse_keys_config, clear_keys_cache
+        from app.identity.auth import _parse_keys_config, clear_keys_cache
 
         clear_keys_cache()
 
-        with patch("app.config.get_settings") as mock_settings:
+        with patch("app.platform.config.get_settings") as mock_settings:
             mock_settings.return_value.api_keys_config = "not-valid-json"
             result = _parse_keys_config()
 
@@ -212,12 +212,12 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_missing_key_raises_401(self):
         """Missing API key should raise 401."""
-        from app.auth import require_scope, clear_keys_cache
+        from app.identity.auth import require_scope, clear_keys_cache
         from fastapi import HTTPException
 
         clear_keys_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
 
             mock_request = MagicMock()
@@ -234,12 +234,12 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_invalid_key_raises_403(self):
         """Invalid API key should raise 403."""
-        from app.auth import require_scope, clear_keys_cache
+        from app.identity.auth import require_scope, clear_keys_cache
         from fastapi import HTTPException
 
         clear_keys_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
 
             mock_request = MagicMock()
@@ -256,12 +256,12 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_key_without_scope_raises_403(self):
         """Key without required scope should raise 403."""
-        from app.auth import require_scope, clear_keys_cache
+        from app.identity.auth import require_scope, clear_keys_cache
         from fastapi import HTTPException
 
         clear_keys_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {
                 "read-only-key": ["ask"]
             }  # Only has "ask" scope
@@ -281,11 +281,11 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_valid_key_with_scope_passes(self):
         """Valid key with required scope should pass."""
-        from app.auth import require_scope, clear_keys_cache
+        from app.identity.auth import require_scope, clear_keys_cache
 
         clear_keys_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask", "ingest"]}
 
             mock_request = MagicMock()
@@ -301,11 +301,11 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_auth_disabled_when_no_keys_configured(self):
         """When no keys configured, auth should be disabled."""
-        from app.auth import require_scope, clear_keys_cache
+        from app.identity.auth import require_scope, clear_keys_cache
 
         clear_keys_cache()
 
-        with patch("app.auth.get_keys_config") as mock_config:
+        with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {}  # No keys = auth disabled
 
             mock_request = MagicMock()

@@ -27,7 +27,7 @@ from app.application.use_cases.update_workspace import UpdateWorkspaceUseCase
 from app.application.use_cases.workspace_results import WorkspaceErrorCode
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
-from app.users import UserRole
+from app.identity.users import UserRole
 
 
 pytestmark = pytest.mark.unit

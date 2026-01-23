@@ -16,10 +16,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth_users import create_access_token, hash_password
+from app.identity.auth_users import create_access_token, hash_password
 from app.domain.audit import AuditEvent
-from app.exception_handlers import register_exception_handlers
-from app.users import User, UserRole
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.users import User, UserRole
 
 
 pytestmark = pytest.mark.unit
@@ -90,8 +90,8 @@ def test_admin_audit_forbidden_for_employee(monkeypatch):
     settings = _auth_settings()
     token, _ = create_access_token(employee, settings=settings)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=employee):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             client = TestClient(app)
             response = client.get(
                 "/v1/admin/audit",
@@ -127,8 +127,8 @@ def test_admin_audit_filters_and_pagination(monkeypatch):
     start_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
     end_at = datetime(2024, 1, 3, tzinfo=timezone.utc)
 
-    with patch("app.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.auth_users.get_user_by_id", return_value=admin):
+    with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
+        with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             client = TestClient(app)
             response = client.get(
                 "/v1/admin/audit",

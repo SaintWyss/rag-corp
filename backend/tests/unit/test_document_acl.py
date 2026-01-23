@@ -9,10 +9,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.access_control import can_access_document, filter_documents
+from app.identity.access_control import can_access_document, filter_documents
 from app.domain.entities import Document
 from app.dual_auth import Principal, PrincipalType, ServicePrincipal, UserPrincipal
-from app.users import UserRole
+from app.identity.users import UserRole
 
 
 pytestmark = pytest.mark.unit

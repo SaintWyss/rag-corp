@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app import config
+from app.platform import config
 from app.api.main import app as main_app
 from app.security import SecurityHeadersMiddleware
 

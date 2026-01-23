@@ -13,8 +13,8 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth import clear_keys_cache, require_scope
-from app.exception_handlers import register_exception_handlers
+from app.identity.auth import clear_keys_cache, require_scope
+from app.api.exception_handlers import register_exception_handlers
 from app.middleware import BodyLimitMiddleware
 from app.rate_limit import RateLimitMiddleware, reset_rate_limiter
 
@@ -59,7 +59,7 @@ def _settings(
 
 @pytest.mark.unit
 def test_auth_missing_key_rfc7807():
-    with patch("app.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
+    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
         clear_keys_cache()
         reset_rate_limiter()
         client = TestClient(_build_app())
@@ -79,7 +79,7 @@ def test_auth_missing_key_rfc7807():
 @pytest.mark.unit
 def test_auth_invalid_key_rfc7807():
     settings = _settings(api_keys_config='{"valid-key": ["ask"]}')
-    with patch("app.config.get_settings", return_value=settings):
+    with patch("app.platform.config.get_settings", return_value=settings):
         clear_keys_cache()
         reset_rate_limiter()
         client = TestClient(_build_app())
@@ -98,7 +98,7 @@ def test_auth_invalid_key_rfc7807():
 @pytest.mark.unit
 def test_rate_limit_rfc7807():
     settings = _settings(rate_limit_rps=0.01, rate_limit_burst=1)
-    with patch("app.config.get_settings", return_value=settings):
+    with patch("app.platform.config.get_settings", return_value=settings):
         clear_keys_cache()
         reset_rate_limiter()
         client = TestClient(_build_app())
@@ -123,7 +123,7 @@ def test_rate_limit_rfc7807():
 @pytest.mark.unit
 def test_payload_too_large_rfc7807():
     settings = _settings(max_body_bytes=5)
-    with patch("app.config.get_settings", return_value=settings):
+    with patch("app.platform.config.get_settings", return_value=settings):
         clear_keys_cache()
         reset_rate_limiter()
         client = TestClient(_build_app())

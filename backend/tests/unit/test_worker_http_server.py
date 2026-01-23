@@ -1,7 +1,7 @@
 import http.client
 import json
 
-from app import worker_server
+from app.worker import worker_server
 
 
 def _request(port: int, path: str) -> tuple[int, bytes, dict[str, str]]:
