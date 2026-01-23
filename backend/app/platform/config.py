@@ -143,6 +143,13 @@ class Settings(BaseSettings):
     retry_base_delay_seconds: float = 1.0
     retry_max_delay_seconds: float = 30.0
 
+    # Dev Tools (Backend Safe)
+    dev_seed_admin: bool = False
+    dev_seed_admin_email: str = "admin@local"
+    dev_seed_admin_password: str = "admin"
+    dev_seed_admin_role: str = "admin"
+    dev_seed_admin_force_reset: bool = False
+
     # Health Check Configuration
     healthcheck_google_enabled: bool = True  # Include Google API in full health check
 

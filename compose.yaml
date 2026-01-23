@@ -20,11 +20,19 @@ services:
     build:
       context: ./backend
     environment:
+      APP_ENV: ${APP_ENV}
       DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
       # Pasamos la variable del host al contenedor
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       FAKE_LLM: ${FAKE_LLM:-}
       FAKE_EMBEDDINGS: ${FAKE_EMBEDDINGS:-}
+      # Dev Seed Admin
+      DEV_SEED_ADMIN: ${DEV_SEED_ADMIN:-0}
+      DEV_SEED_ADMIN_EMAIL: ${DEV_SEED_ADMIN_EMAIL:-admin@local}
+      DEV_SEED_ADMIN_PASSWORD: ${DEV_SEED_ADMIN_PASSWORD:-admin}
+      DEV_SEED_ADMIN_ROLE: ${DEV_SEED_ADMIN_ROLE:-admin}
+      DEV_SEED_ADMIN_FORCE_RESET: ${DEV_SEED_ADMIN_FORCE_RESET:-0}
+      # Other config
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
       RBAC_CONFIG: ${RBAC_CONFIG:-}
@@ -115,6 +123,12 @@ services:
       - "3000:3000"
     depends_on:
       - rag-api
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/frontend/node_modules
+      - /app/frontend/.next
+    command: pnpm -C frontend dev
     profiles:
       - e2e
 

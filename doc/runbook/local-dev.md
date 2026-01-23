@@ -21,6 +21,11 @@ pnpm dev
 - API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
 
+**Admin (Auto-Seed):**
+Para crear automáticamente un admin al levantar el backend (solo local):
+`DEV_SEED_ADMIN=1` -> Crea user `admin@local` / `admin`.
+NO usar en producción (el backend fallará al inicio por seguridad).
+
 ---
 
 ## Docker Compose perfiles

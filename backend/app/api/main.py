@@ -47,6 +47,7 @@ from .versioning import include_versioned_routes
 from ..infrastructure.db.pool import init_pool, close_pool
 from .exception_handlers import register_exception_handlers
 from ..platform.security import SecurityHeadersMiddleware
+from ..application.dev_seed_admin import ensure_dev_admin
 
 
 @asynccontextmanager
@@ -56,6 +57,14 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     if settings.is_production():
         settings.validate_security_requirements()
+
+    # R: Run dev seed logic (will fail-fast if unsafe configuration)
+    try:
+        ensure_dev_admin(settings)
+    except Exception as e:
+        logger.error(f"Startup failed: {e}")
+        # Re-raise to crash container if config is invalid
+        raise e
 
     # R: Initialize connection pool
     init_pool(

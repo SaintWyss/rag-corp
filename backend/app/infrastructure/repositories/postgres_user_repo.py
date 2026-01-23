@@ -170,3 +170,50 @@ def update_user_password(user_id: UUID, password_hash: str) -> Optional[User]:
     except Exception as e:
         logger.error(f"PostgresUserRepository: Update password failed: {e}")
         raise DatabaseError(f"User password update failed: {e}")
+
+
+def update_user(
+    user_id: UUID,
+    *,
+    password_hash: Optional[str] = None,
+    role: Optional[UserRole] = None,
+    is_active: Optional[bool] = None,
+) -> Optional[User]:
+    """R: Update arbitrary user fields (for admin/dev tools)."""
+    try:
+        updates = []
+        params = []
+
+        if password_hash is not None:
+            updates.append("password_hash = %s")
+            params.append(password_hash)
+        if role is not None:
+            updates.append("role = %s")
+            params.append(role.value)
+        if is_active is not None:
+            updates.append("is_active = %s")
+            params.append(is_active)
+
+        if not updates:
+            return get_user_by_id(user_id)
+
+        params.append(user_id)
+        
+        pool = _get_pool()
+        with pool.connection() as conn:
+            row = conn.execute(
+                f"""
+                UPDATE users
+                SET {", ".join(updates)}
+                WHERE id = %s
+                RETURNING id, email, password_hash, role, is_active, created_at
+                """,
+                params,
+            ).fetchone()
+
+        if not row:
+            return None
+        return _row_to_user(row)
+    except Exception as e:
+        logger.error(f"PostgresUserRepository: Dynamic update failed: {e}")
+        raise DatabaseError(f"User update failed: {e}")

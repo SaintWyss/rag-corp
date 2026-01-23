@@ -50,3 +50,5 @@ htmlcov/
 playwright-report/
 test-results/
 compose.prod.local.yaml
+# Backups & Private
+doc/prod_backup/

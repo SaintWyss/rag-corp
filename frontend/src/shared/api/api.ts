@@ -1,20 +1,20 @@
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
-    ArchiveWorkspaceRes,
-    CreateWorkspaceReq,
-    DocumentDetailRes,
-    DocumentSummaryRes,
-    DocumentsListRes,
-    IngestBatchReq,
-    IngestBatchRes,
-    IngestTextReq,
-    IngestTextRes,
-    QueryReq,
-    QueryRes,
-    ReprocessDocumentRes,
-    UploadDocumentRes,
-    WorkspaceRes,
-    WorkspacesListRes,
+  ArchiveWorkspaceRes,
+  CreateWorkspaceReq,
+  DocumentDetailRes,
+  DocumentSummaryRes,
+  DocumentsListRes,
+  IngestBatchReq,
+  IngestBatchRes,
+  IngestTextReq,
+  IngestTextRes,
+  QueryReq,
+  QueryRes,
+  ReprocessDocumentRes,
+  UploadDocumentRes,
+  WorkspaceRes,
+  WorkspacesListRes,
 } from "@contracts/src/generated";
 
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
@@ -148,6 +148,58 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     }
     throw err;
   }
+}
+
+/**
+ * Login with email and password.
+ * Sets HttpOnly cookie on success (handled by backend).
+ * Throws an Error with a user-friendly message on failure.
+ */
+export async function login(email: string, password: string): Promise<void> {
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!res.ok) {
+    // Try to extract error message from response
+    let message = `Login failed (${res.status})`;
+    const contentType = res.headers.get("content-type");
+
+    if (contentType && contentType.includes("application/json")) {
+      try {
+        const errorData = await res.json();
+        message = errorData.detail || errorData.message || message;
+      } catch {
+        // JSON parsing failed, use default message
+      }
+    } else {
+      try {
+        const text = await res.text();
+        if (text) {
+          message = text;
+        }
+      } catch {
+        // Text reading failed, use default message
+      }
+    }
+
+    throw new Error(message);
+  }
+}
+
+/**
+ * Logout current user.
+ * Clears HttpOnly cookie (handled by backend).
+ */
+export async function logout(): Promise<void> {
+  await fetch("/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  });
+  // Intentionally doesn't throw on error - logout is best-effort
 }
 
 export async function listUsers(): Promise<UsersListResponse> {

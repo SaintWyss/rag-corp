@@ -7,7 +7,7 @@
 
 ## Source of Truth (anti-drift)
 Antes de afirmar algo “como cierto”, verificar en este orden:
-1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/...`).
+1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/informe_de_sistemas_rag_corp.md`).
 2) **Contrato API**: `shared/contracts/openapi.json` (y cliente generado si aplica).
 3) **DB/Migraciones**: `backend/alembic/versions/*` + `doc/data/postgres-schema.md`.
 4) **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.

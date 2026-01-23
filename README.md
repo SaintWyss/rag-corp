@@ -123,7 +123,7 @@ Runbooks: `doc/runbook/production-hardening.md` y `doc/runbook/observability.md`
 - DB: `doc/data/postgres-schema.md`
 - Runbooks: `doc/runbook/`
 - Testing: `doc/quality/testing.md`
-- Informe definitivo v6: `.github/informe_de_sistemas_rag_corp.md`
+- Informe definitivo v6: `doc/system/informe_de_sistemas_rag_corp.md`
 
 ---
 

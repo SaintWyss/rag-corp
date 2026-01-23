@@ -14,7 +14,7 @@ applyTo: "doc/**"
 
 ## Source of Truth (anti-drift)
 Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, tablas, scripts), verificar en este orden:
-1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/...`) si existe.
+1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/informe_de_sistemas_rag_corp.md`) si existe.
 2) **Contracts**: `shared/contracts/openapi.json` (y client generado si aplica).
 3) **DB/Migraciones**: `backend/alembic/versions/*` + `doc/data/postgres-schema.md`.
 4) **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
