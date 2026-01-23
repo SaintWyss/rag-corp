@@ -23,7 +23,11 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from ..platform.exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
-from ..platform.error_responses import AppHTTPException, ErrorCode, app_exception_handler
+from ..platform.error_responses import (
+    AppHTTPException,
+    ErrorCode,
+    app_exception_handler,
+)
 from ..platform.logger import logger
 
 

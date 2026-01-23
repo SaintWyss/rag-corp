@@ -21,7 +21,12 @@ from ..identity.auth_users import (
     require_user,
 )
 from ..identity.dual_auth import require_admin, require_principal
-from ..platform.error_responses import OPENAPI_ERROR_RESPONSES, conflict, not_found, unauthorized
+from ..platform.error_responses import (
+    OPENAPI_ERROR_RESPONSES,
+    conflict,
+    not_found,
+    unauthorized,
+)
 from ..identity.rbac import Permission
 from ..audit import emit_audit_event
 from ..container import get_audit_repository

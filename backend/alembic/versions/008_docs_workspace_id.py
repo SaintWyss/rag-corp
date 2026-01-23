@@ -129,9 +129,7 @@ def upgrade() -> None:
     conn = op.get_bind()
     owner_user_id, is_fresh_install = _select_owner_user_id(conn)
     legacy_name = (
-        LEGACY_WORKSPACE_BOOTSTRAP_NAME
-        if is_fresh_install
-        else LEGACY_WORKSPACE_NAME
+        LEGACY_WORKSPACE_BOOTSTRAP_NAME if is_fresh_install else LEGACY_WORKSPACE_NAME
     )
     legacy_workspace_id = _get_or_create_legacy_workspace(
         conn,
