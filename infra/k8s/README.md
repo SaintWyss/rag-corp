@@ -1,120 +1,250 @@
-# RAG Corp Kubernetes Manifests
+# infra/k8s/ — README
 
-Production-ready Kubernetes deployment for RAG Corp.
+> **Navegación:** [← Volver a infra/](../README.md) · [← Volver a raíz](../../README.md)
 
-## Prerequisites
+## TL;DR (30 segundos)
 
-- Kubernetes 1.27+
-- kubectl configured
-- NGINX Ingress Controller
-- cert-manager (for TLS)
-- Container registry access
+- **Qué es:** Manifiestos de Kubernetes para despliegue en producción.
+- **Para qué sirve:** Definir cómo correr RAG Corp en un cluster de Kubernetes real.
+- **Quién la usa:** DevOps/SRE al desplegar a staging/producción.
+- **Impacto si se borra:** No hay forma declarativa de desplegar en k8s — tendrías que crear todo manualmente.
 
-## Quick Start
+---
+
+## Para alguien con 0 conocimientos
+
+### ¿Qué problema resuelve?
+
+Docker Compose es genial para desarrollo local, pero no para producción con alta disponibilidad. Kubernetes (k8s) es el estándar de la industria para correr aplicaciones en producción: escala automáticamente, se recupera de fallos, y maneja tráfico de forma inteligente.
+
+Esta carpeta contiene todos los "manifiestos" — archivos YAML que le dicen a Kubernetes exactamente cómo desplegar cada componente de RAG Corp.
+
+**Analogía:** Si Docker Compose es correr un restaurante familiar, Kubernetes es operar una cadena de restaurantes con gerentes, reglas de operación, y expansión automática según demanda.
+
+### ¿Qué hay acá adentro?
+
+```
+k8s/
+├── kustomization.yaml          # Orquestador: lista qué aplicar
+├── namespace.yaml              # Crea el "espacio" ragcorp
+├── configmap.yaml              # Variables de entorno no-secretas
+├── secret.yaml                 # Credenciales (PLACEHOLDERS)
+├── backend-deployment.yaml     # Cómo correr el backend
+├── backend-service.yaml        # Cómo exponer el backend
+├── backend-hpa.yaml            # Auto-escalado del backend
+├── frontend-deployment.yaml    # Cómo correr el frontend
+├── frontend-service.yaml       # Cómo exponer el frontend
+├── redis-deployment.yaml       # Cache Redis
+├── ingress.yaml                # Entrada de tráfico externo
+├── network-policy.yaml         # Firewall interno
+└── pdb.yaml                    # Protección durante mantenimiento
+```
+
+### ¿Cómo se usa paso a paso?
 
 ```bash
-# 1. Create namespace and apply all resources
+# 1. Aplicar todos los manifiestos
 kubectl apply -k infra/k8s/
 
-# 2. Check deployment status
+# 2. Verificar que todo está corriendo
 kubectl -n ragcorp get pods
 kubectl -n ragcorp get svc
 
-# 3. View logs
+# 3. Ver logs del backend
 kubectl -n ragcorp logs -l app.kubernetes.io/component=backend -f
 ```
 
-## Configuration
+---
 
-### Secrets Setup
+## Para engineers / seniors
 
-Before deploying, update `secret.yaml` with your actual values:
+### Responsabilidades (SRP)
 
-```bash
-# Generate base64 encoded secrets
-echo -n "postgresql://user:pass@host:5432/db" | base64
-echo -n "your-google-api-key" | base64
+Esta carpeta DEBE contener:
+- Manifiestos de Kubernetes para todos los componentes
+- ConfigMaps y Secrets (con placeholders, no valores reales)
+- Network policies y PDBs
+- HPA y escalado
 
-# Apply secrets
-kubectl apply -f infra/k8s/secret.yaml
-```
+Esta carpeta NO DEBE contener:
+- Valores reales de secrets (usar External Secrets Operator)
+- Helm charts (esto es vanilla k8s/Kustomize)
+- Configuración de CI/CD (eso va en `.github/workflows/`)
+- Manifiestos para observabilidad en k8s (usar helm charts dedicados)
 
-### Using External Secrets Operator (Recommended)
+### Colaboradores y dependencias
 
-For production, use External Secrets Operator with AWS Secrets Manager or HashiCorp Vault:
+| Componente | Dependencias |
+|------------|--------------|
+| `backend-deployment.yaml` | `secret.yaml`, `configmap.yaml`, imagen de container registry |
+| `frontend-deployment.yaml` | `backend-service.yaml` (para conectar al API) |
+| `ingress.yaml` | NGINX Ingress Controller, cert-manager |
+| `backend-hpa.yaml` | Metrics Server instalado en cluster |
 
-```yaml
-# See commented example in secret.yaml
-```
+**Prerrequisitos del cluster:**
+- Kubernetes 1.27+
+- NGINX Ingress Controller
+- cert-manager (para TLS)
+- Metrics Server (para HPA)
+- Container registry con las imágenes
 
-## Components
+### Contratos / Interfaces
 
-| Manifest | Description |
-|----------|-------------|
-| `namespace.yaml` | Dedicated namespace |
-| `configmap.yaml` | Non-sensitive configuration |
-| `secret.yaml` | Sensitive configuration (DB URL, API keys) |
-| `backend-deployment.yaml` | FastAPI backend (2 replicas) |
-| `backend-service.yaml` | Backend ClusterIP service |
-| `backend-hpa.yaml` | Horizontal Pod Autoscaler (2-10 pods) |
-| `frontend-deployment.yaml` | Next.js frontend (2 replicas) |
-| `frontend-service.yaml` | Frontend ClusterIP service |
-| `ingress.yaml` | NGINX Ingress with TLS |
-| `redis-deployment.yaml` | Redis cache (optional) |
-| `pdb.yaml` | Pod Disruption Budgets |
-| `network-policy.yaml` | Zero-trust network policies |
+| Manifest | Recursos que crea |
+|----------|-------------------|
+| `namespace.yaml` | Namespace `ragcorp` |
+| `backend-deployment.yaml` | Deployment `ragcorp-backend` (2 replicas) |
+| `backend-hpa.yaml` | HPA (2-10 pods, target CPU 70%) |
+| `ingress.yaml` | Ingress con TLS |
+| `network-policy.yaml` | Deny-all + allow específicos |
 
-## Security Features
+### Flujo de trabajo típico
 
-- **Non-root containers**: All pods run as non-root user
-- **Read-only filesystem**: Backend uses read-only root filesystem
-- **Network policies**: Zero-trust networking (deny-all default)
-- **Pod Disruption Budgets**: High availability during maintenance
-- **Security contexts**: Dropped capabilities, no privilege escalation
-- **TLS**: cert-manager with Let's Encrypt
+**"Desplegar una nueva versión":**
+1. Build y push de imagen al registry
+2. Actualizar tag en `*-deployment.yaml`
+3. `kubectl apply -k infra/k8s/`
+4. Verificar rollout: `kubectl -n ragcorp rollout status deployment/ragcorp-backend`
 
-## Scaling
-
-HPA automatically scales backend pods based on:
-- CPU utilization (target: 70%)
-- Memory utilization (target: 80%)
-
-Manual scaling:
+**"Escalar manualmente":**
 ```bash
 kubectl -n ragcorp scale deployment ragcorp-backend --replicas=5
 ```
 
-## Monitoring
-
-Prometheus scraping is enabled via pod annotations:
-
-```yaml
-prometheus.io/scrape: "true"
-prometheus.io/port: "8000"
-prometheus.io/path: "/metrics"
+**"Debug de un pod que no arranca":**
+```bash
+kubectl -n ragcorp describe pod <nombre-del-pod>
+kubectl -n ragcorp logs <nombre-del-pod> --previous
 ```
 
-## Troubleshooting
-
+**"Ver eventos del namespace":**
 ```bash
-# Check pod status
-kubectl -n ragcorp describe pod -l app.kubernetes.io/component=backend
-
-# Check events
 kubectl -n ragcorp get events --sort-by='.lastTimestamp'
+```
 
-# Port-forward for local testing
+### Riesgos y pitfalls
+
+| Riesgo | Causa | Detección | Solución |
+|--------|-------|-----------|----------|
+| Secrets en texto plano | Olvidar usar External Secrets | `git log` muestra secrets | Rotar secrets, usar ESO |
+| ImagePullBackOff | Registry privado sin credentials | `describe pod` | Crear imagePullSecret |
+| CrashLoopBackOff | Error de app o config faltante | Logs del pod | Revisar logs y ConfigMap |
+| HPA no escala | Metrics Server no instalado | `kubectl top pods` falla | Instalar Metrics Server |
+| TLS no funciona | cert-manager mal configurado | Certificate no Ready | Verificar ClusterIssuer |
+
+### Seguridad / Compliance
+
+**Implementado:**
+- ✅ Non-root containers (`runAsNonRoot: true`)
+- ✅ Read-only filesystem (`readOnlyRootFilesystem: true`)
+- ✅ Network policies (zero-trust)
+- ✅ Pod Disruption Budgets
+- ✅ Security contexts (dropped capabilities)
+- ✅ TLS via cert-manager
+
+**Secrets (en `secret.yaml`):**
+- `DATABASE_URL` — conexión a PostgreSQL
+- `GOOGLE_API_KEY` — API key de Google AI
+- `REDIS_URL` — conexión a Redis
+
+⚠️ **NUNCA commitear valores reales.** Usar External Secrets Operator o similar.
+
+### Observabilidad / Operación
+
+**Prometheus scraping habilitado en pods:**
+```yaml
+annotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+```
+
+**Healthchecks:**
+- Liveness: `/healthz`
+- Readiness: `/readyz`
+
+**Port-forward para debug local:**
+```bash
 kubectl -n ragcorp port-forward svc/ragcorp-backend 8000:8000
 kubectl -n ragcorp port-forward svc/ragcorp-frontend 3000:3000
 ```
 
+---
+
+## CRC (Component/Folder CRC Card)
+
+**Name:** `infra/k8s/`
+
+**Responsibilities:**
+1. Definir despliegue de backend en Kubernetes
+2. Definir despliegue de frontend en Kubernetes
+3. Configurar networking (ingress, services, policies)
+4. Configurar auto-escalado (HPA)
+5. Configurar seguridad (contexts, PDBs)
+
+**Collaborators:**
+- Container registry (provee imágenes)
+- NGINX Ingress Controller (maneja tráfico)
+- cert-manager (TLS certificates)
+- External Secrets Operator (secrets management)
+- Prometheus (scraping de métricas)
+
+**Constraints:**
+- Requiere Kubernetes 1.27+
+- Requiere NGINX Ingress Controller
+- Secrets son placeholders — necesitan External Secrets en prod
+- HPA requiere Metrics Server
+
+---
+
+## Evidencia
+
+- `infra/k8s/kustomization.yaml` — lista de recursos
+- `infra/k8s/backend-deployment.yaml:45-60` — security context
+- `infra/k8s/network-policy.yaml` — zero-trust policies
+- `infra/k8s/backend-hpa.yaml:12-20` — scaling config
+
+---
+
+## FAQ rápido
+
+**¿Puedo usar esto con Helm?**
+Actualmente usa Kustomize vanilla. Se puede migrar a Helm si necesitás más flexibilidad.
+
+**¿Por qué hay 2 replicas mínimo?**
+Para alta disponibilidad. Si un pod muere, el otro sigue sirviendo.
+
+**¿Dónde pongo las variables de entorno?**
+En `configmap.yaml` (no-secretas) o `secret.yaml` (secretas).
+
+**¿Cómo conecto a una DB externa?**
+Actualizar `DATABASE_URL` en `secret.yaml` con la URL de conexión.
+
+---
+
+## Glosario
+
+| Término | Definición |
+|---------|------------|
+| **Kubernetes (k8s)** | Orquestador de contenedores |
+| **Manifest** | Archivo YAML que describe un recurso de k8s |
+| **Deployment** | Recurso que define cómo correr pods |
+| **Service** | Recurso que expone pods dentro del cluster |
+| **Ingress** | Recurso que expone servicios al exterior |
+| **HPA** | Horizontal Pod Autoscaler — escala automáticamente |
+| **PDB** | Pod Disruption Budget — protege durante mantenimiento |
+| **Kustomize** | Herramienta para customizar manifiestos |
+| **Network Policy** | Firewall entre pods |
+
+---
+
 ## Production Checklist
 
-- [ ] Update `secret.yaml` with real credentials
+- [ ] Update `secret.yaml` with real credentials (or use External Secrets)
 - [ ] Configure External Secrets Operator
 - [ ] Update `ingress.yaml` with your domain
-- [ ] Configure cert-manager cluster issuer
-- [ ] Set up monitoring (Prometheus + Grafana)
+- [ ] Configure cert-manager ClusterIssuer
+- [ ] Set up monitoring (Prometheus + Grafana in-cluster)
 - [ ] Configure backup for Redis (if using persistence)
 - [ ] Review resource limits based on load testing
-- [ ] Enable PodSecurityPolicy or Pod Security Standards
+- [ ] Enable Pod Security Standards
