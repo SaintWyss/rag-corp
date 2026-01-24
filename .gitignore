@@ -1,12 +1,36 @@
-# OS
-.DS_Store
-Thumbs.db
+# =============================================================================
+# RAG Corp .gitignore
+# =============================================================================
 
-# IDE
+# -----------------------------------------------------------------------------
+# OS Generated Files
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*:Zone.Identifier
+
+# -----------------------------------------------------------------------------
+# IDE / Editors
+# -----------------------------------------------------------------------------
 .idea/
 *.iml
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
 
-# Node
+# -----------------------------------------------------------------------------
+# Node.js
+# -----------------------------------------------------------------------------
 node_modules/
 .pnpm-store/
 dist/
@@ -15,40 +39,135 @@ build/
 .turbo/
 npm-debug.log*
 pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
 frontend/pnpm-lock.yaml
 
+# -----------------------------------------------------------------------------
 # Python
+# -----------------------------------------------------------------------------
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 .ruff_cache/
 .mypy_cache/
 .venv/
 venv/
+env/
+ENV/
+.eggs/
+*.egg-info/
+*.egg
+
+# -----------------------------------------------------------------------------
+# Environment Files (CRITICAL - contains secrets)
+# -----------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
-!.env.prod.local.example
+!.env.*.example
 
-# Pytest / Coverage
+# -----------------------------------------------------------------------------
+# Testing / Coverage
+# -----------------------------------------------------------------------------
 .pytest_cache/
 .coverage
 .coverage.*
 coverage.xml
 coverage/
 htmlcov/
+.nyc_output/
 
+# Playwright
+playwright-report/
+test-results/
+
+# -----------------------------------------------------------------------------
 # Jupyter
+# -----------------------------------------------------------------------------
 .ipynb_checkpoints/
+*.ipynb_metadata
 
-# Docker / local
+# -----------------------------------------------------------------------------
+# Docker / Local Development
+# -----------------------------------------------------------------------------
 *.log
 *.tmp
 *.bak
-*:Zone.Identifier
-
-# Playwright artifacts
-playwright-report/
-test-results/
 compose.prod.local.yaml
-# Backups & Private
-doc/prod_backup/
+
+# -----------------------------------------------------------------------------
+# Security Sensitive (NEVER commit these)
+# -----------------------------------------------------------------------------
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+!*.example.pem
+!*.example.key
+
+# Credentials and secrets
+*.credentials
+*.secret
+*credentials*.json
+*secret*.json
+service-account*.json
+
+# SSH
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+
+# AWS
+.aws/
+aws-credentials
+
+# GCP
+.gcp/
+gcloud/
+
+# -----------------------------------------------------------------------------
+# Backups & Private Data (pattern-based)
+# -----------------------------------------------------------------------------
+# Any folder named backup, backups, or containing _backup
+**/backup/
+**/backups/
+**/*_backup/
+**/*-backup/
+
+# Specific known backup locations
+docs/prod_backup/
+
+# Database dumps
+*.sql.gz
+*.dump
+*.sql.bak
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+# Large files that shouldn't be in git
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Except specific allowed archives
+!fixtures/*.zip
+
+# Compiled output
+*.o
+*.a
+*.lib
+*.dll
+*.dylib
