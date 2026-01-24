@@ -3,7 +3,7 @@
 **Autor:** Santiago Scacciaferro  
 **Fecha:** 2026-01-21 (America/Argentina/Cordoba)  
 **Repo:** `rag-corp` (v6)  
-**Fuente de verdad (producto, HISTORICAL v4):** `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`  
+**Fuente de verdad (producto, Especificación Base):** `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`  
 **Fuente de verdad (arquitectura / decisiones):** `docs/architecture/overview.md` + `docs/architecture/decisions/ADR-001..ADR-007`  
 **Fuente de verdad (contratos):** `shared/contracts/openapi.json` + `docs/api/http-api.md`  
 **Fuente de verdad (datos):** `apps/backend/alembic/` + `docs/data/postgres-schema.md`

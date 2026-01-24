@@ -7,8 +7,8 @@
 ## Contexto
 
 - El baseline actual expone `/v1/documents`, `/v1/ask` y `/v1/ask/stream` en la API v1. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 5.2 Endpoints principales actuales")
-- Las reglas **HISTORICAL v4** requieren que toda consulta incluya `workspace_id` y que el retrieval filtre por `workspace_id`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 8.2 Reglas para consultas")
-- La API **HISTORICAL v4** propone endpoints nested por workspace y permite mantener `/v1/documents` con `workspace_id` obligatorio; ademas recomienda rutas anidadas para evitar olvidar el scope. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
+- Las reglas **Especificación Base** requieren que toda consulta incluya `workspace_id` y que el retrieval filtre por `workspace_id`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 8.2 Reglas para consultas")
+- La API **Especificación Base** propone endpoints nested por workspace y permite mantener `/v1/documents` con `workspace_id` obligatorio; ademas recomienda rutas anidadas para evitar olvidar el scope. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
 
 ## Decision
 
@@ -19,7 +19,7 @@
 ## Alternativas consideradas
 
 1. Remover legacy de inmediato (descartado porque el baseline actual los expone). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 5.2 Endpoints principales actuales")
-2. Mantener legacy con workspace implicito (descartado por la regla **HISTORICAL v4** que exige `workspace_id`). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "1. Toda consulta debe incluir un workspace_id")
+2. Mantener legacy con workspace implicito (descartado por la regla **Especificación Base** que exige `workspace_id`). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "1. Toda consulta debe incluir un workspace_id")
 
 ## Consecuencias
 

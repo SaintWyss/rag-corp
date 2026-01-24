@@ -6,7 +6,7 @@
 
 ## Contexto
 
-- La especificacion **HISTORICAL v4** define el naming tecnico: en codigo se usa Workspace, en UI se muestra Seccion, y la fuente de verdad tecnica es Workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
+- La especificacion **Especificación Base** define el naming tecnico: en codigo se usa Workspace, en UI se muestra Seccion, y la fuente de verdad tecnica es Workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
 - La API propuesta expone rutas bajo `/v1/workspaces`. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 13.2 Endpoints propuestos")
 - La UI propuesta usa el label "Workspaces/Secciones" y un selector de workspace. (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 14.1 Navegacion")
 
@@ -17,8 +17,8 @@
 
 ## Alternativas consideradas
 
-1. "Seccion" en API/DB/codigo (descartado porque la decision **HISTORICAL v4** fija Workspace como termino tecnico). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
-2. "Workspace" tambien en UI (descartado porque la **HISTORICAL v4** permite Seccion en UI para ser natural en espanol). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
+1. "Seccion" en API/DB/codigo (descartado porque la decision **Especificación Base** fija Workspace como termino tecnico). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
+2. "Workspace" tambien en UI (descartado porque la **Especificación Base** permite Seccion en UI para ser natural en espanol). (Fuente: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`, "### 7.1 Decision de naming")
 
 ## Consecuencias
 
