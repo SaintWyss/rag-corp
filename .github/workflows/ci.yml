@@ -121,7 +121,7 @@ jobs:
           cache: pnpm
       - run: |
           cd apps/backend && pip install -r requirements.txt
-          python scripts/export_openapi.py --out ../shared/contracts/openapi.json
+          python scripts/export_openapi.py --out ../../shared/contracts/openapi.json
       - run: pnpm install --frozen-lockfile
       - run: pnpm contracts:gen
       - run: git diff --exit-code shared/contracts/
@@ -287,10 +287,10 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install backend dependencies
-        run: cd backend && pip install -r requirements.txt
+        run: cd apps/backend && pip install -r requirements.txt
       - name: Start API server
         run: |
-          cd backend
+          cd apps/backend
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 10
       - name: Install k6
