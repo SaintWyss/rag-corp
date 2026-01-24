@@ -36,21 +36,21 @@ $ git fetch origin && git pull --rebase origin main
 Updating 4051e10..0e9304f
 Fast-forward
  .github/workflows/ci.yml                              |  12 +-
- backend/app/config.py                                 |   5 +
- backend/app/infrastructure/services/__init__.py       |  17 +-
- backend/app/infrastructure/services/google_embedding_service.py | 42 +-
- backend/app/infrastructure/services/google_llm_service.py       | 19 +-
- backend/app/infrastructure/services/retry.py          | 235 +++++
- backend/app/main.py                                   |  57 +-
- backend/pytest.ini                                    |   1 +
- backend/requirements.txt                              |   1 +
- backend/tests/unit/test_healthz.py                    | 184 ++++
- backend/tests/unit/test_retry.py                      | 261 ++++++
- doc/README.md                                         |  13 +-
+ apps/backend/app/config.py                                 |   5 +
+ apps/backend/app/infrastructure/services/__init__.py       |  17 +-
+ apps/backend/app/infrastructure/services/google_embedding_service.py | 42 +-
+ apps/backend/app/infrastructure/services/google_llm_service.py       | 19 +-
+ apps/backend/app/infrastructure/services/retry.py          | 235 +++++
+ apps/backend/app/main.py                                   |  57 +-
+ apps/backend/pytest.ini                                    |   1 +
+ apps/backend/requirements.txt                              |   1 +
+ apps/backend/tests/unit/test_healthz.py                    | 184 ++++
+ apps/backend/tests/unit/test_retry.py                      | 261 ++++++
+ docs/README.md                                         |  13 +-
  12 files changed, 817 insertions(+), 30 deletions(-)
- create mode 100644 backend/app/infrastructure/services/retry.py
- create mode 100644 backend/tests/unit/test_healthz.py
- create mode 100644 backend/tests/unit/test_retry.py
+ create mode 100644 apps/backend/app/infrastructure/services/retry.py
+ create mode 100644 apps/backend/tests/unit/test_healthz.py
+ create mode 100644 apps/backend/tests/unit/test_retry.py
 
 $ git checkout -b meta/pattern-refactor-exec
 Switched to a new branch 'meta/pattern-refactor-exec'
@@ -61,7 +61,7 @@ Switched to a new branch 'meta/pattern-refactor-exec'
 ## Paso 2 - Análisis de Boundaries
 
 ```bash
-$ cd backend/app && grep -l "from fastapi\|import fastapi" application/*.py
+$ cd apps/backend/app && grep -l "from fastapi\|import fastapi" application/*.py
 NO FASTAPI IMPORTS IN APPLICATION ✅
 
 $ grep -l "import psycopg\|from psycopg" domain/*.py application/*.py
@@ -95,7 +95,7 @@ class Settings(BaseSettings):
 
 ### Frontend Hook (H7)
 ```bash
-$ head -60 frontend/app/hooks/useRagAsk.ts | grep -E "AbortController|timeout"
+$ head -60 apps/frontend/app/hooks/useRagAsk.ts | grep -E "AbortController|timeout"
 const REQUEST_TIMEOUT_MS = 30_000;
 const abortControllerRef = useRef<AbortController | null>(null);
 # YA EXISTE ✅
@@ -103,7 +103,7 @@ const abortControllerRef = useRef<AbortController | null>(null);
 
 ### Frontend Tests (H7)
 ```bash
-$ ls frontend/__tests__/hooks/
+$ ls apps/frontend/__tests__/hooks/
 useRagAsk.test.tsx
 # YA EXISTE ✅
 ```
@@ -116,7 +116,7 @@ useRagAsk.test.tsx
 
 ### H8: Crear patterns.md
 ```bash
-$ mkdir -p doc/design
+$ mkdir -p docs/design
 $ # Crear archivo patterns.md
 ```
 
@@ -125,10 +125,10 @@ $ # Crear archivo patterns.md
 ## Paso 5 - Verificación Final
 
 ```bash
-$ cd backend && pytest -m unit --tb=short
+$ cd apps/backend && pytest -m unit --tb=short
 # PENDIENTE EJECUTAR
 
-$ cd frontend && pnpm test
+$ cd apps/frontend && pnpm test
 # PENDIENTE EJECUTAR
 ```
 

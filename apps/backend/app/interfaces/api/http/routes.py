@@ -19,7 +19,7 @@ Constraints:
 Notes:
   - This module stays thin (controllers only)
   - Business logic lives in application/use_cases
-  - See doc/plan-mejora-arquitectura-2025-12-29.md for roadmap
+  - See docs/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 
 from fastapi import APIRouter, Depends, Request, Query, File, Form, UploadFile

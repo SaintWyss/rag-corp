@@ -46,26 +46,26 @@ graph TB
 
 ## Architecture Layers (Clean Architecture)
 
-### Domain (`backend/app/domain`)
+### Domain (`apps/backend/app/domain`)
 
 - Entidades: `Workspace`, `Document`, `Chunk`, `User`
 - Policy: `WorkspacePolicy` (autorizacion)
 - Protocols (ports): repositorios y servicios (`DocumentRepository`, `WorkspaceRepository`, `EmbeddingService`, `LLMService`)
 
-### Application (`backend/app/application`)
+### Application (`apps/backend/app/application`)
 
 - Use cases para workspaces, documentos y query/ask
 - DTOs input/output explicitos
 - Orquestacion de politicas + adapters
 
-### Infrastructure (`backend/app/infrastructure`)
+### Infrastructure (`apps/backend/app/infrastructure`)
 
 - PostgreSQL repositories
 - Google GenAI adapters
 - S3/MinIO storage
 - Redis queue + embedding cache
 
-### API (`backend/app/routes.py`, `backend/app/main.py`)
+### API (`apps/backend/app/routes.py`, `apps/backend/app/main.py`)
 
 - FastAPI routers versionados
 - Auth dual (JWT + X-API-Key)
@@ -112,14 +112,14 @@ Los endpoints legacy existen solo por compatibilidad y se documentan como **DEPR
 ## Source of Truth
 
 - OpenAPI: `shared/contracts/openapi.json`
-- DB schema: `backend/alembic/`
+- DB schema: `apps/backend/alembic/`
 
 ---
 
 ## Context Assembly (RAG Quality)
 
-- Prompts versionados: `backend/app/prompts/`
-- Context builder: `backend/app/application/context_builder.py`
+- Prompts versionados: `apps/backend/app/prompts/`
+- Context builder: `apps/backend/app/application/context_builder.py`
 - Limites: `MAX_CONTEXT_CHARS`, `PROMPT_VERSION`
 - Cache de embeddings: memory/Redis (segun `EMBEDDING_CACHE_BACKEND`)
 

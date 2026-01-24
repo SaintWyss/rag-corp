@@ -28,11 +28,11 @@ Usamos **Google Gemini** con dos modelos:
 ### Implementación
 
 ```python
-# backend/app/infrastructure/services/google_embedding.py
+# apps/backend/app/infrastructure/services/google_embedding.py
 class GoogleEmbeddingService:
     model = "text-embedding-004"
     
-# backend/app/infrastructure/services/google_llm.py  
+# apps/backend/app/infrastructure/services/google_llm.py  
 class GoogleLLMService:
     model = "gemini-2.0-flash-001"
 ```
@@ -92,4 +92,4 @@ Si cambiamos de proveedor:
 
 - [Google AI Studio](https://aistudio.google.com/)
 - [text-embedding-004 docs](https://ai.google.dev/gemini-api/docs/models/gemini#text-embedding)
-- [backend/app/infrastructure/services/](../../../backend/app/infrastructure/services/)
+- [apps/backend/app/infrastructure/services/](../../../apps/backend/app/infrastructure/services/)

@@ -7,7 +7,7 @@
 
 ## Fail-fast (APP_ENV=production)
 
-El backend valida requisitos de seguridad en `backend/app/config.py` y falla al iniciar si no se cumplen:
+El backend valida requisitos de seguridad en `apps/backend/app/config.py` y falla al iniciar si no se cumplen:
 
 - `JWT_SECRET` fuerte (>= 32 chars) y no default
 - `JWT_COOKIE_SECURE=true`
@@ -18,7 +18,7 @@ El backend valida requisitos de seguridad en `backend/app/config.py` y falla al 
 
 ## Headers de seguridad
 
-Se aplican via `SecurityHeadersMiddleware` (`backend/app/security.py`):
+Se aplican via `SecurityHeadersMiddleware` (`apps/backend/app/security.py`):
 
 - `Content-Security-Policy` sin `unsafe-inline` en produccion
 - `Strict-Transport-Security`

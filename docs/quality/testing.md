@@ -20,7 +20,7 @@ Tooling: el repo fija `pnpm@10.0.0` en `package.json` (usar Corepack o instalar 
 pnpm test:backend:unit
 
 # Unit tests (local)
-cd backend
+cd apps/backend
 pytest -m unit
 
 # Integration tests (requiere DB)
@@ -32,9 +32,9 @@ RUN_INTEGRATION=1 GOOGLE_API_KEY=<GOOGLE_API_KEY> pytest -m integration
 ## Frontend (Jest)
 
 ```bash
-pnpm -C frontend test
-pnpm -C frontend test:watch
-pnpm -C frontend test:coverage
+pnpm -C apps/frontend test
+pnpm -C apps/frontend test:watch
+pnpm -C apps/frontend test:coverage
 ```
 
 ---

@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/backend
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -34,7 +34,7 @@ jobs:
     needs: backend-lint
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/backend
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -62,7 +62,7 @@ jobs:
       - run: pytest --cov=app --cov-report=xml -q
       - uses: codecov/codecov-action@v4
         with:
-          files: backend/coverage.xml
+          files: apps/backend/coverage.xml
         continue-on-error: true
 
   frontend-lint:
@@ -98,7 +98,7 @@ jobs:
       - run: pnpm --filter web test --coverage
       - uses: codecov/codecov-action@v4
         with:
-          files: frontend/coverage/lcov.info
+          files: apps/frontend/coverage/lcov.info
         continue-on-error: true
 
   contracts-check:
@@ -120,7 +120,7 @@ jobs:
           node-version: "20"
           cache: pnpm
       - run: |
-          cd backend && pip install -r requirements.txt
+          cd apps/backend && pip install -r requirements.txt
           python scripts/export_openapi.py --out ../shared/contracts/openapi.json
       - run: pnpm install --frozen-lockfile
       - run: pnpm contracts:gen

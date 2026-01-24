@@ -1,4 +1,4 @@
 packages:
-  - "frontend"
+  - "apps/frontend"
   - "shared/*"
   - "tests/e2e"

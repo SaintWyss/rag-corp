@@ -16,29 +16,29 @@ Actualización completa de la documentación del repositorio RAG Corp para garan
 
 | Archivo | Estado | Descripción |
 |---------|--------|-------------|
-| `doc/README.md` | ✅ Actualizado | Documentación consolidada (índice + auditorías) |
-| `doc/architecture/decisions/ADR-001-clean-architecture.md` | ✅ Creado | ADR Clean Architecture |
-| `doc/architecture/decisions/ADR-002-pgvector.md` | ✅ Creado | ADR PostgreSQL + pgvector |
-| `doc/architecture/decisions/ADR-003-google-gemini.md` | ✅ Creado | ADR Google Gemini |
-| `doc/quality/testing.md` | ✅ Creado | Estrategia de testing |
-| `doc/diagrams/components.mmd` | ✅ Creado | Diagrama de componentes (Mermaid) |
-| `doc/diagrams/sequence_ingest_ask.mmd` | ✅ Creado | Secuencia de flujos |
-| `doc/diagrams/boundaries_clean_arch.mmd` | ✅ Creado | Límites de arquitectura |
+| `docs/README.md` | ✅ Actualizado | Documentación consolidada (índice + auditorías) |
+| `docs/architecture/decisions/ADR-001-clean-architecture.md` | ✅ Creado | ADR Clean Architecture |
+| `docs/architecture/decisions/ADR-002-pgvector.md` | ✅ Creado | ADR PostgreSQL + pgvector |
+| `docs/architecture/decisions/ADR-003-google-gemini.md` | ✅ Creado | ADR Google Gemini |
+| `docs/quality/testing.md` | ✅ Creado | Estrategia de testing |
+| `docs/diagrams/components.mmd` | ✅ Creado | Diagrama de componentes (Mermaid) |
+| `docs/diagrams/sequence_ingest_ask.mmd` | ✅ Creado | Secuencia de flujos |
+| `docs/diagrams/boundaries_clean_arch.mmd` | ✅ Creado | Límites de arquitectura |
 
 ## Archivos ya existentes (conservados)
 
 | Archivo | Estado | Notas |
 |---------|--------|-------|
 | `README.md` | ⏭️ Existente | Ya actualizado con estructura correcta |
-| `doc/architecture/overview.md` | ⏭️ Existente | Ya documenta capas y flujos |
-| `doc/design/patterns.md` | ⏭️ Existente | Ya lista patrones implementados |
-| `doc/api/http-api.md` | ⏭️ Existente | API completa con auth y errores |
-| `doc/data/postgres-schema.md` | ⏭️ Existente | Schema detallado (694 líneas) |
-| `doc/runbook/local-dev.md` | ⏭️ Existente | Guía de desarrollo local |
+| `docs/architecture/overview.md` | ⏭️ Existente | Ya documenta capas y flujos |
+| `docs/design/patterns.md` | ⏭️ Existente | Ya lista patrones implementados |
+| `docs/api/http-api.md` | ⏭️ Existente | API completa con auth y errores |
+| `docs/data/postgres-schema.md` | ⏭️ Existente | Schema detallado (694 líneas) |
+| `docs/runbook/local-dev.md` | ⏭️ Existente | Guía de desarrollo local |
 
 ## Validaciones realizadas
 
-- [x] Estructura de carpetas creada (`doc/architecture/decisions`, `doc/quality`, `doc/diagrams`)
+- [x] Estructura de carpetas creada (`docs/architecture/decisions`, `docs/quality`, `docs/diagrams`)
 - [x] ADRs documentan decisiones clave (Clean Architecture, pgvector, Gemini)
 - [x] Diagramas Mermaid cubren componentes, flujos y límites
 - [x] Testing strategy documentada (pytest, Jest, k6)

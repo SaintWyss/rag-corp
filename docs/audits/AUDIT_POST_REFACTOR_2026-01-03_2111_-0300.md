@@ -41,8 +41,8 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 
 | Componente | Ubicación | Stack | Responsabilidad |
 |------------|-----------|-------|-----------------|
-| **Frontend** | `frontend/` | Next.js, TypeScript, Tailwind CSS | UI para consultas RAG |
-| **Backend** | `backend/` | FastAPI, Python 3.11, psycopg 3.2 | API REST + lógica RAG |
+| **Frontend** | `apps/frontend/` | Next.js, TypeScript, Tailwind CSS | UI para consultas RAG |
+| **Backend** | `apps/backend/` | FastAPI, Python 3.11, psycopg 3.2 | API REST + lógica RAG |
 | **Contracts** | `shared/contracts/` | OpenAPI 3.1 + Orval | Single source of truth FE↔BE |
 | **Database** | PostgreSQL 16 + pgvector | SQL + Vector | Almacenamiento de documentos y embeddings |
 | **Infra** | `infra/` | Docker Compose, Prometheus, Grafana | Orquestación y observabilidad |
@@ -70,8 +70,8 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 ```
 
 **Verificación DIP (Dependency Inversion)**:
-- `backend/app/domain/*.py`: Solo imports de stdlib (dataclasses, typing, uuid)
-- `backend/app/application/*.py`: Solo imports de domain
+- `apps/backend/app/domain/*.py`: Solo imports de stdlib (dataclasses, typing, uuid)
+- `apps/backend/app/application/*.py`: Solo imports de domain
 - ✅ PASS - Boundaries correctamente respetados
 
 ### Flujo Principal
@@ -97,13 +97,13 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 
 | Concern | Archivo | Estado |
 |---------|---------|--------|
-| **Auth** | `backend/app/auth.py` | ✅ API Key con scopes |
-| **Rate Limit** | `backend/app/rate_limit.py` | ✅ Token Bucket |
-| **Metrics** | `backend/app/metrics.py` | ✅ Prometheus `/metrics` |
-| **Tracing** | `backend/app/tracing.py` | ✅ OpenTelemetry opcional |
-| **Retry** | `backend/app/infrastructure/services/retry.py` | ✅ Tenacity decorator |
-| **Logging** | `backend/app/logger.py` | ✅ JSON structured + request_id |
-| **Security Headers** | `backend/app/security.py` | ✅ CSP, HSTS, X-Frame |
+| **Auth** | `apps/backend/app/auth.py` | ✅ API Key con scopes |
+| **Rate Limit** | `apps/backend/app/rate_limit.py` | ✅ Token Bucket |
+| **Metrics** | `apps/backend/app/metrics.py` | ✅ Prometheus `/metrics` |
+| **Tracing** | `apps/backend/app/tracing.py` | ✅ OpenTelemetry opcional |
+| **Retry** | `apps/backend/app/infrastructure/services/retry.py` | ✅ Tenacity decorator |
+| **Logging** | `apps/backend/app/logger.py` | ✅ JSON structured + request_id |
+| **Security Headers** | `apps/backend/app/security.py` | ✅ CSP, HSTS, X-Frame |
 
 ---
 
@@ -113,11 +113,11 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 
 | Carpeta/Archivo | Rol | Por qué existe |
 |-----------------|-----|----------------|
-| `frontend/` | UI Next.js | Interfaz de usuario SPA |
-| `backend/` | API FastAPI | Lógica de negocio RAG |
+| `apps/frontend/` | UI Next.js | Interfaz de usuario SPA |
+| `apps/backend/` | API FastAPI | Lógica de negocio RAG |
 | `shared/contracts/` | Contratos tipados | OpenAPI → TypeScript (Orval) |
 | `infra/` | Infraestructura | Docker configs, Prometheus, Grafana |
-| `doc/` | Documentación técnica | Arquitectura, API, runbooks |
+| `docs/` | Documentación técnica | Arquitectura, API, runbooks |
 | `tests/` | Tests adicionales | k6 load tests |
 | `compose.yaml` | Docker dev | PostgreSQL + Backend |
 | `compose.prod.yaml` | Docker prod | Con frontend + limits |
@@ -125,7 +125,7 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 | `pnpm-workspace.yaml` | Monorepo config | `frontend`, `shared/*` |
 | `turbo.json` | Build pipeline | Tasks: dev, build, lint, test |
 
-### Backend (`backend/app/`)
+### Backend (`apps/backend/app/`)
 
 | Carpeta | Rol | Archivos Clave |
 |---------|-----|----------------|
@@ -138,7 +138,7 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 | `infrastructure/cache/` | Caching | `cache.py` (LRU embeddings) |
 | `prompts/` | LLM templates | `v1_answer_es.md` |
 
-### Frontend (`frontend/`)
+### Frontend (`apps/frontend/`)
 
 | Carpeta | Rol |
 |---------|-----|
@@ -176,13 +176,13 @@ origin	git@github.com:SaintWyss/rag-corp.git (push)
 
 | # | Severidad | Issue | Evidencia | Fix Recomendado |
 |---|-----------|-------|-----------|-----------------|
-| 1 | MED | `main.py` tiene ~200 líneas | `backend/app/main.py` | Extraer exception handlers |
+| 1 | MED | `main.py` tiene ~200 líneas | `apps/backend/app/main.py` | Extraer exception handlers |
 | 2 | MED | Sin MMR retrieval | `postgres_document_repo.py` | Implementar Maximal Marginal Relevance |
-| 3 | MED | Cache solo in-memory | `backend/app/infrastructure/cache.py` | Considerar Redis para prod |
+| 3 | MED | Cache solo in-memory | `apps/backend/app/infrastructure/cache.py` | Considerar Redis para prod |
 | 4 | LOW | Sin e2e tests | No existe `tests/e2e/` | Agregar Playwright |
-| 5 | LOW | Frontend sin coverage threshold | `frontend/jest.config.js` | Agregar threshold 70% |
-| 6 | LOW | Health check Google opcional | `backend/app/main.py` | Hacer configurable |
-| 7 | LOW | Alembic migrations sin docs | `backend/alembic/` | Documentar proceso |
+| 5 | LOW | Frontend sin coverage threshold | `apps/frontend/jest.config.js` | Agregar threshold 70% |
+| 6 | LOW | Health check Google opcional | `apps/backend/app/main.py` | Hacer configurable |
+| 7 | LOW | Alembic migrations sin docs | `apps/backend/alembic/` | Documentar proceso |
 | 8 | LOW | Observability stack separado | `compose.observability.yaml` | Integrar en prod |
 | 9 | LOW | Sin CHANGELOG automatizado | - | Implementar conventional-changelog |
 | 10 | LOW | TODOs en docs | Varios archivos | Completar próxima iteración |
@@ -243,14 +243,14 @@ REGLAS
 
 ARCHIVOS A GENERAR/ACTUALIZAR
 
-1) doc/README.md - Documentación consolidada + índice completo
-2) doc/architecture/overview.md - Diagrama de capas, flujos
-3) doc/design/patterns.md - Patrones aplicados (extraer de PATTERN_MAP)
-4) doc/api/http-api.md - Endpoints, auth, error catalog completo
-5) doc/data/postgres-schema.md - Schema, índices, queries
-6) doc/runbook/local-dev.md - Quickstart, env vars, troubleshooting
-7) doc/quality/testing.md - Estructura tests, coverage, CI
-8) doc/diagrams/*.md - Mermaid: architecture, rag-flow, ingest-flow
+1) docs/README.md - Documentación consolidada + índice completo
+2) docs/architecture/overview.md - Diagrama de capas, flujos
+3) docs/design/patterns.md - Patrones aplicados (extraer de PATTERN_MAP)
+4) docs/api/http-api.md - Endpoints, auth, error catalog completo
+5) docs/data/postgres-schema.md - Schema, índices, queries
+6) docs/runbook/local-dev.md - Quickstart, env vars, troubleshooting
+7) docs/quality/testing.md - Estructura tests, coverage, CI
+8) docs/diagrams/*.md - Mermaid: architecture, rag-flow, ingest-flow
 9) README.md raíz - Portal con quickstart, estructura, links
 
 PROCESO
@@ -259,7 +259,7 @@ PROCESO
 3) Documentar Settings de config.py
 4) Referenciar PATTERN_MAP existente
 5) Verificar links internos al finalizar
-6) Generar doc/archive/runbook/docs-update-report.md
+6) Generar docs/archive/runbook/docs-update-report.md
 
 NO HACER
 - No inventar endpoints/comandos

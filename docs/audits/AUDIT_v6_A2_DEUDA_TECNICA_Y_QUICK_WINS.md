@@ -28,11 +28,11 @@
 
 #### Evidencia
 
-- `backend/app/platform/security.py:L56-60` define CSP sin `unsafe-inline`
+- `apps/backend/app/platform/security.py:L56-60` define CSP sin `unsafe-inline`
 - No existe test E2E que valide el header en respuestas
 
 ```python
-# backend/app/platform/security.py:L56-60
+# apps/backend/app/platform/security.py:L56-60
 csp_policy = (
     "default-src 'self'; "
     "script-src 'self'; "
@@ -44,7 +44,7 @@ csp_policy = (
 
 1. **Zona ciega:** CSP configurado pero no verificado en runtime
 2. **Regresión silenciosa:** cambio accidental podría agregar `unsafe-inline`
-3. **Requisito hardening:** RNF-SEC4 exige CSP validado (`doc/system/informe_de_sistemas_rag_corp.md:L284`)
+3. **Requisito hardening:** RNF-SEC4 exige CSP validado (`docs/system/informe_de_sistemas_rag_corp.md:L284`)
 
 #### Fix recomendado
 
@@ -86,12 +86,12 @@ pnpm -C tests/e2e test security.spec.ts
 
 #### Evidencia
 
-- `backend/app/api/main.py:L361-378` implementa `/metrics` con `require_metrics_permission()`
-- `backend/app/platform/config.py:L205-206` valida `METRICS_REQUIRE_AUTH=true` en prod
+- `apps/backend/app/api/main.py:L361-378` implementa `/metrics` con `require_metrics_permission()`
+- `apps/backend/app/platform/config.py:L205-206` valida `METRICS_REQUIRE_AUTH=true` en prod
 - No existe test E2E que verifique 401/403 sin auth
 
 ```python
-# backend/app/api/main.py:L362
+# apps/backend/app/api/main.py:L362
 @app.get("/metrics")
 def metrics(_auth: None = Depends(require_metrics_permission())):
 ```
@@ -99,17 +99,17 @@ def metrics(_auth: None = Depends(require_metrics_permission())):
 #### Por qué es un problema
 
 1. **Exposición de métricas:** podría filtrar info interna (tasas de error, latencias, IDs)
-2. **Requisito hardening:** RNF-SEC6 exige `/metrics` protegido (`doc/system/informe_de_sistemas_rag_corp.md:L286`)
+2. **Requisito hardening:** RNF-SEC6 exige `/metrics` protegido (`docs/system/informe_de_sistemas_rag_corp.md:L286`)
 3. **Falla silenciosa:** si `METRICS_REQUIRE_AUTH` queda en false, no hay alarma
 
 #### Fix recomendado
 
-1. Crear `backend/tests/smoke/test_metrics_auth.py`
+1. Crear `apps/backend/tests/smoke/test_metrics_auth.py`
 2. Levantar API con `APP_ENV=production` y `METRICS_REQUIRE_AUTH=true`
 3. Verificar que GET `/metrics` sin auth → 401/403
 
 ```python
-# backend/tests/smoke/test_metrics_auth.py (nuevo)
+# apps/backend/tests/smoke/test_metrics_auth.py (nuevo)
 import pytest
 from fastapi.testclient import TestClient
 
@@ -131,7 +131,7 @@ curl -I http://localhost:8000/metrics # sin X-API-Key
 # Esperado: 401 o 403
 
 # Automático (después del fix)
-pytest backend/tests/smoke/test_metrics_auth.py
+pytest apps/backend/tests/smoke/test_metrics_auth.py
 ```
 
 **Esfuerzo estimado:** 1 hora  
@@ -147,12 +147,12 @@ pytest backend/tests/smoke/test_metrics_auth.py
 
 #### Evidencia
 
-- `doc/api/http-api.md:L82-108` ejemplos curl con paths `/v1/workspaces`
+- `docs/api/http-api.md:L82-108` ejemplos curl con paths `/v1/workspaces`
 - `shared/contracts/openapi.json` tiene 14085 líneas con paths reales
 - Ejemplo: docs muestran workspace_id como path param, pero algunos ejemplos usan query param legacy
 
 ```markdown
-# doc/api/http-api.md:L94 (ejemplo)
+# docs/api/http-api.md:L94 (ejemplo)
 
 curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents/upload
 ```
@@ -169,8 +169,8 @@ vs OpenAPI real puede tener parámetros adicionales (tags, etc.)
 
 1. Crear script `scripts/generate_api_examples.py` que lea OpenAPI
 2. Extraer paths + schemas + generar curl examples
-3. Regenerar `doc/api/http-api.md` automáticamente
-4. Agregar CI check: `git diff --exit-code doc/api/http-api.md` después de regenerar
+3. Regenerar `docs/api/http-api.md` automáticamente
+4. Agregar CI check: `git diff --exit-code docs/api/http-api.md` después de regenerar
 
 ```python
 # scripts/generate_api_examples.py (nuevo)
@@ -188,10 +188,10 @@ for path, methods in spec['paths'].items():
 
 ```bash
 # Regenerar ejemplos
-python scripts/generate_api_examples.py > doc/api/http-api.md.tmp
+python scripts/generate_api_examples.py > docs/api/http-api.md.tmp
 
 # Verificar drift
-git diff doc/api/http-api.md doc/api/http-api.md.tmp
+git diff docs/api/http-api.md docs/api/http-api.md.tmp
 ```
 
 **Esfuerzo estimado:** 3-4 horas  
@@ -207,7 +207,7 @@ git diff doc/api/http-api.md doc/api/http-api.md.tmp
 
 #### Evidencia
 
-- `frontend/jest.config.js` define coverage settings
+- `apps/frontend/jest.config.js` define coverage settings
 - `.github/workflows/ci.yml:L87-108` job `frontend-test` corre `pnpm test --coverage`
 - Pero no reporta % en summary ni falla si coverage < threshold
 
@@ -234,7 +234,7 @@ git diff doc/api/http-api.md doc/api/http-api.md.tmp
 - run: pnpm test --coverage
 - name: Check coverage threshold
   run: |
-    COVERAGE=$(jq '.total.lines.pct' frontend/coverage/coverage-summary.json)
+    COVERAGE=$(jq '.total.lines.pct' apps/frontend/coverage/coverage-summary.json)
     if (( $(echo "$COVERAGE < 70" | bc -l) )); then
       echo "Coverage $COVERAGE% is below 70%"
       exit 1
@@ -245,8 +245,8 @@ git diff doc/api/http-api.md doc/api/http-api.md.tmp
 
 ```bash
 # Local
-pnpm -C frontend test --coverage
-cat frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
+pnpm -C apps/frontend test --coverage
+cat apps/frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
 
 # CI (después del fix)
 # El job fallará si coverage < threshold
@@ -265,13 +265,13 @@ cat frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
 
 #### Evidencia
 
-- `backend/alembic/versions/008_docs_workspace_id.py` backfill de `documents.workspace_id`
+- `apps/backend/alembic/versions/008_docs_workspace_id.py` backfill de `documents.workspace_id`
 - Crea workspace "Legacy" si no existe
 - No tiene función `downgrade()` completa (solo drop constraint/column)
 - Rollback manual no documentado
 
 ```python
-# backend/alembic/versions/008_docs_workspace_id.py:L50-60
+# apps/backend/alembic/versions/008_docs_workspace_id.py:L50-60
 # upgrade: crea Legacy workspace + backfill
 # downgrade: solo ALTER TABLE DROP workspace_id
 ```
@@ -284,13 +284,13 @@ cat frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
 
 #### Fix recomendado
 
-1. Documentar en `doc/runbook/migrations.md`:
+1. Documentar en `docs/runbook/migrations.md`:
    - Backup pre-migración: `pg_dump -t documents > backup_documents.sql`
    - Rollback manual: restaurar desde backup + re-migrar hasta 007
 2. Agregar nota en migración 008: "Rollback NO automático, ver runbook"
 
 ```markdown
-# doc/runbook/migrations.md (agregar sección)
+# docs/runbook/migrations.md (agregar sección)
 
 ## Rollback de migración 008 (workspace_id)
 
@@ -310,7 +310,7 @@ cat frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
 ```bash
 # No hay validación automática (es documentación)
 # Revisar que runbook existe y está completo
-cat doc/runbook/migrations.md | grep -A 10 "Rollback de migración 008"
+cat docs/runbook/migrations.md | grep -A 10 "Rollback de migración 008"
 ```
 
 **Esfuerzo estimado:** 2 horas  
@@ -326,12 +326,12 @@ cat doc/runbook/migrations.md | grep -A 10 "Rollback de migración 008"
 
 #### Evidencia
 
-- `backend/app/platform/config.py:L141-144` define retry settings
-- Worker usa retry decorator en `backend/app/worker/process_document.py`
+- `apps/backend/app/platform/config.py:L141-144` define retry settings
+- Worker usa retry decorator en `apps/backend/app/worker/process_document.py`
 - No existe test unitario que simule fallos transitorios
 
 ```python
-# backend/app/platform/config.py:L141-144
+# apps/backend/app/platform/config.py:L141-144
 retry_max_attempts: int = 3
 retry_base_delay_seconds: float = 1.0
 retry_max_delay_seconds: float = 30.0
@@ -345,12 +345,12 @@ retry_max_delay_seconds: float = 30.0
 
 #### Fix recomendado
 
-1. Crear `backend/tests/unit/test_worker_retry.py`
+1. Crear `apps/backend/tests/unit/test_worker_retry.py`
 2. Mock Google API para fallar 2 veces, luego éxito
 3. Verificar: job marca READY después de 3 intentos, con delays crecientes
 
 ```python
-# backend/tests/unit/test_worker_retry.py (nuevo)
+# apps/backend/tests/unit/test_worker_retry.py (nuevo)
 def test_worker_retries_transient_failure(mocker):
     # Mock Google API: falla 2 veces, luego OK
     call_count = 0
@@ -375,7 +375,7 @@ def test_worker_retries_transient_failure(mocker):
 #### Cómo validar
 
 ```bash
-pytest backend/tests/unit/test_worker_retry.py -v
+pytest apps/backend/tests/unit/test_worker_retry.py -v
 ```
 
 **Esfuerzo estimado:** 3 horas  
@@ -391,12 +391,12 @@ pytest backend/tests/unit/test_worker_retry.py -v
 
 #### Evidencia
 
-- `backend/app/platform/config.py:L109` define `cors_allow_credentials: bool = False`
-- `backend/app/api/main.py:L226-237` configura CORS con este valor
+- `apps/backend/app/platform/config.py:L109` define `cors_allow_credentials: bool = False`
+- `apps/backend/app/api/main.py:L226-237` configura CORS con este valor
 - Si frontend necesita enviar cookies cross-origin, falla
 
 ```python
-# backend/app/api/main.py:L229
+# apps/backend/app/api/main.py:L229
 allow_credentials=_cors_settings.cors_allow_credentials,  # False por defecto
 ```
 
@@ -408,14 +408,14 @@ allow_credentials=_cors_settings.cors_allow_credentials,  # False por defecto
 
 #### Fix recomendado
 
-1. Documentar en `doc/runbook/production-hardening.md`:
+1. Documentar en `docs/runbook/production-hardening.md`:
    - Cuándo habilitar `CORS_ALLOW_CREDENTIALS=true`
    - Requisito: `ALLOWED_ORIGINS` debe ser explícito (NO wildcard)
    - Advertencia: considerar CSRF tokens si se habilita
 2. No cambiar default (es seguro)
 
 ```markdown
-# doc/runbook/production-hardening.md (agregar sección)
+# docs/runbook/production-hardening.md (agregar sección)
 
 ## CORS Credentials (Cross-Origin Cookies)
 
@@ -440,7 +440,7 @@ allow_credentials=_cors_settings.cors_allow_credentials,  # False por defecto
 
 ```bash
 # No hay validación automática (es documentación)
-cat doc/runbook/production-hardening.md | grep -A 5 "CORS Credentials"
+cat docs/runbook/production-hardening.md | grep -A 5 "CORS Credentials"
 ```
 
 **Esfuerzo estimado:** 30 min  
@@ -456,12 +456,12 @@ cat doc/runbook/production-hardening.md | grep -A 5 "CORS Credentials"
 
 #### Evidencia
 
-- `backend/app/infrastructure/cache/embedding_cache.py` implementa cache in-memory o Redis
+- `apps/backend/app/infrastructure/cache/embedding_cache.py` implementa cache in-memory o Redis
 - No define TTL (time-to-live) → cache crece indefinidamente
 - Redis podría llenar memoria en workloads con muchos docs únicos
 
 ```python
-# backend/app/infrastructure/cache/embedding_cache.py (inspección manual requerida)
+# apps/backend/app/infrastructure/cache/embedding_cache.py (inspección manual requerida)
 # Si usa dict in-memory → sin eviction
 # Si usa Redis → sin EXPIRE
 ```
@@ -479,7 +479,7 @@ cat doc/runbook/production-hardening.md | grep -A 5 "CORS Credentials"
 3. Si backend=Redis: agregar `EXPIRE` al guardar
 
 ```python
-# backend/app/infrastructure/cache/embedding_cache.py (modificar)
+# apps/backend/app/infrastructure/cache/embedding_cache.py (modificar)
 import os
 TTL = int(os.getenv("EMBEDDING_CACHE_TTL_SECONDS", "86400"))
 
@@ -562,8 +562,8 @@ gh pr create --label run-load-test
 
 #### Evidencia
 
-- `doc/runbook/deployment.md` existe pero no tiene sección "Emergency Rollback"
-- `doc/runbook/deploy.md` tiene pasos de deploy pero no de rollback
+- `docs/runbook/deployment.md` existe pero no tiene sección "Emergency Rollback"
+- `docs/runbook/deploy.md` tiene pasos de deploy pero no de rollback
 
 #### Por qué es un problema
 
@@ -573,13 +573,13 @@ gh pr create --label run-load-test
 
 #### Fix recomendado
 
-1. Agregar sección "Emergency Rollback" en `doc/runbook/deployment.md`:
+1. Agregar sección "Emergency Rollback" en `docs/runbook/deployment.md`:
    - Pasos para rollback de imagen Docker
    - Verificación de health checks post-rollback
    - Contactos de escalación
 
 ```markdown
-# doc/runbook/deployment.md (agregar)
+# docs/runbook/deployment.md (agregar)
 
 ## Emergency Rollback
 
@@ -602,7 +602,7 @@ gh pr create --label run-load-test
 
 ```bash
 # Verificar que sección existe
-cat doc/runbook/deployment.md | grep -A 10 "Emergency Rollback"
+cat docs/runbook/deployment.md | grep -A 10 "Emergency Rollback"
 ```
 
 **Esfuerzo estimado:** 1 hora  
@@ -662,11 +662,11 @@ pnpm -C tests/e2e test security.spec.ts
 
 #### Acción
 
-Crear `backend/tests/smoke/test_metrics_auth.py`
+Crear `apps/backend/tests/smoke/test_metrics_auth.py`
 
 #### Pasos
 
-1. `mkdir -p backend/tests/smoke && touch backend/tests/smoke/__init__.py`
+1. `mkdir -p apps/backend/tests/smoke && touch apps/backend/tests/smoke/__init__.py`
 2. Crear archivo `test_metrics_auth.py`:
 
 ```python
@@ -692,7 +692,7 @@ def test_metrics_requires_auth_in_prod(monkeypatch):
         f"Expected 401 or 403, got {response.status_code} with body: {response.text}"
 ```
 
-3. Actualizar `backend/pytest.ini`:
+3. Actualizar `apps/backend/pytest.ini`:
 
 ```ini
 markers =
@@ -704,7 +704,7 @@ markers =
 #### Validación
 
 ```bash
-pytest backend/tests/smoke/test_metrics_auth.py -v
+pytest apps/backend/tests/smoke/test_metrics_auth.py -v
 # Esperado: ✅ PASSED
 ```
 
@@ -725,8 +725,8 @@ Agregar step de validación de coverage en `.github/workflows/ci.yml`
 1. Verificar baseline actual:
 
 ```bash
-pnpm -C frontend test --coverage --silent
-cat frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
+pnpm -C apps/frontend test --coverage --silent
+cat apps/frontend/coverage/coverage-summary.json | jq '.total.lines.pct'
 # Output: ej. 65.5
 ```
 
@@ -738,7 +738,7 @@ frontend-test:
   - run: pnpm test --coverage
   - name: Check coverage threshold
     run: |
-      COVERAGE=$(jq '.total.lines.pct' frontend/coverage/coverage-summary.json)
+      COVERAGE=$(jq '.total.lines.pct' apps/frontend/coverage/coverage-summary.json)
       echo "Coverage: $COVERAGE%"
       if (( $(echo "$COVERAGE < 60" | bc -l) )); then
         echo "❌ Coverage $COVERAGE% is below 60%"
@@ -753,8 +753,8 @@ frontend-test:
 
 ```bash
 # Simular CI local
-pnpm -C frontend test --coverage
-jq '.total.lines.pct' frontend/coverage/coverage-summary.json
+pnpm -C apps/frontend test --coverage
+jq '.total.lines.pct' apps/frontend/coverage/coverage-summary.json
 # Verificar que CI job pasa
 ```
 
@@ -768,11 +768,11 @@ jq '.total.lines.pct' frontend/coverage/coverage-summary.json
 
 #### Acción
 
-Agregar sección en `doc/runbook/production-hardening.md`
+Agregar sección en `docs/runbook/production-hardening.md`
 
 #### Pasos
 
-1. Editar `doc/runbook/production-hardening.md`:
+1. Editar `docs/runbook/production-hardening.md`:
 
 ````markdown
 ## CORS Credentials (Cross-Origin Cookies)
@@ -817,7 +817,7 @@ CORS_ALLOW_CREDENTIALS=true + ALLOWED_ORIGINS="https://app.example.com"
 
 #### Validación
 ```bash
-cat doc/runbook/production-hardening.md | grep -A 15 "CORS Credentials"
+cat docs/runbook/production-hardening.md | grep -A 15 "CORS Credentials"
 ````
 
 ---
@@ -881,7 +881,7 @@ gh pr checks
 
 #### Objetivo
 
-Automatizar generación de `doc/api/http-api.md` desde `shared/contracts/openapi.json`
+Automatizar generación de `docs/api/http-api.md` desde `shared/contracts/openapi.json`
 
 #### Pasos
 
@@ -898,8 +898,8 @@ Automatizar generación de `doc/api/http-api.md` desde `shared/contracts/openapi
 #### Validación
 
 ```bash
-python scripts/generate_api_examples.py --output doc/api/http-api.md.tmp
-git diff doc/api/http-api.md doc/api/http-api.md.tmp
+python scripts/generate_api_examples.py --output docs/api/http-api.md.tmp
+git diff docs/api/http-api.md docs/api/http-api.md.tmp
 ```
 
 ---
@@ -916,7 +916,7 @@ Verificar que worker reintenta jobs fallidos con backoff exponencial
 
 #### Pasos
 
-1. Crear `backend/tests/unit/test_worker_retry.py`
+1. Crear `apps/backend/tests/unit/test_worker_retry.py`
 2. Mock Google API para fallar N-1 veces, luego éxito
 3. Verificar:
    - Job marca `READY` después de retries
@@ -926,7 +926,7 @@ Verificar que worker reintenta jobs fallidos con backoff exponencial
 #### Validación
 
 ```bash
-pytest backend/tests/unit/test_worker_retry.py -v
+pytest apps/backend/tests/unit/test_worker_retry.py -v
 ```
 
 ---
@@ -944,7 +944,7 @@ Agregar TTL a embedding cache (Redis + in-memory)
 #### Pasos
 
 1. Agregar env var `EMBEDDING_CACHE_TTL_SECONDS` (default: 86400)
-2. Modificar `backend/app/infrastructure/cache/embedding_cache.py`:
+2. Modificar `apps/backend/app/infrastructure/cache/embedding_cache.py`:
    - Redis: usar `setex(key, ttl, value)`
    - In-memory: migrar a `functools.lru_cache(maxsize=10000)`
 3. Test unitario: verificar que keys expiran
@@ -957,7 +957,7 @@ redis-cli TTL "embedding:test"
 # Esperado: > 0
 
 # In-memory (verificar con test)
-pytest backend/tests/unit/test_cached_embedding_service.py -k ttl
+pytest apps/backend/tests/unit/test_cached_embedding_service.py -k ttl
 ```
 
 ---
@@ -982,7 +982,7 @@ pytest backend/tests/unit/test_cached_embedding_service.py -k ttl
 
 ### NT-03: Multi-tenant (workspace por empresa)
 
-**Razón:** Out-of-scope v6 (`doc/system/informe_de_sistemas_rag_corp.md:L55`)  
+**Razón:** Out-of-scope v6 (`docs/system/informe_de_sistemas_rag_corp.md:L55`)  
 **Bloqueante:** Requiere redesign de auth + schema  
 **Cuándo reconsiderar:** Cuando exista requisito de negocio (> 5 clientes enterprise)
 

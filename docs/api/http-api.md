@@ -43,7 +43,7 @@ curl -X POST http://localhost:8000/auth/login \
 
 - Header: `X-API-Key`
 - Auth deshabilitada si `API_KEYS_CONFIG` y `RBAC_CONFIG` estan vacias
-- RBAC aplica solo a API keys (ver `doc/api/rbac.md`)
+- RBAC aplica solo a API keys (ver `docs/api/rbac.md`)
 
 Scopes legacy:
 

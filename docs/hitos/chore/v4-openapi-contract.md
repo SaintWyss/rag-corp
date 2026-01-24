@@ -10,7 +10,7 @@
 
 - Actualizar OpenAPI con rutas (HISTORICAL v4) de workspaces y respuestas RFC 7807.
 - Regenerar `shared/contracts/openapi.json` y `shared/contracts/src/generated.ts`.
-- Documentar como regenerar contratos en `doc/api/http-api.md`.
+- Documentar como regenerar contratos en `docs/api/http-api.md`.
 
 ## Decisiones
 

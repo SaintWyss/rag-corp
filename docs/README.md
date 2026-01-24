@@ -20,12 +20,12 @@ Las referencias a v4 se consideran **HISTORICAL** y solo se mantienen como orige
 - `runbook/troubleshooting.md` - Troubleshooting operativo
 - `quality/testing.md` - Estrategia de testing
 - `../tests/e2e/README.md` - Playwright E2E
-- `../backend/tests/README.md` - Tests backend
+- `../apps/backend/tests/README.md` - Tests backend
 - `../shared/contracts/openapi.json` - OpenAPI (fuente de verdad)
 
 ## Mantenimiento
 
-- Mantener consistencia con `shared/contracts/openapi.json`, `backend/alembic/` y `compose*.yaml`.
+- Mantener consistencia con `shared/contracts/openapi.json`, `apps/backend/alembic/` y `compose*.yaml`.
 - Si cambian endpoints, schema o env vars, actualizar docs en el mismo cambio.
 - Referencias historicas deben etiquetarse como **HISTORICAL**.
 
@@ -38,10 +38,10 @@ Los endpoints canonicos viven bajo `/v1/workspaces/{workspace_id}/...` y los leg
 
 - **Observabilidad**: `/healthz`, `/readyz`, `/metrics` (auth en prod) + perfiles compose.
 - **Seguridad**: JWT + API keys con RBAC opcional; hardening en `APP_ENV=production`.
-- **Testing**: unit + e2e + e2e-full (ver `doc/quality/testing.md`).
+- **Testing**: unit + e2e + e2e-full (ver `docs/quality/testing.md`).
 
 ## Historico (HISTORICAL)
 
-- `doc/hitos/` (specs y reportes HISTORICAL v4)
-- `doc/audits/` y `doc/reviews/` (auditorias internas)
-- `doc/archive/` (logs y reportes historicos consolidados)
+- `docs/hitos/` (specs y reportes HISTORICAL v4)
+- `docs/audits/` y `docs/reviews/` (auditorias internas)
+- `docs/archive/` (logs y reportes historicos consolidados)

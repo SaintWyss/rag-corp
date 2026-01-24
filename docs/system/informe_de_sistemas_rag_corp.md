@@ -4,9 +4,9 @@
 **Fecha:** 2026-01-21 (America/Argentina/Cordoba)  
 **Repo:** `rag-corp` (v6)  
 **Fuente de verdad (producto, HISTORICAL v4):** `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`  
-**Fuente de verdad (arquitectura / decisiones):** `doc/architecture/overview.md` + `doc/architecture/decisions/ADR-001..ADR-007`  
-**Fuente de verdad (contratos):** `shared/contracts/openapi.json` + `doc/api/http-api.md`  
-**Fuente de verdad (datos):** `backend/alembic/` + `doc/data/postgres-schema.md`
+**Fuente de verdad (arquitectura / decisiones):** `docs/architecture/overview.md` + `docs/architecture/decisions/ADR-001..ADR-007`  
+**Fuente de verdad (contratos):** `shared/contracts/openapi.json` + `docs/api/http-api.md`  
+**Fuente de verdad (datos):** `apps/backend/alembic/` + `docs/data/postgres-schema.md`
 
 ---
 
@@ -204,7 +204,7 @@ erDiagram
 - `audit_events(id PK)` (+ metadata)
 
 ### 3.3 Diccionario de datos (resumen)
-> Referencia completa: `doc/data/postgres-schema.md`
+> Referencia completa: `docs/data/postgres-schema.md`
 
 **users**
 - `email (TEXT, UNIQUE, NOT NULL)`: identificador de login.
@@ -289,7 +289,7 @@ erDiagram
 | RNF-PERF2 | Performance efficiency | Límites de upload. | 413 al exceder; 415 mime inválido; valores configurables. |
 | RNF-OPS1 | Reliability/Operability | /healthz y /readyz en API y worker. | health/ready responden; CI smoke verifica. |
 | RNF-OPS2 | Operability | Métricas Prometheus (API + worker). | Métricas exportadas; dashboards opcionales. |
-| RNF-OPS3 | Operability | Runbooks y troubleshooting. | Existe `doc/runbook/*` actualizado con comandos reproducibles. |
+| RNF-OPS3 | Operability | Runbooks y troubleshooting. | Existe `docs/runbook/*` actualizado con comandos reproducibles. |
 | RNF-MAINT1 | Maintainability | Respetar capas Clean Architecture. | Revisión + tests: Domain no importa FastAPI/SQLAlchemy. |
 | RNF-MAINT2 | Maintainability | ports/adapters para infra (LLM/embeddings/storage/queue). | Cambiar provider no rompe casos de uso; interfaces estables. |
 | RNF-MAINT3 | Maintainability | tests unit + e2e-full. | Suite verde: unit + e2e + e2e-full. |
@@ -676,9 +676,9 @@ El proyecto se considera **100%** cuando se cumplen todos:
 ## Apéndice B — Referencias internas (docs)
 - Producto: `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md`
 - Análisis: `.github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md`
-- Arquitectura: `doc/architecture/overview.md`
-- ADRs: `doc/architecture/decisions/ADR-001..ADR-007`
-- API: `doc/api/http-api.md`, `shared/contracts/openapi.json`
-- Datos: `doc/data/postgres-schema.md`, `backend/alembic/`
-- Runbooks: `doc/runbook/*`
-- Calidad: `doc/quality/testing.md`
+- Arquitectura: `docs/architecture/overview.md`
+- ADRs: `docs/architecture/decisions/ADR-001..ADR-007`
+- API: `docs/api/http-api.md`, `shared/contracts/openapi.json`
+- Datos: `docs/data/postgres-schema.md`, `apps/backend/alembic/`
+- Runbooks: `docs/runbook/*`
+- Calidad: `docs/quality/testing.md`

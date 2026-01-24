@@ -14,7 +14,7 @@
 ## Decisiones
 
 - Legacy workspace propiedad del primer admin (o primer usuario si no hay admin).
-- Si no hay usuarios, la migracion falla y requiere bootstrap previo con `backend/scripts/create_admin.py`.
+- Si no hay usuarios, la migracion falla y requiere bootstrap previo con `apps/backend/scripts/create_admin.py`.
 
 ## Comandos
 

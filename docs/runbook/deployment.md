@@ -68,5 +68,5 @@ URLs:
 
 ## Kubernetes
 
-Ver `infra/k8s/README.md` y `doc/runbook/kubernetes.md`.
+Ver `infra/k8s/README.md` y `docs/runbook/kubernetes.md`.
 

@@ -9,7 +9,7 @@
 
 ## RESUMEN EJECUTIVO
 
-**Documentos totales:** 39 archivos en `doc/` + 5 raíz  
+**Documentos totales:** 39 archivos en `docs/` + 5 raíz  
 **Documentos canónicos:** 7 (Informe de sistemas, ADRs, OpenAPI, README, runbooks)  
 **Drift hallazgos:** 12 drift menores, 0 críticos  
 **Estado general:** ✅ Documentación sólida (95% actualizada)
@@ -38,7 +38,7 @@
 
 ---
 
-### doc/system/ (Sistema)
+### docs/system/ (Sistema)
 
 | Doc                               | Tipo                             | Líneas | Actualizado | Propósito                                                     | Estado         |
 | --------------------------------- | -------------------------------- | ------ | ----------- | ------------------------------------------------------------- | -------------- |
@@ -46,11 +46,11 @@
 
 **Evidencia:**
 
-- `doc/system/informe_de_sistemas_rag_corp.md:L1-685`: Completo con diagrams, trazabilidad, Definition of Done
+- `docs/system/informe_de_sistemas_rag_corp.md:L1-685`: Completo con diagrams, trazabilidad, Definition of Done
 
 ---
 
-### doc/architecture/ (Arquitectura)
+### docs/architecture/ (Arquitectura)
 
 | Doc                                         | Tipo          | Líneas | Actualizado | Propósito                                    | Estado         |
 | ------------------------------------------- | ------------- | ------ | ----------- | -------------------------------------------- | -------------- |
@@ -67,12 +67,12 @@
 
 **Evidencia:**
 
-- `doc/architecture/overview.md:L1-134`: Completo con mermaid diagrams
-- `doc/architecture/decisions/`: 7 ADRs encontrados
+- `docs/architecture/overview.md:L1-134`: Completo con mermaid diagrams
+- `docs/architecture/decisions/`: 7 ADRs encontrados
 
 ---
 
-### doc/api/ (API)
+### docs/api/ (API)
 
 | Doc           | Tipo          | Líneas | Actualizado | Propósito                         | Estado                  |
 | ------------- | ------------- | ------ | ----------- | --------------------------------- | ----------------------- |
@@ -81,12 +81,12 @@
 
 **Evidencia:**
 
-- `doc/api/http-api.md:L1-188`: Endpoints documentados, ejemplos curl
+- `docs/api/http-api.md:L1-188`: Endpoints documentados, ejemplos curl
 - Drift: ejemplos no sincronizados con OpenAPI actual
 
 ---
 
-### doc/data/ (Datos)
+### docs/data/ (Datos)
 
 | Doc                  | Tipo          | Líneas | Actualizado | Propósito                                    | Estado         |
 | -------------------- | ------------- | ------ | ----------- | -------------------------------------------- | -------------- |
@@ -94,11 +94,11 @@
 
 **Evidencia:**
 
-- `doc/data/postgres-schema.md:L1-861`: Completo con tablas, índices, pool config, migrations
+- `docs/data/postgres-schema.md:L1-861`: Completo con tablas, índices, pool config, migrations
 
 ---
 
-### doc/runbook/ (Runbooks)
+### docs/runbook/ (Runbooks)
 
 | Doc                       | Tipo          | Actualizado | Propósito                       | Estado                                |
 | ------------------------- | ------------- | ----------- | ------------------------------- | ------------------------------------- | --------------------------- |
@@ -115,12 +115,12 @@
 
 **Evidencia:**
 
-- `doc/runbook/production-hardening.md:L1-56`: Checklist de hardening
+- `docs/runbook/production-hardening.md:L1-56`: Checklist de hardening
 - Drift: falta sección CORS credentials, rollback details
 
 ---
 
-### doc/quality/ (Calidad)
+### docs/quality/ (Calidad)
 
 | Doc          | Tipo          | Líneas | Actualizado | Propósito                             | Estado         |
 | ------------ | ------------- | ------ | ----------- | ------------------------------------- | -------------- |
@@ -128,11 +128,11 @@
 
 **Evidencia:**
 
-- `doc/quality/testing.md:L1-69`: Completo con comandos pytest, Playwright, k6
+- `docs/quality/testing.md:L1-69`: Completo con comandos pytest, Playwright, k6
 
 ---
 
-### doc/design/ (Diseño)
+### docs/design/ (Diseño)
 
 | Doc           | Tipo       | Actualizado | Propósito                 | Estado     |
 | ------------- | ---------- | ----------- | ------------------------- | ---------- |
@@ -140,7 +140,7 @@
 
 ---
 
-### doc/diagrams/ (Diagramas)
+### docs/diagrams/ (Diagramas)
 
 | Doc                         | Tipo       | Actualizado | Propósito                         | Estado     |
 | --------------------------- | ---------- | ----------- | --------------------------------- | ---------- |
@@ -150,7 +150,7 @@
 
 ---
 
-### doc/hitos/ (Milestones históricos)
+### docs/hitos/ (Milestones históricos)
 
 | Doc                                  | Tipo       | Actualizado | Propósito                    | Estado       |
 | ------------------------------------ | ---------- | ----------- | ---------------------------- | ------------ |
@@ -165,7 +165,7 @@
 
 ---
 
-### doc/audits/ (Auditorías)
+### docs/audits/ (Auditorías)
 
 | Doc                                            | Tipo       | Actualizado | Propósito           | Estado       |
 | ---------------------------------------------- | ---------- | ----------- | ------------------- | ------------ |
@@ -174,7 +174,7 @@
 
 ---
 
-### doc/archive/ (Archivados)
+### docs/archive/ (Archivados)
 
 | Doc                                                     | Tipo       | Actualizado | Propósito                | Estado        |
 | ------------------------------------------------------- | ---------- | ----------- | ------------------------ | ------------- |
@@ -185,7 +185,7 @@
 
 ---
 
-### doc/reviews/ (Reviews históricos)
+### docs/reviews/ (Reviews históricos)
 
 | Doc                                    | Tipo       | Actualizado | Propósito        | Estado       |
 | -------------------------------------- | ---------- | ----------- | ---------------- | ------------ |
@@ -202,7 +202,7 @@
 **Evidencia:**
 
 - `shared/contracts/openapi.json:L1-14085`: 14085 líneas, 388392 bytes
-- Generado vía `pnpm contracts:export` (backend/scripts/export_openapi.py)
+- Generado vía `pnpm contracts:export` (apps/backend/scripts/export_openapi.py)
 
 ---
 
@@ -220,39 +220,39 @@
 
 ### Canonical (Source of Truth) — 12 docs
 
-1. `doc/system/informe_de_sistemas_rag_corp.md` (MÁXIMA PRIORIDAD)
+1. `docs/system/informe_de_sistemas_rag_corp.md` (MÁXIMA PRIORIDAD)
 2. `README.md`
 3. `shared/contracts/openapi.json`
-4. `doc/architecture/overview.md`
-5. `doc/architecture/decisions/ADR-001..007` (7 ADRs)
-6. `doc/data/postgres-schema.md`
-7. `doc/api/http-api.md`
-8. `doc/runbook/local-dev.md`
-9. `doc/runbook/deployment.md`
-10. `doc/runbook/migrations.md`
-11. `doc/runbook/observability.md`
-12. `doc/runbook/production-hardening.md`
-13. `doc/quality/testing.md`
+4. `docs/architecture/overview.md`
+5. `docs/architecture/decisions/ADR-001..007` (7 ADRs)
+6. `docs/data/postgres-schema.md`
+7. `docs/api/http-api.md`
+8. `docs/runbook/local-dev.md`
+9. `docs/runbook/deployment.md`
+10. `docs/runbook/migrations.md`
+11. `docs/runbook/observability.md`
+12. `docs/runbook/production-hardening.md`
+13. `docs/quality/testing.md`
 
 ### Supporting (Reference) — 15 docs
 
 - `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`
-- `doc/api/rbac.md`
-- `doc/runbook/troubleshooting.md`, `kubernetes.md`, `deploy.md`
-- `doc/design/patterns.md`
-- `doc/diagrams/*.mmd` (3 archivos)
+- `docs/api/rbac.md`
+- `docs/runbook/troubleshooting.md`, `kubernetes.md`, `deploy.md`
+- `docs/design/patterns.md`
+- `docs/diagrams/*.mmd` (3 archivos)
 
 ### Historical (Archivado) — 12 docs
 
-- `doc/hitos/` (6 milestones v4)
-- `doc/audits/` (2 audits previos)
-- `doc/reviews/` (1 review)
+- `docs/hitos/` (6 milestones v4)
+- `docs/audits/` (2 audits previos)
+- `docs/reviews/` (1 review)
 - `.github/` (2 informes HISTORICAL v4)
-- `doc/archive/runbook/` (4 docs deprecated)
+- `docs/archive/runbook/` (4 docs deprecated)
 
 ### Deprecated (Eliminar?) — 1 doc
 
-- `doc/runbook/deploy.md` (duplica `deployment.md`?)
+- `docs/runbook/deploy.md` (duplica `deployment.md`?)
 
 ---
 
@@ -261,7 +261,7 @@
 ### D-01: Ejemplos curl en http-api.md desactualizados
 
 **Severidad:** 🟡 Menor  
-**Doc afectado:** `doc/api/http-api.md:L82-108`  
+**Doc afectado:** `docs/api/http-api.md:L82-108`  
 **Evidencia contradictoria:** `shared/contracts/openapi.json`
 
 #### Hallazgo
@@ -269,7 +269,7 @@
 Ejemplos curl muestran solo campos básicos (`name`, `visibility`), pero OpenAPI define campos adicionales opcionales (`description`, `tags`, etc.)
 
 ```bash
-# doc/api/http-api.md:L89
+# docs/api/http-api.md:L89
 curl -X POST http://localhost:8000/v1/workspaces \
   -d '{"name":"Workspace Demo","visibility":"PRIVATE"}'
 
@@ -291,7 +291,7 @@ curl -X POST http://localhost:8000/v1/workspaces \
 ### D-02: Versión Python en headers docs
 
 **Severidad:** 🟢 Trivial  
-**Doc afectado:** `doc/system/informe_de_sistemas_rag_corp.md:L151`  
+**Doc afectado:** `docs/system/informe_de_sistemas_rag_corp.md:L151`  
 **Evidencia contradictoria:** `.github/workflows/ci.yml:L26`
 
 #### Hallazgo
@@ -309,7 +309,7 @@ curl -X POST http://localhost:8000/v1/workspaces \
 ### D-03: Compose service names en docs
 
 **Severidad:** 🟢 Trivial  
-**Doc afectado:** `doc/runbook/local-dev.md`  
+**Doc afectado:** `docs/runbook/local-dev.md`  
 **Evidencia contradictoria:** `compose.yaml`
 
 #### Hallazgo
@@ -353,7 +353,7 @@ CHANGELOG tiene entries hasta 2026-01-21, pero no menciona "v6" como versión of
 
 **Severidad:** 🟢 Trivial  
 **Doc afectado:** `README.md`  
-**Evidencia contradictoria:** `doc/system/informe_de_sistemas_rag_corp.md:L56` (Out-of-Scope)
+**Evidencia contradictoria:** `docs/system/informe_de_sistemas_rag_corp.md:L56` (Out-of-Scope)
 
 #### Hallazgo
 
@@ -366,7 +366,7 @@ README no menciona SSO/LDAP (correcto), pero informe de sistemas lo lista como o
 ### D-06: Runbook rollback sin checklist
 
 **Severidad:** 🟡 Menor  
-**Doc afectado:** `doc/runbook/deployment.md`  
+**Doc afectado:** `docs/runbook/deployment.md`  
 **Evidencia:** No existe sección "Emergency Rollback"
 
 #### Hallazgo
@@ -382,7 +382,7 @@ Runbook de deployment no tiene checklist de rollback (ver A2:TD-10)
 ### D-07: Runbook hardening sin CORS docs
 
 **Severidad:** 🟡 Menor  
-**Doc afectado:** `doc/runbook/production-hardening.md`  
+**Doc afectado:** `docs/runbook/production-hardening.md`  
 **Evidencia:** No menciona `CORS_ALLOW_CREDENTIALS`
 
 #### Hallazgo
@@ -398,7 +398,7 @@ Hardening runbook no documenta cuándo habilitar CORS credentials (ver A2:TD-07)
 ### D-08: Runbook migrations sin rollback de 008
 
 **Severidad:** 🟡 Menor  
-**Doc afectado:** `doc/runbook/migrations.md`  
+**Doc afectado:** `docs/runbook/migrations.md`  
 **Evidencia:** No documenta rollback manual de migración 008
 
 #### Hallazgo
@@ -414,7 +414,7 @@ Migración 008 backfill de `workspace_id` no tiene estrategia de rollback (ver A
 ### D-09: ADR fechas inconsistentes
 
 **Severidad:** 🟢 Trivial  
-**Doc afectado:** `doc/architecture/decisions/`  
+**Doc afectado:** `docs/architecture/decisions/`  
 **Evidencia:** ADR headers tienen fechas en formato variable
 
 #### Hallazgo
@@ -432,14 +432,14 @@ Migración 008 backfill de `workspace_id` no tiene estrategia de rollback (ver A
 ### D-10: Diagrams mermaid sin actualizar a v6
 
 **Severidad:** 🟢 Trivial  
-**Doc afectado:** `doc/diagrams/*.mmd`  
+**Doc afectado:** `docs/diagrams/*.mmd`  
 **Evidencia:** No mencionan "workspace" explícitamente
 
 #### Hallazgo
 
 Diagramas mermaid standalone (`boundaries_clean_arch.mmd`, etc.) podrían estar pre-v6
 
-**Nota:** `doc/system/informe_de_sistemas_rag_corp.md` tiene diagramas actualizados v6 inline.
+**Nota:** `docs/system/informe_de_sistemas_rag_corp.md` tiene diagramas actualizados v6 inline.
 
 #### Fix esperado
 
@@ -452,7 +452,7 @@ Diagramas mermaid standalone (`boundaries_clean_arch.mmd`, etc.) podrían estar 
 ### D-11: Frontend README sin actualizar?
 
 **Severidad:** 🟢 Trivial  
-**Doc afectado:** `frontend/README.md` (probable)  
+**Doc afectado:** `apps/frontend/README.md` (probable)  
 **Evidencia:** No leído en auditoría
 
 #### Hallazgo
@@ -461,7 +461,7 @@ Frontend tiene su propio README (1450 bytes detectado), posible drift con root R
 
 #### Fix esperado
 
-- Verificar que frontend/README.md menciona workspaces
+- Verificar que apps/frontend/README.md menciona workspaces
 - Sincronizar scripts con root package.json
 
 ---
@@ -506,33 +506,33 @@ Archivo PRON (este prompt de auditoría) podría commitarse por error
 
 #### Sistema
 
-- `doc/system/informe_de_sistemas_rag_corp.md`: Fuente de verdad v6 (arquitectura, contratos, DoD)
+- `docs/system/informe_de_sistemas_rag_corp.md`: Fuente de verdad v6 (arquitectura, contratos, DoD)
 
 #### Arquitectura
 
-- `doc/architecture/overview.md`: High-level architecture
-- `doc/architecture/decisions/ADR-*.md`: Registro de decisiones (7+ ADRs)
+- `docs/architecture/overview.md`: High-level architecture
+- `docs/architecture/decisions/ADR-*.md`: Registro de decisiones (7+ ADRs)
 
 #### API
 
 - `shared/contracts/openapi.json`: Contrato HTTP (source of truth)
-- `doc/api/http-api.md`: Docs human-readable + examples
+- `docs/api/http-api.md`: Docs human-readable + examples
 
 #### Datos
 
-- `doc/data/postgres-schema.md`: Schema, índices, queries, pool
+- `docs/data/postgres-schema.md`: Schema, índices, queries, pool
 
 #### Runbooks
 
-- `doc/runbook/local-dev.md`: Setup local + troubleshooting
-- `doc/runbook/deployment.md`: Deploy prod + rollback
-- `doc/runbook/migrations.md`: Alembic + rollback strategies
-- `doc/runbook/production-hardening.md`: Security checklist
-- `doc/runbook/observability.md`: Prometheus/Grafana
+- `docs/runbook/local-dev.md`: Setup local + troubleshooting
+- `docs/runbook/deployment.md`: Deploy prod + rollback
+- `docs/runbook/migrations.md`: Alembic + rollback strategies
+- `docs/runbook/production-hardening.md`: Security checklist
+- `docs/runbook/observability.md`: Prometheus/Grafana
 
 #### Calidad
 
-- `doc/quality/testing.md`: Estrategia testing (unit/e2e/load)
+- `docs/quality/testing.md`: Estrategia testing (unit/e2e/load)
 
 ---
 
@@ -565,7 +565,7 @@ Archivo PRON (este prompt de auditoría) podría commitarse por error
 7. **D-09:** Normalizar fechas ADR a ISO 8601 (30 min)
 8. **D-03:** Verificar service names en runbooks (1h)
 9. **D-10:** Actualizar/deprecar diagrams standalone (1h)
-10. **D-11:** Sincronizar frontend/README.md (30 min)
+10. **D-11:** Sincronizar apps/frontend/README.md (30 min)
 11. **D-12:** .gitignore para PRON (5 min)
 
 **Total:** 3.5 horas
@@ -608,20 +608,20 @@ Archivo PRON (este prompt de auditoría) podría commitarse por error
 
 ```bash
 # Canonical docs
-ls -lh doc/system/informe_de_sistemas_rag_corp.md
-ls -lh doc/architecture/overview.md
-ls -lh doc/architecture/decisions/ADR-*.md
-ls -lh doc/data/postgres-schema.md
-ls -lh doc/api/http-api.md
+ls -lh docs/system/informe_de_sistemas_rag_corp.md
+ls -lh docs/architecture/overview.md
+ls -lh docs/architecture/decisions/ADR-*.md
+ls -lh docs/data/postgres-schema.md
+ls -lh docs/api/http-api.md
 ls -lh shared/contracts/openapi.json
-ls -lh doc/runbook/*.md
-ls -lh doc/quality/testing.md
+ls -lh docs/runbook/*.md
+ls -lh docs/quality/testing.md
 
 # Supporting docs
 ls -lh README.md CHANGELOG.md SECURITY.md CONTRIBUTING.md
 
 # Historical docs
-ls -lh doc/hitos/ doc/audits/ doc/archive/
+ls -lh docs/hitos/ docs/audits/ docs/archive/
 ```
 
 ### Verificar drift OpenAPI
@@ -637,20 +637,20 @@ git diff shared/contracts/openapi.json
 pnpm contracts:gen
 
 # Verificar que cliente está sincronizado
-git diff frontend/src/generated/
+git diff apps/frontend/src/generated/
 ```
 
 ### Verificar fechas ADR
 
 ```bash
-grep -n "Aceptado" doc/architecture/decisions/ADR-*.md
+grep -n "Aceptado" docs/architecture/decisions/ADR-*.md
 # Salida esperada: fechas en formato consistente
 ```
 
 ### Verificar service names
 
 ```bash
-grep -r "backend" doc/runbook/*.md
+grep -r "backend" docs/runbook/*.md
 # Verificar que usa "rag-api" (nombre real del servicio)
 ```
 
@@ -658,13 +658,13 @@ grep -r "backend" doc/runbook/*.md
 
 ```bash
 # Backend
-grep -r "pytest" doc/quality/testing.md doc/runbook/*.md
+grep -r "pytest" docs/quality/testing.md docs/runbook/*.md
 
 # Frontend
-grep -r "Jest" doc/quality/testing.md
+grep -r "Jest" docs/quality/testing.md
 
 # E2E
-grep -r "Playwright" doc/quality/testing.md .github/workflows/ci.yml
+grep -r "Playwright" docs/quality/testing.md .github/workflows/ci.yml
 ```
 
 ---
@@ -674,9 +674,9 @@ grep -r "Playwright" doc/quality/testing.md .github/workflows/ci.yml
 ### Acción inmediata (antes de próximo deploy)
 
 1. ✅ **Completar runbooks de rollback** (D-06, D-07, D-08) — 5 horas
-   - `doc/runbook/deployment.md`: agregar sección Emergency Rollback
-   - `doc/runbook/production-hardening.md`: agregar CORS credentials
-   - `doc/runbook/migrations.md`: agregar rollback migración 008
+   - `docs/runbook/deployment.md`: agregar sección Emergency Rollback
+   - `docs/runbook/production-hardening.md`: agregar CORS credentials
+   - `docs/runbook/migrations.md`: agregar rollback migración 008
 
 ### Acción medio plazo (próximo sprint)
 
@@ -692,7 +692,7 @@ grep -r "Playwright" doc/quality/testing.md .github/workflows/ci.yml
    - CHANGELOG entry v6.0.0
 
 4. ✅ **Review frontend docs** (D-11) — 30 min
-   - Sincronizar frontend/README.md con root
+   - Sincronizar apps/frontend/README.md con root
 
 5. ✅ **Cleanup deprecated docs** (D-10, D-12) — 1 hora
    - Deprecar diagrams standalone si no se usan

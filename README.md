@@ -79,21 +79,21 @@ pnpm contracts:gen
 - **Alias versionado**: `/api/v1/...` (mismo contrato)
 - **Legacy** (DEPRECATED): `/v1/documents`, `/v1/ask`, `/v1/query`, `/v1/ingest/*` con `workspace_id` obligatorio
 
-Ver `doc/api/http-api.md` y `shared/contracts/openapi.json`.
+Ver `docs/api/http-api.md` y `shared/contracts/openapi.json`.
 
 ---
 
 ## Hardening (produccion)
 
-Fail-fast en `APP_ENV=production` (ver `backend/app/config.py`):
+Fail-fast en `APP_ENV=production` (ver `apps/backend/app/config.py`):
 
 - `JWT_SECRET` fuerte (>=32 chars) y no default
 - `JWT_COOKIE_SECURE=true`
 - `METRICS_REQUIRE_AUTH=true`
 - `API_KEYS_CONFIG` o `RBAC_CONFIG` presentes (protege `/metrics`)
-- CSP sin `unsafe-inline` (ver `backend/app/security.py`)
+- CSP sin `unsafe-inline` (ver `apps/backend/app/security.py`)
 
-Runbooks: `doc/runbook/production-hardening.md` y `doc/runbook/observability.md`.
+Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.md`.
 
 ---
 
@@ -116,21 +116,21 @@ Runbooks: `doc/runbook/production-hardening.md` y `doc/runbook/observability.md`
 
 ## Documentacion v6 (portal)
 
-- `doc/README.md` (indice)
-- Arquitectura: `doc/architecture/overview.md`
-- ADRs: `doc/architecture/decisions/`
-- API: `doc/api/http-api.md`
-- DB: `doc/data/postgres-schema.md`
-- Runbooks: `doc/runbook/`
-- Testing: `doc/quality/testing.md`
-- Informe definitivo v6: `doc/system/informe_de_sistemas_rag_corp.md`
+- `docs/README.md` (indice)
+- Arquitectura: `docs/architecture/overview.md`
+- ADRs: `docs/architecture/decisions/`
+- API: `docs/api/http-api.md`
+- DB: `docs/data/postgres-schema.md`
+- Runbooks: `docs/runbook/`
+- Testing: `docs/quality/testing.md`
+- Informe definitivo v6: `docs/system/informe_de_sistemas_rag_corp.md`
 
 ---
 
 ## Versionado
 
 - **v6**: version actual del sistema y la documentacion.
-- **HISTORICAL v4**: especificacion de origen y reportes historicos (ver `doc/hitos/`).
+- **HISTORICAL v4**: especificacion de origen y reportes historicos (ver `docs/hitos/`).
 
 ---
 

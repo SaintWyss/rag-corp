@@ -27,10 +27,10 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 ```
 
 **Ubicación**:
-- Domain: `backend/app/domain/`
-- Application: `backend/app/application/`
-- Infrastructure: `backend/app/infrastructure/`
-- API: `backend/app/` (main.py, routes.py, etc.)
+- Domain: `apps/backend/app/domain/`
+- Application: `apps/backend/app/application/`
+- Infrastructure: `apps/backend/app/infrastructure/`
+- API: `apps/backend/app/` (main.py, routes.py, etc.)
 
 ---
 
@@ -127,7 +127,7 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 **Qué**: Encapsula lógica de API en un hook reutilizable.
 
 **Dónde**:
-- `frontend/app/hooks/useRagAsk.ts`
+- `apps/frontend/app/hooks/useRagAsk.ts`
 
 **Beneficio**: Componentes UI desacoplados de fetch logic.
 
@@ -138,7 +138,7 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 **Qué**: Captura errores de render para mostrar fallback UI.
 
 **Dónde**:
-- `frontend/app/error.tsx`
+- `apps/frontend/app/error.tsx`
 
 **Beneficio**: App no crashea por errores de componentes.
 
@@ -164,4 +164,4 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 
 ---
 
-**Generado desde**: `doc/reviews/PATTERN_MAP_2026-01-03_2059_-0300.md`
+**Generado desde**: `docs/reviews/PATTERN_MAP_2026-01-03_2059_-0300.md`

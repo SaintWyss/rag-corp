@@ -20,7 +20,7 @@ groups:
         annotations:
           summary: "High API error rate"
           description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
-          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#1-api-returns-500-internal-server-error"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/docs/runbook/troubleshooting.md#1-api-returns-500-internal-server-error"
 
       # High latency alert (p95 > 2s)
       - alert: HighLatencyP95
@@ -35,7 +35,7 @@ groups:
         annotations:
           summary: "High API latency (p95)"
           description: "P95 latency is {{ $value | humanizeDuration }} (threshold: 2s)"
-          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#4-slow-query-performance"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/docs/runbook/troubleshooting.md#4-slow-query-performance"
 
       # Very high latency (p99 > 5s)
       - alert: VeryHighLatencyP99
@@ -103,7 +103,7 @@ groups:
         annotations:
           summary: "PostgreSQL is down"
           description: "PostgreSQL has been unreachable for more than 1 minute"
-          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#1-api-returns-500-internal-server-error"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/docs/runbook/troubleshooting.md#1-api-returns-500-internal-server-error"
 
       # High connection count (near limit)
       - alert: PostgreSQLHighConnections
@@ -187,7 +187,7 @@ groups:
         annotations:
           summary: "High memory usage"
           description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 90%)"
-          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/doc/runbook/troubleshooting.md#5-memory-issues"
+          runbook_url: "https://github.com/SaintWyss/rag-corp/blob/main/docs/runbook/troubleshooting.md#5-memory-issues"
 
       # Critical memory usage
       - alert: CriticalMemoryUsage

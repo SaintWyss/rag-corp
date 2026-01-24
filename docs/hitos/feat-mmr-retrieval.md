@@ -6,12 +6,12 @@ Exponer la funcionalidad de **Maximal Marginal Relevance (MMR)** en el flujo RAG
 ## Cambios realizados
 
 ### 1. Domain Layer
-**Archivo:** `backend/app/domain/repositories.py`
+**Archivo:** `apps/backend/app/domain/repositories.py`
 - Agregado método `find_similar_chunks_mmr()` al Protocol `DocumentRepository`
 - Parámetros: `embedding`, `top_k`, `fetch_k=20`, `lambda_mult=0.5`
 
 ### 2. Application Layer
-**Archivo:** `backend/app/application/use_cases/answer_query.py`
+**Archivo:** `apps/backend/app/application/use_cases/answer_query.py`
 - Campo `use_mmr: bool = False` agregado a `AnswerQueryInput`
 - Lógica condicional en `execute()`:
   - Si `use_mmr=True`: usa `find_similar_chunks_mmr()`
@@ -19,21 +19,21 @@ Exponer la funcionalidad de **Maximal Marginal Relevance (MMR)** en el flujo RAG
 - Metadata del resultado incluye `use_mmr` para observabilidad
 
 ### 3. API Layer
-**Archivo:** `backend/app/routes.py`
+**Archivo:** `apps/backend/app/routes.py`
 - Campo `use_mmr: bool = Field(default=False)` agregado a `QueryReq`
 - El endpoint `/ask` pasa el parámetro al use case
 
 ### 4. Configuración
-**Archivo:** `backend/app/config.py`
+**Archivo:** `apps/backend/app/config.py`
 - `prompt_version` cambiado de `"v1"` a `"v2"`
 - Agregado `default_use_mmr: bool = False` (preparación futura)
 
 ### 5. Tests
 **Archivos:**
-- `backend/tests/conftest.py`:
+- `apps/backend/tests/conftest.py`:
   - Mock `find_similar_chunks_mmr` agregado a `mock_repository`
   - Nuevo fixture `mock_context_builder` para aislar tests del context builder real
-- `backend/tests/unit/test_answer_query_use_case.py`:
+- `apps/backend/tests/unit/test_answer_query_use_case.py`:
   - Nuevos tests: `test_execute_with_mmr_enabled`, `test_execute_without_mmr_uses_standard_search`
   - Todos los tests usan `mock_context_builder` para evitar dependencia de Settings
 
@@ -57,7 +57,7 @@ curl -X POST http://localhost:8000/api/v1/ask \
 
 ```bash
 # Ejecutar tests unitarios
-cd backend
+cd apps/backend
 pytest tests/unit/test_answer_query_use_case.py -v
 
 # Verificar todos los tests

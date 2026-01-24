@@ -103,15 +103,15 @@
 
 **Documentos canónicos:**
 
-1. `doc/system/informe_de_sistemas_rag_corp.md` (MÁXIMA PRIORIDAD)
+1. `docs/system/informe_de_sistemas_rag_corp.md` (MÁXIMA PRIORIDAD)
 2. `README.md`
 3. `shared/contracts/openapi.json`
-4. `doc/architecture/overview.md`
-5. `doc/architecture/decisions/ADR-001..007` (7 ADRs)
-6. `doc/data/postgres-schema.md`
-7. `doc/api/http-api.md`
-   8-13. `doc/runbook/*.md` (6 runbooks)
-8. `doc/quality/testing.md`
+4. `docs/architecture/overview.md`
+5. `docs/architecture/decisions/ADR-001..007` (7 ADRs)
+6. `docs/data/postgres-schema.md`
+7. `docs/api/http-api.md`
+   8-13. `docs/runbook/*.md` (6 runbooks)
+8. `docs/quality/testing.md`
 
 ---
 
@@ -266,24 +266,24 @@
 
 ### Máxima Prioridad
 
-1. `doc/system/informe_de_sistemas_rag_corp.md` (685 líneas) — Contrato v6 completo
+1. `docs/system/informe_de_sistemas_rag_corp.md` (685 líneas) — Contrato v6 completo
 2. `shared/contracts/openapi.json` (14085 líneas) — Contrato HTTP API
 
 ### Alta Prioridad
 
 3. `README.md` — Portal de entrada
-4. `doc/architecture/overview.md` — Arquitectura high-level
-5. `doc/architecture/decisions/ADR-001..007` — Decisiones clave
-6. `doc/data/postgres-schema.md` — Schema + migrations
-7. `backend/alembic/versions/` — Migraciones aplicadas
+4. `docs/architecture/overview.md` — Arquitectura high-level
+5. `docs/architecture/decisions/ADR-001..007` — Decisiones clave
+6. `docs/data/postgres-schema.md` — Schema + migrations
+7. `apps/backend/alembic/versions/` — Migraciones aplicadas
 8. `compose.yaml` — Stack de desarrollo
 9. `.github/workflows/ci.yml` — CI pipeline
 
 ### Media Prioridad
 
-10. `doc/api/http-api.md` — Docs de endpoints
-11. `doc/runbook/*.md` — Runbooks operacionales
-12. `doc/quality/testing.md` — Estrategia de testing
+10. `docs/api/http-api.md` — Docs de endpoints
+11. `docs/runbook/*.md` — Runbooks operacionales
+12. `docs/quality/testing.md` — Estrategia de testing
 
 ---
 

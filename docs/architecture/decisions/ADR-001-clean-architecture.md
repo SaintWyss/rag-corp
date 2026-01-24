@@ -53,5 +53,5 @@ API → Application → Domain ← Infrastructure
 ## Referencias
 
 - [Clean Architecture - Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [backend/app/domain/](../../../backend/app/domain/)
-- [backend/app/application/](../../../backend/app/application/)
+- [apps/backend/app/domain/](../../../apps/backend/app/domain/)
+- [apps/backend/app/application/](../../../apps/backend/app/application/)

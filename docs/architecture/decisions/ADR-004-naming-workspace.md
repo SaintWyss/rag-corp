@@ -33,6 +33,6 @@
 
 ## Validacion
 
-- `pnpm test:backend:unit` (Fuente: `doc/quality/testing.md`, "Unit tests (Docker, recomendado)")
-- `pnpm -C frontend test` (Fuente: `doc/quality/testing.md`, "Frontend (Jest)")
-- `pnpm e2e` (Fuente: `doc/quality/testing.md`, "Ejecutar E2E con backend/frontend locales")
+- `pnpm test:backend:unit` (Fuente: `docs/quality/testing.md`, "Unit tests (Docker, recomendado)")
+- `pnpm -C apps/frontend test` (Fuente: `docs/quality/testing.md`, "Frontend (Jest)")
+- `pnpm e2e` (Fuente: `docs/quality/testing.md`, "Ejecutar E2E con apps/backend/frontend locales")

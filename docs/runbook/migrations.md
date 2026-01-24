@@ -8,14 +8,14 @@
 ## Overview
 
 RAG Corp usa Alembic para versionar el schema PostgreSQL.
-El source of truth es `backend/alembic/`.
+El source of truth es `apps/backend/alembic/`.
 
 ---
 
 ## Ubicacion
 
 ```
-backend/
+apps/backend/
 ├── alembic.ini
 └── alembic/
     ├── env.py
@@ -43,7 +43,7 @@ backend/
 ## Comandos comunes
 
 ```bash
-cd backend
+cd apps/backend
 alembic current
 alembic history --verbose
 alembic upgrade head
@@ -87,5 +87,5 @@ alembic upgrade head
 
 - `infra/postgres/init.sql` solo habilita `pgvector`.
 - El schema completo se aplica via Alembic.
-- Ver `doc/data/postgres-schema.md` para detalle de tablas e indices.
+- Ver `docs/data/postgres-schema.md` para detalle de tablas e indices.
 

@@ -851,7 +851,7 @@ ALTER INDEX chunks_embedding_idx_new RENAME TO chunks_embedding_idx;
 - **pgvector GitHub:** https://github.com/pgvector/pgvector
 - **pgvector Performance Guide:** https://github.com/pgvector/pgvector#performance
 - **PostgreSQL Docs:** https://www.postgresql.org/docs/16/
-- **Alembic Migration:** [backend/alembic/versions/001_initial.py](../../backend/alembic/versions/001_initial.py)
+- **Alembic Migration:** [apps/backend/alembic/versions/001_initial.py](../../apps/backend/alembic/versions/001_initial.py)
 - **Init SQL (pgvector extension):** [infra/postgres/init.sql](../../infra/postgres/init.sql)
 
 ---

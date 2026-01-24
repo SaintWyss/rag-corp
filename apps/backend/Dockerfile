@@ -36,4 +36,4 @@ USER appuser
 EXPOSE 8000 8001
 
 # El comando final lo decide compose (backend vs worker vs migrate)
-CMD ["python", "-c", "print('Use compose command (backend/worker/migrate)')"]
+CMD ["python", "-c", "print('Use compose command (apps/backend/worker/migrate)')"]

@@ -47,7 +47,7 @@ pnpm docker:up
 pnpm dev
 ```
 
-For detailed setup instructions, see [doc/runbook/local-dev.md](doc/runbook/local-dev.md).
+For detailed setup instructions, see [docs/runbook/local-dev.md](docs/runbook/local-dev.md).
 
 ## Development Workflow
 
@@ -96,10 +96,10 @@ test(e2e): add document upload flow tests
 3. **Run tests** to ensure nothing is broken:
    ```bash
    # Backend
-   cd backend && pytest
+   cd apps/backend && pytest
    
    # Frontend
-   cd frontend && pnpm test
+   cd apps/frontend && pnpm test
    
    # E2E (requires services running)
    pnpm e2e
@@ -203,7 +203,7 @@ export function QueryForm({ query, onSubmit, loading }: QueryFormProps) {
 ### Backend Tests
 
 ```bash
-cd backend
+cd apps/backend
 
 # Unit tests (fast, no external deps)
 pytest -m unit
@@ -218,7 +218,7 @@ pytest --cov=app --cov-report=html
 ### Frontend Tests
 
 ```bash
-cd frontend
+cd apps/frontend
 
 # Run tests
 pnpm test
@@ -256,20 +256,20 @@ k6 run api.k6.js --env BASE_URL=http://localhost:8000
 ### When to Update Docs
 
 - New features → Update relevant docs
-- API changes → Update `doc/api/http-api.md`
-- Architecture changes → Update `doc/architecture/overview.md`
-- New environment variables → Update `doc/runbook/local-dev.md`
+- API changes → Update `docs/api/http-api.md`
+- Architecture changes → Update `docs/architecture/overview.md`
+- New environment variables → Update `docs/runbook/local-dev.md`
 
 ### Doc Locations
 
 | Topic | Location |
 |-------|----------|
-| Architecture | `doc/architecture/overview.md` |
-| API Reference | `doc/api/http-api.md` |
-| Database Schema | `doc/data/postgres-schema.md` |
-| Local Development | `doc/runbook/local-dev.md` |
-| Deployment | `doc/runbook/deployment.md` |
-| Troubleshooting | `doc/runbook/troubleshooting.md` |
+| Architecture | `docs/architecture/overview.md` |
+| API Reference | `docs/api/http-api.md` |
+| Database Schema | `docs/data/postgres-schema.md` |
+| Local Development | `docs/runbook/local-dev.md` |
+| Deployment | `docs/runbook/deployment.md` |
+| Troubleshooting | `docs/runbook/troubleshooting.md` |
 
 ## Questions?
 

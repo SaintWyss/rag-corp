@@ -48,7 +48,7 @@ pnpm db:migrate
 ## Backend (sin Docker)
 
 ```bash
-cd backend
+cd apps/backend
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -71,7 +71,7 @@ python3 scripts/export_openapi.py --out ../shared/contracts/openapi.json
 ## Frontend (Next.js)
 
 ```bash
-cd frontend
+cd apps/frontend
 pnpm dev
 ```
 
@@ -109,11 +109,11 @@ pnpm test:backend:unit
 pnpm e2e
 ```
 
-Ver `doc/quality/testing.md` y `tests/e2e/README.md` para opciones avanzadas.
+Ver `docs/quality/testing.md` y `tests/e2e/README.md` para opciones avanzadas.
 
 ---
 
 ## Observability
 
-Ver `doc/runbook/observability.md` para perfiles compose y endpoints (`/healthz`, `/readyz`, `/metrics`).
+Ver `docs/runbook/observability.md` para perfiles compose y endpoints (`/healthz`, `/readyz`, `/metrics`).
 
