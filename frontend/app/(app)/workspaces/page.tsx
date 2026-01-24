@@ -1,14 +1,14 @@
 "use client";
 
 import {
-    archiveWorkspace,
-    createWorkspace,
-    getCurrentUser,
-    listWorkspaces,
-    publishWorkspace,
-    shareWorkspace,
-    type CurrentUser,
-    type WorkspaceSummary,
+  archiveWorkspace,
+  createWorkspace,
+  getCurrentUser,
+  listWorkspaces,
+  publishWorkspace,
+  shareWorkspace,
+  type CurrentUser,
+  type WorkspaceSummary,
 } from "@/shared/api/api";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -33,11 +33,7 @@ const VISIBILITY_LABELS: Record<WorkspaceDraft["visibility"], string> = {
   [WorkspaceVisibility.SHARED]: "Compartido",
 };
 
-const VISIBILITY_STYLES: Record<WorkspaceDraft["visibility"], string> = {
-  [WorkspaceVisibility.PRIVATE]: "border-slate-400/40 bg-slate-400/10 text-slate-200",
-  [WorkspaceVisibility.ORG_READ]: "border-cyan-400/40 bg-cyan-400/10 text-cyan-100",
-  [WorkspaceVisibility.SHARED]: "border-amber-400/40 bg-amber-400/10 text-amber-100",
-};
+
 
 const VISIBILITY_OPTIONS: Array<{ value: WorkspaceDraft["visibility"]; label: string }> = [
   { value: WorkspaceVisibility.PRIVATE, label: "Privado" },
@@ -267,15 +263,15 @@ export default function WorkspacesPage() {
       <div className="space-y-8" data-testid="workspaces-page">
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold sm:text-4xl">Workspaces</h1>
+            <h1 className="text-3xl font-bold sm:text-4xl text-white drop-shadow-sm">Workspaces</h1>
             <span
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/60"
+              className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200 font-bold shadow-sm"
               data-testid="workspaces-role"
             >
               {roleLabel}
             </span>
           </div>
-          <p className="max-w-2xl text-sm text-white/60 sm:text-base">
+          <p className="max-w-2xl text-sm text-white/60 sm:text-base font-medium">
             Gestiona visibilidad y acceso. Publica a toda la organizacion, comparte
             con usuarios puntuales o archiva cuando ya no sea necesario.
           </p>
@@ -286,17 +282,17 @@ export default function WorkspacesPage() {
 
         {canCreate ? (
           <section
-            className="rounded-3xl border border-white/10 bg-white/5 p-6"
+            className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-md"
             data-testid="workspaces-create-panel"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Crear workspace</h2>
-                <p className="text-sm text-white/60">
+                <h2 className="text-lg font-bold text-white">Crear workspace</h2>
+                <p className="text-sm text-white/50">
                   Por defecto queda en privado hasta publicar o compartir.
                 </p>
               </div>
-              <div className="text-xs text-white/50">
+              <div className="text-xs font-bold text-cyan-200 bg-cyan-950/50 border border-cyan-900 px-3 py-1 rounded-full">
                 {workspaces.length} activos
               </div>
             </div>
@@ -306,7 +302,7 @@ export default function WorkspacesPage() {
               className="mt-6 grid gap-4 md:grid-cols-[1.5fr_1fr_auto]"
               data-testid="workspaces-create-form"
             >
-              <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+              <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                 Nombre
                 <input
                   value={draft.name}
@@ -314,11 +310,11 @@ export default function WorkspacesPage() {
                     setDraft((prev) => ({ ...prev, name: event.target.value }))
                   }
                   data-testid="workspaces-create-name"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-400/10 shadow-sm transition-all"
                   placeholder="Legal Ops"
                 />
               </label>
-              <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+              <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                 Visibilidad
                 <select
                   value={draft.visibility}
@@ -329,10 +325,10 @@ export default function WorkspacesPage() {
                     }))
                   }
                   data-testid="workspaces-create-visibility"
-                  className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white/70 focus:border-cyan-400/60 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white/80 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-400/10 shadow-sm transition-all"
                 >
                   {VISIBILITY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option key={option.value} value={option.value} className="bg-zinc-900 text-white">
                       {option.label}
                     </option>
                   ))}
@@ -342,40 +338,40 @@ export default function WorkspacesPage() {
                 type="submit"
                 disabled={creating}
                 data-testid="workspaces-create-submit"
-                className="self-end rounded-full bg-cyan-500/80 px-6 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-cyan-900/40 disabled:text-white/40"
+                className="self-end rounded-full bg-cyan-400 px-6 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-400/20 transition hover:bg-cyan-300 hover:shadow-cyan-300/30 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
               >
                 {creating ? "Creando..." : "Crear"}
               </button>
             </form>
           </section>
         ) : (
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-lg font-semibold">Workspaces (solo lectura)</h2>
-            <p className="text-sm text-white/60">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md">
+            <h2 className="text-lg font-bold text-white">Workspaces (solo lectura)</h2>
+            <p className="text-sm text-white/50">
               Tu rol no permite crear ni administrar workspaces.
             </p>
           </section>
         )}
 
         <section
-          className="rounded-3xl border border-white/10 bg-white/5 p-6"
+          className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md"
           data-testid="workspaces-list-section"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Listado</h2>
-              <p className="text-sm text-white/60">
+              <h2 className="text-lg font-bold text-white">Listado</h2>
+              <p className="text-sm text-white/50">
                 {workspaces.length} workspaces visibles.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50">
+              <label className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold cursor-pointer hover:text-cyan-400 transition-colors">
                 <input
                   type="checkbox"
                   checked={includeArchived}
                   onChange={(event) => setIncludeArchived(event.target.checked)}
                   data-testid="workspaces-include-archived"
-                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-cyan-400"
+                  className="h-4 w-4 rounded border-white/20 bg-white/5 text-cyan-400 focus:ring-cyan-400 focus:ring-offset-0"
                 />
                 Incluir archivados
               </label>
@@ -383,7 +379,7 @@ export default function WorkspacesPage() {
                 type="button"
                 onClick={loadWorkspaces}
                 data-testid="workspaces-refresh"
-                className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white"
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition hover:border-cyan-300 hover:text-cyan-300 hover:shadow-sm"
               >
                 Refrescar
               </button>
@@ -395,7 +391,7 @@ export default function WorkspacesPage() {
             data-testid="workspaces-list"
           >
             {loading ? (
-              <p className="text-sm text-white/50">Cargando workspaces...</p>
+              <p className="text-sm text-white/30">Cargando workspaces...</p>
             ) : workspaces.length ? (
               workspaces.map((workspace) => {
                 const archived = isArchived(workspace);
@@ -408,46 +404,49 @@ export default function WorkspacesPage() {
                 return (
                   <div
                     key={workspace.id}
-                    className="rounded-2xl border border-white/10 bg-slate-950/40 p-5"
+                    className="group rounded-2xl border border-white/10 bg-white/5 p-5 shadow-sm transition-all hover:shadow-md hover:bg-white/10 hover:border-white/20"
                     data-testid={`workspace-card-${workspace.id}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">
+                        <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">
                           {workspace.name}
                         </h3>
-                        <p className="mt-1 text-xs text-white/50">
-                          ID: <span className="font-mono">{workspace.id}</span>
+                        <p className="mt-1 text-xs text-white/30 font-mono">
+                          ID: {workspace.id.substring(0, 8)}...
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <span
-                          className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                            VISIBILITY_STYLES[workspace.visibility]
-                          }`}
+                          className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-bold ${workspace.visibility === WorkspaceVisibility.PRIVATE
+                            ? "border-white/10 bg-white/5 text-white/50"
+                            : workspace.visibility === WorkspaceVisibility.ORG_READ
+                              ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
+                              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                            }`}
                           data-testid={`workspace-visibility-${workspace.id}`}
                         >
                           {VISIBILITY_LABELS[workspace.visibility]}
                         </span>
                         {archived ? (
-                          <span className="rounded-full border border-rose-400/40 bg-rose-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-rose-100">
+                          <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-bold text-rose-300">
                             Archivado
                           </span>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="mt-4 space-y-1 text-xs text-white/50">
-                      <p>Creado: {formatDate(workspace.created_at)}</p>
+                    <div className="mt-4 space-y-1 text-xs text-white/40">
+                      <p>Creado: <span className="text-white/70">{formatDate(workspace.created_at)}</span></p>
                       <p>
                         Owner: {workspace.owner_user_id ? (
-                          <span className="font-mono">{workspace.owner_user_id}</span>
+                          <span className="font-mono text-white/70">{workspace.owner_user_id.substring(0, 8)}...</span>
                         ) : (
                           "Sin owner"
                         )}
                       </p>
                       {workspace.acl?.allowed_roles?.length ? (
-                        <p>Roles: {workspace.acl.allowed_roles.join(", ")}</p>
+                        <p>Roles: <span className="font-semibold text-white/60">{workspace.acl.allowed_roles.join(", ")}</span></p>
                       ) : null}
                     </div>
 
@@ -459,7 +458,7 @@ export default function WorkspacesPage() {
                             onClick={() => handlePublish(workspace)}
                             disabled={workingId === workspace.id}
                             data-testid={`workspace-action-publish-${workspace.id}`}
-                            className="rounded-full bg-cyan-500/80 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-cyan-900/40 disabled:text-white/40"
+                            className="rounded-full bg-cyan-400/10 border border-cyan-400/20 px-3 py-1 text-xs font-bold text-cyan-200 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Publicar
                           </button>
@@ -474,7 +473,7 @@ export default function WorkspacesPage() {
                             }
                             disabled={workingId === workspace.id}
                             data-testid={`workspace-action-share-toggle-${workspace.id}`}
-                            className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70 transition hover:border-amber-300/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-white/60 transition hover:border-amber-300/50 hover:text-amber-200 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Compartir
                           </button>
@@ -485,21 +484,21 @@ export default function WorkspacesPage() {
                             onClick={() => handleArchive(workspace)}
                             disabled={workingId === workspace.id}
                             data-testid={`workspace-action-archive-${workspace.id}`}
-                            className="rounded-full border border-rose-400/40 px-3 py-1 text-xs text-rose-100 transition hover:border-rose-300/60 hover:text-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-white/60 transition hover:border-rose-300/50 hover:text-rose-200 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Archivar
                           </button>
                         ) : null}
                       </div>
                     ) : (
-                      <p className="mt-4 text-xs text-white/40">
+                      <p className="mt-4 text-xs italic text-white/30">
                         Sin permisos para administrar este workspace.
                       </p>
                     )}
 
                     {shareOpenId === workspace.id && !archived ? (
-                      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
-                        <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+                      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 shadow-inner">
+                        <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-cyan-200/80 font-bold">
                           User IDs
                           <textarea
                             rows={2}
@@ -511,7 +510,7 @@ export default function WorkspacesPage() {
                               }))
                             }
                             data-testid={`workspace-share-input-${workspace.id}`}
-                            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/20 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
                             placeholder="UUIDs separados por coma"
                           />
                         </label>
@@ -521,17 +520,17 @@ export default function WorkspacesPage() {
                             onClick={() => handleShare(workspace)}
                             disabled={workingId === workspace.id}
                             data-testid={`workspace-share-submit-${workspace.id}`}
-                            className="rounded-full bg-amber-400/80 px-4 py-1 text-xs font-semibold text-slate-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-900/30 disabled:text-white/40"
+                            className="rounded-full bg-amber-500 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-amber-500/20 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Guardar share
                           </button>
                           <button
                             type="button"
                             onClick={() => setShareOpenId(null)}
-                            className="text-xs text-white/50 hover:text-white"
+                            className="text-xs font-medium text-white/40 hover:text-white"
                             data-testid={`workspace-share-cancel-${workspace.id}`}
                           >
-                            Cerrar
+                            Cancelar
                           </button>
                         </div>
                       </div>
@@ -541,7 +540,7 @@ export default function WorkspacesPage() {
               })
             ) : (
               <div
-                className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-8 text-center text-sm text-white/50"
+                className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-sm text-white/40"
                 data-testid="workspaces-empty"
               >
                 No hay workspaces todavia. Crea el primero para empezar.

@@ -46,12 +46,12 @@ export default function LoginPage() {
     <div className="relative w-full h-screen overflow-hidden">
       <AuroraBackground>
         <div className="z-10 flex items-center justify-center w-full h-full px-4">
-          <div className="w-full max-w-md p-8 space-y-8 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl animate-fade-in-up">
+          <div className="w-full max-w-md p-8 space-y-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl animate-fade-in-up">
             <div className="text-center space-y-2">
-              <h1 className="text-4xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+              <h1 className="text-4xl font-bold tracking-tighter text-white drop-shadow-sm">
                 Welcome Back
               </h1>
-              <p className="text-gray-400 text-sm">
+              <p className="text-white/60 text-sm font-medium">
                 Enter your credentials to access your workspace.
               </p>
             </div>
@@ -59,11 +59,11 @@ export default function LoginPage() {
             <form className="mt-8 space-y-6" onSubmit={onSubmit}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 uppercase tracking-widest mb-1">
+                  <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-1">
                     Email Address
                   </label>
                   <input
-                    className="w-full px-4 py-3 text-white bg-black/20 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-gray-600"
+                    className="w-full px-4 py-3 text-white bg-black/20 border border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-cyan-400/20 focus:border-cyan-400 transition-all placeholder:text-white/30 shadow-sm"
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -73,11 +73,11 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 uppercase tracking-widest mb-1">
+                  <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-1">
                     Password
                   </label>
                   <input
-                    className="w-full px-4 py-3 text-white bg-black/20 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-gray-600"
+                    className="w-full px-4 py-3 text-white bg-black/20 border border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-cyan-400/20 focus:border-cyan-400 transition-all placeholder:text-white/30 shadow-sm"
                     type="password"
                     placeholder="••••••••"
                     value={password}
@@ -89,7 +89,7 @@ export default function LoginPage() {
               </div>
 
               {error ? (
-                <div className="p-3 text-sm text-red-200 bg-red-900/30 border border-red-500/30 rounded-lg backdrop-blur-sm animate-shake">
+                <div className="p-3 text-sm text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-lg animate-shake font-medium">
                   {error}
                 </div>
               ) : null}
@@ -97,7 +97,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 text-sm font-bold text-white uppercase tracking-wider bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl shadow-lg shadow-indigo-500/20 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3.5 text-sm font-bold text-slate-950 uppercase tracking-wider bg-cyan-400 hover:bg-cyan-300 rounded-xl shadow-lg shadow-cyan-400/20 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

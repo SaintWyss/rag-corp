@@ -45,19 +45,19 @@ export function QueryForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.35)] md:grid-cols-[1fr_auto] md:items-end"
+      className="grid gap-4 rounded-3xl border border-white/40 bg-white/60 p-5 shadow-xl backdrop-blur-md md:grid-cols-[1fr_auto] md:items-end"
       role="search"
       aria-label="Formulario de consulta RAG"
     >
       <div className="space-y-2">
         <label htmlFor={id} className="block">
-          <span className="text-xs uppercase tracking-[0.25em] text-white/50">
+          <span className="text-xs uppercase tracking-[0.25em] text-slate-500 font-bold">
             Consulta
           </span>
         </label>
         <textarea
           id={id}
-          className="min-h-[120px] w-full resize-none rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-base text-white shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+          className="min-h-[120px] w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-800 shadow-inner outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 placeholder:text-slate-400"
           placeholder="Ejemplo: Que dice el manual sobre vacaciones?"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
@@ -70,7 +70,7 @@ export function QueryForm({
       <button
         type="submit"
         disabled={loading}
-        className="flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-6 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-bold uppercase tracking-[0.2em] text-white transition hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
         aria-label={loading ? "Buscando respuesta..." : "Enviar consulta"}
       >
         {loading ? "Buscando..." : "Preguntar"}

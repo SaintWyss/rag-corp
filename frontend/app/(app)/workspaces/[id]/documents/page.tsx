@@ -1,17 +1,17 @@
 "use client";
 
 import {
-    deleteWorkspaceDocument,
-    getCurrentUser,
-    getWorkspaceDocument,
-    listWorkspaceDocuments,
-    reprocessWorkspaceDocument,
-    uploadWorkspaceDocument,
-    type CurrentUser,
-    type DocumentDetail,
-    type DocumentSort,
-    type DocumentStatus,
-    type DocumentSummary,
+  deleteWorkspaceDocument,
+  getCurrentUser,
+  getWorkspaceDocument,
+  listWorkspaceDocuments,
+  reprocessWorkspaceDocument,
+  uploadWorkspaceDocument,
+  type CurrentUser,
+  type DocumentDetail,
+  type DocumentSort,
+  type DocumentStatus,
+  type DocumentSummary,
 } from "@/shared/api/api";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -50,10 +50,10 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
 };
 
 const STATUS_STYLES: Record<DocumentStatus, string> = {
-  PENDING: "border-amber-400/50 bg-amber-400/10 text-amber-100",
-  PROCESSING: "border-sky-400/50 bg-sky-400/10 text-sky-100",
-  READY: "border-emerald-400/50 bg-emerald-400/10 text-emerald-100",
-  FAILED: "border-rose-400/50 bg-rose-400/10 text-rose-100",
+  PENDING: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  PROCESSING: "border-sky-500/30 bg-sky-500/10 text-sky-200",
+  READY: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  FAILED: "border-rose-500/30 bg-rose-500/10 text-rose-200",
 };
 
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
@@ -525,21 +525,21 @@ export default function DocumentsPage({ params }: PageProps) {
       <div className="space-y-8">
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold sm:text-4xl">Sources</h1>
+            <h1 className="text-3xl font-bold sm:text-4xl text-white drop-shadow-sm">Sources</h1>
             <span
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/60"
+              className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200 font-bold shadow-sm"
               data-testid="sources-role"
             >
               {roleLabel}
             </span>
             <span
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/60"
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold"
               data-testid="sources-workspace"
             >
               Workspace {workspaceId}
             </span>
           </div>
-          <p className="max-w-2xl text-sm text-white/60 sm:text-base">
+          <p className="max-w-2xl text-sm text-white/60 sm:text-base font-medium">
             Administra tus fuentes como en NotebookLM: sube PDFs/DOCX y monitorea
             el estado del procesamiento.
           </p>
@@ -550,17 +550,17 @@ export default function DocumentsPage({ params }: PageProps) {
 
         {isAdmin ? (
           <section
-            className="rounded-3xl border border-white/10 bg-white/5 p-6"
+            className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-md"
             data-testid="sources-upload-panel"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Subir fuente</h2>
-                <p className="text-sm text-white/60">
+                <h2 className="text-lg font-bold text-white">Subir fuente</h2>
+                <p className="text-sm text-white/50">
                   PDF o DOCX. El procesamiento corre en background.
                 </p>
               </div>
-              <div className="text-xs text-white/50">
+              <div className="text-xs font-bold text-cyan-200 bg-cyan-950/50 border border-cyan-900 px-3 py-1 rounded-full">
                 {file ? formatFileSize(file.size) : "Selecciona un archivo"}
               </div>
             </div>
@@ -571,11 +571,10 @@ export default function DocumentsPage({ params }: PageProps) {
               data-testid="sources-upload-form"
             >
               <div
-                className={`flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-10 text-center transition ${
-                  dropActive
-                    ? "border-cyan-300/70 bg-cyan-400/10"
-                    : "border-white/10 bg-slate-950/40"
-                }`}
+                className={`flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-10 text-center transition ${dropActive
+                    ? "border-cyan-400 bg-cyan-400/10"
+                    : "border-white/10 bg-black/20 hover:bg-black/30"
+                  }`}
                 onDragOver={(event) => {
                   event.preventDefault();
                   setDropActive(true);
@@ -594,11 +593,11 @@ export default function DocumentsPage({ params }: PageProps) {
                 />
                 <label
                   htmlFor="sources-file-input"
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:border-cyan-400 hover:text-cyan-400 cursor-pointer"
                 >
                   Elegir archivo
                 </label>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-white/40">
                   o arrastra y suelta aqui
                 </p>
                 {file ? (
@@ -610,7 +609,7 @@ export default function DocumentsPage({ params }: PageProps) {
                     <button
                       type="button"
                       onClick={clearFile}
-                      className="text-xs text-rose-200/80 hover:text-rose-100"
+                      className="text-xs text-rose-400 hover:text-rose-300 font-bold"
                       data-testid="sources-clear-file"
                     >
                       Quitar archivo
@@ -620,7 +619,7 @@ export default function DocumentsPage({ params }: PageProps) {
               </div>
 
               <div className="space-y-4">
-                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                   Titulo (opcional)
                   <input
                     value={draft.title}
@@ -631,11 +630,11 @@ export default function DocumentsPage({ params }: PageProps) {
                       }))
                     }
                     data-testid="sources-title-input"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-400/10 shadow-sm transition-all"
                     placeholder="Guia comercial 2025"
                   />
                 </label>
-                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                   Source (opcional)
                   <input
                     value={draft.source}
@@ -646,11 +645,11 @@ export default function DocumentsPage({ params }: PageProps) {
                       }))
                     }
                     data-testid="sources-source-input"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-400/10 shadow-sm transition-all"
                     placeholder="https://docs.example.com"
                   />
                 </label>
-                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/60">
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                   Tags (opcional)
                   <input
                     value={draft.tags}
@@ -661,7 +660,7 @@ export default function DocumentsPage({ params }: PageProps) {
                       }))
                     }
                     data-testid="sources-tags-input"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-400/10 shadow-sm transition-all"
                     placeholder="legal, finanzas"
                   />
                 </label>
@@ -670,11 +669,11 @@ export default function DocumentsPage({ params }: PageProps) {
                   type="submit"
                   disabled={uploading || !file}
                   data-testid="sources-upload-submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-cyan-500/80 px-6 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-cyan-900/40 disabled:text-white/40"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-cyan-400 text-slate-950 px-6 py-2 text-sm font-bold shadow-lg shadow-cyan-400/20 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
                 >
                   {uploading ? (
                     <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
+                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-900 border-t-transparent" />
                       Subiendo...
                     </span>
                   ) : (
@@ -685,20 +684,20 @@ export default function DocumentsPage({ params }: PageProps) {
             </form>
           </section>
         ) : (
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-lg font-semibold">Sources (solo lectura)</h2>
-            <p className="text-sm text-white/60">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md">
+            <h2 className="text-lg font-bold text-white">Sources (solo lectura)</h2>
+            <p className="text-sm text-white/50">
               Tu rol no permite cargar ni reprocesar archivos.
             </p>
           </section>
         )}
 
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Listado</h2>
-                <p className="text-sm text-white/60">
+                <h2 className="text-lg font-bold text-white">Listado</h2>
+                <p className="text-sm text-white/50">
                   {documents.length} fuentes {filtersActive ? "filtradas" : "activas"}.
                 </p>
               </div>
@@ -706,14 +705,14 @@ export default function DocumentsPage({ params }: PageProps) {
                 type="button"
                 onClick={() => loadDocuments()}
                 data-testid="sources-refresh"
-                className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white"
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition hover:border-cyan-300 hover:text-cyan-300 hover:shadow-sm"
               >
                 {needsPolling ? "Actualizando..." : "Refrescar"}
               </button>
             </div>
 
             <div
-              className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+              className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-black/20 p-4"
               data-testid="sources-filters"
             >
               <form
@@ -723,30 +722,30 @@ export default function DocumentsPage({ params }: PageProps) {
                 }}
                 className="grid gap-3 md:grid-cols-[1.4fr_1fr_auto_auto]"
               >
-                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50">
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                   Buscar
                   <input
                     value={queryInput}
                     onChange={(event) => setQueryInput(event.target.value)}
                     data-testid="sources-search-input"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
                     placeholder="Titulo, source o archivo"
                   />
                 </label>
-                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50">
+                <label className="space-y-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                   Tag
                   <input
                     value={tagInput}
                     onChange={(event) => setTagInput(event.target.value)}
                     data-testid="sources-tag-input"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
                     placeholder="comercial"
                   />
                 </label>
                 <button
                   type="submit"
                   data-testid="sources-apply-filters"
-                  className="self-end rounded-full bg-cyan-500/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-cyan-400"
+                  className="self-end rounded-full bg-cyan-400 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-cyan-300 shadow-md shadow-cyan-400/20"
                 >
                   Aplicar
                 </button>
@@ -754,7 +753,7 @@ export default function DocumentsPage({ params }: PageProps) {
                   type="button"
                   onClick={clearFilters}
                   data-testid="sources-clear-filters"
-                  className="self-end rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/60 transition hover:border-cyan-300/50 hover:text-white"
+                  className="self-end rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold transition hover:border-rose-300 hover:text-rose-300"
                 >
                   Limpiar
                 </button>
@@ -769,11 +768,10 @@ export default function DocumentsPage({ params }: PageProps) {
                       type="button"
                       onClick={() => setStatusFilter(option.value)}
                       data-testid={`sources-status-${option.value.toLowerCase()}`}
-                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] transition ${
-                        active
-                          ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-100"
-                          : "border-white/10 text-white/50 hover:border-cyan-300/30 hover:text-white"
-                      }`}
+                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-bold transition ${active
+                          ? "border-cyan-400 bg-cyan-400/10 text-cyan-200"
+                          : "border-white/10 bg-white/5 text-white/40 hover:border-cyan-200 hover:text-cyan-200"
+                        }`}
                     >
                       {option.label}
                     </button>
@@ -781,7 +779,7 @@ export default function DocumentsPage({ params }: PageProps) {
                 })}
               </div>
 
-              <label className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50">
+              <label className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50 font-bold">
                 Orden
                 <select
                   value={sort}
@@ -789,10 +787,10 @@ export default function DocumentsPage({ params }: PageProps) {
                     setSort(event.target.value as DocumentSort)
                   }
                   data-testid="sources-sort-select"
-                  className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-white/70 focus:border-cyan-400/60 focus:outline-none"
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80 focus:border-cyan-400 focus:outline-none"
                 >
                   {SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option key={option.value} value={option.value} className="bg-zinc-900 text-white">
                       {option.label}
                     </option>
                   ))}
@@ -802,9 +800,9 @@ export default function DocumentsPage({ params }: PageProps) {
 
             <div className="mt-6 space-y-3" data-testid="sources-list">
               {loadingList ? (
-                <p className="text-sm text-white/50">Cargando fuentes...</p>
+                <p className="text-sm text-white/30">Cargando fuentes...</p>
               ) : documents.length === 0 ? (
-                <p className="text-sm text-white/50">
+                <p className="text-sm text-white/30">
                   Aun no hay fuentes cargadas.
                 </p>
               ) : (
@@ -820,29 +818,27 @@ export default function DocumentsPage({ params }: PageProps) {
                       data-testid="source-list-item"
                       data-document-id={doc.id}
                       data-document-title={doc.title}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                        active
-                          ? "border-cyan-400/60 bg-cyan-400/10"
-                          : "border-white/10 bg-slate-950/40 hover:border-cyan-400/40"
-                      }`}
+                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${active
+                          ? "border-cyan-400 bg-cyan-400/10 shadow-md ring-1 ring-cyan-400/20"
+                          : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 hover:shadow-sm"
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-white">
+                            <p className={`text-sm font-bold ${active ? "text-cyan-100" : "text-white"}`}>
                               {doc.title}
                             </p>
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
-                                STATUS_STYLES[status]
-                              }`}
+                              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] font-bold ${STATUS_STYLES[status]
+                                }`}
                               data-testid="source-status-chip"
                               data-document-id={doc.id}
                             >
                               {STATUS_LABELS[status]}
                             </span>
                           </div>
-                          <p className="text-xs text-white/50">
+                          <p className={`text-xs ${active ? "text-cyan-200/70" : "text-white/50"}`}>
                             {doc.file_name || doc.source || "Sin archivo"}
                           </p>
                           {tags.length ? (
@@ -851,20 +847,20 @@ export default function DocumentsPage({ params }: PageProps) {
                                 <span
                                   key={tag}
                                   data-testid="source-tag"
-                                  className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-white/50"
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${active ? "border-cyan-400/30 text-cyan-200" : "border-white/10 text-white/40"}`}
                                 >
                                   {tag}
                                 </span>
                               ))}
                               {tags.length > 3 ? (
-                                <span className="text-[10px] text-white/40">
+                                <span className={`text-[10px] ${active ? "text-cyan-400" : "text-white/30"}`}>
                                   +{tags.length - 3}
                                 </span>
                               ) : null}
                             </div>
                           ) : null}
                         </div>
-                        <span className="text-xs text-white/40">
+                        <span className={`text-xs ${active ? "text-cyan-200" : "text-white/30"}`}>
                           {formatDate(doc.created_at)}
                         </span>
                       </div>
@@ -880,7 +876,7 @@ export default function DocumentsPage({ params }: PageProps) {
                   onClick={handleLoadMore}
                   disabled={loadingMore}
                   data-testid="sources-load-more"
-                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white disabled:cursor-not-allowed disabled:text-white/40"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/60 transition hover:border-cyan-300 hover:text-cyan-300 disabled:cursor-not-allowed disabled:text-white/20"
                 >
                   {loadingMore ? "Cargando..." : "Mostrar mas"}
                 </button>
@@ -889,14 +885,14 @@ export default function DocumentsPage({ params }: PageProps) {
           </section>
 
           <section
-            className="rounded-3xl border border-white/10 bg-white/5 p-6"
+            className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md"
             data-testid="source-detail"
             data-document-id={selected?.id}
             data-document-title={selected?.title}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Detalle</h2>
+                <h2 className="text-lg font-bold text-white">Detalle</h2>
                 <p className="text-xs text-white/50">
                   Estado y metadata del documento.
                 </p>
@@ -910,7 +906,7 @@ export default function DocumentsPage({ params }: PageProps) {
                       reprocessing || normalizeStatus(selected.status) === "PROCESSING"
                     }
                     data-testid="source-reprocess-button"
-                    className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-cyan-300/50 hover:text-white disabled:cursor-not-allowed disabled:text-white/40"
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/60 transition hover:border-cyan-300 hover:text-cyan-300 disabled:cursor-not-allowed disabled:text-white/20 shadow-sm"
                   >
                     {reprocessing ? "Reprocesando..." : "Reprocesar"}
                   </button>
@@ -919,7 +915,7 @@ export default function DocumentsPage({ params }: PageProps) {
                     onClick={handleDelete}
                     disabled={deleting}
                     data-testid="source-delete-button"
-                    className="rounded-full border border-rose-400/40 px-4 py-2 text-sm text-rose-100 transition hover:border-rose-300/60 hover:text-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-bold text-rose-300 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
                   >
                     {deleting ? "Eliminando..." : "Eliminar"}
                   </button>
@@ -928,59 +924,58 @@ export default function DocumentsPage({ params }: PageProps) {
             </div>
 
             {loadingDetail ? (
-              <p className="mt-4 text-sm text-white/50">Cargando detalle...</p>
+              <p className="mt-4 text-sm text-white/30">Cargando detalle...</p>
             ) : !selected ? (
-              <p className="mt-4 text-sm text-white/50">
+              <p className="mt-4 text-sm text-white/30">
                 Selecciona una fuente para ver sus detalles.
               </p>
             ) : (
               <div className="mt-4 space-y-4 text-sm text-white/70">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Titulo
                   </p>
                   <p
-                    className="text-base text-white"
+                    className="text-base font-bold text-white"
                     data-testid="source-detail-title"
                   >
                     {selected.title}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Archivo
                   </p>
-                  <p data-testid="source-detail-file">
+                  <p data-testid="source-detail-file" className="text-white">
                     {selected.file_name || "Sin archivo"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     MIME
                   </p>
-                  <p data-testid="source-detail-mime">
+                  <p data-testid="source-detail-mime" className="text-white/60 font-mono text-xs">
                     {selected.mime_type || "Sin tipo"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Estado
                   </p>
                   <span
-                    className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${
-                      STATUS_STYLES[normalizeStatus(selected.status)]
-                    }`}
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] font-bold ${STATUS_STYLES[normalizeStatus(selected.status)]
+                      }`}
                     data-testid="source-detail-status"
                   >
                     {STATUS_LABELS[normalizeStatus(selected.status)]}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Tags
                   </p>
                   {selectedTags.length === 0 ? (
-                    <p className="text-white/50" data-testid="source-detail-tags">
+                    <p className="text-white/30 italic" data-testid="source-detail-tags">
                       Sin tags.
                     </p>
                   ) : (
@@ -991,7 +986,7 @@ export default function DocumentsPage({ params }: PageProps) {
                       {selectedTags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/60"
+                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-bold text-white/60"
                         >
                           {tag}
                         </span>
@@ -1000,36 +995,36 @@ export default function DocumentsPage({ params }: PageProps) {
                   )}
                 </div>
                 {normalizeStatus(selected.status) === "FAILED" &&
-                selected.error_message ? (
+                  selected.error_message ? (
                   <div
-                    className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-rose-100"
+                    className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-300 font-medium"
                     data-testid="source-detail-error"
                   >
                     {selected.error_message}
                   </div>
                 ) : null}
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Source
                   </p>
-                  <p data-testid="source-detail-source">
+                  <p data-testid="source-detail-source" className="text-white">
                     {selected.source || "Sin source"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Creado
                   </p>
-                  <p data-testid="source-detail-created">
+                  <p data-testid="source-detail-created" className="text-white">
                     {formatDate(selected.created_at)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                     Metadata
                   </p>
                   {metadataEntries.length === 0 ? (
-                    <p className="text-white/50">Sin metadata.</p>
+                    <p className="text-white/30 italic">Sin metadata.</p>
                   ) : (
                     <ul
                       className="space-y-2"
@@ -1038,12 +1033,14 @@ export default function DocumentsPage({ params }: PageProps) {
                       {metadataEntries.map(([key, value]) => (
                         <li
                           key={key}
-                          className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-xs text-white/70"
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 shadow-sm"
                         >
-                          <span className="text-white/40">{key}: </span>
-                          {typeof value === "string"
-                            ? value
-                            : JSON.stringify(value)}
+                          <span className="text-white/40 font-bold uppercase tracking-wider">{key}: </span>
+                          <span className="font-mono text-white/60">
+                            {typeof value === "string"
+                              ? value
+                              : JSON.stringify(value)}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -1055,7 +1052,7 @@ export default function DocumentsPage({ params }: PageProps) {
         </div>
 
         {isEmployee ? (
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-white/30">
             Modo empleado: solo lectura.
           </p>
         ) : null}

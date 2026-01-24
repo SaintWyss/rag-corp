@@ -1,9 +1,10 @@
 "use client";
 
+import { AuroraBackground } from "@/app/components/ui/aurora-background";
+import { listWorkspaces, type WorkspaceSummary } from "@/shared/api/api";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listWorkspaces, type WorkspaceSummary } from "@/shared/api/api";
 import { ApiKeyInput } from "./ApiKeyInput";
 
 type AppShellProps = {
@@ -130,50 +131,47 @@ export function AppShell({ children }: AppShellProps) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_55%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,_rgba(14,116,144,0.2),_transparent_45%)]" />
-        <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-12 sm:px-10">
-          <header className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen font-sans text-white">
+      <AuroraBackground className="h-auto min-h-screen items-stretch justify-start bg-zinc-950 text-white transition-bg">
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-8 sm:px-10 z-10">
+          <header className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/60">
+              <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/60 font-bold shadow-sm">
                 RAG Corp · v1
               </div>
-              <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-white/70">
+              <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-white/60">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`rounded-full px-3 py-1 transition ${
-                      link.active
-                        ? "bg-cyan-400/20 text-cyan-100"
-                        : "bg-white/0 text-white/60 hover:bg-white/10 hover:text-white"
-                    }`}
+                    className={`rounded-full px-3 py-1 transition ${link.active
+                      ? "bg-cyan-400 text-slate-950 shadow-md shadow-cyan-400/20 font-semibold"
+                      : "hover:bg-white/10 hover:text-white"
+                      }`}
                   >
                     {link.label}
                   </Link>
                 ))}
               </nav>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/60">
+                <label className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
                   Workspace
                   <select
                     value={workspaceId ?? ""}
                     onChange={handleWorkspaceChange}
                     disabled={workspacesLoading || visibleWorkspaces.length === 0}
                     data-testid="workspace-selector"
-                    className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-white/70 focus:border-cyan-400/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="" disabled>
+                    <option value="" disabled className="bg-zinc-900 text-white">
                       {workspacesLoading
                         ? "Cargando..."
                         : visibleWorkspaces.length
-                        ? "Selecciona un workspace"
-                        : "Sin workspaces"}
+                          ? "Selecciona un workspace"
+                          : "Sin workspaces"}
                     </option>
                     {visibleWorkspaces.map((workspace) => (
-                      <option key={workspace.id} value={workspace.id}>
+                      <option key={workspace.id} value={workspace.id} className="bg-zinc-900 text-white">
                         {workspace.name}
                       </option>
                     ))}
@@ -189,7 +187,7 @@ export function AppShell({ children }: AppShellProps) {
                 ) : null}
                 {workspacesError ? (
                   <span
-                    className="text-xs text-rose-200"
+                    className="text-xs text-rose-400"
                     data-testid="workspace-selector-error"
                   >
                     {workspacesError}
@@ -212,7 +210,7 @@ export function AppShell({ children }: AppShellProps) {
 
           {children}
         </div>
-      </div>
+      </AuroraBackground>
     </div>
   );
 }

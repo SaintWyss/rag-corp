@@ -53,10 +53,65 @@ from ..application.dev_seed_admin import ensure_dev_admin
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle. Validates settings and initializes pool."""
+    settings = get_settings()
+
+    if settings.is_production():
+        settings.validate_security_requirements()
+
+    # Initialize DB pool (must happen before any repository usage)
+    init_pool(
+        database_url=settings.database_url,
+        min_size=settings.db_pool_min_size,
+        max_size=settings.db_pool_max_size,
+    )
+
+    try:
+        # Dev seed admin (only does something if enabled in settings/env)
+        try:
+            ensure_dev_admin(settings)
+        except Exception as e:
+            logger.error(f"Startup failed: {e}")
+            raise
+
+        logger.info(
+            "RAG Corp API starting up",
+            extra={
+                "chunk_size": settings.chunk_size,
+                "chunk_overlap": settings.chunk_overlap,
+                "otel_enabled": os.getenv("OTEL_ENABLED", "0") == "1",
+                "auth_enabled": is_auth_enabled(),
+                "rate_limit_rps": settings.rate_limit_rps,
+                "db_pool_min": settings.db_pool_min_size,
+                "db_pool_max": settings.db_pool_max_size,
+            },
+        )
+
+        yield
+
+    finally:
+        close_pool()
+        logger.info("RAG Corp API shutting down")
+
+    """Startup/shutdown lifecycle. Validates settings and initializes pool."""
     # This will raise ValidationError if env vars are missing/invalid
     settings = get_settings()
     if settings.is_production():
         settings.validate_security_requirements()
+        # R: Initialize connection pool
+    init_pool(
+        database_url=settings.database_url,
+        min_size=settings.db_pool_min_size,
+        max_size=settings.db_pool_max_size,
+    )
+
+    # R: Run dev seed logic (will fail-fast if unsafe configuration)
+    try:
+        ensure_dev_admin(settings)
+    except Exception as e:
+        logger.error(f"Startup failed: {e}")
+        # Re-raise to crash container if config is invalid
+        raise e
+
 
     # R: Run dev seed logic (will fail-fast if unsafe configuration)
     try:
@@ -391,3 +446,5 @@ def metrics(_auth: None = Depends(require_metrics_permission())):
 # This MUST be at the very end, after all FastAPI setup
 _fastapi_app = app
 app = RateLimitMiddleware(_fastapi_app)
+
+
