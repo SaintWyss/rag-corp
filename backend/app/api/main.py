@@ -34,19 +34,19 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import router
+from ..interfaces.api.http.routes import router
 from .auth_routes import router as auth_router
-from ..platform.logger import logger
+from ..crosscutting.logger import logger
 from ..container import get_document_repository
-from ..platform.config import get_settings
-from ..platform.middleware import RequestContextMiddleware, BodyLimitMiddleware
-from ..platform.rate_limit import RateLimitMiddleware
+from ..crosscutting.config import get_settings
+from ..crosscutting.middleware import RequestContextMiddleware, BodyLimitMiddleware
+from ..crosscutting.rate_limit import RateLimitMiddleware
 from ..identity.auth import is_auth_enabled
 from ..identity.rbac import require_metrics_permission
 from .versioning import include_versioned_routes
 from ..infrastructure.db.pool import init_pool, close_pool
 from .exception_handlers import register_exception_handlers
-from ..platform.security import SecurityHeadersMiddleware
+from ..crosscutting.security import SecurityHeadersMiddleware
 from ..application.dev_seed_admin import ensure_dev_admin
 
 
@@ -430,7 +430,7 @@ def metrics(_auth: None = Depends(require_metrics_permission())):
     Returns:
         Prometheus text format metrics
     """
-    from ..platform.metrics import get_metrics_response, is_prometheus_available
+    from ..crosscutting.metrics import get_metrics_response, is_prometheus_available
 
     if not is_prometheus_available():
         return Response(

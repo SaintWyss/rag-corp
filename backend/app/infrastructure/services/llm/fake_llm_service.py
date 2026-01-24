@@ -12,8 +12,8 @@ from __future__ import annotations
 import hashlib
 from typing import AsyncGenerator, List
 
-from ...domain.entities import Chunk
-from ...platform.logger import logger
+from ....domain.entities import Chunk
+from ....crosscutting.logger import logger
 
 _STREAM_CHUNK_SIZE = 16
 

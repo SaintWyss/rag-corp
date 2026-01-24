@@ -13,7 +13,7 @@ import hashlib
 import struct
 from typing import List
 
-from ...platform.logger import logger
+from ...crosscutting.logger import logger
 
 EMBEDDING_DIMENSION = 768
 

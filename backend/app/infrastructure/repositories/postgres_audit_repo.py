@@ -13,8 +13,8 @@ from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
 from ...domain.audit import AuditEvent
-from ...platform.exceptions import DatabaseError
-from ...platform.logger import logger
+from ...crosscutting.exceptions import DatabaseError
+from ...crosscutting.logger import logger
 
 
 class PostgresAuditEventRepository:

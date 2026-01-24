@@ -10,8 +10,8 @@ import os
 from redis import Redis
 from rq import Worker
 
-from ..platform.config import get_settings
-from ..platform.logger import logger
+from ..crosscutting.config import get_settings
+from ..crosscutting.logger import logger
 from .worker_server import start_worker_http_server
 from ..infrastructure.db.pool import init_pool, close_pool
 

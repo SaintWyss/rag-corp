@@ -9,7 +9,7 @@ Responsibilities:
   - Stream LLM responses via Server-Sent Events
 
 Collaborators:
-  - application.use_cases: IngestDocumentUseCase, SearchChunksUseCase, AnswerQueryUseCase
+  - application.usecases: IngestDocumentUseCase, SearchChunksUseCase, AnswerQueryUseCase
   - container: Dependency providers for repositories and services
   - streaming: SSE streaming handler
 
@@ -29,14 +29,14 @@ from datetime import datetime
 from typing import Any
 import json
 import os
-from ..platform.config import get_settings
-from ..identity.rbac import Permission
-from ..identity.dual_auth import (
+from ....crosscutting.config import get_settings
+from ....identity.rbac import Permission
+from ....identity.dual_auth import (
     require_admin,
     require_employee_or_admin,
     require_principal,
 )
-from ..platform.error_responses import (
+from ....crosscutting.error_responses import (
     OPENAPI_ERROR_RESPONSES,
     conflict,
     forbidden,
@@ -46,14 +46,14 @@ from ..platform.error_responses import (
     unsupported_media,
     validation_error,
 )
-from ..identity.access_control import can_access_document, filter_documents
-from ..audit import emit_audit_event
-from ..platform.streaming import stream_answer
-from ..application.conversations import (
+from ....identity.access_control import can_access_document, filter_documents
+from ....audit import emit_audit_event
+from ....crosscutting.streaming import stream_answer
+from ....application.conversations import (
     format_conversation_query,
     resolve_conversation_id,
 )
-from ..application.use_cases import (
+from ....application.usecases import (
     AnswerQueryUseCase,
     AnswerQueryInput,
     AnswerQueryResult,
@@ -85,7 +85,7 @@ from ..application.use_cases import (
     UploadDocumentInput,
     UploadDocumentResult,
 )
-from ..container import (
+from ....container import (
     get_answer_query_use_case,
     get_archive_workspace_use_case,
     get_create_workspace_use_case,
@@ -104,15 +104,15 @@ from ..container import (
     get_upload_document_use_case,
     get_reprocess_document_use_case,
 )
-from ..domain.audit import AuditEvent
-from ..domain.entities import ConversationMessage, Workspace, WorkspaceVisibility
-from ..domain.workspace_policy import WorkspaceActor
-from ..application.use_cases.document_results import DocumentErrorCode
-from ..application.use_cases.workspace_results import WorkspaceErrorCode
-from ..domain.repositories import AuditEventRepository
-from ..identity.dual_auth import PrincipalType, Principal
-from ..container import get_audit_repository
-from ..identity.users import UserRole
+from ....domain.audit import AuditEvent
+from ....domain.entities import ConversationMessage, Workspace, WorkspaceVisibility
+from ....domain.workspace_policy import WorkspaceActor
+from ....application.usecases.document_results import DocumentErrorCode
+from ....application.usecases.workspace_results import WorkspaceErrorCode
+from ....domain.repositories import AuditEventRepository
+from ....identity.dual_auth import PrincipalType, Principal
+from ....container import get_audit_repository
+from ....identity.users import UserRole
 
 # R: Create API router for RAG endpoints
 router = APIRouter(responses=OPENAPI_ERROR_RESPONSES)

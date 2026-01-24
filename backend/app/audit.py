@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 from .domain.audit import AuditEvent
 from .domain.repositories import AuditEventRepository
 from .identity.dual_auth import Principal, PrincipalType
-from .platform.logger import logger
+from .crosscutting.logger import logger
 
 
 def _actor_from_principal(principal: Principal | None) -> str:

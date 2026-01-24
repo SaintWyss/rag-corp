@@ -17,9 +17,9 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
 from fastapi import Header, Request
 
-from ..platform.config import get_settings
-from ..platform.error_responses import forbidden, unauthorized
-from ..platform.logger import logger
+from ..crosscutting.config import get_settings
+from ..crosscutting.error_responses import forbidden, unauthorized
+from ..crosscutting.logger import logger
 from .users import User, UserRole
 from ..infrastructure.repositories.postgres_user_repo import (
     get_user_by_email,

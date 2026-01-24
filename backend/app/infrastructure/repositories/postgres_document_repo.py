@@ -34,8 +34,8 @@ from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
 from ...domain.entities import Document, Chunk
-from ...platform.logger import logger
-from ...platform.exceptions import DatabaseError
+from ...crosscutting.logger import logger
+from ...crosscutting.exceptions import DatabaseError
 
 
 # R: Expected embedding dimension (Google Gemini)

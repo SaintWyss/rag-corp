@@ -10,7 +10,7 @@ from uuid import UUID
 
 from rq import get_current_job
 
-from ..application.use_cases import (
+from ..application.usecases import (
     ProcessUploadedDocumentInput,
     ProcessUploadedDocumentUseCase,
 )
@@ -22,13 +22,13 @@ from ..container import (
     get_file_storage,
     get_text_chunker,
 )
-from ..platform.logger import logger
-from ..platform.metrics import (
+from ..crosscutting.logger import logger
+from ..crosscutting.metrics import (
     observe_worker_duration,
     record_worker_failed,
     record_worker_processed,
 )
-from ..platform.tracing import span
+from ..crosscutting.tracing import span
 
 
 def process_document_job(document_id: str, workspace_id: str) -> None:

@@ -10,7 +10,7 @@ Responsibilities:
 Collaborators:
   - infrastructure.repositories: PostgresDocumentRepository
   - infrastructure.services: GoogleEmbeddingService, GoogleLLMService
-  - application.use_cases: AnswerQueryUseCase
+  - application.usecases: AnswerQueryUseCase
   - FastAPI Depends(): Dependency injection mechanism
 
 Constraints:
@@ -28,7 +28,7 @@ Notes:
 from functools import lru_cache
 import os
 
-from .platform.config import get_settings
+from .crosscutting.config import get_settings
 from .domain.repositories import (
     DocumentRepository,
     ConversationRepository,
@@ -65,7 +65,7 @@ from .infrastructure.parsers import SimpleDocumentTextExtractor
 from .infrastructure.queue import RQDocumentProcessingQueue
 from .infrastructure.text import SimpleTextChunker
 from .infrastructure.storage import S3FileStorageAdapter, S3Config
-from .application.use_cases import (
+from .application.usecases import (
     AnswerQueryUseCase,
     DeleteDocumentUseCase,
     GetDocumentUseCase,

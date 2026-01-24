@@ -31,8 +31,8 @@ from typing import Callable, Optional, Set
 
 from fastapi import Header, HTTPException, Request
 
-from ..platform.logger import logger
-from ..platform.error_responses import forbidden, unauthorized
+from ..crosscutting.logger import logger
+from ..crosscutting.error_responses import forbidden, unauthorized
 
 
 class Permission(Enum):
@@ -361,7 +361,7 @@ def require_metrics_permission() -> Callable:
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
-        from ..platform.config import get_settings
+        from ..crosscutting.config import get_settings
 
         if not get_settings().metrics_require_auth:
             return None

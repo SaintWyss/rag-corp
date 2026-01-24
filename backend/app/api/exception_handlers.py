@@ -22,13 +22,13 @@ Notes:
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from ..platform.exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
-from ..platform.error_responses import (
+from ..crosscutting.exceptions import RAGError, DatabaseError, EmbeddingError, LLMError
+from ..crosscutting.error_responses import (
     AppHTTPException,
     ErrorCode,
     app_exception_handler,
 )
-from ..platform.logger import logger
+from ..crosscutting.logger import logger
 
 
 async def database_error_handler(request: Request, exc: DatabaseError) -> JSONResponse:

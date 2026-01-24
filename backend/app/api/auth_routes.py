@@ -21,7 +21,7 @@ from ..identity.auth_users import (
     require_user,
 )
 from ..identity.dual_auth import require_admin, require_principal
-from ..platform.error_responses import (
+from ..crosscutting.error_responses import (
     OPENAPI_ERROR_RESPONSES,
     conflict,
     not_found,

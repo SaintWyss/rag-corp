@@ -15,8 +15,8 @@ from typing import Any
 import psycopg
 from redis import Redis
 
-from ..platform.config import get_settings
-from ..platform.logger import logger
+from ..crosscutting.config import get_settings
+from ..crosscutting.logger import logger
 
 _START_TIME = time.time()
 

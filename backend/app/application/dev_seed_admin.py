@@ -3,8 +3,8 @@ Name: Dev Seed Admin
 Description: Logic to seed a development admin user on startup.
 """
 
-from ..platform.config import Settings
-from ..platform.logger import logger
+from ..crosscutting.config import Settings
+from ..crosscutting.logger import logger
 from ..identity.auth_users import hash_password
 from ..identity.users import UserRole
 from ..infrastructure.repositories.postgres_user_repo import (

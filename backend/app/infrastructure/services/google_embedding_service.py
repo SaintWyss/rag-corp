@@ -28,8 +28,8 @@ import os
 from typing import List
 from google import genai
 
-from ...platform.logger import logger
-from ...platform.exceptions import EmbeddingError
+from ...crosscutting.logger import logger
+from ...crosscutting.exceptions import EmbeddingError
 from .retry import create_retry_decorator
 
 

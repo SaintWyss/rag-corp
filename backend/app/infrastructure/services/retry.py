@@ -34,8 +34,8 @@ from tenacity import (
     RetryCallState,
 )
 
-from ...platform.logger import logger
-from ...platform.config import get_settings
+from ...crosscutting.logger import logger
+from ...crosscutting.config import get_settings
 
 
 # R: HTTP status codes that indicate transient errors (retry-able)

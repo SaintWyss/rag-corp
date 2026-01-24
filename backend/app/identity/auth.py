@@ -32,8 +32,8 @@ from functools import lru_cache
 from fastapi import Header, Request
 from fastapi.security import APIKeyHeader
 
-from ..platform.error_responses import forbidden, unauthorized
-from ..platform.logger import logger
+from ..crosscutting.error_responses import forbidden, unauthorized
+from ..crosscutting.logger import logger
 
 
 def _hash_key(key: str) -> str:
@@ -56,7 +56,7 @@ def _parse_keys_config() -> dict[str, list[str]]:
 
     Returns empty dict if not configured (auth disabled).
     """
-    from ..platform.config import get_settings
+    from ..crosscutting.config import get_settings
 
     config_str = get_settings().api_keys_config
     if not config_str:
@@ -209,7 +209,7 @@ def require_metrics_auth() -> Callable:
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
-        from ..platform.config import get_settings
+        from ..crosscutting.config import get_settings
 
         if not get_settings().metrics_require_auth:
             return None

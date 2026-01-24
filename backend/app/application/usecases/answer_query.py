@@ -40,8 +40,8 @@ from ...domain.repositories import (
 )
 from ...domain.services import EmbeddingService, LLMService
 from ...domain.workspace_policy import WorkspaceActor
-from ...platform.timing import StageTimings
-from ...platform.logger import logger
+from ...crosscutting.timing import StageTimings
+from ...crosscutting.logger import logger
 from ..context_builder import ContextBuilder, get_context_builder
 from .document_results import AnswerQueryResult
 from .workspace_access import resolve_workspace_for_read
@@ -226,7 +226,7 @@ class AnswerQueryUseCase:
 
         # R: Record metrics (optional, lazy import)
         try:
-            from ...platform.metrics import record_stage_metrics
+            from ...crosscutting.metrics import record_stage_metrics
 
             record_stage_metrics(
                 embed_seconds=timing_data.get("embed_ms", 0) / 1000,
