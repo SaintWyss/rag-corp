@@ -178,7 +178,7 @@ jobs:
         run: pnpm -C tests/e2e test
       - name: Upload Playwright artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-artifacts
           path: |
@@ -249,7 +249,7 @@ jobs:
         run: pnpm -C tests/e2e test --grep "Full pipeline"
       - name: Upload Playwright artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-full-artifacts
           path: |
@@ -303,7 +303,7 @@ jobs:
       - name: Run load tests
         run: k6 run tests/load/api.k6.js --env BASE_URL=http://localhost:8000 --summary-export=k6-summary.json
       - name: Upload k6 results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: k6-results
           path: k6-summary.json
