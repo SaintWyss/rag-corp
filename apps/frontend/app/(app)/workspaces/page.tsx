@@ -14,6 +14,7 @@ import { getStoredApiKey } from "@/shared/lib/apiKey";
 import { AppShell } from "@/shared/ui/AppShell";
 import { NoticeBanner } from "@/shared/ui/NoticeBanner";
 import { StatusBanner } from "@/shared/ui/StatusBanner";
+import { formatDate, formatError } from "@/utils/formatters";
 import { WorkspaceVisibility } from "@contracts/src/generated";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -41,32 +42,7 @@ const VISIBILITY_OPTIONS: Array<{ value: WorkspaceDraft["visibility"]; label: st
   { value: WorkspaceVisibility.SHARED, label: "Compartido" },
 ];
 
-function formatError(error: unknown): string {
-  if (!error) {
-    return "Error inesperado.";
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  if (typeof error === "object" && "message" in error) {
-    return String((error as { message?: string }).message || "Error inesperado.");
-  }
-  return "Error inesperado.";
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) {
-    return "Sin fecha";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("es-AR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+// formatError and formatDate are now imported from @/utils/formatters
 
 function isArchived(workspace: WorkspaceSummary): boolean {
   return Boolean(workspace.archived_at);
