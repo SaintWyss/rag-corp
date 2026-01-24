@@ -1,19 +1,26 @@
-# HTTP API Documentation (v6)
+# HTTP API Documentation — RAG Corp v6
 
-**Project:** RAG Corp
-**Base URL:** `http://localhost:8000`
-**API Prefix:** `/v1` (canonical) + `/api/v1` (alias)
-**Last Updated:** 2026-01-22
+**Project:** RAG Corp  
+**Base URL:** `http://localhost:8000`  
+**API Prefix:** `/v1` (canonical) + `/api/v1` (alias)  
+**Last Updated:** 2026-01-24  
+**Source of Truth:** `shared/contracts/openapi.json`
+
+---
+
+## TL;DR
+
+RAG Corp expone una API REST con autenticación dual (JWT para UI, API Keys para integraciones). Todas las operaciones de documentos y RAG están scoped por `workspace_id`.
 
 ---
 
 ## Interactive Documentation
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- OpenAPI JSON: `shared/contracts/openapi.json`
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+- **OpenAPI JSON:** `shared/contracts/openapi.json`
 
-Regenerar contratos:
+**Regenerar contratos:**
 
 ```bash
 pnpm contracts:export
@@ -24,39 +31,91 @@ pnpm contracts:gen
 
 ## Authentication + Authorization
 
-Los endpoints `/v1/*` aceptan **JWT (usuarios)** o **X-API-Key (servicios)**.
-Los endpoints `/auth/*` son para JWT.
+RAG Corp soporta dos mecanismos de autenticación:
 
-### JWT (UI)
+### 1. JWT (Para UI / Usuarios Humanos)
 
-- `POST /auth/login`
-- `GET /auth/me`
-- `POST /auth/logout`
+Autenticación basada en cookies httpOnly. Ideal para el frontend.
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/auth/login` | POST | Login con email/password |
+| `/auth/me` | GET | Usuario actual |
+| `/auth/logout` | POST | Cerrar sesión |
+
+**Ejemplo completo:**
 
 ```bash
+# 1. Login
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"<ADMIN_EMAIL>","password":"<ADMIN_PASSWORD>"}'
+  -d '{"email":"admin@example.com","password":"secret123"}' \
+  -c cookies.txt
+
+# 2. Usar sesión
+curl http://localhost:8000/auth/me -b cookies.txt
+
+# 3. Logout
+curl -X POST http://localhost:8000/auth/logout -b cookies.txt
 ```
 
-### API keys (service auth)
+**Cookies emitidas:**
+- `access_token`: JWT token (httpOnly, Secure en prod)
+- `SameSite`: Lax (configurable)
 
-- Header: `X-API-Key`
-- Auth deshabilitada si `API_KEYS_CONFIG` y `RBAC_CONFIG` estan vacias
-- RBAC aplica solo a API keys (ver `docs/api/rbac.md`)
+### 2. API Keys (Para Integraciones / CI)
 
-Scopes legacy:
+Autenticación via header `X-API-Key`. Ideal para scripts, CI/CD, e integraciones.
+
+**Header:** `X-API-Key: <your-api-key>`
+
+**Configuración:**
+
+```bash
+# En .env
+API_KEYS_CONFIG='[{"key":"sk-test-123","name":"ci-bot","scopes":["ingest","ask"]}]'
+RBAC_CONFIG='{"ingest":["documents:*"],"ask":["query:*","ask:*"]}'
+```
+
+#### Scopes disponibles
 
 | Scope | Endpoints |
 |-------|-----------|
-| `ingest` | `/v1/workspaces/{workspace_id}/documents*`, `/v1/workspaces/{workspace_id}/ingest/*` |
-| `ask` | `/v1/workspaces/{workspace_id}/query`, `/v1/workspaces/{workspace_id}/ask*` |
+| `ingest` | `/v1/workspaces/{ws_id}/documents/*`, `/v1/workspaces/{ws_id}/ingest/*` |
+| `ask` | `/v1/workspaces/{ws_id}/query`, `/v1/workspaces/{ws_id}/ask/*` |
 | `metrics` | `/metrics` |
-| `*` | Todo |
+| `admin:*` | Todos los endpoints admin |
+| `*` | Acceso total |
 
-### Metrics auth
+#### Ejemplo con API Key
 
-`/metrics` requiere auth solo si `METRICS_REQUIRE_AUTH=true`.
+```bash
+API_KEY="sk-test-123"
+
+curl http://localhost:8000/v1/workspaces \
+  -H "X-API-Key: ${API_KEY}"
+```
+
+#### Diferencias entre JWT y API Key
+
+| Aspecto | JWT (Cookies) | API Key |
+|---------|---------------|---------|
+| Uso típico | UI/Browser | Scripts/CI |
+| Expiración | ~24h | Sin expiración |
+| Rotación | Automática | Manual |
+| Auditoría actor | `user:<uuid>` | `service:<hash>` |
+| RBAC | Basado en rol (admin/employee) | Basado en scopes |
+
+#### Seguridad de API Keys
+
+⚠️ **Nunca usar API Keys en frontend público.** Son para:
+- CI/CD pipelines
+- Integraciones server-to-server
+- Scripts de administración
+
+Para generar/rotar keys:
+1. Actualizar `API_KEYS_CONFIG` en variables de entorno
+2. Restart del backend
 
 ---
 
@@ -69,119 +128,179 @@ Todas las respuestas de error usan Problem Details (`application/problem+json`).
   "type": "https://api.ragcorp.local/errors/forbidden",
   "title": "Forbidden",
   "status": 403,
-  "detail": "Invalid API key.",
+  "detail": "You don't have access to this workspace.",
   "code": "FORBIDDEN",
-  "instance": "http://localhost:8000/v1/workspaces"
+  "instance": "/v1/workspaces/123/documents"
 }
 ```
 
+### Códigos de error comunes
+
+| Status | Code | Descripción |
+|--------|------|-------------|
+| 400 | `VALIDATION_ERROR` | Request inválido |
+| 401 | `UNAUTHORIZED` | Sin autenticación |
+| 403 | `FORBIDDEN` | Sin permisos |
+| 404 | `NOT_FOUND` | Recurso no existe |
+| 409 | `CONFLICT` | Conflicto (ej: nombre duplicado) |
+| 413 | `PAYLOAD_TOO_LARGE` | Archivo muy grande |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | MIME no soportado |
+| 429 | `RATE_LIMITED` | Demasiadas requests |
+
 ---
 
-## Workspace-first flow (v6)
+## Complete Workflow Example
+
+Flujo completo: Login → Crear Workspace → Upload → Poll → Ask
 
 ```bash
-API_KEY="<API_KEY>"
+# Variables
+API_KEY="sk-test-123"
+BASE_URL="http://localhost:8000"
 
-# 1) Crear workspace
-curl -X POST http://localhost:8000/v1/workspaces \
+# 1. Crear workspace
+WORKSPACE=$(curl -s -X POST ${BASE_URL}/v1/workspaces \
   -H "Content-Type: application/json" \
   -H "X-API-Key: ${API_KEY}" \
-  -d '{"name":"Workspace Demo","visibility":"PRIVATE"}'
+  -d '{"name":"Mi Proyecto","visibility":"PRIVATE"}')
 
-WORKSPACE_ID="<WORKSPACE_ID>"
+WORKSPACE_ID=$(echo $WORKSPACE | jq -r '.id')
+echo "Created workspace: ${WORKSPACE_ID}"
 
-# 2) Upload async
-curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents/upload \
+# 2. Upload documento
+UPLOAD=$(curl -s -X POST ${BASE_URL}/v1/workspaces/${WORKSPACE_ID}/documents/upload \
   -H "X-API-Key: ${API_KEY}" \
-  -F "file=@/path/to/file.pdf" \
-  -F "title=Documento demo"
+  -F "file=@documento.pdf" \
+  -F "title=Manual de Usuario")
 
-# 3) Poll hasta READY
-curl -H "X-API-Key: ${API_KEY}" \
-  "http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/documents?status=READY"
+DOC_ID=$(echo $UPLOAD | jq -r '.id')
+echo "Uploaded document: ${DOC_ID} (status: $(echo $UPLOAD | jq -r '.status'))"
 
-# 4) Ask scoped
-curl -X POST http://localhost:8000/v1/workspaces/${WORKSPACE_ID}/ask \
+# 3. Poll hasta READY (máx 60 segundos)
+for i in {1..12}; do
+  STATUS=$(curl -s ${BASE_URL}/v1/workspaces/${WORKSPACE_ID}/documents/${DOC_ID} \
+    -H "X-API-Key: ${API_KEY}" | jq -r '.status')
+  echo "Status: ${STATUS}"
+  if [ "$STATUS" = "READY" ]; then break; fi
+  if [ "$STATUS" = "FAILED" ]; then echo "Processing failed!"; exit 1; fi
+  sleep 5
+done
+
+# 4. Ask question
+ANSWER=$(curl -s -X POST ${BASE_URL}/v1/workspaces/${WORKSPACE_ID}/ask \
   -H "Content-Type: application/json" \
   -H "X-API-Key: ${API_KEY}" \
-  -d '{"query":"Que dice el documento?","top_k":3}'
+  -d '{"query":"¿Qué dice el documento?","top_k":3}')
+
+echo "Answer: $(echo $ANSWER | jq -r '.answer')"
+echo "Sources: $(echo $ANSWER | jq -r '.sources')"
 ```
 
 ---
 
-## Endpoints
+## Endpoints Reference
 
-### Health / Readiness / Metrics
+### Health / Metrics
 
-- `GET /healthz`
-- `GET /readyz`
-- `GET /metrics`
+| Endpoint | Método | Auth | Descripción |
+|----------|--------|------|-------------|
+| `/healthz` | GET | No | Liveness check |
+| `/readyz` | GET | No | Readiness check |
+| `/metrics` | GET | Condicional* | Prometheus metrics |
+
+*`METRICS_REQUIRE_AUTH=true` requiere API Key con scope `metrics`.
 
 ### Auth (JWT)
 
-- `POST /auth/login`
-- `GET /auth/me`
-- `POST /auth/logout`
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/auth/login` | POST | Login |
+| `/auth/me` | GET | Usuario actual |
+| `/auth/logout` | POST | Cerrar sesión |
 
-### Admin (JWT admin o API key con `admin:config` via RBAC)
+### Admin (JWT admin o API Key con scope admin)
 
-- `GET /auth/users`
-- `POST /auth/users`
-- `POST /auth/users/{user_id}/disable`
-- `POST /auth/users/{user_id}/reset-password`
-- `GET /v1/admin/audit`
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/auth/users` | GET | Listar usuarios |
+| `/auth/users` | POST | Crear usuario |
+| `/auth/users/{user_id}/disable` | POST | Deshabilitar usuario |
+| `/auth/users/{user_id}/reset-password` | POST | Reset password |
+| `/v1/admin/audit` | GET | Consultar auditoría |
 
 ### Workspaces
 
-- `GET /v1/workspaces`
-- `POST /v1/workspaces`
-- `GET /v1/workspaces/{workspace_id}`
-- `PATCH /v1/workspaces/{workspace_id}`
-- `POST /v1/workspaces/{workspace_id}/publish`
-- `POST /v1/workspaces/{workspace_id}/share`
-- `POST /v1/workspaces/{workspace_id}/archive`
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/v1/workspaces` | GET | Listar workspaces visibles |
+| `/v1/workspaces` | POST | Crear workspace |
+| `/v1/workspaces/{workspace_id}` | GET | Obtener workspace |
+| `/v1/workspaces/{workspace_id}` | PATCH | Actualizar workspace |
+| `/v1/workspaces/{workspace_id}/publish` | POST | Publicar (ORG_READ) |
+| `/v1/workspaces/{workspace_id}/share` | POST | Compartir (SHARED + ACL) |
+| `/v1/workspaces/{workspace_id}/archive` | POST | Archivar |
 
-### Documents (scoped)
+### Documents (Scoped)
 
-- `GET /v1/workspaces/{workspace_id}/documents`
-- `GET /v1/workspaces/{workspace_id}/documents/{document_id}`
-- `DELETE /v1/workspaces/{workspace_id}/documents/{document_id}`
-- `POST /v1/workspaces/{workspace_id}/documents/upload`
-- `POST /v1/workspaces/{workspace_id}/documents/{document_id}/reprocess`
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/v1/workspaces/{ws_id}/documents` | GET | Listar documentos |
+| `/v1/workspaces/{ws_id}/documents/{doc_id}` | GET | Obtener documento |
+| `/v1/workspaces/{ws_id}/documents/{doc_id}` | DELETE | Eliminar documento |
+| `/v1/workspaces/{ws_id}/documents/upload` | POST | Upload async |
+| `/v1/workspaces/{ws_id}/documents/{doc_id}/reprocess` | POST | Reprocesar |
 
-### Ingest (scoped)
+### Ingest (Scoped)
 
-- `POST /v1/workspaces/{workspace_id}/ingest/text`
-- `POST /v1/workspaces/{workspace_id}/ingest/batch`
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/v1/workspaces/{ws_id}/ingest/text` | POST | Ingest texto directo |
+| `/v1/workspaces/{ws_id}/ingest/batch` | POST | Ingest batch |
 
-### Query / Ask (scoped)
+### Query / Ask (Scoped)
 
-- `POST /v1/workspaces/{workspace_id}/query`
-- `POST /v1/workspaces/{workspace_id}/ask`
-- `POST /v1/workspaces/{workspace_id}/ask/stream`
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/v1/workspaces/{ws_id}/query` | POST | Solo retrieval |
+| `/v1/workspaces/{ws_id}/ask` | POST | RAG completo |
+| `/v1/workspaces/{ws_id}/ask/stream` | POST | RAG streaming (SSE) |
 
 ---
 
-## Legacy endpoints (DEPRECATED)
+## Legacy Endpoints (DEPRECATED)
 
-Los endpoints legacy se mantienen por compatibilidad pero **requieren** `workspace_id` (query param).
-Si falta, el backend responde con error de validacion.
+Estos endpoints se mantienen para compatibilidad pero **requieren** `workspace_id` como query param.
 
-### Documents (legacy)
+```bash
+# Legacy (deprecated)
+curl "/v1/documents?workspace_id=abc-123"
 
-- `GET /v1/documents?workspace_id=...`
-- `POST /v1/documents/upload?workspace_id=...`
-- `DELETE /v1/documents/{document_id}?workspace_id=...`
-- `POST /v1/documents/{document_id}/reprocess?workspace_id=...`
+# Canonical (preferred)
+curl "/v1/workspaces/abc-123/documents"
+```
 
-### Query / Ask (legacy)
+| Legacy | Canonical |
+|--------|-----------|
+| `/v1/documents?workspace_id=...` | `/v1/workspaces/{ws_id}/documents` |
+| `/v1/ask?workspace_id=...` | `/v1/workspaces/{ws_id}/ask` |
+| `/v1/query?workspace_id=...` | `/v1/workspaces/{ws_id}/query` |
+| `/v1/ingest/text?workspace_id=...` | `/v1/workspaces/{ws_id}/ingest/text` |
 
-- `POST /v1/query?workspace_id=...`
-- `POST /v1/ask?workspace_id=...`
-- `POST /v1/ask/stream?workspace_id=...`
+**Removal target:** v8
 
-### Ingest (legacy)
+---
 
-- `POST /v1/ingest/text?workspace_id=...`
-- `POST /v1/ingest/batch?workspace_id=...`
+## Upload Limits
 
+| Límite | Valor | Evidencia |
+|--------|-------|-----------|
+| Max body size | 10 MB | `apps/backend/app/crosscutting/config.py:107` |
+| MIME types soportados | PDF, DOCX, TXT | Validación en upload handler |
+
+---
+
+## References
+
+- OpenAPI spec: `shared/contracts/openapi.json`
+- RBAC docs: `docs/api/rbac.md`
+- Frontend API client: `apps/frontend/src/shared/api/`

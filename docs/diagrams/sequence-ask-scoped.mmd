@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant API as Backend API
+    participant DB as PostgreSQL
+    participant GenAI as Google GenAI
+
+    U->>FE: Type question in workspace chat
+    FE->>API: POST /v1/workspaces/{ws_id}/ask<br/>{query, top_k}
+
+    API->>API: Validate access to workspace<br/>(WorkspacePolicy.can_read)
+    
+    alt No access
+        API-->>FE: 403 Forbidden
+        FE-->>U: Show error
+    else Has access
+        API->>GenAI: Embed query
+        GenAI-->>API: query_vector[768]
+        
+        API->>DB: Vector similarity search<br/>WHERE workspace_id = {ws_id}<br/>ORDER BY embedding <=> query_vector<br/>LIMIT top_k
+        
+        Note over API,DB: Scoped retrieval:<br/>Only chunks from this workspace
+        
+        DB-->>API: relevant chunks
+        
+        API->>API: Build context<br/>(ContextBuilder)
+        
+        API->>GenAI: Generate answer<br/>(prompt + context)
+        GenAI-->>API: answer + sources
+        
+        API->>DB: INSERT audit_event<br/>(rag.ask)
+        
+        API-->>FE: 200 OK<br/>{answer, sources: [{doc_id, chunk_id}]}
+        FE-->>U: Display answer with citations
+    end

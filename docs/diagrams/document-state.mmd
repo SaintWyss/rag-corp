@@ -1,0 +1,38 @@
+stateDiagram-v2
+    [*] --> PENDING : Upload initiated
+
+    PENDING --> PROCESSING : Worker picks up job
+    
+    PROCESSING --> READY : Success<br/>(chunks created)
+    PROCESSING --> FAILED : Error<br/>(error_message set)
+    
+    READY --> PENDING : Reprocess requested
+    FAILED --> PENDING : Reprocess requested
+    
+    READY --> [*] : Document deleted
+    FAILED --> [*] : Document deleted
+    PENDING --> [*] : Document deleted
+
+    note right of PENDING
+        Document metadata created,
+        binary stored in S3/MinIO,
+        job enqueued in Redis
+    end note
+
+    note right of PROCESSING
+        Worker extracting text,
+        chunking, and
+        generating embeddings
+    end note
+
+    note right of READY
+        Chunks with embeddings
+        persisted in PostgreSQL,
+        available for RAG queries
+    end note
+
+    note right of FAILED
+        error_message contains
+        failure reason,
+        can be reprocessed
+    end note

@@ -1,0 +1,69 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant API as Backend API
+    participant Redis as Redis Queue
+    participant S3 as S3/MinIO
+    participant Worker as Worker
+    participant DB as PostgreSQL
+    participant GenAI as Google GenAI
+
+    U->>FE: Select file + workspace
+    FE->>API: POST /v1/workspaces/{ws_id}/documents/upload<br/>multipart/form-data
+
+    API->>API: Validate permissions (WorkspacePolicy)
+    API->>API: Validate MIME type, file size
+    
+    alt Validation failed
+        API-->>FE: 400/403/413/415
+        FE-->>U: Show error
+    else Validation OK
+        API->>S3: PUT object (storage_key)
+        S3-->>API: OK
+        
+        API->>DB: INSERT document<br/>(status=PENDING, workspace_id)
+        DB-->>API: document_id
+        
+        API->>Redis: ENQUEUE process_document job
+        Redis-->>API: job_id
+        
+        API->>DB: INSERT audit_event<br/>(documents.upload)
+        
+        API-->>FE: 202 Accepted<br/>{document_id, status: PENDING}
+        FE-->>U: Show "Processing..."
+    end
+
+    Note over Worker,Redis: Async processing
+
+    Worker->>Redis: DEQUEUE job
+    Redis-->>Worker: job payload
+    
+    Worker->>DB: UPDATE document<br/>status=PROCESSING
+    
+    Worker->>S3: GET object
+    S3-->>Worker: file bytes
+    
+    Worker->>Worker: Extract text<br/>(PDF/DOCX parser)
+    Worker->>Worker: Chunk text<br/>(with overlap)
+    
+    loop For each chunk
+        Worker->>GenAI: Embed chunk
+        GenAI-->>Worker: vector[768]
+    end
+    
+    Worker->>DB: INSERT chunks<br/>(with embeddings)
+    
+    alt Success
+        Worker->>DB: UPDATE document<br/>status=READY
+    else Error
+        Worker->>DB: UPDATE document<br/>status=FAILED, error_message
+    end
+
+    Note over FE: Polling or WebSocket
+
+    FE->>API: GET /v1/workspaces/{ws_id}/documents/{doc_id}
+    API->>DB: SELECT document
+    DB-->>API: document (status=READY)
+    API-->>FE: 200 {status: READY}
+    FE-->>U: Show "Ready" ✓

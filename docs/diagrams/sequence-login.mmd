@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant FE as Frontend
+    participant API as Backend API
+    participant DB as PostgreSQL
+
+    U->>FE: Enter credentials
+    FE->>API: POST /auth/login<br/>{email, password}
+    
+    API->>DB: SELECT user WHERE email=?
+    DB-->>API: user record
+    
+    alt Invalid credentials
+        API-->>FE: 401 Unauthorized<br/>(RFC 7807)
+        FE-->>U: Show error
+    else Valid credentials
+        API->>API: Verify password (Argon2)
+        API->>API: Generate JWT
+        API->>DB: INSERT audit_event<br/>(auth.login)
+        API-->>FE: 200 OK<br/>Set-Cookie: jwt=...; HttpOnly; Secure
+        FE->>FE: Store session
+        FE-->>U: Redirect to /workspaces
+    end

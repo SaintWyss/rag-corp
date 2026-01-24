@@ -1,14 +1,22 @@
-# Design Patterns - RAG Corp
+# Design Patterns — RAG Corp v6
 
-**Última actualización**: 2026-01-12
+**Project:** RAG Corp  
+**Last Updated:** 2026-01-24  
+**Status:** Active
 
-Este documento describe los patrones de diseño aplicados en el proyecto y dónde encontrarlos.
+---
+
+## TL;DR
+
+Este documento describe los patrones de diseño **actualmente implementados** en RAG Corp. Los patrones están verificados con evidencia del código.
 
 ---
 
 ## Patrones Arquitectónicos
 
 ### Clean Architecture (Ports & Adapters)
+
+**Qué:** Separación en capas con dependencias hacia adentro.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -26,121 +34,218 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 └──────────────────────────────────────────┘
 ```
 
-**Ubicación**:
+**Ubicación:**
 - Domain: `apps/backend/app/domain/`
 - Application: `apps/backend/app/application/`
 - Infrastructure: `apps/backend/app/infrastructure/`
 - API: `apps/backend/app/` (main.py, routes.py, etc.)
 
+**Evidencia:** 
+- `apps/backend/app/domain/entities/` no importa FastAPI ni SQLAlchemy
+- `apps/backend/app/domain/repositories.py` define Protocols (interfaces)
+
+**ADR:** [ADR-001-clean-architecture.md](./decisions/ADR-001-clean-architecture.md)
+
 ---
 
-## Patrones de Diseño
+## Patrones de Diseño Implementados
 
 ### 1. Port/Adapter (Hexagonal)
 
-**Qué**: Interfaces (Protocols) en domain, implementaciones en infrastructure.
+**Qué:** Interfaces (Protocols) en domain, implementaciones en infrastructure.
 
-**Dónde**:
+**Ubicación:**
 - Ports: `domain/repositories.py`, `domain/services.py`
-- Adapters: `infrastructure/repositories/postgres_document_repo.py`
+- Adapters: `infrastructure/repositories/postgres_*.py`
 - Adapters: `infrastructure/services/google_*.py`
 
-**Beneficio**: Permite cambiar PostgreSQL por otro storage sin tocar domain/application.
+**Ejemplo:**
+```python
+# Port (domain/repositories.py)
+class DocumentRepository(Protocol):
+    def get_by_id(self, doc_id: UUID) -> Optional[Document]: ...
+
+# Adapter (infrastructure/repositories/postgres_document_repo.py)
+class PostgresDocumentRepository:
+    def get_by_id(self, doc_id: UUID) -> Optional[Document]:
+        # Implementación con SQLAlchemy
+```
+
+**Beneficio:** Cambiar PostgreSQL por otro storage sin tocar domain/application.
 
 ---
 
 ### 2. Repository
 
-**Qué**: Abstracción sobre persistencia de datos.
+**Qué:** Abstracción sobre persistencia de datos.
 
-**Dónde**:
-- Interface: `domain/repositories.py` → `DocumentRepository(Protocol)`
+**Ubicación:**
+- Interface: `domain/repositories.py` → `DocumentRepository`, `WorkspaceRepository`
 - Implementación: `infrastructure/repositories/postgres_document_repo.py`
 
-**Beneficio**: Domain no conoce SQL ni pgvector.
+**Beneficio:** Domain no conoce SQL ni pgvector.
 
 ---
 
 ### 3. Use Case (Application Service)
 
-**Qué**: Orquestación de un flujo de negocio específico.
+**Qué:** Orquestación de un flujo de negocio específico.
 
-**Dónde**:
+**Ubicación:**
 - `application/use_cases/answer_query.py` → `AnswerQueryUseCase`
 - `application/use_cases/ingest_document.py` → `IngestDocumentUseCase`
 - `application/use_cases/search_chunks.py` → `SearchChunksUseCase`
+- `application/use_cases/workspace_*.py` → Operaciones de workspace
 
-**Beneficio**: Un punto de entrada claro para cada operación.
+**Beneficio:** Un punto de entrada claro para cada operación.
 
 ---
 
-### 4. Decorator (Retry)
+### 4. Policy (Domain Service)
 
-**Qué**: Agrega retry con backoff + jitter alrededor de llamadas externas.
+**Qué:** Lógica de autorización centralizada.
 
-**Dónde**:
+**Ubicación:**
+- `domain/policies/workspace_policy.py` → `WorkspacePolicy`
+
+**Ejemplo:**
+```python
+class WorkspacePolicy:
+    def can_read(self, actor: User, workspace: Workspace, acl: List[AclEntry]) -> bool:
+        if actor.role == "admin":
+            return True
+        if workspace.owner_user_id == actor.id:
+            return True
+        # ...
+```
+
+**Beneficio:** Reglas de acceso en un solo lugar, testeable unitariamente.
+
+---
+
+### 5. Decorator (Retry with Backoff)
+
+**Qué:** Agrega retry con backoff exponencial + jitter alrededor de llamadas externas.
+
+**Ubicación:**
 - `infrastructure/services/retry.py` → `create_retry_decorator()`
 - Usado en `google_embedding_service.py` y `google_llm_service.py`
 
-**Beneficio**: Resiliencia sin acoplar la logica de retry al negocio.
+**Ejemplo:**
+```python
+@retry(max_attempts=3, backoff_base=1.0, jitter=0.5)
+async def embed(self, text: str) -> List[float]:
+    return await self._client.embed(text)
+```
+
+**Beneficio:** Resiliencia sin acoplar la lógica de retry al negocio.
 
 ---
 
-### 5. Facade (Error Envelope)
+### 6. Facade (Error Envelope)
 
-**Qué**: Interface unificada para manejo de errores HTTP.
+**Qué:** Interface unificada para manejo de errores HTTP (RFC 7807).
 
-**Dónde**:
-- `exceptions.py` → `ErrorResponse`, `RAGError` y derivados
-- `main.py` → exception handlers para responder en un formato consistente
+**Ubicación:**
+- `crosscutting/exceptions.py` → `ErrorResponse`, `RAGError` y derivados
+- `main.py` → exception handlers
 
-**Beneficio**: Respuestas de error consistentes para clientes y logs.
+**Ejemplo respuesta:**
+```json
+{
+  "type": "https://api.ragcorp.local/errors/not-found",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Document not found",
+  "code": "NOT_FOUND"
+}
+```
 
----
-
-### 6. Strategy (implícito en Config)
-
-**Qué**: Comportamiento configurable via settings.
-
-**Dónde**:
-- `config.py` → `Settings` con `CHUNK_SIZE`, `MAX_CONTEXT_CHARS`, `PROMPT_VERSION`
-- `context_builder.py` usa `MAX_CONTEXT_CHARS` como policy
-
-**Beneficio**: Cambiar comportamiento sin tocar código.
-
----
-
-### 7. Singleton (via lru_cache)
-
-**Qué**: Una sola instancia de servicios costosos.
-
-**Dónde**:
-- `config.py` → `@lru_cache def get_settings()`
-- `container.py` → `@lru_cache` para repositorios y servicios
-
-**Beneficio**: Evita recrear conexiones/clientes.
+**Beneficio:** Respuestas de error consistentes para clientes y logs.
 
 ---
 
-### 8. Custom Hook (Frontend Facade)
+### 7. Strategy (Config-Driven Behavior)
 
-**Qué**: Encapsula lógica de API en un hook reutilizable.
+**Qué:** Comportamiento configurable via settings.
 
-**Dónde**:
-- `apps/frontend/app/hooks/useRagAsk.ts`
+**Ubicación:**
+- `crosscutting/config.py` → `Settings`
+- Settings como `CHUNK_SIZE`, `MAX_CONTEXT_CHARS`, `PROMPT_VERSION`
+- `application/context_builder.py` usa `MAX_CONTEXT_CHARS` como policy
 
-**Beneficio**: Componentes UI desacoplados de fetch logic.
+**Beneficio:** Cambiar comportamiento sin tocar código.
 
 ---
 
-### 9. Error Boundary (React)
+### 8. Singleton (via lru_cache)
 
-**Qué**: Captura errores de render para mostrar fallback UI.
+**Qué:** Una sola instancia de servicios costosos.
 
-**Dónde**:
+**Ubicación:**
+- `crosscutting/config.py` → `@lru_cache def get_settings()`
+- `crosscutting/container.py` → `@lru_cache` para repositorios y servicios
+
+**Ejemplo:**
+```python
+@lru_cache
+def get_document_repository() -> DocumentRepository:
+    return PostgresDocumentRepository(get_pool())
+```
+
+**Beneficio:** Evita recrear conexiones/clientes.
+
+---
+
+### 9. Dependency Injection Container
+
+**Qué:** Wiring centralizado de dependencias.
+
+**Ubicación:**
+- `crosscutting/container.py` → Factory functions para dependencias
+- FastAPI `Depends()` para inyección en routes
+
+**Ejemplo:**
+```python
+# container.py
+def get_answer_query_use_case() -> AnswerQueryUseCase:
+    return AnswerQueryUseCase(
+        chunk_repo=get_chunk_repository(),
+        embedding_service=get_embedding_service(),
+        llm_service=get_llm_service(),
+    )
+
+# routes.py
+@router.post("/ask")
+async def ask(
+    use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case)
+):
+```
+
+**Beneficio:** Componentes desacoplados y testeable con mocks.
+
+---
+
+### 10. Custom Hook (Frontend Facade)
+
+**Qué:** Encapsula lógica de API en un hook React reutilizable.
+
+**Ubicación:**
+- `apps/frontend/src/hooks/useRagAsk.ts`
+- `apps/frontend/src/hooks/useDocuments.ts`
+
+**Beneficio:** Componentes UI desacoplados de fetch logic.
+
+---
+
+### 11. Error Boundary (React)
+
+**Qué:** Captura errores de render para mostrar fallback UI.
+
+**Ubicación:**
 - `apps/frontend/app/error.tsx`
 
-**Beneficio**: App no crashea por errores de componentes.
+**Beneficio:** App no crashea por errores de componentes.
 
 ---
 
@@ -151,8 +256,22 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 | God Class | Use cases pequeños y focalizados |
 | Leaky Abstraction | Domain no importa psycopg/fastapi |
 | Hardcoded Config | Todo en `config.py` via env vars |
-| Scattered Error Handling | Centralizado en `error_responses.py` |
+| Scattered Error Handling | Centralizado en `exceptions.py` |
 | Callback Hell | async/await consistente |
+| Anemic Domain | Policies y business rules en Domain |
+
+---
+
+## Patrones NO implementados (Out of Scope v6)
+
+Los siguientes patrones se mencionan a veces pero **NO están en v6**:
+
+| Patrón | Razón |
+|--------|-------|
+| Observer/PubSub | No hay eventos cross-service |
+| CQRS | Mismo modelo para read/write |
+| Event Sourcing | Solo auditoría append-only |
+| Saga | No hay transacciones distribuidas |
 
 ---
 
@@ -161,7 +280,4 @@ Este documento describe los patrones de diseño aplicados en el proyecto y dónd
 - [Clean Architecture - Robert Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
 - [RFC 7807 - Problem Details for HTTP APIs](https://tools.ietf.org/html/rfc7807)
-
----
-
-**Generado desde**: `docs/reviews/PATTERN_MAP_2026-01-03_2059_-0300.md`
+- ADR-001: `docs/architecture/decisions/ADR-001-clean-architecture.md`

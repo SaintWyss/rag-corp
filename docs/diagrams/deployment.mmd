@@ -1,0 +1,62 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4f46e5', 'primaryTextColor': '#fff'}}}%%
+flowchart TB
+    subgraph Client["🌐 Clients"]
+        Browser["Browser<br/>(Next.js UI)"]
+        CI["CI/Integrations<br/>(API Key)"]
+    end
+
+    subgraph Docker["🐳 Docker Compose Stack"]
+        subgraph Core["Core Services"]
+            Web["web :3000<br/>Next.js Frontend<br/>(profile: e2e)"]
+            API["rag-api :8000<br/>FastAPI Backend"]
+            Worker["worker :8001<br/>RQ Worker<br/>(profile: worker)"]
+        end
+
+        subgraph Data["Data Layer"]
+            DB[("PostgreSQL :5432<br/>+ pgvector")]
+            Redis[("Redis :6379<br/>(profile: worker)")]
+            S3[("MinIO :9000<br/>Console :9001<br/>(profile: storage)")]
+        end
+
+        subgraph Observability["Observability (profile: observability)"]
+            Prometheus["Prometheus :9090"]
+            Grafana["Grafana :3001"]
+            PGExporter["postgres-exporter :9187"]
+        end
+    end
+
+    subgraph External["☁️ External Services"]
+        Gemini["Google GenAI<br/>(Embeddings + LLM)"]
+    end
+
+    %% Client connections
+    Browser -->|HTTP| Web
+    Web -->|/api/* rewrites| API
+    CI -->|HTTPS X-API-Key| API
+
+    %% Core connections
+    API -->|SQL| DB
+    API -->|enqueue jobs| Redis
+    API -->|put/get object| S3
+    API -->|embed/generate| Gemini
+
+    Worker -->|dequeue jobs| Redis
+    Worker -->|SQL| DB
+    Worker -->|get object| S3
+    Worker -->|embed| Gemini
+
+    %% Observability
+    API -.->|/metrics| Prometheus
+    Worker -.->|/metrics| Prometheus
+    PGExporter -.->|scrape| DB
+    Prometheus --> Grafana
+
+    classDef core fill:#4f46e5,stroke:#312e81,color:#fff
+    classDef data fill:#059669,stroke:#065f46,color:#fff
+    classDef obs fill:#d97706,stroke:#92400e,color:#fff
+    classDef ext fill:#7c3aed,stroke:#5b21b6,color:#fff
+
+    class Web,API,Worker core
+    class DB,Redis,S3 data
+    class Prometheus,Grafana,PGExporter obs
+    class Gemini ext

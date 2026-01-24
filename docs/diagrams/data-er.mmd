@@ -1,0 +1,81 @@
+erDiagram
+    USERS {
+        uuid id PK
+        text email UK "NOT NULL"
+        text password_hash "NOT NULL"
+        text role "admin|employee"
+        boolean is_active "DEFAULT true"
+        timestamptz created_at "DEFAULT now()"
+    }
+    
+    WORKSPACES {
+        uuid id PK
+        text name "NOT NULL"
+        text description
+        text visibility "PRIVATE|ORG_READ|SHARED"
+        uuid owner_user_id FK "NOT NULL"
+        timestamptz archived_at
+        timestamptz created_at "DEFAULT now()"
+        timestamptz updated_at "DEFAULT now()"
+    }
+    
+    WORKSPACE_ACL {
+        uuid workspace_id FK,PK "NOT NULL"
+        uuid user_id FK,PK "NOT NULL"
+        text access "DEFAULT READ"
+        timestamptz created_at "DEFAULT now()"
+    }
+    
+    DOCUMENTS {
+        uuid id PK
+        uuid workspace_id FK "NOT NULL"
+        text title "NOT NULL"
+        text source
+        jsonb metadata "DEFAULT {}"
+        text status "PENDING|PROCESSING|READY|FAILED"
+        text error_message
+        text file_name
+        text mime_type
+        text storage_key
+        uuid uploaded_by_user_id FK
+        text[] tags "DEFAULT {}"
+        text[] allowed_roles
+        timestamptz created_at "DEFAULT now()"
+        timestamptz deleted_at
+    }
+    
+    CHUNKS {
+        uuid id PK
+        uuid document_id FK "NOT NULL, ON DELETE CASCADE"
+        integer chunk_index "NOT NULL"
+        text content "NOT NULL"
+        vector_768 embedding "NOT NULL"
+        jsonb metadata "DEFAULT {}"
+        timestamptz created_at "DEFAULT now()"
+    }
+    
+    AUDIT_EVENTS {
+        uuid id PK
+        text actor "NOT NULL"
+        text action "NOT NULL"
+        uuid target_id
+        jsonb metadata "DEFAULT {}"
+        timestamptz created_at "DEFAULT now()"
+    }
+
+    %% Relationships
+    USERS ||--o{ WORKSPACES : "owns"
+    USERS ||--o{ DOCUMENTS : "uploads"
+    USERS ||--o{ WORKSPACE_ACL : "granted"
+    
+    WORKSPACES ||--o{ DOCUMENTS : "contains"
+    WORKSPACES ||--o{ WORKSPACE_ACL : "shares"
+    
+    DOCUMENTS ||--o{ CHUNKS : "splits into"
+
+    %% Constraints (as comments)
+    %% UNIQUE(owner_user_id, name) on WORKSPACES
+    %% UNIQUE(workspace_id, user_id) on WORKSPACE_ACL
+    %% CHECK(visibility IN (...)) on WORKSPACES
+    %% CHECK(status IN (...)) on DOCUMENTS
+    %% CHECK(role IN (...)) on USERS

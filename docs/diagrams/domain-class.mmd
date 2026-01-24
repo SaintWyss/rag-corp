@@ -1,0 +1,152 @@
+classDiagram
+    %% Domain Entities
+    class User {
+        +UUID id
+        +str email
+        +str password_hash
+        +Role role
+        +bool is_active
+        +datetime created_at
+    }
+    
+    class Workspace {
+        +UUID id
+        +str name
+        +str description
+        +Visibility visibility
+        +UUID owner_user_id
+        +datetime archived_at
+        +datetime created_at
+        +datetime updated_at
+    }
+    
+    class WorkspaceAclEntry {
+        +UUID workspace_id
+        +UUID user_id
+        +Access access
+        +datetime created_at
+    }
+    
+    class Document {
+        +UUID id
+        +UUID workspace_id
+        +str title
+        +str source
+        +dict metadata
+        +Status status
+        +str error_message
+        +str storage_key
+        +str file_name
+        +str mime_type
+        +list~str~ tags
+        +UUID uploaded_by_user_id
+        +datetime created_at
+        +datetime deleted_at
+    }
+    
+    class Chunk {
+        +UUID id
+        +UUID document_id
+        +int chunk_index
+        +str content
+        +vector~768~ embedding
+        +dict metadata
+        +datetime created_at
+    }
+    
+    class AuditEvent {
+        +UUID id
+        +str actor
+        +str action
+        +UUID target_id
+        +dict metadata
+        +datetime created_at
+    }
+
+    %% Enums
+    class Role {
+        <<enumeration>>
+        admin
+        employee
+    }
+    
+    class Visibility {
+        <<enumeration>>
+        PRIVATE
+        ORG_READ
+        SHARED
+    }
+    
+    class Status {
+        <<enumeration>>
+        PENDING
+        PROCESSING
+        READY
+        FAILED
+    }
+    
+    class Access {
+        <<enumeration>>
+        READ
+    }
+
+    %% Domain Services
+    class WorkspacePolicy {
+        +can_read(actor, workspace, acl) bool
+        +can_write(actor, workspace) bool
+        +can_admin(actor, workspace) bool
+    }
+
+    %% Ports (Protocols)
+    class DocumentRepository {
+        <<interface>>
+        +list_documents(workspace_id, filters) List~Document~
+        +get_document(workspace_id, doc_id) Document
+        +create_document(data) Document
+        +update_document(doc_id, data) Document
+        +delete_document(doc_id) void
+    }
+    
+    class WorkspaceRepository {
+        <<interface>>
+        +list_workspaces(user_id, filters) List~Workspace~
+        +get_workspace(workspace_id) Workspace
+        +create_workspace(data) Workspace
+        +update_workspace(workspace_id, data) Workspace
+        +archive_workspace(workspace_id) void
+    }
+    
+    class ChunkRepository {
+        <<interface>>
+        +search_similar(workspace_id, embedding, top_k) List~Chunk~
+        +create_chunks(chunks) void
+        +delete_by_document(doc_id) void
+    }
+    
+    class EmbeddingService {
+        <<interface>>
+        +embed(text) vector~768~
+        +embed_batch(texts) List~vector~
+    }
+    
+    class LLMService {
+        <<interface>>
+        +generate(prompt, context) str
+        +stream(prompt, context) AsyncIterator~str~
+    }
+
+    %% Relationships
+    User "1" --> "*" Workspace : owns
+    User "1" --> "*" Document : uploads
+    Workspace "1" --> "*" Document : contains
+    Workspace "1" --> "*" WorkspaceAclEntry : has
+    User "1" --> "*" WorkspaceAclEntry : granted
+    Document "1" --> "*" Chunk : splits into
+    
+    WorkspacePolicy ..> Workspace
+    WorkspacePolicy ..> WorkspaceAclEntry
+    WorkspacePolicy ..> User
+    
+    DocumentRepository ..> Document
+    WorkspaceRepository ..> Workspace
+    ChunkRepository ..> Chunk
