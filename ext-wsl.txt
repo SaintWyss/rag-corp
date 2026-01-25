@@ -1,0 +1,5 @@
+github.copilot-chat@0.36.2
+github.copilot@1.388.0
+github.vscode-pull-request-github@0.126.0
+ms-ceintl.vscode-language-pack-es@1.108.2026012109
+openai.chatgpt@0.4.66

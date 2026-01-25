@@ -1,0 +1,52 @@
+{
+  "recommendations": [
+    // Core & Git
+    "eamodio.gitlens",
+    "github.copilot",
+    "github.copilot-chat",
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+    "github.remotehub",
+    "ms-vscode.remote-repositories",
+    "ms-vscode.azure-repos",
+    "github.codespaces",
+
+    // Python & Data
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    "ms-python.debugpy",
+    "ms-toolsai.jupyter",
+    "ms-toolsai.jupyter-keymap",
+    "ms-toolsai.jupyter-renderers",
+    "ms-toolsai.datawrangler",
+    "mechatroner.rainbow-csv",
+
+    // Web & Frontend
+    "esbenp.prettier-vscode",
+    "rodrigovallades.es7-react-js-snippets",
+    "formulahendry.auto-close-tag",
+    "formulahendry.auto-rename-tag",
+    "pranaygp.vscode-css-peek",
+    "ritwickdey.liveserver",
+    "kisstkondoros.vscode-gutter-preview",
+
+    // Utilities & Formatting
+    "mikestead.dotenv",
+    "yzhang.markdown-all-in-one",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "pkief.material-icon-theme",
+    "redhat.vscode-yaml",
+    "tomoki1207.pdf",
+    
+    // Infrastructure & Docker
+    "ms-azuretools.vscode-docker",
+    "ms-azuretools.vscode-containers",
+    "ms-vscode-remote.remote-wsl",
+
+    // API Testing
+    "rangav.vscode-thunder-client"
+  ]
+}
