@@ -32,22 +32,24 @@ Production Readiness:
 
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from ..interfaces.api.http.routes import router
-from .auth_routes import router as auth_router
-from ..crosscutting.logger import logger
+
+from ..application.dev_seed_admin import ensure_dev_admin
 from ..container import get_document_repository
 from ..crosscutting.config import get_settings
-from ..crosscutting.middleware import RequestContextMiddleware, BodyLimitMiddleware
+from ..crosscutting.logger import logger
+from ..crosscutting.middleware import BodyLimitMiddleware, RequestContextMiddleware
 from ..crosscutting.rate_limit import RateLimitMiddleware
+from ..crosscutting.security import SecurityHeadersMiddleware
 from ..identity.auth import is_auth_enabled
 from ..identity.rbac import require_metrics_permission
-from .versioning import include_versioned_routes
-from ..infrastructure.db.pool import init_pool, close_pool
+from ..infrastructure.db.pool import close_pool, init_pool
+from ..interfaces.api.http.routes import router
+from .auth_routes import router as auth_router
 from .exception_handlers import register_exception_handlers
-from ..crosscutting.security import SecurityHeadersMiddleware
-from ..application.dev_seed_admin import ensure_dev_admin
+from .versioning import include_versioned_routes
 
 
 @asynccontextmanager
@@ -111,7 +113,6 @@ async def lifespan(app: FastAPI):
         logger.error(f"Startup failed: {e}")
         # Re-raise to crash container if config is invalid
         raise e
-
 
     # R: Run dev seed logic (will fail-fast if unsafe configuration)
     try:
@@ -306,6 +307,11 @@ app.include_router(router, prefix="/v1")
 # R: Register auth routes (no version prefix)
 app.include_router(auth_router)
 
+# R: Register admin routes (ADR-008: admin provisioning)
+from .admin_routes import router as admin_router
+
+app.include_router(admin_router)
+
 # R: Register versioned routes (v1, v2)
 include_versioned_routes(app)
 
@@ -446,5 +452,3 @@ def metrics(_auth: None = Depends(require_metrics_permission())):
 # This MUST be at the very end, after all FastAPI setup
 _fastapi_app = app
 app = RateLimitMiddleware(_fastapi_app)
-
-
