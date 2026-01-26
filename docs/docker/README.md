@@ -1,99 +1,35 @@
-# Guía de Docker y Operaciones (Cheat Sheet)
+# Docker (v6) — Guía Operativa / Cheat Sheet
 
-Guía de referencia para operar el stack de desarrollo local de RAG Corp.
+Esta guía existe para que puedas **manejar el stack sin pensar**:
 
-## 🚀 Comandos Rápidos (Top 5)
+- limpiar y resetear Docker,
+- reiniciar servicios,
+- levantar **solo Front + Back + DB**,
+- levantar **TODO** (pipeline async + storage + observabilidad),
+  siempre alineado a la realidad del repo.
 
-| Acción | Comando |
-|:---|:---|
-| **Levantar Todo** (Full) | `pnpm stack:full` |
-| **Ver Logs** (Tiempo real) | `docker compose logs -f` |
-| **Apagar todo** | `docker compose down` |
-| **Apagar y borrar datos** | `docker compose down -v` |
-| **Reiniciar un servicio** | `docker compose restart <service>` |
+> Fuente de verdad de servicios/perfiles: `compose.yaml`.
 
 ---
 
-## 🛠 Escenarios de Trabajo
+## 🚀 Comandos rápidos (los 4 botones)
 
-Elige el comando según qué parte del sistema vas a tocar.
+### 1) Limpiar / Reset
 
-### A. Stack Completo (Recomendado)
-Levanta **TODO**: API, DB, Frontend, Worker, Redis y MinIO.
+**Stop normal (no borra datos):**
+
 ```bash
-pnpm stack:full
-```
-- **Uso**: Pruebas de integración, subir archivos PDF (RAG), testear flujo completo.
-- **URLs**:
-  - Frontend: `http://localhost:3000`
-  - API: `http://localhost:8000/docs`
-  - MinIO Consola: `http://localhost:9001` (user/pass: `minioadmin`)
-
-### B. Stack Ligero (UI/UX Only)
-Levanta solo **Frontend, API y DB**.
-```bash
-docker compose up -d rag-api web db
-```
-- **Uso**: Cambios visuales en Frontend, lógica simple de API (login, usuarios).
-- **Limitación**: **NO subas archivos**. Se quedarán en estado `PENDING` porque el Worker está apagado.
-
-### C. Backend Only (API Logic)
-Levanta solo **API y DB**.
-```bash
-pnpm docker:up
-```
-- **Uso**: Desarrollar endpoints, migraciones de base de datos, unit tests de backend.
-
----
-
-## 🔍 Operaciones Diarias
-
-### Ver Logs
-Ver logs de **todos** los servicios mezclados:
-```bash
-docker compose logs -f
-```
-Ver logs de **un servicio específico** (ej: worker o api):
-```bash
-docker compose logs -f worker
-docker compose logs -f rag-api
+docker compose down --remove-orphans
 ```
 
-### Entrar a un contenedor (Shell)
-Para ejecutar comandos dentro (ej: ver archivos, ejecutar scripts de python manuales):
-```bash
-# Entrar a la API
-docker compose exec rag-api sh
+**Reset total (borra DB/volúmenes del proyecto):**
 
-# Entrar a la Base de Datos
-docker compose exec db psql -U postgres -d rag
+```bash
+docker compose down -v --remove-orphans
 ```
 
-### Reiniciar Servicios
-Si cambiaste código en Python y no se recarga, o el worker se trabó:
-```bash
-docker compose restart rag-api
-docker compose restart worker
-```
+**Nuclear (último recurso, afecta TODO Docker en tu máquina):**
 
----
-
-## 🧹 Mantenimiento y Limpieza
-
-### Limpieza Estándar (Borrar Contenedores)
-Simplemente apaga el sistema.
-```bash
-docker compose down
-```
-
-### Limpieza Profunda ("Borrón y Cuenta Nueva")
-Borra contenedores y **Volúmenes** (Base de datos se resetea a cero).
-```bash
-docker compose down -v
-```
-
-### Opción "Nuclear" (Problemas graves de Docker)
-Si Docker da errores extraños, usa esto para limpiar **todo** (imágenes, caché, redes).
 ```bash
 docker compose down -v --remove-orphans
 docker system prune -a --volumes --force
@@ -101,34 +37,192 @@ docker system prune -a --volumes --force
 
 ---
 
-## 🏗 Arquitectura de Servicios
+### 2) Reiniciar
 
-Breve explicación de qué hace cada pieza:
+**Reiniciar todo lo que esté corriendo (sin bajar):**
 
-| Servicio | Puerto | Descripción |
-|:---|:---|:---|
-| **rag-api** | `8000` | **Backend**. FastAPI. Recibe peticiones HTTP. |
-| **web** | `3000` | **Frontend**. Next.js. La interfaz de usuario. |
-| **db** | `5432` | **Postgres**. Guarda datos y vectores (pgvector). |
-| **worker** | N/A | **Procesador**. Python+RQ. Procesa PDFs en segundo plano. |
-| **redis** | `6379` | **Cola**. Mensajería entre API y Worker. |
-| **minio** | `9000` | **S3**. Almacenamiento de archivos físicos. |
+```bash
+docker compose restart
+```
+
+**Reiniciar un servicio puntual:**
+
+```bash
+docker compose restart rag-api
+# o
+docker compose restart worker
+```
+
+**Rebuild + restart (cambiaste deps / Dockerfile):**
+
+```bash
+docker compose down --remove-orphans
+docker compose up -d --build
+```
 
 ---
 
-## 🚑 Solución de Problemas (Troubleshooting)
+### 3) Levantar SOLO Front + Back + DB
 
-**Error: "Bind for 0.0.0.0:8000 failed: port is already allocated"**
-Significa que hay otro proceso (o un docker viejo) usando el puerto.
-*Solución*:
+> Modo ideal para UI/auth/UX. **No sirve para upload real** (falta worker+redis+storage).
+
+#### Opción recomendada (Front en host)
+
 ```bash
-docker rm -f $(docker ps -aq)
+pnpm docker:up
+pnpm db:migrate
+pnpm dev
 ```
 
-**Error: Subida de archivos se queda en "PENDING"**
-Seguramente levantaste el stack ligero sin Worker.
-*Solución*: Levanta el stack completo: `pnpm stack:full`.
+#### Opción “todo en Docker” (Front en contenedor)
 
-**Error: DB password authentication failed**
-A veces pasa si cambias el `.env` pero el volumen de la DB ya existe con la clave vieja.
-*Solución*: Borra el volumen: `docker compose down -v` y vuelve a levantar.
+```bash
+docker compose --profile e2e up -d --build db rag-api web
+```
+
+---
+
+### 4) Levantar TODO (pipeline async + storage + observabilidad)
+
+> Modo completo: upload → PENDING → READY → chat con fuentes.
+
+#### Full recomendado (sin Front)
+
+```bash
+pnpm stack:full
+pnpm db:migrate
+```
+
+#### Full + Front (todo en Docker)
+
+```bash
+docker compose --profile full --profile e2e up -d --build
+pnpm db:migrate
+```
+
+---
+
+## 1) Concepto clave: perfiles de Docker Compose
+
+Este repo usa **perfiles** para no levantar todo siempre.
+
+Perfiles (ver `compose.yaml`):
+
+- **Base (default):** `db`, `rag-api`
+- **worker:** `worker`, `redis`
+- **storage:** `minio`, `minio-init`
+- **observability:** `prometheus`, `grafana`, `postgres-exporter`
+- **full:** combina `worker + storage + observability`
+- **e2e:** `web` (Next.js en contenedor)
+
+Regla práctica:
+
+- Si vas a **subir archivos** necesitás **storage + worker** (y por lo tanto Redis).
+- Si solo estás tocando UI / auth / pantallas, podés vivir con **Front + Back + DB**.
+
+---
+
+## 2) Variables mínimas para que upload funcione (modo FULL)
+
+En tu `.env`:
+
+```env
+S3_ENDPOINT_URL=http://minio:9000
+S3_BUCKET=rag-documents
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+
+REDIS_URL=redis://redis:6379
+```
+
+---
+
+## 3) URLs útiles
+
+- **Frontend (web):** http://localhost:3000
+- **Backend API:** http://localhost:8000
+- **Swagger:** http://localhost:8000/docs
+- **DB:** localhost:5432
+- **MinIO:** http://localhost:9000 (console: 9001)
+- **Prometheus:** http://localhost:9090
+- **Grafana:** http://localhost:3001
+
+---
+
+## 4) Operaciones diarias
+
+### Logs
+
+```bash
+# Todo
+docker compose logs -f
+
+# Servicio específico
+docker compose logs -f rag-api
+docker compose logs -f worker
+```
+
+### Estado
+
+```bash
+docker compose ps
+```
+
+### Entrar a contenedores
+
+```bash
+# API
+docker compose exec rag-api sh
+
+# DB
+docker compose exec db psql -U postgres -d rag
+```
+
+---
+
+## 5) Qué hace cada servicio (mini tabla)
+
+| Servicio            | Perfil             |         Puerto | Función                                            |
+| ------------------- | ------------------ | -------------: | -------------------------------------------------- |
+| `db`                | base               |           5432 | Postgres + pgvector (datos + embeddings)           |
+| `rag-api`           | base               |           8000 | Backend FastAPI (auth, workspaces, documents, ask) |
+| `web`               | e2e                |           3000 | Next.js en contenedor (útil para E2E/encapsulado)  |
+| `redis`             | worker/full        |           6379 | Cola/cache (RQ)                                    |
+| `worker`            | worker/full        | 8001 (interno) | Procesa documentos async (PENDING→READY/FAILED)    |
+| `minio`             | storage/full       |           9000 | Storage S3 compatible (archivos)                   |
+| `minio-init`        | storage/full       |              — | Crea bucket / init de storage                      |
+| `prometheus`        | observability/full |           9090 | Métricas                                           |
+| `grafana`           | observability/full |           3001 | Dashboards                                         |
+| `postgres-exporter` | observability/full |           9187 | Métricas de Postgres                               |
+
+---
+
+## 6) Troubleshooting rápido
+
+### “Port already allocated”
+
+```bash
+docker compose down --remove-orphans
+```
+
+### Upload se queda en PENDING / falla
+
+Checklist:
+
+1. `worker` levantado (`docker compose ps`)
+2. `redis` levantado
+3. `.env` con `S3_*` y `REDIS_URL`
+
+Levantar full:
+
+```bash
+docker compose --profile full up -d
+```
+
+### “File storage unavailable”
+
+Te faltan variables `S3_*` o no levantaste `--profile storage`.
+
+### “Document queue unavailable”
+
+No está Redis/worker (`--profile worker` o `--profile full`).
