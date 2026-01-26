@@ -1,19 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/shared/ui/AppShell";
+import {
+    createUser,
+    disableUser,
+    getCurrentUser,
+    listUsers,
+    resetUserPassword,
+    type AdminUser,
+    type CreateUserPayload,
+    type CurrentUser,
+} from "@/shared/api/api";
+import { AdminShell } from "@/shared/ui/AdminShell";
 import { NoticeBanner } from "@/shared/ui/NoticeBanner";
 import { StatusBanner } from "@/shared/ui/StatusBanner";
-import {
-  createUser,
-  disableUser,
-  getCurrentUser,
-  listUsers,
-  resetUserPassword,
-  type AdminUser,
-  type CreateUserPayload,
-  type CurrentUser,
-} from "@/shared/api/api";
+import { useCallback, useEffect, useState } from "react";
 
 type DraftUser = {
   email: string;
@@ -200,7 +200,7 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <AppShell>
+    <AdminShell>
       <section className="space-y-8">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <div className="flex flex-col gap-2">
@@ -352,6 +352,6 @@ export default function AdminUsersPage() {
           </>
         )}
       </section>
-    </AppShell>
+    </AdminShell>
   );
 }

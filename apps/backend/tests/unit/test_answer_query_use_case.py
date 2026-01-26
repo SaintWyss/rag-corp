@@ -8,7 +8,7 @@ Responsibilities:
   - Validate dependency interaction
 
 Collaborators:
-  - app.application.use_cases.answer_query: Use case being tested
+  - app.application.usecases.answer_query: Use case being tested
   - conftest: Mock fixtures for dependencies
 
 Notes:
@@ -22,8 +22,8 @@ import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from app.application.use_cases.answer_query import AnswerQueryUseCase, AnswerQueryInput
-from app.application.use_cases.document_results import DocumentErrorCode
+from app.application.usecases.answer_query import AnswerQueryUseCase, AnswerQueryInput
+from app.application.usecases.document_results import DocumentErrorCode
 from app.domain.entities import Chunk, QueryResult, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole

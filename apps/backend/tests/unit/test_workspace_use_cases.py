@@ -13,22 +13,20 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
-
-from app.application.use_cases.archive_workspace import ArchiveWorkspaceUseCase
-from app.application.use_cases.create_workspace import (
+from app.application.usecases.archive_workspace import ArchiveWorkspaceUseCase
+from app.application.usecases.create_workspace import (
     CreateWorkspaceInput,
     CreateWorkspaceUseCase,
 )
-from app.application.use_cases.get_workspace import GetWorkspaceUseCase
-from app.application.use_cases.list_workspaces import ListWorkspacesUseCase
-from app.application.use_cases.publish_workspace import PublishWorkspaceUseCase
-from app.application.use_cases.share_workspace import ShareWorkspaceUseCase
-from app.application.use_cases.update_workspace import UpdateWorkspaceUseCase
-from app.application.use_cases.workspace_results import WorkspaceErrorCode
+from app.application.usecases.get_workspace import GetWorkspaceUseCase
+from app.application.usecases.list_workspaces import ListWorkspacesUseCase
+from app.application.usecases.publish_workspace import PublishWorkspaceUseCase
+from app.application.usecases.share_workspace import ShareWorkspaceUseCase
+from app.application.usecases.update_workspace import UpdateWorkspaceUseCase
+from app.application.usecases.workspace_results import WorkspaceErrorCode
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole
-
 
 pytestmark = pytest.mark.unit
 
@@ -344,12 +342,12 @@ def test_list_workspaces_filters_by_policy():
     acl_repo = FakeWorkspaceAclRepository({ws_shared.id: [shared_member]})
     use_case = ListWorkspacesUseCase(repo, acl_repo)
 
+    # R: ADR-008: Employee only sees workspaces they OWN (owner-only enforcement).
+    # shared_member does NOT own any workspaces, so they see NOTHING.
     member_result = use_case.execute(actor=_actor(shared_member, UserRole.EMPLOYEE))
-    assert {ws.id for ws in member_result.workspaces} == {
-        ws_org.id,
-        ws_shared.id,
-    }
+    assert {ws.id for ws in member_result.workspaces} == set()
 
+    # owner_id owns 3 workspaces; they see all of them.
     owner_result = use_case.execute(actor=_actor(owner_id, UserRole.EMPLOYEE))
     assert {ws.id for ws in owner_result.workspaces} == {
         ws_private.id,

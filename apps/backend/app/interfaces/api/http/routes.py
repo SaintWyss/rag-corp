@@ -22,20 +22,75 @@ Notes:
   - See docs/plan-mejora-arquitectura-2025-12-29.md for roadmap
 """
 
-from fastapi import APIRouter, Depends, Request, Query, File, Form, UploadFile
-from pydantic import BaseModel, Field, field_validator
-from uuid import UUID
-from datetime import datetime
-from typing import Any
 import json
 import os
-from ....crosscutting.config import get_settings
-from ....identity.rbac import Permission
-from ....identity.dual_auth import (
-    require_admin,
-    require_employee_or_admin,
-    require_principal,
+from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from pydantic import BaseModel, Field, field_validator
+
+from ....application.conversations import (
+    format_conversation_query,
+    resolve_conversation_id,
 )
+from ....application.usecases import (
+    AnswerQueryInput,
+    AnswerQueryResult,
+    AnswerQueryUseCase,
+    ArchiveWorkspaceResult,
+    ArchiveWorkspaceUseCase,
+    CreateWorkspaceInput,
+    CreateWorkspaceUseCase,
+    DeleteDocumentResult,
+    DeleteDocumentUseCase,
+    GetDocumentResult,
+    GetDocumentUseCase,
+    GetWorkspaceUseCase,
+    IngestDocumentInput,
+    IngestDocumentResult,
+    IngestDocumentUseCase,
+    ListDocumentsResult,
+    ListDocumentsUseCase,
+    ListWorkspacesUseCase,
+    PublishWorkspaceUseCase,
+    ReprocessDocumentInput,
+    ReprocessDocumentResult,
+    ReprocessDocumentUseCase,
+    SearchChunksInput,
+    SearchChunksResult,
+    SearchChunksUseCase,
+    ShareWorkspaceUseCase,
+    UpdateWorkspaceUseCase,
+    UploadDocumentInput,
+    UploadDocumentResult,
+    UploadDocumentUseCase,
+)
+from ....application.usecases.document_results import DocumentErrorCode
+from ....application.usecases.workspace_results import WorkspaceErrorCode
+from ....audit import emit_audit_event
+from ....container import (
+    get_answer_query_use_case,
+    get_archive_workspace_use_case,
+    get_audit_repository,
+    get_conversation_repository,
+    get_create_workspace_use_case,
+    get_delete_document_use_case,
+    get_get_document_use_case,
+    get_get_workspace_use_case,
+    get_ingest_document_use_case,
+    get_list_documents_use_case,
+    get_list_workspaces_use_case,
+    get_llm_service,
+    get_publish_workspace_use_case,
+    get_reprocess_document_use_case,
+    get_search_chunks_use_case,
+    get_share_workspace_use_case,
+    get_update_workspace_use_case,
+    get_upload_document_use_case,
+)
+from ....crosscutting.config import get_settings
 from ....crosscutting.error_responses import (
     OPENAPI_ERROR_RESPONSES,
     conflict,
@@ -46,72 +101,20 @@ from ....crosscutting.error_responses import (
     unsupported_media,
     validation_error,
 )
-from ....identity.access_control import can_access_document, filter_documents
-from ....audit import emit_audit_event
 from ....crosscutting.streaming import stream_answer
-from ....application.conversations import (
-    format_conversation_query,
-    resolve_conversation_id,
-)
-from ....application.usecases import (
-    AnswerQueryUseCase,
-    AnswerQueryInput,
-    AnswerQueryResult,
-    ArchiveWorkspaceUseCase,
-    ArchiveWorkspaceResult,
-    CreateWorkspaceUseCase,
-    CreateWorkspaceInput,
-    DeleteDocumentUseCase,
-    DeleteDocumentResult,
-    GetDocumentUseCase,
-    GetDocumentResult,
-    GetWorkspaceUseCase,
-    IngestDocumentUseCase,
-    IngestDocumentInput,
-    IngestDocumentResult,
-    ListDocumentsUseCase,
-    ListDocumentsResult,
-    ListWorkspacesUseCase,
-    PublishWorkspaceUseCase,
-    ReprocessDocumentUseCase,
-    ReprocessDocumentInput,
-    ReprocessDocumentResult,
-    SearchChunksUseCase,
-    SearchChunksInput,
-    SearchChunksResult,
-    ShareWorkspaceUseCase,
-    UpdateWorkspaceUseCase,
-    UploadDocumentUseCase,
-    UploadDocumentInput,
-    UploadDocumentResult,
-)
-from ....container import (
-    get_answer_query_use_case,
-    get_archive_workspace_use_case,
-    get_create_workspace_use_case,
-    get_ingest_document_use_case,
-    get_publish_workspace_use_case,
-    get_search_chunks_use_case,
-    get_share_workspace_use_case,
-    get_llm_service,
-    get_conversation_repository,
-    get_list_documents_use_case,
-    get_list_workspaces_use_case,
-    get_get_document_use_case,
-    get_get_workspace_use_case,
-    get_delete_document_use_case,
-    get_update_workspace_use_case,
-    get_upload_document_use_case,
-    get_reprocess_document_use_case,
-)
 from ....domain.audit import AuditEvent
 from ....domain.entities import ConversationMessage, Workspace, WorkspaceVisibility
-from ....domain.workspace_policy import WorkspaceActor
-from ....application.usecases.document_results import DocumentErrorCode
-from ....application.usecases.workspace_results import WorkspaceErrorCode
 from ....domain.repositories import AuditEventRepository
-from ....identity.dual_auth import PrincipalType, Principal
-from ....container import get_audit_repository
+from ....domain.workspace_policy import WorkspaceActor
+from ....identity.access_control import can_access_document, filter_documents
+from ....identity.dual_auth import (
+    Principal,
+    PrincipalType,
+    require_admin,
+    require_employee_or_admin,
+    require_principal,
+)
+from ....identity.rbac import Permission
 from ....identity.users import UserRole
 
 # R: Create API router for RAG endpoints
@@ -441,7 +444,7 @@ def create_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -451,6 +454,7 @@ def create_workspace(
             description=None,
             actor=actor,
             visibility=req.visibility,
+            owner_user_id=req.owner_user_id,  # R: ADR-008 - use case enforces owner-only
         )
     )
     if result.error:
@@ -499,7 +503,7 @@ def update_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -539,7 +543,7 @@ def publish_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -569,7 +573,7 @@ def share_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -605,7 +609,7 @@ def archive_workspace_action(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -635,7 +639,7 @@ def archive_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)

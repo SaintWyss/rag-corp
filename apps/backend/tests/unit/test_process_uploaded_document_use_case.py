@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.application.use_cases import (
+from app.application.usecases import (
     ProcessUploadedDocumentInput,
     ProcessUploadedDocumentUseCase,
 )

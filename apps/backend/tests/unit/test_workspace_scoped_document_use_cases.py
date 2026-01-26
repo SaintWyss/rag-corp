@@ -10,9 +10,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.application.use_cases.get_document import GetDocumentUseCase
-from app.application.use_cases.list_documents import ListDocumentsUseCase
-from app.application.use_cases.document_results import DocumentErrorCode
+from app.application.usecases.get_document import GetDocumentUseCase
+from app.application.usecases.list_documents import ListDocumentsUseCase
+from app.application.usecases.document_results import DocumentErrorCode
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole

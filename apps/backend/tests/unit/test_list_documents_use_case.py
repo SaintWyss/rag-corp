@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.application.use_cases.list_documents import ListDocumentsUseCase
+from app.application.usecases.list_documents import ListDocumentsUseCase
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.platform.pagination import encode_cursor

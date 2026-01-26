@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.identity.auth_users import create_access_token, hash_password
-from app.application.use_cases.reprocess_document import ReprocessDocumentUseCase
+from app.application.usecases.reprocess_document import ReprocessDocumentUseCase
 from app.domain.entities import Document
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.api.exception_handlers import register_exception_handlers

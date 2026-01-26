@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  archiveWorkspace,
-  createWorkspace,
-  getCurrentUser,
-  listWorkspaces,
-  publishWorkspace,
-  shareWorkspace,
-  type CurrentUser,
-  type WorkspaceSummary,
+    archiveWorkspace,
+    createWorkspace,
+    getCurrentUser,
+    listWorkspaces,
+    publishWorkspace,
+    shareWorkspace,
+    type CurrentUser,
+    type WorkspaceSummary,
 } from "@/shared/api/api";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -63,8 +63,12 @@ export default function WorkspacesPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [apiKey, setApiKey] = useState("");
 
+  // R: ADR-008: Only admin can create/manage workspaces
+  // API key access treated as admin for backwards compatibility
   const isAdmin = user?.role === "admin" || (!user && Boolean(apiKey));
-  const canCreate = isAdmin || user?.role === "employee";
+  
+  // R: ADR-008: Employee cannot create workspaces (admin-only write operations)
+  const canCreate = isAdmin;
 
   const roleLabel = useMemo(() => {
     if (!authChecked) {
@@ -371,9 +375,9 @@ export default function WorkspacesPage() {
             ) : workspaces.length ? (
               workspaces.map((workspace) => {
                 const archived = isArchived(workspace);
-                const canManage =
-                  isAdmin ||
-                  (user && workspace.owner_user_id && user.id === workspace.owner_user_id);
+                // R: ADR-008: Only admin can manage workspaces (publish/share/archive)
+                // Employees can only view and enter their workspaces
+                const canManage = isAdmin;
                 const canPublish =
                   !archived && workspace.visibility === WorkspaceVisibility.PRIVATE;
 

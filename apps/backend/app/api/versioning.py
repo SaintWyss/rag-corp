@@ -11,9 +11,8 @@ Notes:
   - v2: Future enhancements (placeholder)
 """
 
+from app.interfaces.api.http.routes import router as v1_router
 from fastapi import APIRouter
-
-from .routes import router as v1_router
 
 # Version 1 - Current stable
 api_v1 = APIRouter(prefix="/api/v1", tags=["v1"])

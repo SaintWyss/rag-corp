@@ -13,15 +13,11 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.repositories import WorkspaceRepository, WorkspaceAclRepository
+from ...domain.entities import WorkspaceVisibility
+from ...domain.repositories import WorkspaceAclRepository, WorkspaceRepository
 from ...domain.workspace_policy import WorkspaceActor, can_read_workspace
 from ...identity.users import UserRole
-from ...domain.entities import WorkspaceVisibility
-from .workspace_results import (
-    WorkspaceError,
-    WorkspaceErrorCode,
-    WorkspaceListResult,
-)
+from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceListResult
 
 
 class ListWorkspacesUseCase:
@@ -51,13 +47,25 @@ class ListWorkspacesUseCase:
                 ),
             )
 
+        # R: ADR-008: For employees, force owner_user_id to actor.user_id (owner-only).
+        # This performs the filter at DB level for performance and security.
+        if actor.role == UserRole.ADMIN:
+            # Admin can query any owner_user_id (or None to see all)
+            query_owner_id = owner_user_id
+        else:
+            # Employee: always filter to own workspaces only
+            query_owner_id = actor.user_id
+
         workspaces = self.repository.list_workspaces(
-            owner_user_id=owner_user_id,
+            owner_user_id=query_owner_id,
             include_archived=include_archived,
         )
+
         if actor.role == UserRole.ADMIN:
             return WorkspaceListResult(workspaces=workspaces)
 
+        # R: Employee already filtered by owner at DB level.
+        # Still apply can_read_workspace for consistency (shared/visibility checks).
         visible = []
         for workspace in workspaces:
             shared_ids = None

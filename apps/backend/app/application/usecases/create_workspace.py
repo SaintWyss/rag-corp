@@ -11,11 +11,12 @@ Collaborators:
 """
 
 from dataclasses import dataclass
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from ...domain.entities import Workspace, WorkspaceVisibility
 from ...domain.repositories import WorkspaceRepository
 from ...domain.workspace_policy import WorkspaceActor
+from ...identity.users import UserRole
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 
@@ -25,6 +26,7 @@ class CreateWorkspaceInput:
     description: str | None = None
     actor: WorkspaceActor | None = None
     visibility: WorkspaceVisibility | None = None
+    owner_user_id: UUID | None = None  # R: Admin-only override
 
 
 class CreateWorkspaceUseCase:
@@ -66,8 +68,16 @@ class CreateWorkspaceUseCase:
                 )
             )
 
+        # R: ADR-008: Determine effective owner based on actor role.
+        # - Employee: ALWAYS use actor.user_id (cannot assign to others)
+        # - Admin: can optionally assign to another user via owner_user_id
+        if input_data.actor.role == UserRole.ADMIN and input_data.owner_user_id:
+            effective_owner = input_data.owner_user_id
+        else:
+            effective_owner = input_data.actor.user_id
+
         existing = self.repository.get_workspace_by_owner_and_name(
-            input_data.actor.user_id,
+            effective_owner,
             normalized_name,
         )
         if existing:
@@ -83,7 +93,7 @@ class CreateWorkspaceUseCase:
             name=normalized_name,
             description=input_data.description,
             visibility=WorkspaceVisibility.PRIVATE,
-            owner_user_id=input_data.actor.user_id,
+            owner_user_id=effective_owner,
         )
         created = self.repository.create_workspace(workspace)
         return WorkspaceResult(workspace=created)

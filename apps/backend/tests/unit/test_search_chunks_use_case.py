@@ -7,7 +7,7 @@ Responsibilities:
   - Test edge cases (zero top_k, no results)
 
 Collaborators:
-  - app.application.use_cases.search_chunks: Use case being tested
+  - app.application.usecases.search_chunks: Use case being tested
   - conftest: Mock fixtures for dependencies
 
 Notes:
@@ -19,7 +19,7 @@ Notes:
 import pytest
 from uuid import uuid4
 
-from app.application.use_cases.search_chunks import (
+from app.application.usecases.search_chunks import (
     SearchChunksUseCase,
     SearchChunksInput,
 )
