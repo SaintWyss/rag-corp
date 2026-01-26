@@ -1,20 +1,20 @@
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
-  ArchiveWorkspaceRes,
-  CreateWorkspaceReq,
-  DocumentDetailRes,
-  DocumentSummaryRes,
-  DocumentsListRes,
-  IngestBatchReq,
-  IngestBatchRes,
-  IngestTextReq,
-  IngestTextRes,
-  QueryReq,
-  QueryRes,
-  ReprocessDocumentRes,
-  UploadDocumentRes,
-  WorkspaceRes,
-  WorkspacesListRes,
+    ArchiveWorkspaceRes,
+    CreateWorkspaceReq,
+    DocumentDetailRes,
+    DocumentSummaryRes,
+    DocumentsListRes,
+    IngestBatchReq,
+    IngestBatchRes,
+    IngestTextReq,
+    IngestTextRes,
+    QueryReq,
+    QueryRes,
+    ReprocessDocumentRes,
+    UploadDocumentRes,
+    WorkspaceRes,
+    WorkspacesListRes,
 } from "@contracts/src/generated";
 
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
@@ -86,6 +86,12 @@ export type ListWorkspacesParams = {
 };
 
 export type CreateWorkspacePayload = CreateWorkspaceReq;
+
+export type AdminCreateWorkspacePayload = {
+  owner_user_id: string;
+  name: string;
+  description?: string;
+};
 
 export type ShareWorkspacePayload = {
   user_ids: string[];
@@ -260,6 +266,27 @@ export async function createWorkspace(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export async function adminCreateWorkspace(
+  payload: AdminCreateWorkspacePayload
+): Promise<WorkspaceSummary> {
+  return requestJson<WorkspaceSummary>("/api/admin/workspaces", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminListWorkspaces(
+  userId: string
+): Promise<WorkspacesListResponse> {
+  return requestJson<WorkspacesListResponse>(
+    `/api/admin/users/${userId}/workspaces`,
+    {
+      method: "GET",
+    }
+  );
 }
 
 export async function publishWorkspace(

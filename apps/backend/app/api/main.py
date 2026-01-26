@@ -37,6 +37,7 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..application.dev_seed_admin import ensure_dev_admin
+from ..application.dev_seed_demo import ensure_dev_demo
 from ..container import get_document_repository
 from ..crosscutting.config import get_settings
 from ..crosscutting.logger import logger
@@ -109,25 +110,11 @@ async def lifespan(app: FastAPI):
     # R: Run dev seed logic (will fail-fast if unsafe configuration)
     try:
         ensure_dev_admin(settings)
+        ensure_dev_demo(settings)
     except Exception as e:
         logger.error(f"Startup failed: {e}")
         # Re-raise to crash container if config is invalid
         raise e
-
-    # R: Run dev seed logic (will fail-fast if unsafe configuration)
-    try:
-        ensure_dev_admin(settings)
-    except Exception as e:
-        logger.error(f"Startup failed: {e}")
-        # Re-raise to crash container if config is invalid
-        raise e
-
-    # R: Initialize connection pool
-    init_pool(
-        database_url=settings.database_url,
-        min_size=settings.db_pool_min_size,
-        max_size=settings.db_pool_max_size,
-    )
 
     logger.info(
         "RAG Corp API starting up",

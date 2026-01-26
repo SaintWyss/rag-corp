@@ -20,20 +20,26 @@
  *   - Set NEXT_PUBLIC_API_URL to your backend base URL
  *   - Or deploy frontend/backend on same domain
  */
-import type { NextConfig } from "next";
 
-const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // R: Produce standalone output for the production Docker image.
-  output: "standalone",
+  // output: "standalone",
   // R: Configure URL rewrites for development proxy
   async rewrites() {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL ||
+      (process.env.NODE_ENV === "production" ? "http://rag-api:8000" : "http://127.0.0.1:8000");
     return [
       {
         // R: Proxy auth routes directly to backend
         source: "/auth/:path*",  // R: Match pattern (greedy)
         destination: `${backendUrl}/auth/:path*`,  // R: Backend URL
+      },
+      {
+        // R: Proxy admin routes directly to backend (ADR-008, no /v1 prefix)
+        source: "/api/admin/:path*",
+        destination: `${backendUrl}/admin/:path*`,
       },
       {
         // R: Proxy clean /api/* requests to backend /v1/*

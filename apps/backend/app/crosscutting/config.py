@@ -23,6 +23,7 @@ Notes:
 
 from functools import lru_cache
 from uuid import UUID
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
@@ -149,6 +150,9 @@ class Settings(BaseSettings):
     dev_seed_admin_password: str = "admin"
     dev_seed_admin_role: str = "admin"
     dev_seed_admin_force_reset: bool = False
+
+    # Demo Seed (admin + employees + workspaces)
+    dev_seed_demo: bool = False
 
     # Health Check Configuration
     healthcheck_google_enabled: bool = True  # Include Google API in full health check

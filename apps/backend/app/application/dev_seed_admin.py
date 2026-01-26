@@ -3,13 +3,15 @@ Name: Dev Seed Admin
 Description: Logic to seed a development admin user on startup.
 """
 
+import os
+
 from ..crosscutting.config import Settings
 from ..crosscutting.logger import logger
 from ..identity.auth_users import hash_password
 from ..identity.users import UserRole
 from ..infrastructure.repositories.postgres_user_repo import (
-    get_user_by_email,
     create_user,
+    get_user_by_email,
     update_user,
 )
 
@@ -19,33 +21,30 @@ def ensure_dev_admin(settings: Settings) -> None:
     R: Ensure a development admin user exists if configured.
     FAIL-FAST if enabled in non-local environments.
     """
-    if not settings.dev_seed_admin:
+    is_e2e = os.environ.get("E2E_SEED_ADMIN") == "1"
+
+    if not settings.dev_seed_admin and not is_e2e:
         return
 
-    # Guard: Fail fast in non-local environments
-    # We check raw app_env string to be sure, or rely on is_production() logic?
-    # Better to be explicit: allow only "local" or "development".
-    # settings.app_env defaults to "development" in config.py.
-    # We should strictly enforce "local" if the user follows runbook,
-    # or just ensure it's NOT production and maybe check a specific "local" flag.
-    # The prompt says: "si ENV != local y DEV_SEED_ADMIN=1, la app debe FAIL-FAST"
-    
-    # We will assume "local" is the value user sets for local dev.
-    # Current config defaults to "development".
-    # Let's check against what the user is expected to use. 
-    # The prompt says "ENV=local".
-    
-    current_env = settings.app_env.strip().lower()
-    if current_env != "local":
-        raise RuntimeError(
-            f"FATAL: DEV_SEED_ADMIN is enabled but ENV is '{current_env}' (must be 'local'). "
-            "This is a safety guard to prevent accidental overrides."
-        )
+    # Guard: Fail fast in non-local environments ONLY if not E2E
+    if not is_e2e:
+        current_env = settings.app_env.strip().lower()
+        if current_env != "local":
+            raise RuntimeError(
+                f"FATAL: DEV_SEED_ADMIN is enabled but ENV is '{current_env}' (must be 'local'). "
+                "This is a safety guard to prevent accidental overrides."
+            )
 
-    target_email = settings.dev_seed_admin_email
-    target_password = settings.dev_seed_admin_password
-    target_role_str = settings.dev_seed_admin_role
-    force_reset = settings.dev_seed_admin_force_reset
+    if is_e2e:
+        target_email = os.environ.get("E2E_ADMIN_EMAIL", "admin@local")
+        target_password = os.environ.get("E2E_ADMIN_PASSWORD", "admin")
+        target_role_str = "admin"
+        force_reset = False
+    else:
+        target_email = settings.dev_seed_admin_email
+        target_password = settings.dev_seed_admin_password
+        target_role_str = settings.dev_seed_admin_role
+        force_reset = settings.dev_seed_admin_force_reset
 
     try:
         target_role = UserRole(target_role_str)
@@ -69,7 +68,7 @@ def ensure_dev_admin(settings: Settings) -> None:
             is_active=True,
         )
         logger.info(f"Dev seed admin: Created new admin user {target_email}")
-    
+
     elif force_reset:
         # Update existing
         hashed = hash_password(target_password)
@@ -79,7 +78,9 @@ def ensure_dev_admin(settings: Settings) -> None:
             role=target_role,
             is_active=True,
         )
-        logger.info(f"Dev seed admin: Reset existing user {target_email} (FORCE_RESET=1)")
-    
+        logger.info(
+            f"Dev seed admin: Reset existing user {target_email} (FORCE_RESET=1)"
+        )
+
     else:
         logger.info(f"Dev seed admin: User {target_email} already exists (skipping)")

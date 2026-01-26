@@ -9,7 +9,11 @@
     "test:ui": "playwright test --ui",
     "test:debug": "PWDEBUG=1 playwright test",
     "codegen": "playwright codegen http://localhost:3000",
-    "install:browsers": "playwright install --with-deps"
+    "install:browsers": "playwright install --with-deps",
+    "e2e:install:browsers": "playwright install chromium",
+    "e2e:run": "bash scripts/run-e2e.sh",
+    "e2e:report": "bash scripts/show-report.sh",
+    "e2e:trace": "echo 'Usa: pnpm exec playwright show-trace <path>'"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0"

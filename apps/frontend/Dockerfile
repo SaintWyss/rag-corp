@@ -1,8 +1,13 @@
 # syntax=docker/dockerfile:1
 FROM node:20-alpine AS builder
 
+# Establish pnpm environment
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+RUN pnpm config set store-dir /pnpm/store
+
 WORKDIR /app
-RUN corepack enable pnpm
 
 # Monorepo manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -16,7 +21,10 @@ RUN pnpm install --frozen-lockfile
 COPY apps/frontend/ ./apps/frontend/
 COPY shared/ ./shared/
 
-ARG NEXT_PUBLIC_API_URL
+# Remove local .env files to ensure build uses ENVs
+RUN rm -f apps/frontend/.env apps/frontend/.env.local
+
+ARG NEXT_PUBLIC_API_URL=http://rag-api:8000
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Build Next.js
@@ -26,8 +34,12 @@ RUN pnpm -C apps/frontend build
 # ---- Production image ----
 FROM node:20-alpine AS production
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+RUN pnpm config set store-dir /pnpm/store
+
 WORKDIR /app
-RUN corepack enable pnpm
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -35,6 +47,7 @@ ENV NODE_ENV=production \
     HOSTNAME="0.0.0.0"
 
 # Copy only what we need to install prod deps for the frontend (workspace-aware)
+COPY apps/frontend/next.config.mjs ./apps/frontend/next.config.mjs
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/frontend/package.json apps/frontend/package.json
 COPY shared/contracts/package.json shared/contracts/package.json

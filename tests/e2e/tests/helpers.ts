@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 function requireEnv(name: string): string {
     const value = process.env[name];
     if (!value) {
-        throw new Error(`Missing ${name}. Set it to run admin E2E flows.`);
+        throw new Error(`Faltan env vars (${name}). Ejecuta: pnpm run e2e:run`);
     }
     return value;
 }
@@ -29,9 +29,14 @@ export async function loginAsAdmin(page: Page) {
     });
     if (!response.ok()) {
         const body = await response.text();
-        throw new Error(
-            `Login failed (${response.status()}): ${body || "empty response"}`
-        );
+        const status = response.status();
+        let errorMsg = `Login failed (${status}): ${body || "empty response"}`;
+        
+        if (status >= 500) {
+            errorMsg += "\n[HINT] Backend error. Check logs: docker compose logs rag-api --tail=200";
+        }
+        
+        throw new Error(errorMsg);
     }
 }
 

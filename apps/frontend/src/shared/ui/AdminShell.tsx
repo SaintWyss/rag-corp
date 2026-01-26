@@ -35,9 +35,11 @@ export function AdminShell({ children }: AdminShellProps) {
         label: "Users",
         active: pathname === "/admin/users",
       },
-      // Future admin sections can be added here:
-      // { href: "/admin/workspaces", label: "Workspaces", active: pathname === "/admin/workspaces" },
-      // { href: "/admin/settings", label: "Settings", active: pathname === "/admin/settings" },
+      {
+        href: "/admin/workspaces",
+        label: "Workspaces",
+        active: pathname === "/admin/workspaces",
+      },
     ],
     [pathname]
   );

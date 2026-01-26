@@ -54,13 +54,13 @@ export default defineConfig({
         ? undefined
         : [
               {
-                  command: "cd ../../backend && uvicorn app.main:app --port 8000",
+                  command: "cd ../../apps/backend && uvicorn app.main:app --port 8000",
                   url: "http://localhost:8000/healthz",
                   reuseExistingServer: !process.env.CI,
                   timeout: 60000,
               },
               {
-                  command: "cd ../../frontend && pnpm dev",
+                  command: "cd ../../apps/frontend && pnpm dev",
                   url: baseURL,
                   reuseExistingServer: !process.env.CI,
                   timeout: 60000,

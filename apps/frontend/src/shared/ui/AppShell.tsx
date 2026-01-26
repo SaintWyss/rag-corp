@@ -203,8 +203,24 @@ export function AppShell({ children }: AppShellProps) {
                 ) : null}
               </div>
             </div>
-            <div className="w-full sm:max-w-xs">
+            <div className="flex items-center gap-4 w-full sm:max-w-xs justify-end">
               <ApiKeyInput />
+              <Link
+                href="/auth/logout"
+                className="text-xs font-medium text-white/40 hover:text-white transition"
+                onClick={(e) => {
+                  e.preventDefault();
+                  fetch("/auth/logout", { method: "POST" })
+                    .then(() => {
+                      window.location.href = "/login";
+                    })
+                    .catch(() => {
+                      window.location.href = "/login";
+                    });
+                }}
+              >
+                Logout
+              </Link>
             </div>
           </header>
 

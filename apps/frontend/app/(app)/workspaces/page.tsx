@@ -64,8 +64,8 @@ export default function WorkspacesPage() {
   const [apiKey, setApiKey] = useState("");
 
   // R: ADR-008: Only admin can create/manage workspaces
-  // API key access treated as admin for backwards compatibility
-  const isAdmin = user?.role === "admin" || (!user && Boolean(apiKey));
+  // Security Hardening: API key does NOT grant admin UI privileges anymore.
+  const isAdmin = user?.role === "admin";
   
   // R: ADR-008: Employee cannot create workspaces (admin-only write operations)
   const canCreate = isAdmin;
