@@ -93,11 +93,6 @@ export function AppShell({ children }: AppShellProps) {
   const navLinks = useMemo(
     () => [
       {
-        href: "/",
-        label: "Ask",
-        active: pathname === "/",
-      },
-      {
         href: chatHref,
         label: "Chat",
         active: Boolean(pathname?.startsWith("/workspaces/") && pathname.includes("/chat")),

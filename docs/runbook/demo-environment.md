@@ -1,62 +1,74 @@
-# Demo Environment Setup
+# Demo Environment & Role Testing Runbook
 
-Use this guide to spin up a fully provisioned local demo environment with Admin and Employee users pre-configured.
+Use this guide to spin up a fully provisioned local demo environment and manually verify the Admin vs Employee separation.
 
-## Overview
+## 1. Quick Start (Spin up Stack)
 
-The backend supports a `DEV_SEED_DEMO` flag that, when enabled in a LOCAL environment, auto-provisions:
-
-- **Admin User**: `admin@local` (pass: `admin`)
-- **Employee 1**: `employee1@local` (pass: `employee1`)
-- **Employee 2**: `employee2@local` (pass: `employee2`)
-- **Workspaces**:
-  - "Admin Workspace" (Owner: Admin)
-  - "Employee1 Workspace" (Owner: Employee 1)
-  - "Employee2 Workspace" (Owner: Employee 2)
-
-This allows you to test Admin Console features and Employee Portal isolation immediately after startup.
-
-## Prerequisites
-
-- Local Docker environment running
-- `APP_ENV=local` (Default in `.env`)
-
-## How to Enable
-
-1. Open your `.env` file (root of the repo).
-2. Set `DEV_SEED_DEMO=1`.
+To start the full stack (Frontend, Backend, DB, MinIO, Redis):
 
 ```bash
-# .env
-DEV_SEED_DEMO=1
+pnpm stack:full
 ```
 
-3. Restart the backend container.
+_Note: This runs `docker compose --profile full up -d --build`._
 
-```bash
-pnpm docker:up
-# or just restart backend
-docker compose restart backend
+## 2. Enable Demo Users (Seeding)
+
+The backend creates demo users automatically if `DEV_SEED_DEMO=1` is set in your environment.
+
+1.  Edit `.env` (or ensure variables are set):
+    ```bash
+    APP_ENV=local
+    DEV_SEED_DEMO=1
+    ```
+2.  Restart the backend if it was already running:
+    ```bash
+    docker compose restart rag-api
+    ```
+
+**Logs Verification:**
+Look for these lines in `docker compose logs rag-api`:
+
+```
+INFO: ... Dev seed demo: Starting provisioning...
+INFO: ... Dev seed demo: Created user admin@local (admin)
+INFO: ... Dev seed demo: Created user employee1@local (employee)
 ```
 
-4. Verify in logs:
-   ```
-   backend-1  | INFO: ... Dev seed demo: Starting provisioning...
-   backend-1  | INFO: ... Dev seed demo: Created user admin@local (admin)
-   backend-1  | INFO: ... Dev seed demo: Created user employee1@local (employee)
-   backend-1  | INFO: ... Dev seed demo: Created workspace 'Employee1 Workspace'
-   ...
-   ```
+## 3. Credentials & Access
 
-## Login Credentials
+| Role         | Email             | Password    | Intended Portal     | URL            |
+| :----------- | :---------------- | :---------- | :------------------ | :------------- |
+| **Admin**    | `admin@local`     | `admin`     | **Admin Console**   | `/admin/users` |
+| **Employee** | `employee1@local` | `employee1` | **Employee Portal** | `/workspaces`  |
+| **Employee** | `employee2@local` | `employee2` | **Employee Portal** | `/workspaces`  |
 
-| Role         | Email             | Password    |
-| ------------ | ----------------- | ----------- |
-| **Admin**    | `admin@local`     | `admin`     |
-| **Employee** | `employee1@local` | `employee1` |
-| **Employee** | `employee2@local` | `employee2` |
+## 4. Manual Verification Checklist (Role Separation)
 
-## Safety Checks
+Perform these 5 steps to sign-off on role separation:
 
-- The seed logic STRICTLY requires `APP_ENV=local`.
-- If you try to enable this in production (or any other env), the container will crash on startup (Fail-Fast) with a fatal error.
+1.  **[ ] Admin Login**:
+    - Log in as `admin@local`.
+    - Verify landing page is `/admin/users` (Admin Console).
+    - Verify you see "Users" and "Workspaces" navigation items.
+2.  **[ ] Admin Segregation**:
+    - While logged in as Admin, manually change URL to `/workspaces`.
+    - **Expectation**: You are forcibly redirected back to `/admin/users`.
+3.  **[ ] Employee Login**:
+    - Log out and log in as `employee1@local`.
+    - Verify landing page is `/workspaces` (Employee Portal).
+    - Verify you **do not** see "Users" or "System" links.
+4.  **[ ] Employee Segregation**:
+    - While logged in as Employee, manually change URL to `/admin/users`.
+    - **Expectation**: You are forcibly redirected back to `/workspaces`.
+5.  **[ ] Data Isolation (Cross-Access)**:
+    - As Admin, ensure `employee2` has a private workspace ("Employee2 Workspace").
+    - Log in as `employee1`.
+    - Verify "Employee2 Workspace" is **NOT** visible in the workspace selector.
+    - (Optional) Try `curl` or direct URL access to Employee2's workspace ID; ensure 403 Forbidden.
+
+## Safety Guards
+
+- **ENV check**: Seed logic only runs if `APP_ENV=local`.
+- **Middleware**: The frontend middleware (`isWrongPortal`) handles the redirections.
+- **Backend**: The `ListWorkspacesUseCase` enforces the "Owner Only" visibility at the database level.

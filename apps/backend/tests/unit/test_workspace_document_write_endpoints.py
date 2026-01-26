@@ -14,18 +14,16 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
-from app.identity.auth_users import create_access_token, hash_password
+from app.api.exception_handlers import register_exception_handlers
 from app.application.usecases.delete_document import DeleteDocumentUseCase
 from app.application.usecases.get_workspace import GetWorkspaceUseCase
 from app.application.usecases.reprocess_document import ReprocessDocumentUseCase
 from app.application.usecases.upload_document import UploadDocumentUseCase
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
-from app.api.exception_handlers import register_exception_handlers
+from app.identity.auth_users import create_access_token, hash_password
 from app.identity.users import User, UserRole
-
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 pytestmark = pytest.mark.unit
 
@@ -60,7 +58,7 @@ def _prepare_routes(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
 
-    import app.api.routes as routes
+    import app.interfaces.api.http.routes as routes
 
     importlib.reload(routes)
     return routes

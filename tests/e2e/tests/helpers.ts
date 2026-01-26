@@ -40,6 +40,15 @@ export async function loginAsAdmin(page: Page) {
     }
 }
 
+export async function login(page: Page, email: string, password: string) {
+    await page.goto("/login");
+    await page.getByPlaceholder("name@example.com").fill(email);
+    await page.getByPlaceholder("••••••••").fill(password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    // Wait for login to complete (redirect away from login)
+    await page.waitForURL((url) => !url.pathname.includes("/login"));
+}
+
 export async function createWorkspace(page: Page, name: string): Promise<string> {
     await page.goto("/workspaces");
     await expect(page.getByTestId("workspaces-page")).toBeVisible();

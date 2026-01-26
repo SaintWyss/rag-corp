@@ -523,7 +523,9 @@ export default function WorkspacesPage() {
                 className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-sm text-white/40"
                 data-testid="workspaces-empty"
               >
-                No hay workspaces todavia. Crea el primero para empezar.
+                {canCreate
+                  ? "No hay workspaces todavia. Crea el primero para empezar."
+                  : "No tienes workspaces asignados. Contacta a un administrador para obtener acceso."}
               </div>
             )}
           </div>
