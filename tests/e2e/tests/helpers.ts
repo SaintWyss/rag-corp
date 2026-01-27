@@ -45,8 +45,18 @@ export async function login(page: Page, email: string, password: string) {
     await page.getByPlaceholder("name@example.com").fill(email);
     await page.getByPlaceholder("••••••••").fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
+    
     // Wait for login to complete (redirect away from login)
     await page.waitForURL((url) => !url.pathname.includes("/login"));
+    
+    // Explicitly wait for auth cookie to ensure session is established
+    await expect.poll(async () => {
+        const cookies = await page.context().cookies();
+        return cookies.find(c => c.name === "rag_access_token" || c.name === "access_token");
+    }, {
+        message: "Auth cookie not found after login",
+        timeout: 10000 
+    }).toBeDefined();
 }
 
 export async function createWorkspace(page: Page, name: string): Promise<string> {

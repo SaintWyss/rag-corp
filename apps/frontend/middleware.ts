@@ -39,7 +39,12 @@ async function fetchCurrentUser(
 ): Promise<AuthMeResponse | null> {
   try {
     // Build absolute URL for /auth/me (middleware runs server-side)
-    const url = new URL("/auth/me", req.nextUrl.origin);
+    // Use direct backend URL to avoid self-request loop issues in Docker
+    // Fallback to 'http://rag-api:8000' which is the standard docker service name
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://rag-api:8000";
+    // Ensure we don't double-slash if backendUrl ends with /
+    const baseUrl = backendUrl.replace(/\/$/, "");
+    const url = new URL(`${baseUrl}/auth/me`);
 
     // Forward cookies from the original request
     const cookieHeader = req.headers.get("cookie");
@@ -83,8 +88,8 @@ function getHomeForRole(role: UserRole): string {
  */
 function isWrongPortal(pathname: string, role: UserRole): boolean {
   if (role === "admin") {
-    // Admin should NOT be at /workspaces (employee portal)
-    return pathname.startsWith("/workspaces");
+    // Admin allowed everywhere (Admin Console + Workspaces)
+    return false;
   } else {
     // Employee should NOT be at /admin (admin console)
     return pathname.startsWith("/admin");

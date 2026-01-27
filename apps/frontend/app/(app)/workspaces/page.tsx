@@ -65,7 +65,7 @@ export default function WorkspacesPage() {
 
   // R: ADR-008: Only admin can create/manage workspaces
   // Security Hardening: API key does NOT grant admin UI privileges anymore.
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role?.toLowerCase() === "admin";
   
   // R: ADR-008: Employee cannot create workspaces (admin-only write operations)
   const canCreate = isAdmin;
@@ -75,7 +75,7 @@ export default function WorkspacesPage() {
       return "Verificando";
     }
     if (user) {
-      return user.role === "admin" ? "Admin" : "Empleado";
+      return user.role?.toLowerCase() === "admin" ? "Admin" : "Empleado";
     }
     if (apiKey) {
       return "API Key";

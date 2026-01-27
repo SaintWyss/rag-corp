@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { clearApiKeyStorage, login } from "./helpers";
 
 const ADMIN_USER = { email: "admin@local", password: "admin" };
@@ -26,49 +26,106 @@ test.describe.serial("Role Separation & Isolation", () => {
 
   async function ensureUserExists(page: Page, user: {email: string, password: string}) {
       await page.goto("/admin/users");
-      // Wait for table to load content
+      
+      // Wait for table of users to be ready (api call to list users)
+      // We assume the page fetches users on mount.
+      // Let's waitForResponse for GET users if possible, or just wait for network idle state.
+      // Simple robustness: Wait for any row OR timeout.
       try {
-        await page.locator('[data-testid="admin-users-row"]').first().waitFor({ timeout: 3000 });
+        await page.locator('[data-testid="admin-users-row"]').first().waitFor({ state: "visible", timeout: 2000 });
       } catch {
-        // Ignore timeout - list might be empty
+        // List might be empty, continue.
       }
 
       // Check if user exists in the list
       const userRow = page.locator(`[data-testid="admin-users-row"]`, { hasText: user.email });
-      const userVisible = await userRow.count() > 0;
       
-      if (!userVisible) {
-          console.log(`Seeding user ${user.email}...`);
-          await page.getByPlaceholder("empleado@ragcorp.com").fill(user.email);
-          await page.getByPlaceholder("Min 8 caracteres").fill(user.password);
-          // Select is the first select in the form
-          await page.locator("select").first().selectOption("employee");
-          await page.getByRole("button", { name: "Crear usuario" }).click();
-          await expect(userRow).toBeVisible();
+      if (await userRow.count() > 0) {
+          console.log(`User ${user.email} already visible.`);
+          return;
       }
+      
+      console.log(`Seeding user ${user.email}...`);
+      await page.getByPlaceholder("empleado@ragcorp.com").fill(user.email);
+      await page.getByPlaceholder("Min 8 caracteres").fill(user.password);
+      await page.locator("select").first().selectOption("employee");
+      
+      // A) waitForResponse del POST real
+      const createPromise = page.waitForResponse(resp => 
+        resp.url().includes("/users") && resp.request().method() === "POST"
+      );
+
+      await page.getByRole("button", { name: "Crear usuario" }).click();
+      
+      // B) assert status 2xx; si no, loggear status + response text
+      const response = await createPromise;
+      if (!response.ok()) {
+          if (response.status() === 409) {
+              console.log(`User ${user.email} already exists (409 Conflict). Reloading to verify.`);
+              await page.reload();
+              
+              // Robustness: Check if we were redirected to login (session lost)
+              if (page.url().includes("/login")) {
+                  console.log("Session lost during reload. Re-logging in as Admin...");
+                  await login(page, ADMIN_USER.email, ADMIN_USER.password);
+                  await page.goto("/admin/users");
+              }
+
+              // Wait for table to load again
+              try {
+                await page.locator('[data-testid="admin-users-row"]').first().waitFor({ state: "visible", timeout: 3000 });
+              } catch {
+                console.log("Admin users table did not populate rows immediately.");
+              }
+              
+              const userRow = page.locator(`[data-testid="admin-users-row"]`, { hasText: user.email });
+              const visibleRows = await page.locator('[data-testid="admin-users-row"]').allTextContents();
+              console.log(`DEBUG: Visible rows for ${user.email} check:`, visibleRows);
+              
+              // Verify visibility with a retry
+              await expect(userRow).toBeVisible({ timeout: 10000 });
+              return;
+          }
+          const body = await response.text();
+          throw new Error(`Failed to create user ${user.email}. Status: ${response.status()} Body: ${body}`);
+      }
+      
+      // C) esperar UI update
+      await expect(userRow).toBeVisible();
   }
 
-  test("Admin Redirection: Cannot access Employee Portal", async ({ page }) => {
+  test("Admin Capabilities: Can access Workspaces and Create Panel", async ({ page }) => {
     await login(page, ADMIN_USER.email, ADMIN_USER.password);
     
-    // Default landing
+    // Default landing should be Admin Console
     await expect(page).toHaveURL(/\/admin\/users/);
 
-    // Try forcing URL
+    // Navigating to Workspaces should be ALLOWED
     await page.goto("/workspaces");
-    await expect(page).toHaveURL(/\/admin\/users/); // Redirect back
+    await expect(page).toHaveURL(/\/workspaces/);
+    
+    // Debug: Check what role the UI thinks we have
+    const roleBadge = page.getByTestId("workspaces-role");
+    await expect(roleBadge).not.toHaveText("Verificando", { timeout: 10000 });
+    console.log("Role Label:", await roleBadge.textContent());
+    
+    await expect(roleBadge).toHaveText("Admin");
+    
+    // Admin should see the creation panel
+    await expect(page.getByTestId("workspaces-create-panel")).toBeVisible();
   });
 
   test("Employee Redirection: Cannot access Admin Console", async ({ page }) => {
     await login(page, EMP1_USER.email, EMP1_USER.password);
 
-    // Default landing
+    // Default landing should be Workspaces
     await expect(page).toHaveURL(/\/workspaces/);
     
-    // Check UI has no admin links
+    // Check UI has no admin links (e.g. users management)
+    // Note: AppShell doesn't show admin links by default, but checking anyway.
     await expect(page.getByRole("link", { name: "Users" })).not.toBeVisible();
 
-    // Try forcing URL
+    // Try forcing URL to Admin Console
     await page.goto("/admin/users");
     // Should be redirected to /workspaces
     await expect(page).toHaveURL(/\/workspaces/);
