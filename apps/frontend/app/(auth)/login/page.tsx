@@ -1,7 +1,7 @@
 "use client";
 
 import { AuroraBackground } from "@/app/components/ui/aurora-background";
-import { login } from "@/shared/api/api";
+import { getCurrentUser, login } from "@/shared/api/api";
 import { sanitizeNextPath } from "@/shared/lib/safeNext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { useState } from "react";
 export default function LoginPage() {
   const router = useRouter();
   const sp = useSearchParams();
+  // Default fallback is /workspaces if param missing
   const next = sanitizeNextPath(sp.get("next"));
 
   const [email, setEmail] = useState("");
@@ -25,8 +26,24 @@ export default function LoginPage() {
       // Use centralized login from API client for consistent error handling
       await login(email, password);
 
+      // Check role to decide destination
+      const user = await getCurrentUser();
+      let destination = next;
+
+      if (user?.role === "admin") {
+        // Prepare to go to Admin Console if defaulting to workspaces or explicitly asking for it
+        if (destination === "/workspaces" || destination.startsWith("/workspaces")) {
+          destination = "/admin/users";
+        }
+      } else {
+        // Employee (or others): Ensure they don't go to admin console
+        if (destination.startsWith("/admin")) {
+          destination = "/workspaces";
+        }
+      }
+
       // Backend sets HttpOnly cookie. We don't need to store tokens in JS.
-      router.replace(next);
+      router.replace(destination);
       router.refresh();
     } catch (err) {
       // Extract error message

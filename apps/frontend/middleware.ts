@@ -35,7 +35,7 @@ const EMPLOYEE_HOME = "/workspaces";
  * Returns null if not authenticated or request fails.
  */
 async function fetchCurrentUser(
-  req: NextRequest
+  req: NextRequest,
 ): Promise<AuthMeResponse | null> {
   try {
     // Build absolute URL for /auth/me (middleware runs server-side)
@@ -88,8 +88,8 @@ function getHomeForRole(role: UserRole): string {
  */
 function isWrongPortal(pathname: string, role: UserRole): boolean {
   if (role === "admin") {
-    // Admin allowed everywhere (Admin Console + Workspaces)
-    return false;
+    // Admin should NOT be at /workspaces (employee portal)
+    return pathname.startsWith("/workspaces");
   } else {
     // Employee should NOT be at /admin (admin console)
     return pathname.startsWith("/admin");

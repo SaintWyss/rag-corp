@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": false,
+    "target": "ESNext",
+    "module": "commonjs",
+    "moduleResolution": "Node",
+    "lib": ["ESNext", "DOM"],
+    "types": ["node", "@playwright/test"],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
+  "include": ["**/*.ts"]
+}

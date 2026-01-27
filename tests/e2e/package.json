@@ -16,6 +16,7 @@
     "e2e:trace": "echo 'Usa: pnpm exec playwright show-trace <path>'"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20"
   }
 }
