@@ -172,3 +172,46 @@ def require_admin() -> Callable:
 def require_employee_or_admin() -> Callable:
     """R: Require JWT employee or admin role."""
     return require_roles(UserRole.EMPLOYEE, UserRole.ADMIN)
+
+# ---------------------------------------------------------------------------
+# User-only role gates (JWT required)
+# ---------------------------------------------------------------------------
+
+def require_user_roles(*roles: UserRole) -> Callable:
+    """
+    R: Require JWT user principal with one of the given roles.
+
+    Difference vs require_roles():
+      - require_roles() is ignored for SERVICE principals (API keys).
+      - require_user_roles() denies SERVICE principals.
+
+    Note:
+      - If principal is missing (auth disabled), this is a no-op (keeps previous behavior).
+    """
+    allowed = {UserRole(role) for role in roles}
+
+    async def dependency(request: Request) -> None:
+        principal: Principal | None = getattr(request.state, "principal", None)
+        if not principal:
+            return None
+
+        if principal.principal_type != PrincipalType.USER or not principal.user:
+            raise forbidden("User authentication required.")
+
+        if principal.user.role not in allowed:
+            raise forbidden("Insufficient role.")
+
+        return None
+
+    return dependency
+
+
+def require_user_admin() -> Callable:
+    """R: Require JWT admin; deny API keys."""
+    return require_user_roles(UserRole.ADMIN)
+
+
+def require_user_employee_or_admin() -> Callable:
+    """R: Require JWT employee/admin; deny API keys."""
+    return require_user_roles(UserRole.EMPLOYEE, UserRole.ADMIN)
+

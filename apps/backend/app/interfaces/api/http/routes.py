@@ -112,6 +112,8 @@ from ....identity.dual_auth import (
     PrincipalType,
     require_admin,
     require_employee_or_admin,
+    require_user_employee_or_admin,
+    require_user_admin,
     require_principal,
 )
 from ....identity.rbac import Permission
@@ -417,7 +419,7 @@ def list_workspaces(
     include_archived: bool = Query(False),
     use_case: ListWorkspacesUseCase = Depends(get_list_workspaces_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_user_employee_or_admin()),
 ):
     actor = _to_workspace_actor(principal)
     output = use_case.execute(
@@ -444,7 +446,7 @@ def create_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -481,7 +483,7 @@ def get_workspace(
     workspace_id: UUID,
     use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
-    _role: None = Depends(require_employee_or_admin()),
+    _role: None = Depends(require_user_employee_or_admin()),
 ):
     actor = _to_workspace_actor(principal)
     result = use_case.execute(workspace_id, actor)
@@ -503,7 +505,7 @@ def update_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -543,7 +545,7 @@ def publish_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -573,7 +575,7 @@ def share_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -609,7 +611,7 @@ def archive_workspace_action(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -639,7 +641,7 @@ def archive_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
