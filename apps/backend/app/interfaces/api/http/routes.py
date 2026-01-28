@@ -819,6 +819,7 @@ def delete_document(
 @router.post(
     "/documents/upload",
     response_model=UploadDocumentRes,
+    status_code=202,
     tags=["documents"],
     deprecated=True,
 )
@@ -1390,6 +1391,7 @@ def delete_workspace_document(
 @router.post(
     "/workspaces/{workspace_id}/documents/upload",
     response_model=UploadDocumentRes,
+    status_code=202,
     tags=["workspaces"],
 )
 async def upload_workspace_document(
