@@ -55,6 +55,11 @@ pnpm -C apps/frontend test:watch
 pnpm -C apps/frontend test:coverage
 ```
 
+**CI typecheck:**
+```bash
+pnpm --filter web exec tsc --noEmit
+```
+
 ---
 
 ## E2E (Playwright)
