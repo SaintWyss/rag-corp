@@ -193,7 +193,7 @@ def test_workspace_upload_allows_owner_employee(monkeypatch):
                 data={"title": "Sample"},
             )
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     mock_storage.upload_file.assert_called_once()
     mock_queue.enqueue_document_processing.assert_called_once()
 
@@ -274,7 +274,7 @@ def test_workspace_upload_allows_admin(monkeypatch):
                 data={"title": "Sample"},
             )
 
-    assert response.status_code == 200
+    assert response.status_code == 202
 
 
 def test_workspace_delete_allows_owner_employee(monkeypatch):

@@ -96,7 +96,7 @@ class TestPromptLoaderSingleton:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
 
         # Clear settings cache to pick up new env
-        from app.config import get_settings
+        from app.crosscutting.config import get_settings
 
         get_settings.cache_clear()
 

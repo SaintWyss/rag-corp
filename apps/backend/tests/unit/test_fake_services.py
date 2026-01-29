@@ -13,7 +13,7 @@ from app.infrastructure.services.fake_embedding_service import (
     EMBEDDING_DIMENSION,
     FakeEmbeddingService,
 )
-from app.infrastructure.services.fake_llm_service import FakeLLMService
+from app.infrastructure.services.llm.fake_llm import FakeLLMService
 
 
 @pytest.mark.unit

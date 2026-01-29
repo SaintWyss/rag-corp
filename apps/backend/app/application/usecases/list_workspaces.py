@@ -47,31 +47,47 @@ class ListWorkspacesUseCase:
                 ),
             )
 
-        # R: ADR-008: For employees, force owner_user_id to actor.user_id (owner-only).
-        # This performs the filter at DB level for performance and security.
         if actor.role == UserRole.ADMIN:
             # Admin can query any owner_user_id (or None to see all)
-            query_owner_id = owner_user_id
-        else:
-            # Employee: always filter to own workspaces only
-            query_owner_id = actor.user_id
+            workspaces = self.repository.list_workspaces(
+                owner_user_id=owner_user_id,
+                include_archived=include_archived,
+            )
+            return WorkspaceListResult(workspaces=workspaces)
 
-        workspaces = self.repository.list_workspaces(
-            owner_user_id=query_owner_id,
+        # Employee: return all workspaces visible under policy (owned + org-visible + shared).
+        owned = self.repository.list_workspaces(
+            owner_user_id=actor.user_id,
             include_archived=include_archived,
         )
 
-        if actor.role == UserRole.ADMIN:
-            return WorkspaceListResult(workspaces=workspaces)
+        org_read = self.repository.list_workspaces_by_visibility(
+            WorkspaceVisibility.ORG_READ,
+            include_archived=include_archived,
+        )
 
-        # R: Employee already filtered by owner at DB level.
-        # Still apply can_read_workspace for consistency (shared/visibility checks).
+        shared_ids = self.acl_repository.list_workspaces_for_user(actor.user_id)
+        shared = self.repository.list_workspaces_by_ids(
+            shared_ids,
+            include_archived=include_archived,
+        )
+
+        # De-duplicate by ID (owned may overlap with shared/org_read)
+        combined = []
+        seen_ids: set[UUID] = set()
+        for workspace in owned + shared + org_read:
+            if workspace.id in seen_ids:
+                continue
+            seen_ids.add(workspace.id)
+            combined.append(workspace)
+
+        # Still apply can_read_workspace for consistent enforcement.
         visible = []
-        for workspace in workspaces:
-            shared_ids = None
+        for workspace in combined:
+            acl_user_ids = None
             if workspace.visibility == WorkspaceVisibility.SHARED:
-                shared_ids = self.acl_repository.list_workspace_acl(workspace.id)
-            if can_read_workspace(workspace, actor, shared_user_ids=shared_ids):
+                acl_user_ids = self.acl_repository.list_workspace_acl(workspace.id)
+            if can_read_workspace(workspace, actor, shared_user_ids=acl_user_ids):
                 visible.append(workspace)
 
         return WorkspaceListResult(workspaces=visible)

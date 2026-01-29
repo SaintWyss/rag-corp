@@ -23,7 +23,7 @@ class TestTokenBucket:
 
     def test_initial_bucket_is_full(self):
         """New bucket should have full tokens."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=10, burst=20)
         remaining = bucket.get_remaining("test-key")
@@ -31,7 +31,7 @@ class TestTokenBucket:
 
     def test_consume_returns_true_when_tokens_available(self):
         """Consume should succeed when tokens available."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=10, burst=20)
         allowed, retry_after = bucket.consume("test-key")
@@ -41,7 +41,7 @@ class TestTokenBucket:
 
     def test_consume_decrements_tokens(self):
         """Each consume should decrement tokens by 1."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=10, burst=5)
 
@@ -53,7 +53,7 @@ class TestTokenBucket:
 
     def test_consume_blocks_after_burst_exhausted(self):
         """Consume should fail when burst is exhausted."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=10, burst=3)
 
@@ -70,7 +70,7 @@ class TestTokenBucket:
 
     def test_retry_after_is_positive_when_limited(self):
         """Retry-after should be positive when rate limited."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         # R: Create bucket with very slow refill
         bucket = TokenBucket(rps=0.001, burst=2)  # 0.001 token/sec
@@ -87,7 +87,7 @@ class TestTokenBucket:
 
     def test_tokens_refill_over_time(self):
         """Tokens should refill at rps rate."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=100, burst=10)  # Fast refill for testing
 
@@ -105,7 +105,7 @@ class TestTokenBucket:
 
     def test_tokens_do_not_exceed_burst(self):
         """Refill should not exceed burst limit."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=1000, burst=5)
 
@@ -120,7 +120,7 @@ class TestTokenBucket:
 
     def test_separate_buckets_per_key(self):
         """Each key should have its own bucket."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=10, burst=3)
 
@@ -135,7 +135,7 @@ class TestTokenBucket:
 
     def test_clear_resets_all_buckets(self):
         """Clear should reset all buckets."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         bucket = TokenBucket(rps=10, burst=5)
 
@@ -152,7 +152,7 @@ class TestTokenBucket:
 
     def test_invalid_rps_raises_error(self):
         """RPS must be positive."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         with pytest.raises(ValueError, match="rps must be positive"):
             TokenBucket(rps=0, burst=10)
@@ -162,7 +162,7 @@ class TestTokenBucket:
 
     def test_invalid_burst_raises_error(self):
         """Burst must be positive."""
-        from app.rate_limit import TokenBucket
+        from app.crosscutting.rate_limit import TokenBucket
 
         with pytest.raises(ValueError, match="burst must be positive"):
             TokenBucket(rps=10, burst=0)
@@ -174,7 +174,7 @@ class TestGetClientIdentifier:
 
     def test_prefers_api_key_hash(self):
         """Should prefer API key hash if available."""
-        from app.rate_limit import get_client_identifier
+        from app.crosscutting.rate_limit import get_client_identifier
 
         mock_request = MagicMock()
         mock_request.state.api_key_hash = "abc123"
@@ -186,7 +186,7 @@ class TestGetClientIdentifier:
 
     def test_uses_forwarded_for_header(self):
         """Should use X-Forwarded-For if no API key."""
-        from app.rate_limit import get_client_identifier
+        from app.crosscutting.rate_limit import get_client_identifier
 
         mock_request = MagicMock()
         mock_request.state = MagicMock(spec=[])  # No api_key_hash
@@ -198,7 +198,7 @@ class TestGetClientIdentifier:
 
     def test_falls_back_to_client_ip(self):
         """Should fall back to client IP if no other identifier."""
-        from app.rate_limit import get_client_identifier
+        from app.crosscutting.rate_limit import get_client_identifier
 
         mock_request = MagicMock()
         mock_request.state = MagicMock(spec=[])  # No api_key_hash
@@ -215,9 +215,9 @@ class TestRateLimitHelpers:
 
     def test_is_rate_limiting_enabled_true(self):
         """Should return True when rate limit is configured."""
-        from app.rate_limit import is_rate_limiting_enabled
+        from app.crosscutting.rate_limit import is_rate_limiting_enabled
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.rate_limit_rps = 10.0
             mock_settings.return_value.rate_limit_burst = 20
 
@@ -225,9 +225,9 @@ class TestRateLimitHelpers:
 
     def test_is_rate_limiting_enabled_false_when_rps_zero(self):
         """Should return False when RPS is 0."""
-        from app.rate_limit import is_rate_limiting_enabled
+        from app.crosscutting.rate_limit import is_rate_limiting_enabled
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.rate_limit_rps = 0
             mock_settings.return_value.rate_limit_burst = 20
 
@@ -235,9 +235,9 @@ class TestRateLimitHelpers:
 
     def test_reset_rate_limiter(self):
         """Reset should clear the global limiter."""
-        from app.rate_limit import get_rate_limiter, reset_rate_limiter
+        from app.crosscutting.rate_limit import get_rate_limiter, reset_rate_limiter
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.rate_limit_rps = 10.0
             mock_settings.return_value.rate_limit_burst = 20
 

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from app.application.dev_seed_admin import ensure_dev_admin
 from app.identity.users import UserRole, User
-from app.platform.config import Settings
+from app.crosscutting.config import Settings
 from uuid import uuid4
 
 @pytest.fixture

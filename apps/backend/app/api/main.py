@@ -69,9 +69,10 @@ async def lifespan(app: FastAPI):
     )
 
     try:
-        # Dev seed admin (only does something if enabled in settings/env)
+        # Dev seed admin/demo (only does something if enabled in settings/env)
         try:
             ensure_dev_admin(settings)
+            ensure_dev_demo(settings)
         except Exception as e:
             logger.error(f"Startup failed: {e}")
             raise
@@ -94,45 +95,6 @@ async def lifespan(app: FastAPI):
     finally:
         close_pool()
         logger.info("RAG Corp API shutting down")
-
-    """Startup/shutdown lifecycle. Validates settings and initializes pool."""
-    # This will raise ValidationError if env vars are missing/invalid
-    settings = get_settings()
-    if settings.is_production():
-        settings.validate_security_requirements()
-        # R: Initialize connection pool
-    init_pool(
-        database_url=settings.database_url,
-        min_size=settings.db_pool_min_size,
-        max_size=settings.db_pool_max_size,
-    )
-
-    # R: Run dev seed logic (will fail-fast if unsafe configuration)
-    try:
-        ensure_dev_admin(settings)
-        ensure_dev_demo(settings)
-    except Exception as e:
-        logger.error(f"Startup failed: {e}")
-        # Re-raise to crash container if config is invalid
-        raise e
-
-    logger.info(
-        "RAG Corp API starting up",
-        extra={
-            "chunk_size": settings.chunk_size,
-            "chunk_overlap": settings.chunk_overlap,
-            "otel_enabled": os.getenv("OTEL_ENABLED", "0") == "1",
-            "auth_enabled": is_auth_enabled(),
-            "rate_limit_rps": settings.rate_limit_rps,
-            "db_pool_min": settings.db_pool_min_size,
-            "db_pool_max": settings.db_pool_max_size,
-        },
-    )
-    yield
-
-    # R: Close pool on shutdown
-    close_pool()
-    logger.info("RAG Corp API shutting down")
 
 
 # R: Get settings for CORS configuration (safe at module level after env is loaded)
@@ -258,6 +220,7 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+
 # R: Middleware order (bottom = first to execute):
 # 1. RateLimitMiddleware (ASGI) - checks rate before anything
 # 2. BodyLimitMiddleware - rejects oversized bodies early
@@ -274,11 +237,15 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestContextMiddleware)
 
 # R: Configure CORS with secure defaults
-_cors_settings = get_settings()
+# R: Read CORS allow_credentials with safe fallback (avoid import-time env failures)
+try:
+    _cors_allow_credentials = get_settings().cors_allow_credentials
+except Exception:
+    _cors_allow_credentials = False
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_allowed_origins(),
-    allow_credentials=_cors_settings.cors_allow_credentials,  # R: Secure default: False
+    allow_credentials=_cors_allow_credentials,  # R: Secure default: False
     allow_methods=["GET", "POST", "OPTIONS"],  # R: Only needed methods
     allow_headers=[
         "Content-Type",

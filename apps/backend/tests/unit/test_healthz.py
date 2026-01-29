@@ -34,7 +34,7 @@ os.environ.setdefault("GOOGLE_API_KEY", "test-api-key")
 @pytest.fixture(autouse=True)
 def reset_settings_cache():
     """Clear settings cache before each test."""
-    from app.config import get_settings
+    from app.crosscutting.config import get_settings
 
     get_settings.cache_clear()
     yield

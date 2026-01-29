@@ -18,17 +18,34 @@ Notes:
   - Use @pytest.fixture(scope="session") for expensive setup
 """
 
-import pytest
 import os
+import sys
+from pathlib import Path
+
+import pytest
 from unittest.mock import Mock
 from uuid import uuid4, UUID
 from typing import List
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from app.crosscutting import config as app_config
+
+app_config.Settings.model_config["env_file"] = None
 
 from app.domain.entities import Document, Chunk, QueryResult
 from app.domain.repositories import DocumentRepository
 from app.domain.services import EmbeddingService, LLMService
 
 os.environ.setdefault("APP_ENV", "test")
+
+
+def pytest_configure(config) -> None:
+    config.addinivalue_line(
+        "markers", "unit: Unit tests (fast, no external dependencies)"
+    )
 
 # ============================================================================
 # Domain Entity Fixtures

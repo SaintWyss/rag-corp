@@ -166,7 +166,7 @@ class TestParseKeysConfig:
 
         clear_keys_cache()
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.api_keys_config = (
                 '{"key1": ["ask"], "key2": ["ingest"]}'
             )
@@ -182,7 +182,7 @@ class TestParseKeysConfig:
 
         clear_keys_cache()
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.api_keys_config = ""
             result = _parse_keys_config()
 
@@ -196,7 +196,7 @@ class TestParseKeysConfig:
 
         clear_keys_cache()
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.api_keys_config = "not-valid-json"
             result = _parse_keys_config()
 

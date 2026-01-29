@@ -24,7 +24,7 @@ class TestBodyLimitMiddleware:
     @pytest.mark.asyncio
     async def test_allows_small_body(self):
         """Bodies under limit should pass."""
-        from app.middleware import BodyLimitMiddleware
+        from app.crosscutting.middleware import BodyLimitMiddleware
 
         # R: Mock the call_next to return a response
         mock_response = MagicMock()
@@ -37,7 +37,7 @@ class TestBodyLimitMiddleware:
 
         middleware = BodyLimitMiddleware(app=MagicMock())
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.max_body_bytes = 10_000_000  # 10MB
 
             response = await middleware.dispatch(mock_request, mock_call_next)
@@ -49,7 +49,7 @@ class TestBodyLimitMiddleware:
     @pytest.mark.asyncio
     async def test_rejects_large_body(self):
         """Bodies over limit should return 413."""
-        from app.middleware import BodyLimitMiddleware
+        from app.crosscutting.middleware import BodyLimitMiddleware
 
         mock_call_next = AsyncMock()
 
@@ -60,7 +60,7 @@ class TestBodyLimitMiddleware:
 
         middleware = BodyLimitMiddleware(app=MagicMock())
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.max_body_bytes = 10_000_000  # 10MB limit
 
             response = await middleware.dispatch(mock_request, mock_call_next)
@@ -76,7 +76,7 @@ class TestBodyLimitMiddleware:
     @pytest.mark.asyncio
     async def test_allows_request_without_content_length(self):
         """Requests without Content-Length should pass."""
-        from app.middleware import BodyLimitMiddleware
+        from app.crosscutting.middleware import BodyLimitMiddleware
 
         mock_response = MagicMock()
         mock_call_next = AsyncMock(return_value=mock_response)
@@ -87,7 +87,7 @@ class TestBodyLimitMiddleware:
 
         middleware = BodyLimitMiddleware(app=MagicMock())
 
-        with patch("app.platform.config.get_settings") as mock_settings:
+        with patch("app.crosscutting.config.get_settings") as mock_settings:
             mock_settings.return_value.max_body_bytes = 10_000_000
 
             response = await middleware.dispatch(mock_request, mock_call_next)
@@ -103,7 +103,7 @@ class TestSecretRedaction:
 
     def test_api_key_not_in_json_log(self):
         """API key field should be filtered from logs."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
 
@@ -128,7 +128,7 @@ class TestSecretRedaction:
 
     def test_google_api_key_not_in_log(self):
         """Google API key should be filtered from logs."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
 
@@ -150,7 +150,7 @@ class TestSecretRedaction:
 
     def test_authorization_header_not_in_log(self):
         """Authorization header should be filtered from logs."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
 
@@ -172,7 +172,7 @@ class TestSecretRedaction:
 
     def test_non_sensitive_fields_are_logged(self):
         """Non-sensitive extra fields should be logged."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
 
@@ -197,7 +197,7 @@ class TestSecretRedaction:
 
     def test_all_sensitive_keys_are_filtered(self):
         """All keys in SENSITIVE_KEYS should be filtered."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         sensitive_keys = [
             "password",
@@ -241,7 +241,7 @@ class TestCORSConfiguration:
 
     def test_cors_allow_credentials_default_is_false(self):
         """Default for cors_allow_credentials should be False."""
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with patch.dict(
             "os.environ",
@@ -255,7 +255,7 @@ class TestCORSConfiguration:
 
     def test_cors_allow_credentials_can_be_enabled(self):
         """cors_allow_credentials can be set to True."""
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with patch.dict(
             "os.environ",
@@ -275,7 +275,7 @@ class TestMaxBodyBytesConfig:
 
     def test_default_max_body_bytes(self):
         """Default max_body_bytes should be 10MB."""
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with patch.dict(
             "os.environ",
@@ -289,7 +289,7 @@ class TestMaxBodyBytesConfig:
 
     def test_custom_max_body_bytes(self):
         """max_body_bytes can be customized."""
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with patch.dict(
             "os.environ",

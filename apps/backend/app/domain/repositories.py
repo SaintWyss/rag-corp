@@ -1,37 +1,42 @@
 """
-Name: Domain Repository Interfaces
+CRC — domain/repositories.py
 
-Responsibilities:
-  - Define contracts for data persistence
-  - Provide abstraction over storage technology
-  - Enable dependency inversion (business logic doesn't depend on PostgreSQL)
+Name
+- Domain Repository Interfaces (Protocols)
 
-Collaborators:
-  - domain.entities: Document, Chunk
-  - Implementations in infrastructure.repositories
+Responsibilities
+- Define persistence contracts for the domain layer (ports).
+- Keep the application/domain independent from infrastructure (PostgreSQL, in-memory, etc.).
+- Enable dependency inversion and straightforward unit testing (mock/stub repositories).
 
-Constraints:
-  - Pure interfaces (Protocol), no implementation
-  - Storage-agnostic (could be PostgreSQL, Pinecone, or in-memory)
-  - Must not leak infrastructure details
+Collaborators
+- domain.entities: Document, Chunk, ConversationMessage, Workspace, WorkspaceVisibility
+- domain.audit: AuditEvent
+- infrastructure.repositories: postgres_*, in_memory_* implementations
 
-Notes:
-  - Using typing.Protocol for structural subtyping (duck typing)
-  - Implementations must match method signatures exactly
-  - Enables testing with mock repositories
+Constraints
+- Pure interfaces only: no side effects, no infrastructure imports, no SQL.
+- Implementations MUST match method signatures exactly.
+- Keep contracts stable; add methods intentionally to support v6 capabilities.
+
+Notes
+- We use typing.Protocol for structural subtyping ("duck typing").
+- Outputs are concrete lists for predictable iteration/serialization.
+- Inputs can be lists; implementations should handle empty lists gracefully.
 """
 
 from datetime import datetime
-from typing import Protocol, List, Optional
+from typing import List, Optional, Protocol
 from uuid import UUID
+
+from .audit import AuditEvent
 from .entities import (
-    Document,
     Chunk,
     ConversationMessage,
+    Document,
     Workspace,
     WorkspaceVisibility,
 )
-from .audit import AuditEvent
 
 
 class DocumentRepository(Protocol):
@@ -42,15 +47,11 @@ class DocumentRepository(Protocol):
       - Document metadata storage
       - Chunk storage with embeddings
       - Vector similarity search
+      - Soft-delete lifecycle
     """
 
     def save_document(self, document: Document) -> None:
-        """
-        R: Persist document metadata.
-
-        Args:
-            document: Document entity with metadata
-        """
+        """R: Persist document metadata."""
         ...
 
     def save_chunks(
@@ -65,8 +66,8 @@ class DocumentRepository(Protocol):
 
         Args:
             document_id: Parent document UUID
-            chunks: List of Chunk entities with embeddings
-            workspace_id: Optional workspace filter
+            chunks: Chunk entities with embeddings
+            workspace_id: Optional workspace scope
         """
         ...
 
@@ -74,14 +75,9 @@ class DocumentRepository(Protocol):
         self, document: Document, chunks: List[Chunk]
     ) -> None:
         """
-        R: Atomically save document and its chunks in a single transaction.
+        R: Atomically save document and its chunks.
 
-        This is the preferred method for ingestion - ensures no orphan
-        documents or partial chunk sets exist.
-
-        Args:
-            document: Document entity to save
-            chunks: List of Chunk entities with embeddings
+        Preferred ingestion method to avoid partial writes.
         """
         ...
 
@@ -93,15 +89,10 @@ class DocumentRepository(Protocol):
         workspace_id: UUID | None = None,
     ) -> List[Chunk]:
         """
-        R: Search for similar chunks using vector similarity.
-
-        Args:
-            embedding: Query embedding vector
-            top_k: Number of most similar chunks to return
-            workspace_id: Optional workspace filter
+        R: Vector similarity search (top-k).
 
         Returns:
-            List of Chunk entities ordered by similarity (descending)
+            List of Chunk entities ordered by similarity (descending).
         """
         ...
 
@@ -117,35 +108,20 @@ class DocumentRepository(Protocol):
         sort: str | None = None,
     ) -> List[Document]:
         """
-        R: List document metadata (excluding deleted documents).
-
-        Args:
-            limit: Maximum number of documents to return
-            offset: Offset for pagination
-            workspace_id: Optional workspace filter
-            query: Optional search query
-            status: Optional status filter
-            tag: Optional tag filter
-            sort: Optional sort key
+        R: List document metadata (excluding deleted documents by default).
 
         Returns:
-            List of Document entities ordered by creation time (descending)
+            List of Document entities ordered by creation time (descending) unless overridden.
         """
         ...
 
     def get_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
     ) -> Optional[Document]:
-        """
-        R: Fetch a single document by ID.
-
-        Args:
-            document_id: Document UUID
-            workspace_id: Optional workspace filter
-
-        Returns:
-            Document if found, otherwise None
-        """
+        """R: Fetch a single document by ID (optionally scoped by workspace)."""
         ...
 
     def find_similar_chunks_mmr(
@@ -158,48 +134,23 @@ class DocumentRepository(Protocol):
         workspace_id: UUID | None = None,
     ) -> List[Chunk]:
         """
-        R: Search for similar chunks using Maximal Marginal Relevance.
+        R: Similarity search with Maximal Marginal Relevance (MMR).
 
-        MMR balances relevance to the query with diversity among results,
-        reducing redundant/similar chunks in the output.
-
-        Args:
-            embedding: Query embedding vector
-            top_k: Number of chunks to return
-            fetch_k: Number of candidates to fetch before reranking
-            lambda_mult: Balance between relevance (1.0) and diversity (0.0)
-            workspace_id: Optional workspace filter
-
-        Returns:
-            List of Chunk entities ordered by MMR score
+        MMR balances relevance with diversity (reduces redundant chunks).
         """
         ...
 
     def soft_delete_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
     ) -> bool:
-        """
-        R: Soft delete a document by setting deleted_at timestamp.
-
-        Args:
-            document_id: Document UUID to soft delete
-            workspace_id: Optional workspace filter
-
-        Returns:
-            True if document was found and deleted, False otherwise
-        """
+        """R: Soft delete a document (sets deleted_at)."""
         ...
 
     def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
-        """
-        R: Soft delete all documents for a workspace.
-
-        Args:
-            workspace_id: Workspace UUID whose documents should be deleted
-
-        Returns:
-            Number of documents soft-deleted
-        """
+        """R: Soft delete all documents in a workspace."""
         ...
 
     def update_document_file_metadata(
@@ -214,22 +165,7 @@ class DocumentRepository(Protocol):
         status: str | None = None,
         error_message: str | None = None,
     ) -> bool:
-        """
-        R: Update file metadata for a document.
-
-        Args:
-            document_id: Document UUID to update
-            workspace_id: Optional workspace filter
-            file_name: Original file name
-            mime_type: MIME type (e.g., application/pdf)
-            storage_key: Object key in storage
-            uploaded_by_user_id: User UUID who uploaded the file
-            status: Storage status (PENDING/PROCESSING/READY/FAILED)
-            error_message: Error detail if status is FAILED
-
-        Returns:
-            True if document was updated, False otherwise
-        """
+        """R: Update file/storage metadata and status for a document."""
         ...
 
     def transition_document_status(
@@ -241,58 +177,29 @@ class DocumentRepository(Protocol):
         to_status: str,
         error_message: str | None = None,
     ) -> bool:
-        """
-        R: Transition document status if current status is allowed.
-
-        Args:
-            document_id: Document UUID to update
-            workspace_id: Optional workspace filter
-            from_statuses: Allowed current statuses (use None for NULL)
-            to_status: New status to set
-            error_message: Error detail if status is FAILED
-
-        Returns:
-            True if document was updated, False otherwise
-        """
+        """R: Transition document status if current status is allowed."""
         ...
 
     def delete_chunks_for_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
     ) -> int:
-        """
-        R: Delete all chunks for a document.
-
-        Args:
-            document_id: Document UUID whose chunks should be removed
-            workspace_id: Optional workspace filter
-
-        Returns:
-            Number of chunks deleted
-        """
+        """R: Delete all chunks for a document."""
         ...
 
     def restore_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
     ) -> bool:
-        """
-        R: Restore a soft-deleted document.
-
-        Args:
-            document_id: Document UUID to restore
-            workspace_id: Optional workspace filter
-
-        Returns:
-            True if document was found and restored, False otherwise
-        """
+        """R: Restore a soft-deleted document."""
         ...
 
     def ping(self) -> bool:
-        """
-        R: Check repository connectivity/availability.
-
-        Returns:
-            True if the underlying data store is reachable.
-        """
+        """R: Check repository connectivity/availability."""
         ...
 
 
@@ -302,7 +209,8 @@ class WorkspaceRepository(Protocol):
 
     Implementations must provide:
       - Workspace CRUD operations
-      - Optional archive semantics via archived_at
+      - Archive semantics via archived_at (soft delete)
+      - v6 listing helpers to support ORG_READ + SHARED(ACL) visibility
     """
 
     def list_workspaces(
@@ -312,54 +220,58 @@ class WorkspaceRepository(Protocol):
         include_archived: bool = False,
     ) -> List[Workspace]:
         """
-        R: List workspaces (optionally filtered by owner).
+        R: List workspaces, optionally filtered by owner.
 
-        Args:
-            owner_user_id: Optional owner filter
-            include_archived: Include archived workspaces when True
+        Notes:
+            - This method alone is not enough to implement v6 employee visibility rules.
+        """
+        ...
 
-        Returns:
-            List of Workspace entities
+    def list_workspaces_by_visibility(
+        self,
+        visibility: WorkspaceVisibility,
+        *,
+        include_archived: bool = False,
+    ) -> List[Workspace]:
+        """
+        R: List workspaces filtered by visibility (e.g., ORG_READ).
+
+        Implementations MUST:
+            - Respect include_archived flag
+            - Return deterministic ordering (ideally created_at desc, name asc)
+        """
+        ...
+
+    def list_workspaces_by_ids(
+        self,
+        workspace_ids: List[UUID],
+        *,
+        include_archived: bool = False,
+    ) -> List[Workspace]:
+        """
+        R: List workspaces by a set of IDs.
+
+        Implementations MUST:
+            - Return [] if workspace_ids is empty
+            - Respect include_archived flag
+            - Not raise for missing IDs (simply skip)
         """
         ...
 
     def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
-        """
-        R: Fetch a workspace by ID.
-
-        Args:
-            workspace_id: Workspace UUID
-
-        Returns:
-            Workspace if found, otherwise None
-        """
+        """R: Fetch a workspace by ID."""
         ...
 
     def get_workspace_by_owner_and_name(
-        self, owner_user_id: UUID | None, name: str
+        self,
+        owner_user_id: UUID | None,
+        name: str,
     ) -> Optional[Workspace]:
-        """
-        R: Fetch a workspace by owner + name (for uniqueness checks).
-
-        Args:
-            owner_user_id: Owner UUID or None
-            name: Workspace name
-
-        Returns:
-            Workspace if found, otherwise None
-        """
+        """R: Fetch a workspace by owner + name (uniqueness check)."""
         ...
 
     def create_workspace(self, workspace: Workspace) -> Workspace:
-        """
-        R: Persist a new workspace.
-
-        Args:
-            workspace: Workspace entity to create
-
-        Returns:
-            Created workspace entity
-        """
+        """R: Persist a new workspace."""
         ...
 
     def update_workspace(
@@ -371,31 +283,11 @@ class WorkspaceRepository(Protocol):
         visibility: WorkspaceVisibility | None = None,
         allowed_roles: list[str] | None = None,
     ) -> Optional[Workspace]:
-        """
-        R: Update workspace attributes.
-
-        Args:
-            workspace_id: Workspace UUID
-            name: New name (optional)
-            description: New description (optional)
-            visibility: New visibility (optional)
-            allowed_roles: Updated roles (optional)
-
-        Returns:
-            Updated workspace or None if not found
-        """
+        """R: Update workspace attributes."""
         ...
 
     def archive_workspace(self, workspace_id: UUID) -> bool:
-        """
-        R: Archive (soft-delete) a workspace.
-
-        Args:
-            workspace_id: Workspace UUID
-
-        Returns:
-            True if archived, False if not found
-        """
+        """R: Archive (soft-delete) a workspace."""
         ...
 
 
@@ -405,28 +297,24 @@ class WorkspaceAclRepository(Protocol):
 
     Implementations must provide:
       - Read access lists for SHARED workspaces
-      - Replace access lists for share operations
+      - Replace ACL entries for share operations
+      - Reverse lookup: workspaces shared to a given user (v6 requirement)
     """
 
     def list_workspace_acl(self, workspace_id: UUID) -> List[UUID]:
-        """
-        R: List user IDs with access to a workspace.
-
-        Args:
-            workspace_id: Workspace UUID
-
-        Returns:
-            List of user UUIDs
-        """
+        """R: List user IDs with access to a SHARED workspace."""
         ...
 
     def replace_workspace_acl(self, workspace_id: UUID, user_ids: List[UUID]) -> None:
-        """
-        R: Replace ACL entries for a workspace.
+        """R: Replace ACL entries (share operation)."""
+        ...
 
-        Args:
-            workspace_id: Workspace UUID
-            user_ids: Users to grant read access
+    def list_workspaces_for_user(self, user_id: UUID) -> List[UUID]:
+        """
+        R: Reverse lookup for SHARED access.
+
+        Returns:
+            Workspace IDs where user_id is present in workspace_acl.
         """
         ...
 
@@ -434,16 +322,10 @@ class WorkspaceAclRepository(Protocol):
 class ConversationRepository(Protocol):
     """
     R: Interface for storing and retrieving conversation history.
-
-    Implementations must provide:
-      - Conversation creation/lookup
-      - Message append and retrieval
     """
 
     def create_conversation(self) -> str:
-        """
-        R: Create a new conversation and return its ID.
-        """
+        """R: Create a new conversation and return its ID."""
         ...
 
 
@@ -451,12 +333,7 @@ class AuditEventRepository(Protocol):
     """R: Interface for audit event persistence."""
 
     def record_event(self, event: AuditEvent) -> None:
-        """
-        R: Persist an audit event.
-
-        Args:
-            event: Audit event data
-        """
+        """R: Persist an audit event."""
         ...
 
     def list_events(
@@ -470,38 +347,23 @@ class AuditEventRepository(Protocol):
         limit: int = 50,
         offset: int = 0,
     ) -> list[AuditEvent]:
-        """
-        R: Fetch audit events with optional filters.
-
-        Args:
-            workspace_id: Filter events by workspace_id metadata
-            actor_id: Filter events by actor (full or suffix match)
-            action_prefix: Filter events by action prefix
-            start_at: Inclusive start timestamp
-            end_at: Inclusive end timestamp
-            limit: Page size
-            offset: Page offset
-        """
+        """R: Fetch audit events with optional filters."""
         ...
 
     def conversation_exists(self, conversation_id: str) -> bool:
-        """
-        R: Check if a conversation exists.
-        """
+        """R: Check if a conversation exists."""
         ...
 
     def append_message(
         self, conversation_id: str, message: ConversationMessage
     ) -> None:
-        """
-        R: Append a message to a conversation.
-        """
+        """R: Append a message to a conversation."""
         ...
 
     def get_messages(
-        self, conversation_id: str, limit: Optional[int] = None
+        self,
+        conversation_id: str,
+        limit: Optional[int] = None,
     ) -> List[ConversationMessage]:
-        """
-        R: Get messages for a conversation, optionally limited to last N.
-        """
+        """R: Get messages for a conversation, optionally limited to last N."""
         ...

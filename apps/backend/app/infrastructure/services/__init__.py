@@ -2,7 +2,7 @@
 
 from .cached_embedding_service import CachingEmbeddingService
 from .fake_embedding_service import FakeEmbeddingService
-from .llm.fake_llm_service import FakeLLMService
+from .llm.fake_llm import FakeLLMService
 from .google_embedding_service import GoogleEmbeddingService
 from .llm.google_llm_service import GoogleLLMService
 from .retry import (

@@ -29,7 +29,7 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
 
         # Clear cache to force reload
-        from app.config import get_settings, Settings
+        from app.crosscutting.config import get_settings, Settings
 
         get_settings.cache_clear()
 
@@ -52,7 +52,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "500")
         monkeypatch.setenv("CHUNK_OVERLAP", "50")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -66,7 +66,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "0")
 
         from pydantic import ValidationError
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -80,7 +80,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "-100")
 
         from pydantic import ValidationError
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -94,7 +94,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_OVERLAP", "-10")
 
         from pydantic import ValidationError
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -108,7 +108,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "500")
         monkeypatch.setenv("CHUNK_OVERLAP", "500")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()  # This passes field validation
 
@@ -126,7 +126,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "500")
         monkeypatch.setenv("CHUNK_OVERLAP", "600")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -144,7 +144,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "100")
         monkeypatch.setenv("CHUNK_OVERLAP", "100")  # Invalid: equals chunk_size
 
-        from app.config import get_settings
+        from app.crosscutting.config import get_settings
 
         get_settings.cache_clear()
 
@@ -159,7 +159,7 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("ALLOWED_ORIGINS", "http://localhost:3000")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -174,7 +174,7 @@ class TestSettings:
             "http://localhost:3000, https://app.example.com , http://dev.local",
         )
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -192,7 +192,7 @@ class TestSettings:
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
 
         from pydantic import ValidationError
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with pytest.raises(ValidationError):
             Settings()
@@ -204,7 +204,7 @@ class TestSettings:
         monkeypatch.setenv("CHUNK_SIZE", "500")
         monkeypatch.setenv("CHUNK_OVERLAP", "0")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
         settings.validate_chunk_params()  # Should not raise
@@ -222,7 +222,7 @@ class TestSettings:
         monkeypatch.delenv("JWT_SECRET", raising=False)
 
         from pydantic import ValidationError
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         with pytest.raises(ValidationError):
             Settings()
@@ -234,7 +234,7 @@ class TestSettings:
         monkeypatch.setenv("APP_ENV", "development")
         monkeypatch.delenv("JWT_SECRET", raising=False)
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -316,7 +316,7 @@ class TestDatabasePoolSettings:
         monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -332,7 +332,7 @@ class TestDatabasePoolSettings:
         monkeypatch.setenv("DB_POOL_MAX_SIZE", "20")
         monkeypatch.setenv("DB_STATEMENT_TIMEOUT_MS", "60000")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 
@@ -346,7 +346,7 @@ class TestDatabasePoolSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("DB_STATEMENT_TIMEOUT_MS", "0")
 
-        from app.config import Settings
+        from app.crosscutting.config import Settings
 
         settings = Settings()
 

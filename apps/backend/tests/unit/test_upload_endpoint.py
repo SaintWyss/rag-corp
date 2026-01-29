@@ -58,7 +58,7 @@ def _prepare_routes(monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
     monkeypatch.setenv("LEGACY_WORKSPACE_ID", _LEGACY_WORKSPACE_ID)
 
-    import app.api.routes as routes
+    import app.interfaces.api.http.routes as routes
 
     importlib.reload(routes)
     return routes
@@ -120,7 +120,7 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
                 data={"title": "Sample"},
             )
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     body = response.json()
     assert body["status"] == "PENDING"
     assert body["file_name"] == "sample.pdf"

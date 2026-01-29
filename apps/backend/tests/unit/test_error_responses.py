@@ -1,6 +1,6 @@
 """Unit tests for error_responses module."""
 
-from app.platform.error_responses import (
+from app.crosscutting.error_responses import (
     ErrorCode,
     ErrorDetail,
     database_error,

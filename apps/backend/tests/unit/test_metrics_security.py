@@ -28,7 +28,7 @@ def _load_app(monkeypatch):
     monkeypatch.setenv("METRICS_REQUIRE_AUTH", "1")
     monkeypatch.setenv("API_KEYS_CONFIG", '{"metrics-key": ["metrics"]}')
 
-    from app.config import get_settings
+    from app.crosscutting.config import get_settings
 
     get_settings.cache_clear()
 

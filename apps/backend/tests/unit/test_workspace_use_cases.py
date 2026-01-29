@@ -1,9 +1,25 @@
 """
-Name: Workspace Use Case Tests
+CRC — tests/unit/test_workspace_use_cases.py
 
-Responsibilities:
-  - Validate workspace use cases and access policy wiring
-  - Cover read/write/ACL decision matrix
+Name
+- Workspace Use Case Tests
+
+Responsibilities
+- Validate workspace use cases and access policy wiring.
+- Cover read/write/ACL decision matrix.
+- Ensure v6 listing behavior for EMPLOYEE:
+  - OWN workspaces
+  - ORG_READ workspaces (global)
+  - SHARED workspaces when the user is in ACL
+
+Collaborators
+- application.usecases.*
+- domain.workspace_policy
+- Fake repositories (in-test doubles)
+
+Constraints / Notes
+- Keep fakes aligned with repository Protocol signatures to prevent runtime attr errors.
+- Tests should assert behavior, not internal implementation details.
 """
 
 from __future__ import annotations
@@ -32,6 +48,12 @@ pytestmark = pytest.mark.unit
 
 
 class FakeWorkspaceRepository:
+    """
+    R: Minimal in-test repository double.
+
+    Must implement the methods used by the use cases under test.
+    """
+
     def __init__(self, workspaces: list[Workspace] | None = None):
         self._workspaces: dict[UUID, Workspace] = {
             ws.id: ws for ws in (workspaces or [])
@@ -50,11 +72,44 @@ class FakeWorkspaceRepository:
             result = [ws for ws in result if ws.archived_at is None]
         return result
 
+    def list_workspaces_by_visibility(
+        self,
+        visibility: WorkspaceVisibility,
+        *,
+        include_archived: bool = False,
+    ) -> list[Workspace]:
+        """
+        R: Helper used by v6 listing logic to fetch ORG_READ workspaces.
+        """
+        result = [ws for ws in self._workspaces.values() if ws.visibility == visibility]
+        if not include_archived:
+            result = [ws for ws in result if ws.archived_at is None]
+        return result
+
+    def list_workspaces_by_ids(
+        self,
+        workspace_ids: list[UUID],
+        *,
+        include_archived: bool = False,
+    ) -> list[Workspace]:
+        """
+        R: Helper used by v6 listing logic to fetch SHARED workspaces by ACL IDs.
+        """
+        if not workspace_ids:
+            return []
+        wanted = set(workspace_ids)
+        result = [ws for ws_id, ws in self._workspaces.items() if ws_id in wanted]
+        if not include_archived:
+            result = [ws for ws in result if ws.archived_at is None]
+        return result
+
     def get_workspace(self, workspace_id: UUID) -> Workspace | None:
         return self._workspaces.get(workspace_id)
 
     def get_workspace_by_owner_and_name(
-        self, owner_user_id: UUID | None, name: str
+        self,
+        owner_user_id: UUID | None,
+        name: str,
     ) -> Workspace | None:
         normalized = name.strip().lower()
         for workspace in self._workspaces.values():
@@ -85,9 +140,7 @@ class FakeWorkspaceRepository:
             name=name if name is not None else current.name,
             visibility=visibility if visibility is not None else current.visibility,
             owner_user_id=current.owner_user_id,
-            description=(
-                description if description is not None else current.description
-            ),
+            description=description if description is not None else current.description,
             allowed_roles=(
                 list(allowed_roles)
                 if allowed_roles is not None
@@ -122,11 +175,28 @@ class FakeWorkspaceRepository:
 
 
 class FakeWorkspaceAclRepository:
+    """
+    R: Minimal in-test ACL repository double.
+
+    Stores mapping:
+        workspace_id -> [user_id, user_id, ...]
+    """
+
     def __init__(self, acl: dict[UUID, list[UUID]] | None = None):
         self._acl = acl or {}
 
     def list_workspace_acl(self, workspace_id: UUID) -> list[UUID]:
         return list(self._acl.get(workspace_id, []))
+
+    def list_workspaces_for_user(self, user_id: UUID) -> list[UUID]:
+        """
+        R: Reverse lookup: return workspace IDs where user_id is present.
+        """
+        workspace_ids = [
+            ws_id for ws_id, users in self._acl.items() if user_id in users
+        ]
+        workspace_ids.sort(key=lambda x: str(x))  # deterministic order
+        return workspace_ids
 
     def replace_workspace_acl(self, workspace_id: UUID, user_ids: list[UUID]) -> None:
         unique = list(dict.fromkeys(user_ids))
@@ -338,16 +408,16 @@ def test_list_workspaces_filters_by_policy():
         owner_user_id=other_owner,
         visibility=WorkspaceVisibility.PRIVATE,
     )
+
     repo = FakeWorkspaceRepository([ws_private, ws_org, ws_shared, ws_other])
     acl_repo = FakeWorkspaceAclRepository({ws_shared.id: [shared_member]})
     use_case = ListWorkspacesUseCase(repo, acl_repo)
 
-    # R: ADR-008: Employee only sees workspaces they OWN (owner-only enforcement).
-    # shared_member does NOT own any workspaces, so they see NOTHING.
+    # v6: EMPLOYEE sees ORG_READ globally + SHARED when in ACL, even if not the owner.
     member_result = use_case.execute(actor=_actor(shared_member, UserRole.EMPLOYEE))
-    assert {ws.id for ws in member_result.workspaces} == set()
+    assert {ws.id for ws in member_result.workspaces} == {ws_org.id, ws_shared.id}
 
-    # owner_id owns 3 workspaces; they see all of them.
+    # Owner sees OWN workspaces (PRIVATE + ORG_READ + SHARED).
     owner_result = use_case.execute(actor=_actor(owner_id, UserRole.EMPLOYEE))
     assert {ws.id for ws in owner_result.workspaces} == {
         ws_private.id,

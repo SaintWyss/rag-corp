@@ -11,7 +11,12 @@ import pytest
 
 from app.identity.access_control import can_access_document, filter_documents
 from app.domain.entities import Document
-from app.dual_auth import Principal, PrincipalType, ServicePrincipal, UserPrincipal
+from app.identity.dual_auth import (
+    Principal,
+    PrincipalType,
+    ServicePrincipal,
+    UserPrincipal,
+)
 from app.identity.users import UserRole
 
 

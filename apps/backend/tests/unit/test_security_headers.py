@@ -3,9 +3,9 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.platform import config
+from app.crosscutting import config
 from app.api.main import app as main_app
-from app.security import SecurityHeadersMiddleware
+from app.crosscutting.security import SecurityHeadersMiddleware
 
 
 def test_csp_header_present_in_test_env() -> None:

@@ -25,7 +25,7 @@ class TestTimer:
 
     def test_timer_basic_usage(self):
         """R: Should measure elapsed time."""
-        from app.timing import Timer
+        from app.crosscutting.timing import Timer
 
         timer = Timer()
         timer.start()
@@ -37,7 +37,7 @@ class TestTimer:
 
     def test_timer_context_manager(self):
         """R: Should work as context manager."""
-        from app.timing import Timer
+        from app.crosscutting.timing import Timer
 
         with Timer() as t:
             pass
@@ -46,7 +46,7 @@ class TestTimer:
 
     def test_timer_not_started_raises(self):
         """R: Should raise if stopped without starting."""
-        from app.timing import Timer
+        from app.crosscutting.timing import Timer
 
         timer = Timer()
         with pytest.raises(RuntimeError, match="not started"):
@@ -54,7 +54,7 @@ class TestTimer:
 
     def test_timer_elapsed_before_stop(self):
         """R: Should return current elapsed even before stop."""
-        from app.timing import Timer
+        from app.crosscutting.timing import Timer
 
         timer = Timer()
         timer.start()
@@ -69,7 +69,7 @@ class TestStageTimings:
 
     def test_stage_timings_basic(self):
         """R: Should record multiple stages."""
-        from app.timing import StageTimings
+        from app.crosscutting.timing import StageTimings
 
         timings = StageTimings()
 
@@ -87,7 +87,7 @@ class TestStageTimings:
 
     def test_stage_timings_direct_record(self):
         """R: Should allow direct recording."""
-        from app.timing import StageTimings
+        from app.crosscutting.timing import StageTimings
 
         timings = StageTimings()
         timings.record("custom", 42.5)
@@ -98,7 +98,7 @@ class TestStageTimings:
 
     def test_stage_timings_total_accumulates(self):
         """R: Total should be >= sum of stages."""
-        from app.timing import StageTimings
+        from app.crosscutting.timing import StageTimings
 
         timings = StageTimings()
 
@@ -165,7 +165,7 @@ class TestJSONFormatter:
 
     def test_formatter_basic_log(self):
         """R: Should format log as JSON."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
         record = logging.LogRecord(
@@ -188,7 +188,7 @@ class TestJSONFormatter:
     def test_formatter_includes_context(self):
         """R: Should include request context in log."""
         from app.context import request_id_var, clear_context
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         request_id_var.set("ctx-456")
 
@@ -213,7 +213,7 @@ class TestJSONFormatter:
 
     def test_formatter_filters_sensitive_keys(self):
         """R: Should not include sensitive fields."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
         record = logging.LogRecord(
@@ -238,7 +238,7 @@ class TestJSONFormatter:
 
     def test_formatter_includes_extra_fields(self):
         """R: Should include extra fields from log call."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
         record = logging.LogRecord(
@@ -261,7 +261,7 @@ class TestJSONFormatter:
 
     def test_formatter_includes_exception(self):
         """R: Should include exception stacktrace."""
-        from app.logger import JSONFormatter
+        from app.crosscutting.logger import JSONFormatter
 
         formatter = JSONFormatter()
 
@@ -296,7 +296,7 @@ class TestMetricsModule:
 
     def test_normalize_endpoint_uuid(self):
         """R: Should replace UUIDs in paths."""
-        from app.metrics import _normalize_endpoint
+        from app.crosscutting.metrics import _normalize_endpoint
 
         path = "/v1/documents/3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d"
         result = _normalize_endpoint(path)
@@ -305,7 +305,7 @@ class TestMetricsModule:
 
     def test_normalize_endpoint_numeric(self):
         """R: Should replace numeric IDs in paths."""
-        from app.metrics import _normalize_endpoint
+        from app.crosscutting.metrics import _normalize_endpoint
 
         path = "/v1/documents/12345"
         result = _normalize_endpoint(path)
@@ -314,7 +314,7 @@ class TestMetricsModule:
 
     def test_status_bucket(self):
         """R: Should bucket status codes correctly."""
-        from app.metrics import _status_bucket
+        from app.crosscutting.metrics import _status_bucket
 
         assert _status_bucket(200) == "2xx"
         assert _status_bucket(201) == "2xx"
@@ -326,7 +326,7 @@ class TestMetricsModule:
 
     def test_is_prometheus_available(self):
         """R: Should return True when prometheus_client is installed."""
-        from app.metrics import is_prometheus_available
+        from app.crosscutting.metrics import is_prometheus_available
 
         # prometheus_client should be installed per requirements.txt
         assert is_prometheus_available() is True
@@ -337,7 +337,7 @@ class TestMetricsEndpoint:
 
     def test_get_metrics_response_returns_bytes(self):
         """R: Should return bytes and content type."""
-        from app.metrics import get_metrics_response, is_prometheus_available
+        from app.crosscutting.metrics import get_metrics_response, is_prometheus_available
 
         body, content_type = get_metrics_response()
 
@@ -363,7 +363,7 @@ class TestRequestContextMiddleware:
 
     def test_middleware_class_exists(self):
         """R: RequestContextMiddleware should be importable."""
-        from app.middleware import RequestContextMiddleware
+        from app.crosscutting.middleware import RequestContextMiddleware
 
         assert RequestContextMiddleware is not None
 
@@ -373,14 +373,14 @@ class TestTracingModule:
 
     def test_is_tracing_disabled_by_default(self):
         """R: Tracing should be disabled when OTEL_ENABLED is not set."""
-        from app.tracing import is_tracing_enabled, OTEL_ENABLED
+        from app.crosscutting.tracing import is_tracing_enabled, OTEL_ENABLED
 
         # By default OTEL_ENABLED should be False (not set in test env)
         assert OTEL_ENABLED is False or is_tracing_enabled() is False
 
     def test_span_noop_when_disabled(self):
         """R: Span should be no-op when tracing disabled."""
-        from app.tracing import span, OTEL_ENABLED
+        from app.crosscutting.tracing import span, OTEL_ENABLED
 
         if not OTEL_ENABLED:
             with span("test_span") as s:

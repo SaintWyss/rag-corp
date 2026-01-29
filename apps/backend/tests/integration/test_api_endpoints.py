@@ -9,7 +9,7 @@ Responsibilities:
 
 Collaborators:
   - app.api.main: FastAPI application
-  - app.api.routes: API endpoints
+  - app.interfaces.api.http.routes: API endpoints
   - httpx: HTTP client for testing
   - pytest: Test framework
 

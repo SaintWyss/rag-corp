@@ -15,7 +15,11 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from app.identity.auth_users import create_access_token, hash_password
-from app.dual_auth import require_admin, require_employee_or_admin, require_principal
+from app.identity.dual_auth import (
+    require_admin,
+    require_employee_or_admin,
+    require_principal,
+)
 from app.api.exception_handlers import register_exception_handlers
 from app.identity.rbac import DEFAULT_ROLES, Permission, RBACConfig
 from app.identity.users import User, UserRole

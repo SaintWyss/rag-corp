@@ -75,7 +75,7 @@ class JSONFormatter(logging.Formatter):
 
         # R: Add request context (imported lazily to avoid circular imports)
         try:
-            from .context import get_context_dict
+            from ..context import get_context_dict
 
             ctx = get_context_dict()
             if ctx:
