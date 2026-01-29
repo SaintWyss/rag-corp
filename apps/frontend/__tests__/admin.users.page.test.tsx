@@ -1,17 +1,17 @@
 import { render, screen } from "@testing-library/react";
-import AdminUsersPage from "../app/admin/users/page";
+import AdminUsersPage from "../app/(app)/admin/users/page";
 import {
     getCurrentUser,
     listUsers,
     listWorkspaces,
-} from "../app/lib/api";
+} from "../src/shared/api/api";
 
-jest.mock("../app/lib/apiKey", () => ({
+jest.mock("../src/shared/lib/apiKey", () => ({
     getStoredApiKey: jest.fn(),
     setStoredApiKey: jest.fn(),
 }));
 
-jest.mock("../app/lib/api", () => ({
+jest.mock("../src/shared/api/api", () => ({
     getCurrentUser: jest.fn(),
     listUsers: jest.fn(),
     listWorkspaces: jest.fn(),

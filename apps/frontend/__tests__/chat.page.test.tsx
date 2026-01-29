@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import ChatPage from "../app/workspaces/[id]/chat/page";
+import ChatPage from "../app/(app)/workspaces/[id]/chat/page";
 
-jest.mock("../app/lib/api", () => ({
+jest.mock("../src/shared/api/api", () => ({
     listWorkspaces: jest.fn().mockResolvedValue({ workspaces: [] }),
 }));
 
-jest.mock("../app/hooks/useRagChat", () => ({
+jest.mock("../src/features/rag/useRagChat", () => ({
     useRagChat: () => ({
         messages: [],
         input: "",

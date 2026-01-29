@@ -6,7 +6,7 @@ globalWithText.TextEncoder =
     TextEncoder as unknown as typeof globalThis.TextEncoder;
 globalWithText.TextDecoder =
     TextDecoder as unknown as typeof globalThis.TextDecoder;
-import { useRagChat } from "../../app/hooks/useRagChat";
+import { useRagChat } from "../../src/features/rag/useRagChat";
 
 describe("useRagChat Hook", () => {
     const mockFetch = global.fetch as jest.Mock;

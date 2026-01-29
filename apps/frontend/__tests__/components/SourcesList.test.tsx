@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { SourcesList } from "../../app/components/SourcesList";
+import { SourcesList } from "../../src/shared/ui/SourcesList";
 
 describe("SourcesList Component", () => {
     it("renders nothing when sources array is empty", () => {

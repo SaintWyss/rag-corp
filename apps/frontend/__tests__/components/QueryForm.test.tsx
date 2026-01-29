@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { QueryForm } from "../../app/components/QueryForm";
+import { QueryForm } from "../../src/shared/ui/QueryForm";
 
 describe("QueryForm Component", () => {
     const defaultProps = {

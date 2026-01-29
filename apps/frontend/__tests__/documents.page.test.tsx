@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import DocumentsPage from "../app/workspaces/[id]/documents/page";
-import { getStoredApiKey } from "../app/lib/apiKey";
+import DocumentsPage from "../app/(app)/workspaces/[id]/documents/page";
+import { getStoredApiKey } from "../src/shared/lib/apiKey";
 import {
     getCurrentUser,
     getWorkspaceDocument,
@@ -8,13 +8,13 @@ import {
     listWorkspaces,
     reprocessWorkspaceDocument,
     uploadWorkspaceDocument,
-} from "../app/lib/api";
+} from "../src/shared/api/api";
 
-jest.mock("../app/lib/apiKey", () => ({
+jest.mock("../src/shared/lib/apiKey", () => ({
     getStoredApiKey: jest.fn(),
 }));
 
-jest.mock("../app/lib/api", () => ({
+jest.mock("../src/shared/api/api", () => ({
     listWorkspaceDocuments: jest.fn(),
     getWorkspaceDocument: jest.fn(),
     uploadWorkspaceDocument: jest.fn(),

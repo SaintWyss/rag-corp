@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { StatusBanner } from "../../app/components/StatusBanner";
+import { StatusBanner } from "../../src/shared/ui/StatusBanner";
 
 describe("StatusBanner Component", () => {
     it("renders nothing when message is empty", () => {

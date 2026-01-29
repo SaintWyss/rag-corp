@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { useRagAsk } from "../../app/hooks/useRagAsk";
+import { useRagAsk } from "../../src/features/rag/useRagAsk";
 
 const mockFetch = global.fetch as jest.Mock;
 

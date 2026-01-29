@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { AnswerCard } from "../../app/components/AnswerCard";
+import { AnswerCard } from "../../src/shared/ui/AnswerCard";
 
 describe("AnswerCard Component", () => {
     it("renders nothing when answer is empty", () => {
