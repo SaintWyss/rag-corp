@@ -43,6 +43,30 @@ function parseWorkspaceRoute(pathname: string | null): WorkspaceRoute {
   };
 }
 
+/**
+ * Name: AppShell (shared layout chrome)
+ *
+ * Responsibilities:
+ * - Provide the shared workspace navigation shell and layout
+ * - Load visible workspaces for the selector and nav links
+ * - Parse the current route to keep navigation state in sync
+ * - Redirect legacy /documents and /chat paths to /workspaces
+ * - Render the workspace selector and status feedback
+ *
+ * Collaborators:
+ * - AuroraBackground for visual layout framing
+ * - listWorkspaces API for workspace discovery
+ * - next/navigation hooks for pathname and router navigation
+ * - ApiKeyInput for optional API key entry
+ * - React hooks for data loading and memoization
+ *
+ * Notes/Constraints:
+ * - Client component required for hooks and router updates
+ * - Archived workspaces are filtered from the selector
+ * - Workspace routing depends on URL structure (/workspaces/:id)
+ * - Errors are surfaced inline without interrupting navigation
+ * - Navigation links are derived from the current workspace context
+ */
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();

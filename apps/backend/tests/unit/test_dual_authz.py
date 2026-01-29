@@ -154,7 +154,9 @@ def test_api_key_allows_permissions_legacy_scopes():
     app = _build_app()
     client = TestClient(app)
 
-    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
+    with patch(
+        "app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}
+    ):
         with patch("app.identity.rbac.get_rbac_config", return_value=None):
             response = client.post("/ask", headers={"X-API-Key": "valid-key"})
             assert response.status_code == 200

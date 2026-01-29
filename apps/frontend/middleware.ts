@@ -52,6 +52,29 @@ function isWrongPortal(pathname: string, role: UserRole): boolean {
   return pathname.startsWith("/admin");
 }
 
+/**
+ * Name: Auth and Portal Middleware
+ *
+ * Responsibilities:
+ * - Guard private routes by redirecting unauthenticated users to /login
+ * - Validate session cookies by calling the backend /auth/me endpoint
+ * - Enforce role-based portal routing between admin and employee areas
+ * - Preserve and sanitize ?next= redirects to prevent open redirects
+ * - Clear auth cookies when backend validation fails
+ *
+ * Collaborators:
+ * - NextRequest/NextResponse for request inspection and redirects
+ * - sanitizeNextPath for safe redirect handling
+ * - fetch to call backend authentication endpoint
+ * - Environment variables for API base URL and cookie name
+ *
+ * Notes/Constraints:
+ * - Runs only on matcher paths (login/admin/workspaces)
+ * - Uses cache: "no-store" to avoid stale auth results
+ * - Backend must accept cookie auth on /auth/me
+ * - Errors are swallowed to favor safe redirects over 500s
+ * - Redirect targets are always internal paths after sanitization
+ */
 export async function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
 

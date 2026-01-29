@@ -1,4 +1,12 @@
 services:
+  # =============================================
+  # PROFILES (mental model):
+  # - default (sin profile): Core API + DB
+  # - ui: Next.js en contenedor (opcional)
+  # - rag: pipeline async de RAG (worker + redis + storage)
+  # - observability: Prometheus + Grafana (opcional)
+  # - full: rag + observability
+  # =============================================
   db:
     image: pgvector/pgvector:0.8.1-pg16-trixie
     environment:
@@ -20,7 +28,7 @@ services:
     build:
       context: ./apps/backend
     environment:
-      APP_ENV: ${APP_ENV}
+      APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
       # Pasamos la variable del host al contenedor
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
@@ -115,6 +123,7 @@ services:
       start_period: 10s
     profiles:
       - worker
+      - rag
       - full
 
   web:
@@ -128,6 +137,7 @@ services:
     depends_on:
       - rag-api
     profiles:
+      - ui
       - e2e
 
   # Redis cache (optional, for production)
@@ -145,6 +155,7 @@ services:
     profiles:
       - cache
       - worker
+      - rag
       - full
 
   # Observability stack (optional, use --profile observability)
@@ -216,6 +227,7 @@ services:
       retries: 5
     profiles:
       - storage
+      - rag
       - full
 
   minio-init:
@@ -236,6 +248,7 @@ services:
         mc anonymous set none "local/$${S3_BUCKET}"
     profiles:
       - storage
+      - rag
       - full
 
 volumes:

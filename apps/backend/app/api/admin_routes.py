@@ -33,7 +33,6 @@ from ..domain.repositories import AuditEventRepository
 from ..domain.workspace_policy import WorkspaceActor
 from ..identity.dual_auth import Principal, require_admin, require_principal
 from ..identity.rbac import Permission
-from ..identity.users import UserRole
 
 router = APIRouter(prefix="/admin", tags=["admin"], responses=OPENAPI_ERROR_RESPONSES)
 

@@ -296,9 +296,9 @@ class TestAdminEndpointGuards:
 
         # Check that endpoints use correct guards
         assert "require_admin()" in content, "Admin routes should use require_admin()"
-        assert (
-            "require_principal(Permission.ADMIN_CONFIG)" in content
-        ), "Admin routes should require ADMIN_CONFIG permission"
+        assert "require_principal(Permission.ADMIN_CONFIG)" in content, (
+            "Admin routes should require ADMIN_CONFIG permission"
+        )
 
     def test_admin_routes_registered_in_main(self):
         """Verify admin routes are registered in main.py."""
@@ -307,6 +307,6 @@ class TestAdminEndpointGuards:
         main_path = Path(__file__).parent.parent.parent / "app" / "api" / "main.py"
         content = main_path.read_text()
 
-        assert (
-            "admin_routes" in content or "admin_router" in content
-        ), "Admin routes should be registered in main.py"
+        assert "admin_routes" in content or "admin_router" in content, (
+            "Admin routes should be registered in main.py"
+        )

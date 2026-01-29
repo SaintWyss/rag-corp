@@ -2,7 +2,25 @@
 Name: RQ Document Processing Queue
 
 Responsibilities:
-  - Enqueue background jobs to Redis using RQ
+  - Enqueue document processing jobs onto Redis via RQ
+  - Construct the queue connection using the configured Redis URL
+  - Apply retry policy settings for background job resilience
+  - Provide job identifiers back to the caller
+  - Keep queue wiring aligned with worker configuration
+
+Collaborators:
+  - redis.Redis: Redis connection client
+  - rq.Queue: queue abstraction for enqueuing jobs
+  - rq.Retry: retry policy configuration
+  - domain.services.DocumentProcessingQueue: port/interface contract
+  - app.jobs.process_document_job: job entrypoint name (string)
+
+Notes/Constraints:
+  - Job name is referenced by string and must remain stable
+  - Queue name defaults to "documents" unless overridden
+  - Retry settings are applied per enqueue call
+  - UUIDs are converted to strings for job arguments
+  - This adapter performs no payload validation beyond types
 """
 
 from uuid import UUID

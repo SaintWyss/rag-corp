@@ -1,0 +1,47 @@
+# Root-level dockerignore for repo hygiene
+
+# VCS
+.git
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Node / build outputs
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+.turbo/
+
+# Python caches
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Coverage
+.coverage
+.coverage.*
+coverage/
+coverage.xml
+htmlcov/
+.nyc_output/
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Env / logs / temp
+.env
+.env.*
+*.log
+*.tmp
+*.bak
+
+# Cookies
+cookies.txt
+cookies*.txt

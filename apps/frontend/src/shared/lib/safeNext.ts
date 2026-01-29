@@ -41,7 +41,6 @@ export function sanitizeNextPath(
     }
 
     // Reject control characters (newlines, tabs, null bytes)
-    // eslint-disable-next-line no-control-regex
     if (/[\x00-\x1F\x7F]/.test(trimmed)) {
         return fallback;
     }

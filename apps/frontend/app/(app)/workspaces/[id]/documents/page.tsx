@@ -164,6 +164,29 @@ type PageProps = {
   };
 };
 
+/**
+ * Name: DocumentsPage (workspace documents)
+ *
+ * Responsibilities:
+ * - List documents for a workspace with sorting and filtering
+ * - Fetch document details for the selected item
+ * - Handle uploads, reprocessing, and deletion actions
+ * - Validate file types and sizes before upload
+ * - Surface notices and errors for user feedback
+ *
+ * Collaborators:
+ * - shared/api functions for document CRUD and user lookup
+ * - AppShell layout and NoticeBanner/StatusBanner UI
+ * - next/navigation search params for deep-linking
+ * - React hooks for state, memoization, and effects
+ *
+ * Notes/Constraints:
+ * - Client component to support file inputs and interactive state
+ * - Workspace id is read from route params for scoping calls
+ * - Pagination uses cursor-based loading with PAGE_SIZE
+ * - Drag/drop and manual uploads share the same validation rules
+ * - List and detail requests are coordinated to avoid stale selection
+ */
 export default function DocumentsPage({ params }: PageProps) {
   const workspaceId = params.id;
   const searchParams = useSearchParams();

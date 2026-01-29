@@ -73,7 +73,9 @@ def test_login_ok():
     user = _user(role=UserRole.EMPLOYEE, email="user@example.com", password="secret")
     app = _build_auth_app()
 
-    with patch("app.identity.auth_users.get_auth_settings", return_value=_auth_settings()):
+    with patch(
+        "app.identity.auth_users.get_auth_settings", return_value=_auth_settings()
+    ):
         with patch("app.identity.auth_users.get_user_by_email", return_value=user):
             client = TestClient(app)
             response = client.post(
@@ -93,7 +95,9 @@ def test_login_fail_wrong_password():
     user = _user(role=UserRole.EMPLOYEE, email="user@example.com", password="secret")
     app = _build_auth_app()
 
-    with patch("app.identity.auth_users.get_auth_settings", return_value=_auth_settings()):
+    with patch(
+        "app.identity.auth_users.get_auth_settings", return_value=_auth_settings()
+    ):
         with patch("app.identity.auth_users.get_user_by_email", return_value=user):
             client = TestClient(app)
             response = client.post(
@@ -134,7 +138,9 @@ def test_require_role_checks():
             assert response.json() == {"ok": True}
 
     with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
-        with patch("app.identity.auth_users.get_user_by_id", return_value=employee_user):
+        with patch(
+            "app.identity.auth_users.get_user_by_id", return_value=employee_user
+        ):
             response = client.get(
                 "/admin", headers={"Authorization": f"Bearer {employee_token}"}
             )

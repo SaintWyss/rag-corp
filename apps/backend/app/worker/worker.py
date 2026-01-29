@@ -2,7 +2,25 @@
 Name: RQ Worker Entrypoint
 
 Responsibilities:
-  - Start RQ worker for document processing jobs
+  - Start an RQ worker process for document processing jobs
+  - Initialize Redis connection and validate required environment
+  - Initialize and close the Postgres connection pool for jobs
+  - Start the worker health HTTP server for liveness checks
+  - Emit structured startup/shutdown logs for observability
+
+Collaborators:
+  - redis.Redis: connection to the queue backend
+  - rq.Worker: job runner for the documents queue
+  - worker_server.start_worker_http_server: health endpoint process
+  - crosscutting.config.get_settings: runtime configuration access
+  - infrastructure.db.pool: init_pool/close_pool lifecycle helpers
+  - crosscutting.logger: structured logging
+
+Notes/Constraints:
+  - REDIS_URL must be set; missing config exits the process
+  - DOCUMENT_QUEUE_NAME and WORKER_HTTP_PORT control runtime wiring
+  - Worker uses with_scheduler=False to avoid cron/scheduler jobs
+  - Pool must close on shutdown to prevent resource leakage
 """
 
 import os

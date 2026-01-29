@@ -48,6 +48,30 @@ function isArchived(workspace: WorkspaceSummary): boolean {
   return Boolean(workspace.archived_at);
 }
 
+/**
+ * Name: WorkspacesPage (workspace directory)
+ *
+ * Responsibilities:
+ * - List available workspaces and refresh on demand
+ * - Allow admins to create, publish, archive, and share workspaces
+ * - Fetch current user to drive role-based UI decisions
+ * - Support filters like includeArchived and share drafts
+ * - Display notices and errors for async actions
+ *
+ * Collaborators:
+ * - shared/api methods for workspace CRUD and auth lookup
+ * - AppShell layout and NoticeBanner/StatusBanner UI
+ * - formatDate/formatError utilities for consistent copy
+ * - WorkspaceVisibility enum from contracts
+ * - React hooks for state and lifecycle orchestration
+ *
+ * Notes/Constraints:
+ * - Client component required for interactive forms and state
+ * - Admin gating mirrors backend rules (ADR-008)
+ * - UI uses cached API key only for display, not privileges
+ * - Initial load waits for auth check to avoid flicker
+ * - Archive and publish actions update the list in-place
+ */
 export default function WorkspacesPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [loading, setLoading] = useState(true);

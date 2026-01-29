@@ -26,9 +26,12 @@ def test_process_document_job_invokes_use_case():
             with patch(
                 "app.worker.jobs.get_document_text_extractor", return_value=MagicMock()
             ):
-                with patch("app.worker.jobs.get_text_chunker", return_value=MagicMock()):
+                with patch(
+                    "app.worker.jobs.get_text_chunker", return_value=MagicMock()
+                ):
                     with patch(
-                        "app.worker.jobs.get_embedding_service", return_value=MagicMock()
+                        "app.worker.jobs.get_embedding_service",
+                        return_value=MagicMock(),
                     ):
                         with patch(
                             "app.worker.jobs.ProcessUploadedDocumentUseCase",

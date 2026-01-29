@@ -262,7 +262,7 @@ app.include_router(router, prefix="/v1")
 app.include_router(auth_router)
 
 # R: Register admin routes (ADR-008: admin provisioning)
-from .admin_routes import router as admin_router
+from .admin_routes import router as admin_router  # noqa: E402
 
 app.include_router(admin_router)
 

@@ -337,7 +337,10 @@ class TestMetricsEndpoint:
 
     def test_get_metrics_response_returns_bytes(self):
         """R: Should return bytes and content type."""
-        from app.crosscutting.metrics import get_metrics_response, is_prometheus_available
+        from app.crosscutting.metrics import (
+            get_metrics_response,
+            is_prometheus_available,
+        )
 
         body, content_type = get_metrics_response()
 

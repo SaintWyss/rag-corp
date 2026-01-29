@@ -3,7 +3,25 @@ Name: PostgreSQL User Repository
 
 Responsibilities:
   - Load users for authentication by email or ID
-  - Map database rows into User records
+  - Execute parameterized SQL queries against the users table
+  - Map raw database rows into User domain records
+  - Normalize and validate roles from persisted values
+  - Surface consistent DatabaseError failures for callers
+  - Keep read paths narrowly focused on auth-related fields
+
+Collaborators:
+  - psycopg_pool.ConnectionPool: pooled database connections
+  - infrastructure.db.pool.get_pool: pool accessor
+  - identity.users.User/UserRole: domain user model and roles
+  - crosscutting.logger: error reporting for failed queries
+  - crosscutting.exceptions.DatabaseError: standardized DB failure
+
+Notes/Constraints:
+  - Returns None when no user is found (no exception on empty result)
+  - Role casting must succeed; invalid roles raise DatabaseError
+  - Uses context-managed connections to ensure cleanup
+  - This module does not manage transactions beyond simple reads
+  - SQL text and column ordering must stay in sync with migrations
 """
 
 from typing import Optional, List
@@ -198,7 +216,7 @@ def update_user(
             return get_user_by_id(user_id)
 
         params.append(user_id)
-        
+
         pool = _get_pool()
         with pool.connection() as conn:
             row = conn.execute(

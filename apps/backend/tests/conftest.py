@@ -31,13 +31,13 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.crosscutting import config as app_config
+from app.crosscutting import config as app_config  # noqa: E402
 
 app_config.Settings.model_config["env_file"] = None
 
-from app.domain.entities import Document, Chunk, QueryResult
-from app.domain.repositories import DocumentRepository
-from app.domain.services import EmbeddingService, LLMService
+from app.domain.entities import Document, Chunk, QueryResult  # noqa: E402
+from app.domain.repositories import DocumentRepository  # noqa: E402
+from app.domain.services import EmbeddingService, LLMService  # noqa: E402
 
 os.environ.setdefault("APP_ENV", "test")
 
@@ -46,6 +46,7 @@ def pytest_configure(config) -> None:
     config.addinivalue_line(
         "markers", "unit: Unit tests (fast, no external dependencies)"
     )
+
 
 # ============================================================================
 # Domain Entity Fixtures

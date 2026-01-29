@@ -59,7 +59,9 @@ def _settings(
 
 @pytest.mark.unit
 def test_auth_missing_key_rfc7807():
-    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
+    with patch(
+        "app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}
+    ):
         clear_keys_cache()
         reset_rate_limiter()
         client = TestClient(_build_app())

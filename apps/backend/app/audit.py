@@ -2,8 +2,26 @@
 Name: Audit Logging Helpers
 
 Responsibilities:
-  - Normalize actor/metadata for audit events
-  - Best-effort persistence (never break request flow)
+  - Normalize actor identity and metadata for audit events
+  - Assemble AuditEvent payloads with consistent fields
+  - Persist audit events through the repository interface
+  - Swallow persistence failures to avoid breaking request flow
+  - Support workspace-scoped metadata for compliance and traceability
+
+Collaborators:
+  - domain.audit.AuditEvent: event entity used for persistence
+  - domain.repositories.AuditEventRepository: storage port
+  - identity.dual_auth.Principal: actor identity and role source
+  - crosscutting.logger: warning logging on failures
+  - uuid.uuid4: event identifier generation
+
+Notes/Constraints:
+  - If repository is None, the function no-ops quietly
+  - Principal-derived metadata is best-effort and defensive
+  - workspace_id is serialized into metadata when provided
+  - This module must never raise on write failures
+  - Use stable actor strings to simplify audit queries
+  - Keep metadata compact to avoid oversized audit rows
 """
 
 from __future__ import annotations

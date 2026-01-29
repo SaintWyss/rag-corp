@@ -17,6 +17,28 @@ import type {
     WorkspacesListRes,
 } from "@contracts/src/generated";
 
+/**
+ * Name: Frontend API Client (shared/api/api)
+ *
+ * Responsibilities:
+ * - Provide typed wrappers for the backend REST endpoints
+ * - Attach API key headers when a stored key is available
+ * - Parse JSON responses and normalize errors into ApiError
+ * - Expose convenience types that align with UI needs
+ * - Ensure credentials are included for cookie-based auth
+ *
+ * Collaborators:
+ * - getStoredApiKey for local API key retrieval
+ * - fetch for network requests
+ * - @contracts generated types for request/response shapes
+ * - Backend auth endpoints such as /auth/me and /auth/login
+ *
+ * Notes/Constraints:
+ * - requestJson throws ApiError with status/message on non-2xx responses
+ * - getCurrentUser treats 401 as a signed-out state, not an error
+ * - Payloads are serialized to JSON where required by the endpoint
+ * - This module is UI-facing and should not embed business logic
+ */
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
 
 export type DocumentSummary = Omit<DocumentSummaryRes, "status"> & {

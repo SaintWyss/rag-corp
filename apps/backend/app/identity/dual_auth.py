@@ -2,9 +2,25 @@
 Name: Dual Auth (JWT + API Key) Authorization Helpers
 
 Responsibilities:
-  - Provide a unified Principal for JWT users and API key services
-  - Allow endpoints to accept JWT or X-API-Key without breaking RBAC
-  - Provide role-based gates for JWT while preserving API key permissions
+  - Build a unified Principal for JWT users and API key services
+  - Extract credentials from headers and resolve the active auth path
+  - Map API key scopes to RBAC permissions when configured
+  - Enforce permission gates with require_* dependencies for routes
+  - Attach principal context to request.state for downstream use
+
+Collaborators:
+  - identity.auth: API key validation and scope parsing
+  - identity.auth_users: JWT token extraction and user lookup
+  - identity.rbac: Permission model, scope map, and RBAC config
+  - identity.users: UserRole enum for role-based checks
+  - crosscutting.error_responses.forbidden: standardized access errors
+  - FastAPI Header/Request types for dependency injection
+
+Notes/Constraints:
+  - JWT auth takes precedence when an Authorization token is present
+  - API key flow depends on X-API-Key and configured scopes/RBAC roles
+  - Missing or invalid credentials return None or forbidden consistently
+  - Principal is a lightweight snapshot; do not mutate user objects
 """
 
 from dataclasses import dataclass
@@ -173,9 +189,11 @@ def require_employee_or_admin() -> Callable:
     """R: Require JWT employee or admin role."""
     return require_roles(UserRole.EMPLOYEE, UserRole.ADMIN)
 
+
 # ---------------------------------------------------------------------------
 # User-only role gates (JWT required)
 # ---------------------------------------------------------------------------
+
 
 def require_user_roles(*roles: UserRole) -> Callable:
     """
@@ -214,4 +232,3 @@ def require_user_admin() -> Callable:
 def require_user_employee_or_admin() -> Callable:
     """R: Require JWT employee/admin; deny API keys."""
     return require_user_roles(UserRole.EMPLOYEE, UserRole.ADMIN)
-

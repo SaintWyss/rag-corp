@@ -1,11 +1,26 @@
 /**
- * @fileoverview
- * Name: Chat Page (Streaming RAG)
+ * Name: ChatPage (workspace chat)
  *
  * Responsibilities:
- *   - Render streaming multi-turn chat UI
- *   - Connect to useRagChat hook
- *   - Show messages, sources, and input controls
+ * - Render the streaming chat experience for a workspace
+ * - Drive conversation state via the useRagChat hook
+ * - Display messages, statuses, and source summaries
+ * - Provide actions to send, retry, cancel, and reset
+ * - Link chat answers back to document detail views
+ *
+ * Collaborators:
+ * - useRagChat for streaming, retries, and cancellation
+ * - AppShell for shared workspace layout and navigation
+ * - StatusBanner for surfaced error states
+ * - next/link for internal document navigation
+ * - Route params for workspace id scoping
+ *
+ * Notes/Constraints:
+ * - Client component required for hooks and event handlers
+ * - Workspace id is taken from the route and passed to the hook
+ * - UI depends on message.status to render streaming/cancelled states
+ * - data-testid attributes support automated UI testing
+ * - Rendering assumes message ordering provided by the hook
  */
 "use client";
 

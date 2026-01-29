@@ -83,7 +83,7 @@ def ensure_dev_demo(settings: Settings) -> None:
                 owner_user_id=user.id,
                 visibility=WorkspaceVisibility.PRIVATE,
             )
-            created_ws = workspace_repo.create_workspace(new_ws)
+            workspace_repo.create_workspace(new_ws)
             logger.info(f"Dev seed demo: Created workspace '{ws_name}' for {email}")
         else:
             logger.info(

@@ -2,9 +2,25 @@
 Name: RAG Retrieval Pipeline
 
 Responsibilities:
-  - Embed query and retrieve chunks
-  - Build context using ContextBuilder
-  - Return structured retrieval data for sync/stream flows
+  - Embed the query and retrieve matching chunks for a workspace
+  - Optionally use MMR retrieval when requested by the caller
+  - Build context text via ContextBuilder with size constraints
+  - Track stage timings for embedding, retrieval, and formatting
+  - Return a structured RagRetrievalResult for sync/stream flows
+
+Collaborators:
+  - domain.repositories.DocumentRepository: chunk search operations
+  - domain.services.EmbeddingService: query embedding generation
+  - application.context_builder.ContextBuilder: context assembly
+  - crosscutting.timing.StageTimings: performance measurements
+  - domain.entities.Chunk: retrieval result payloads
+
+Notes/Constraints:
+  - top_k <= 0 returns an empty result without touching services
+  - Workspace scope is enforced by the repository query inputs
+  - ContextBuilder is optional; defaults to get_context_builder()
+  - NO_RESULTS_ANSWER is the fallback when no chunks are found
+  - Timing data is returned to support observability in callers
 """
 
 from __future__ import annotations

@@ -103,7 +103,9 @@ def test_upload_ok_creates_pending_and_stores(monkeypatch):
         app, routes, workspace_id, mock_repo, mock_storage, mock_queue
     )
 
-    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
+    with patch(
+        "app.identity.auth.get_keys_config", return_value={"valid-key": ["ingest"]}
+    ):
         with patch("app.identity.rbac.get_rbac_config", return_value=None):
             client = TestClient(app)
             response = client.post(
@@ -146,7 +148,9 @@ def test_upload_rejects_invalid_mime(monkeypatch):
         app, routes, workspace_id, mock_repo, mock_storage, mock_queue
     )
 
-    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ingest"]}):
+    with patch(
+        "app.identity.auth.get_keys_config", return_value={"valid-key": ["ingest"]}
+    ):
         with patch("app.identity.rbac.get_rbac_config", return_value=None):
             client = TestClient(app)
             response = client.post(
@@ -213,7 +217,9 @@ def test_upload_rejects_api_key_without_permission(monkeypatch):
         app, routes, workspace_id, mock_repo, mock_storage, mock_queue
     )
 
-    with patch("app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}):
+    with patch(
+        "app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}
+    ):
         with patch("app.identity.rbac.get_rbac_config", return_value=None):
             client = TestClient(app)
             response = client.post(
