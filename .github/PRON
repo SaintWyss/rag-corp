@@ -264,7 +264,7 @@ SALIDA FINAL
 - Qué NO se pudo verificar (TODOs)
 -------------------------------------------------------------------------------------------------------
 @workspace
-# PRON v6-CI2 — TEST STABILITY (unit/integration/e2e) (1 COMMIT) [CLÍNICO]
+# PRON v6-CI2 — TEST STABILITY (unit/integration/e2e) (1 COMMIT)
 Objetivo: reducir flakes y hacer tests deterministas para CI. 1 commit.
 
 REGLAS
@@ -305,7 +305,7 @@ SALIDA FINAL
 
 -------------------------------------------------------------------------------------------------------
 @workspace
-# PRON v6-CI3 — BUGFIXES FOR CI FAILURES (1 COMMIT) [CLÍNICO]
+# PRON v6-CI3 — BUGFIXES FOR CI FAILURES (1 COMMIT)
 Objetivo: arreglar bugs reales detectados por CI (tests rojos), con cambios mínimos y verificados. 1 commit.
 
 REGLAS
