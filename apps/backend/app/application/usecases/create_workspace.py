@@ -68,13 +68,17 @@ class CreateWorkspaceUseCase:
                 )
             )
 
-        # R: ADR-008: Determine effective owner based on actor role.
-        # - Employee: ALWAYS use actor.user_id (cannot assign to others)
-        # - Admin: can optionally assign to another user via owner_user_id
-        if input_data.actor.role == UserRole.ADMIN and input_data.owner_user_id:
-            effective_owner = input_data.owner_user_id
-        else:
-            effective_owner = input_data.actor.user_id
+        # R: ADR-009: Workspace provisioning is admin-only.
+        if input_data.actor.role != UserRole.ADMIN:
+            return WorkspaceResult(
+                error=WorkspaceError(
+                    code=WorkspaceErrorCode.FORBIDDEN,
+                    message="Only admins can create workspaces.",
+                )
+            )
+
+        # R: Admins can optionally assign ownership via owner_user_id.
+        effective_owner = input_data.owner_user_id or input_data.actor.user_id
 
         existing = self.repository.get_workspace_by_owner_and_name(
             effective_owner,

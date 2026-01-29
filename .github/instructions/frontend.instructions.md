@@ -18,7 +18,7 @@ Antes de afirmar algo “como cierto” en FE (paths, endpoints, scripts), verif
 1) `shared/contracts/openapi.json` + `shared/contracts/src/generated.ts`
 2) `frontend/next.config.ts` (rewrites/proxy)
 3) `package.json` / `pnpm` scripts (root y frontend)
-4) Docs vigentes v6 (`doc/system/...`, `doc/api/http-api.md`)
+4) Docs vigentes v6 (`docs/system/...`, `docs/api/http-api.md`)
 
 ## Contratos compartidos (fuente de verdad)
 - No duplicar DTOs ni endpoints: usar **`@contracts`** (`shared/contracts/src/generated.ts`).

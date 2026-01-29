@@ -25,8 +25,9 @@ def _read(rel_path_from_backend_root: str) -> str:
 def _extract_function_block(source: str, func_name: str, max_lines: int = 160) -> str:
     lines = source.splitlines()
     needle = f"def {func_name}("
+    async_needle = f"async def {func_name}("
     for i, line in enumerate(lines):
-        if line.startswith(needle):
+        if line.startswith(needle) or line.startswith(async_needle):
             return "\n".join(lines[i : i + max_lines])
     raise AssertionError(f"Function not found: {func_name}")
 
@@ -74,3 +75,46 @@ def test_user_only_guard_helpers_exist():
     assert "def require_user_roles" in src
     assert "def require_user_admin" in src
     assert "def require_user_employee_or_admin" in src
+
+
+def test_role_matrix_for_key_workspace_endpoints():
+    """
+    Enforce the role matrix for key endpoints:
+      - Admin-only user endpoints use require_user_admin()
+      - Employee/Admin endpoints use require_user_employee_or_admin()
+      - Service/API endpoints use require_employee_or_admin()
+    """
+    src = _read("app/interfaces/api/http/routes.py")
+
+    admin_only = [
+        "create_workspace",
+        "update_workspace",
+        "publish_workspace",
+        "share_workspace",
+        "archive_workspace_action",
+        "archive_workspace",
+    ]
+    employee_or_admin = [
+        "list_workspaces",
+        "get_workspace",
+    ]
+    service_allowed = [
+        "upload_workspace_document",
+        "reprocess_workspace_document",
+        "query_workspace",
+        "ask_workspace",
+        "ask_workspace_stream",
+    ]
+
+    for func in admin_only:
+        block = _extract_function_block(src, func)
+        assert "Depends(require_user_admin())" in block, block
+
+    for func in employee_or_admin:
+        block = _extract_function_block(src, func)
+        assert "Depends(require_user_employee_or_admin())" in block, block
+
+    for func in service_allowed:
+        block = _extract_function_block(src, func)
+        assert "Depends(require_employee_or_admin())" in block, block
+        assert "require_user_" not in block, block

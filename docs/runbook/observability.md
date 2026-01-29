@@ -98,6 +98,7 @@ pnpm stack:full
 ## Grafana Dashboards
 
 Los dashboards se provisionan automáticamente desde `infra/grafana/dashboards/`:
+Ver `infra/grafana/dashboards/README.md` para el inventario y el flujo de export.
 
 | Dashboard | Contenido |
 |-----------|-----------|
@@ -230,6 +231,21 @@ docker compose exec prometheus cat /etc/prometheus/prometheus.yml
 | `OTEL_ENABLED` | `0` | Habilitar OpenTelemetry |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | Endpoint OTLP |
 | `GRAFANA_PASSWORD` | `admin` | Password de Grafana |
+
+### Tracing (OpenTelemetry)
+
+El backend inicializa tracing cuando `OTEL_ENABLED=1` (ver `apps/backend/app/crosscutting/tracing.py`).
+Los logs incluyen `trace_id` y `span_id` para correlación cuando el tracer está activo.
+
+**Quickstart (local):**
+```bash
+export OTEL_ENABLED=1
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+```
+
+**Correlación:**
+- Buscar `trace_id` en logs JSON (campo `trace_id`).
+- Usar el mismo `trace_id` en la UI del collector/observability stack para navegar spans.
 
 ### Agregar métricas custom
 

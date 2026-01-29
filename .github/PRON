@@ -5,7 +5,7 @@
 # - Si el prompt es “SIN CAMBIOS”: NO modificar archivos, NO commits.
 # - Si el prompt es “1 COMMIT”: aplicar cambios directos (sin rama/PR) y hacer 1 commit final.
 # - CERO INVENCIÓN: todo debe citar rutas reales. Si no existe: NO ENCONTRADO + TODO(verify).
-# Fuente de verdad (prioridad): `doc/system/informe_de_sistemas_rag_corp.md` (Maxima prioridad, detalle v6 y fuente de verdad)
+# Fuente de verdad (prioridad): `docs/system/informe_de_sistemas_rag_corp.md` (Maxima prioridad, detalle v6 y fuente de verdad)
 # =========================
 
 
@@ -20,13 +20,13 @@ REGLAS (OBLIGATORIAS)
 - NO CAMBIES EL CÓDIGO. NO CREES COMMITS. NO MODIFIQUES ARCHIVOS.
 - CERO ALUCINACIÓN: cada afirmación importante debe citar rutas exactas del repo.
 - Fuente de verdad (prioridad):
-  0) `doc/system/informe_de_sistemas_rag_corp.md` (Maxima prioridad, detalle v6 y fuente de verdad)
-  1) `doc/system/**` (informe/contrato v6)
+  0) `docs/system/informe_de_sistemas_rag_corp.md` (Maxima prioridad, detalle v6 y fuente de verdad)
+  1) `docs/system/**` (informe/contrato v6)
   2) `shared/contracts/openapi.json`
   3) `backend/alembic/versions/**`
   4) `backend/app/main.py`, `backend/app/routes.py`, `backend/app/auth_routes.py`
   5) `compose*.yaml`, `package.json`, `.github/workflows/**`
-  6) `doc/architecture/decisions/ADR-*.md`
+  6) `docs/architecture/decisions/ADR-*.md`
 - Si algo no se encuentra: decir “NO ENCONTRADO” y proponer dónde debería estar.
 - Formato obligatorio: secciones numeradas, tablas pequeñas, bullets claros.
 
@@ -112,7 +112,7 @@ REGLAS
 
 ENTREGABLES
 (1) INVENTARIO
-- Listar `README.md`, `doc/**`, ADRs, runbooks, API docs, data docs, diagrams, .github docs.
+- Listar `README.md`, `docs/**`, ADRs, runbooks, API docs, data docs, diagrams, .github docs.
 - Clasificar: Canonical / Supporting / Historical / Deprecated.
 
 (2) DRIFT REPORT (15–30 hallazgos)
@@ -166,7 +166,7 @@ OBJETIVO
 Dejar documentación profesional, navegable y 100% verificable: portal + índice + arquitectura + API + DB + runbook + calidad + diagramas.
 
 REGLAS (OBLIGATORIAS)
-- SOLO modificar documentación: `README.md`, `doc/**` (y archivos estrictamente de docs).
+- SOLO modificar documentación: `README.md`, `docs/**` (y archivos estrictamente de docs).
 - NO tocar runtime/negocio.
 - CERO INVENCIÓN: comandos/endpoints/env/scripts deben venir de archivos reales.
 - Si no se puede verificar: `TODO(verify)` + 1 línea explicando qué falta.
@@ -183,17 +183,17 @@ TAREAS (ORDEN OBLIGATORIO)
 - Arquitectura high-level + flujos (bullets)
 - Quickstart (requisitos + env mínima + comandos reales + validación por curl)
 - Repo structure (1 línea por carpeta)
-- Links a `doc/README.md`
+- Links a `docs/README.md`
 - Roadmap (5–10 TODOs reales)
-(3) `doc/README.md` como ÍNDICE canónico (links vivos).
+(3) `docs/README.md` como ÍNDICE canónico (links vivos).
 (4) Alinear docs canónicas con evidencia:
-- `doc/architecture/overview.md`
-- `doc/architecture/decisions/ADR-*.md` (sin renumerar)
-- `doc/api/http-api.md` (desde OpenAPI)
-- `doc/data/postgres-schema.md` (desde migraciones)
-- `doc/runbook/local-dev.md` (desde compose/scripts)
-- `doc/quality/testing.md` (desde workflows/scripts)
-(5) Mermaid (2–3) en `doc/diagrams/`:
+- `docs/architecture/overview.md`
+- `docs/architecture/decisions/ADR-*.md` (sin renumerar)
+- `docs/api/http-api.md` (desde OpenAPI)
+- `docs/data/postgres-schema.md` (desde migraciones)
+- `docs/runbook/local-dev.md` (desde compose/scripts)
+- `docs/quality/testing.md` (desde workflows/scripts)
+(5) Mermaid (2–3) en `docs/diagrams/`:
 - Component diagram
 - Sequence ingest→process→ready
 - Sequence ask/stream (conversation_id si existe)
@@ -346,7 +346,7 @@ TAREAS
   - cache hit/miss si existe
 - Proteger /metrics según config.
 (3) Docs:
-- Actualizar docs de observabilidad si existe sección; sino, agregar doc mínimo en `doc/observability/**` y linkear en índice.
+- Actualizar docs de observabilidad si existe sección; sino, agregar doc mínimo en `docs/observability/**` y linkear en índice.
 (4) Tests mínimos:
 - Que la emisión de audit no rompa y que métricas expongan nombres esperados.
 (5) Validación:
@@ -378,7 +378,7 @@ TAREAS
 - caches: `cache-dependency-path` correcto
 - timeouts: e2e/e2e-full
 - permisos mínimos (`permissions:`)
-(3) Documentar en `doc/quality/testing.md` si cambia algo visible.
+(3) Documentar en `docs/quality/testing.md` si cambia algo visible.
 (4) Validación:
 - Asegurar que el workflow no referencia paths inexistentes.
 - Si hay comando local equivalente, listarlo.
@@ -442,7 +442,7 @@ ALCANCE (IN-SCOPE)
 
 2) Duplicaciones y drift menor
 - Detectar docs duplicadas o archivos “viejos” (v4 vs v6) y:
-  - mover a `doc/history/` o `doc/archive/` si deben quedar,
+  - mover a `docs/history/` o `docs/archive/` si deben quedar,
   - o eliminar si están obsoletos y no referenciados.
 - Normalizar links internos relativos.
 

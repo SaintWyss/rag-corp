@@ -1,5 +1,5 @@
 ---
-applyTo: "doc/**"
+applyTo: "docs/**"
 ---
 
 # Docs — reglas específicas del repo (v6)
@@ -14,11 +14,11 @@ applyTo: "doc/**"
 
 ## Source of Truth (anti-drift)
 Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, tablas, scripts), verificar en este orden:
-1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/informe_de_sistemas_rag_corp.md`) si existe.
+1) **Informe de Sistemas v6 (Definitivo)** (`docs/system/informe_de_sistemas_rag_corp.md`) si existe.
 2) **Contracts**: `shared/contracts/openapi.json` (y client generado si aplica).
-3) **DB/Migraciones**: `backend/alembic/versions/*` + `doc/data/postgres-schema.md`.
+3) **DB/Migraciones**: `backend/alembic/versions/*` + `docs/data/postgres-schema.md`.
 4) **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
-5) **Decisiones**: `doc/architecture/decisions/ADR-*.md`.
+5) **Decisiones**: `docs/architecture/decisions/ADR-*.md`.
 
 ## Veracidad / No alucinaciones
 - No inventar features/endpoints/comandos. Si algo no existe en el repo, marcarlo como **TODO/Planned**.
@@ -26,16 +26,16 @@ Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, 
   - API: `shared/contracts/openapi.json` (primario) y luego `backend/app/routes.py`, `backend/app/main.py`.
   - Docker/Infra: `compose*.yaml` (incluye prod/observability si existen).
   - Scripts: `package.json` (root y workspaces relevantes).
-  - DB: `backend/alembic/versions/*` (primario) + `doc/data/postgres-schema.md`.
+  - DB: `backend/alembic/versions/*` (primario) + `docs/data/postgres-schema.md`.
 
 ## Índices y rutas canónicas
-- `doc/README.md` es el índice principal (mantener links vivos).
-- `README.md` raíz debe apuntar a `doc/README.md` (portal).
+- `docs/README.md` es el índice principal (mantener links vivos).
+- `README.md` raíz debe apuntar a `docs/README.md` (portal).
 - Documentos “fuente”:
-  - Arquitectura: `doc/architecture/overview.md`
-  - API HTTP: `doc/api/http-api.md`
-  - Data/schema: `doc/data/postgres-schema.md`
-  - Runbook local: `doc/runbook/local-dev.md`
+  - Arquitectura: `docs/architecture/overview.md`
+  - API HTTP: `docs/api/http-api.md`
+  - Data/schema: `docs/data/postgres-schema.md`
+  - Runbook local: `docs/runbook/local-dev.md`
 
 ## Convenciones de comandos (este repo)
 - Usar `docker compose` (no `docker-compose`).

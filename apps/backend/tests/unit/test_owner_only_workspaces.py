@@ -414,9 +414,9 @@ class TestGetWorkspaceV6:
 
 
 class TestCreateWorkspaceOwnerRules:
-    """v6: EMPLOYEE cannot assign owner_user_id to another user; ADMIN can."""
+    """v6: workspace provisioning is admin-only (ADR-009)."""
 
-    def test_employee_creates_workspace_as_self(self):
+    def test_employee_cannot_create_workspace(self):
         employee_id = uuid4()
         repo = FakeWorkspaceRepository()
         use_case = CreateWorkspaceUseCase(repository=repo)
@@ -428,9 +428,8 @@ class TestCreateWorkspaceOwnerRules:
             )
         )
 
-        assert result.error is None
-        assert result.workspace is not None
-        assert result.workspace.owner_user_id == employee_id
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
 
     def test_employee_cannot_assign_owner_to_another_user(self):
         employee_id = uuid4()
@@ -446,10 +445,8 @@ class TestCreateWorkspaceOwnerRules:
             )
         )
 
-        assert result.error is None
-        assert result.workspace is not None
-        assert result.workspace.owner_user_id == employee_id
-        assert result.workspace.owner_user_id != target_owner
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
 
     def test_admin_can_assign_owner_to_another_user(self):
         admin_id = uuid4()

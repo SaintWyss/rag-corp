@@ -85,13 +85,13 @@ Ver `docs/api/http-api.md` y `shared/contracts/openapi.json`.
 
 ## Hardening (produccion)
 
-Fail-fast en `APP_ENV=production` (ver `apps/backend/app/config.py`):
+Fail-fast en `APP_ENV=production` (ver `apps/backend/app/crosscutting/config.py`):
 
 - `JWT_SECRET` fuerte (>=32 chars) y no default
 - `JWT_COOKIE_SECURE=true`
 - `METRICS_REQUIRE_AUTH=true`
 - `API_KEYS_CONFIG` o `RBAC_CONFIG` presentes (protege `/metrics`)
-- CSP sin `unsafe-inline` (ver `apps/backend/app/security.py`)
+- CSP sin `unsafe-inline` (ver `apps/backend/app/crosscutting/security.py`)
 
 Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.md`.
 

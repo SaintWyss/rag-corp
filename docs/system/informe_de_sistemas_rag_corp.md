@@ -38,7 +38,7 @@ Construir una “**NotebookLM empresarial**” donde el conocimiento se gestione
 2) Garantizar **scoping total** por workspace: documentos, chunks, retrieval y ask/chat.
 3) Implementar y centralizar políticas de acceso (Domain) con matriz exhaustiva de tests.
 4) Cumplir RNF de seguridad en prod: **fail-fast** para defaults inseguros, cookies secure, CSP sin `unsafe-inline` (o nonces/hashes), `/metrics` protegido.
-5) CI con `e2e-full` cubriendo flujo end-to-end: `login → create workspace → upload → READY → ask scoped`.
+5) CI con `e2e-full` cubriendo flujo end-to-end (admin): `login → create workspace → upload → READY → ask scoped`.
 
 ### 1.3 Alcance (Scope)
 **In-Scope (v6):**
@@ -71,7 +71,7 @@ Construir una “**NotebookLM empresarial**” donde el conocimiento se gestione
 
 ### 1.5 Glosario mínimo
 - **Workspace (\"Sección\" solo UI):** contenedor lógico de documentos y chat; unidad de permisos y scoping.
-- **Owner:** usuario creador del workspace; controla escritura/borrado/reprocess (junto a admin).
+- **Owner:** usuario asignado al workspace (provisionado por admin); controla escritura/borrado/reprocess (junto a admin).
 - **Visibility:** `PRIVATE | ORG_READ | SHARED`.
 - **ACL:** lista explícita (`workspace_acl`) para visibilidad `SHARED`.
 - **RAG:** retrieval de chunks + LLM para responder con fuentes.
@@ -304,6 +304,7 @@ erDiagram
 | RB-05 | Contexto explícito: toda operación de documentos y RAG es scoped por `workspace_id`. |
 | RB-06 | Archive/soft-delete: workspace archivado se excluye por defecto; docs asociados se soft-deletean o quedan inaccesibles según ADR-006. |
 | RB-07 | Unicidad: `unique(owner_user_id, name)`; colisión → 409. |
+| RB-08 | Provisionamiento de workspaces es admin-only (ADR-009). |
 
 ### 4.4 Trazabilidad (RF ↔ UC ↔ Endpoints ↔ Tests)
 | RF | UC principales | Endpoints canónicos | Tests |
@@ -311,7 +312,7 @@ erDiagram
 | RF-B1/B2/B3 | UC-02..UC-07/UC-11 | `/v1/workspaces*` | unit: policy/use_cases; e2e: workspaces |
 | RF-C1..C3 | UC-05/UC-06/UC-12 | `/v1/workspaces/{id}/documents*` | unit: doc use cases; e2e: upload scoped |
 | RF-D1/D2 | UC-07 | `/v1/workspaces/{id}/ask*` | unit: answer_query; e2e: ask scoped |
-| RF-E1/E2 | UC transversales | `/v1/audit*` (admin) | unit: audit repo; integration smoke |
+| RF-E1/E2 | UC transversales | `/v1/admin/audit` | unit: audit repo; integration smoke |
 | RF-A* | UC-01/UC-09 | `/auth/*` | unit: auth; e2e: login |
 
 ---
@@ -373,10 +374,10 @@ flowchart TB
 - **Alternativos:** credenciales inválidas → 401 RFC7807.
 - **Post:** actor autenticado.
 
-#### UC-02 — Crear Workspace (Employee/Admin)
-- **Pre:** autenticado.
-- **Flujo:** enviar name/description → validar → crear con `visibility=PRIVATE` y `owner_user_id=actor` → auditar `workspace.create`.
-- **Alternativos:** name inválido → 400; conflicto unique → 409.
+#### UC-02 — Crear Workspace (Admin)
+- **Pre:** autenticado con rol admin.
+- **Flujo:** enviar name/description (+ opcional `owner_user_id`) → validar → crear con `visibility=PRIVATE` y `owner_user_id` asignado por admin → auditar `workspace.create`.
+- **Alternativos:** name inválido → 400; conflicto unique → 409; no admin → 403.
 - **Post:** workspace creado.
 
 #### UC-03 — Publicar a ORG_READ (Owner/Admin)
@@ -587,7 +588,7 @@ classDiagram
 ### 7.1 Mapa de navegación (Sitemap)
 - `/login`
 - `/workspaces`
-  - Crear workspace
+  - Crear workspace (solo admin)
   - Listar workspaces visibles
 - `/workspaces/{id}` (Sources)
   - Listar documentos (scoped)
@@ -599,7 +600,7 @@ classDiagram
 - `/admin/users` (solo admin)
 
 ### 7.2 User flows (texto)
-**Employee (owner):** login → create workspace → upload docs → esperar READY → chat → publish/share (opcional) → auditoría.
+**Employee (owner):** login → acceder workspace asignado → upload docs → esperar READY → chat → publish/share (opcional) → auditoría.
 
 **Employee (viewer):** login → ver ORG_READ/SHARED → chat → ver sources → (sin acciones de escritura).
 
@@ -661,6 +662,28 @@ classDiagram
 
 ---
 
+## 9. CRC + Mapa de Docs (v6)
+
+### 9.1 CRC (Documentación v6)
+**Componente:** `docs/`  
+**Responsibilities:**  
+1. Ser la fuente de verdad documental de v6 (contrato, arquitectura, runbooks).  
+2. Mantener coherencia con `shared/contracts/openapi.json` y el código.  
+**Collaborators:** `shared/contracts/openapi.json`, `apps/backend/app/**`, `.github/workflows/ci.yml`  
+**Constraints:** no inventar endpoints; todo path debe existir en OpenAPI.
+
+### 9.2 Docs Map (Source of Truth)
+| Tema | Documento canónico | Secundarios |
+|---|---|---|
+| Contrato API | `shared/contracts/openapi.json` | `docs/api/http-api.md` |
+| Sistema v6 | `docs/system/informe_de_sistemas_rag_corp.md` | `docs/system/release-notes.md` |
+| Arquitectura | `docs/architecture/overview.md` | `docs/architecture/decisions/*` |
+| Datos | `docs/data/postgres-schema.md` | `apps/backend/alembic/*` |
+| Operación | `docs/runbook/*` | `infra/*` |
+| Testing/CI | `docs/quality/testing.md` | `.github/workflows/ci.yml` |
+
+---
+
 ## Apéndice A — Criterio “100% v6” (Definition of Done global)
 El proyecto se considera **100%** cuando se cumplen todos:
 1) Workspaces completos (CRUD + visibilidad + share).
@@ -669,7 +692,7 @@ El proyecto se considera **100%** cuando se cumplen todos:
 4) UI: Workspaces + Sources/Chat por workspace.
 5) Auditoría por workspace.
 6) Hardening prod: secrets/config, métricas protegidas.
-7) CI `e2e-full`: login → crear workspace → upload → READY → chat.
+7) CI `e2e-full` (admin): login → crear workspace → upload → READY → chat.
 
 ---
 

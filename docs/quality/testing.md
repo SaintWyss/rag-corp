@@ -29,6 +29,24 @@ RUN_INTEGRATION=1 GOOGLE_API_KEY=<GOOGLE_API_KEY> pytest -m integration
 
 ---
 
+## Contracts (OpenAPI) — anti-drift
+
+OpenAPI es la fuente de verdad. En CI corre el job `contracts-check` que:
+1) Exporta el schema desde el backend.
+2) Genera cliente TS (Orval).
+3) Falla si `shared/contracts/` difiere.
+
+```bash
+# Export + check local
+cd apps/backend
+python3 scripts/export_openapi.py --out ../shared/contracts/openapi.json
+cd ../..
+pnpm contracts:gen
+git diff --exit-code shared/contracts/
+```
+
+---
+
 ## Frontend (Jest)
 
 ```bash

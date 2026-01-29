@@ -1,5 +1,5 @@
 """
-Name: Admin Workspace Provisioning Tests (ADR-008)
+Name: Admin Workspace Provisioning Tests (ADR-009)
 
 Responsibilities:
   - Validate admin can create workspaces for other users
@@ -109,7 +109,7 @@ def _workspace(
 
 
 class TestAdminCreateWorkspaceForUser:
-    """ADR-008: Admin can create workspaces for other users."""
+    """ADR-009: Admin can create workspaces for other users."""
 
     def test_admin_creates_workspace_for_another_user(self):
         """Admin can create a workspace and assign it to another user."""
@@ -183,7 +183,7 @@ class TestAdminCreateWorkspaceForUser:
         assert result.error.code == WorkspaceErrorCode.CONFLICT
 
     def test_employee_cannot_assign_owner_to_another_user(self):
-        """Employee cannot create workspace for another user."""
+        """Employee cannot create workspaces (admin-only provisioning)."""
         employee_id = uuid4()
         target_user_id = uuid4()
         repo = FakeWorkspaceRepository()
@@ -197,11 +197,8 @@ class TestAdminCreateWorkspaceForUser:
             )
         )
 
-        # Should succeed but owner is employee, NOT target_user
-        assert result.error is None
-        assert result.workspace is not None
-        assert result.workspace.owner_user_id == employee_id  # Ignored
-        assert result.workspace.owner_user_id != target_user_id
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
 
 
 # =============================================================================

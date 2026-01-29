@@ -446,7 +446,7 @@ def create_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-009 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -456,7 +456,7 @@ def create_workspace(
             description=None,
             actor=actor,
             visibility=req.visibility,
-            owner_user_id=req.owner_user_id,  # R: ADR-008 - use case enforces owner-only
+            owner_user_id=req.owner_user_id,  # R: ADR-009 - admin-only provisioning
         )
     )
     if result.error:
@@ -505,7 +505,7 @@ def update_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-009 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -545,7 +545,7 @@ def publish_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-009 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -575,7 +575,7 @@ def share_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_CREATE)
     ),
-    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-009 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -611,7 +611,7 @@ def archive_workspace_action(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-009 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
@@ -641,7 +641,7 @@ def archive_workspace(
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_user_admin()),  # R: ADR-008 - admin-only write
+    _role: None = Depends(require_user_admin()),  # R: ADR-009 - admin-only write
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)

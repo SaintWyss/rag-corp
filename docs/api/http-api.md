@@ -218,7 +218,7 @@ echo "Sources: $(echo $ANSWER | jq -r '.sources')"
 | `/auth/me` | GET | Usuario actual |
 | `/auth/logout` | POST | Cerrar sesión |
 
-### Admin (JWT admin o API Key con scope admin)
+### Admin (JWT admin o API Key con `admin:config`)
 
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|

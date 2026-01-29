@@ -7,11 +7,11 @@
 
 ## Source of Truth (anti-drift)
 Antes de afirmar algo “como cierto”, verificar en este orden:
-1) **Informe de Sistemas v6 (Definitivo)** (`doc/system/informe_de_sistemas_rag_corp.md`).
+1) **Informe de Sistemas v6 (Definitivo)** (`docs/system/informe_de_sistemas_rag_corp.md`).
 2) **Contrato API**: `shared/contracts/openapi.json` (y cliente generado si aplica).
-3) **DB/Migraciones**: `backend/alembic/versions/*` + `doc/data/postgres-schema.md`.
+3) **DB/Migraciones**: `backend/alembic/versions/*` + `docs/data/postgres-schema.md`.
 4) **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
-5) **Decisiones**: `doc/architecture/decisions/ADR-*.md`.
+5) **Decisiones**: `docs/architecture/decisions/ADR-*.md`.
 
 ## Principios
 - Prioridad: **calidad, claridad, arquitectura, patrones, testabilidad y mantenimiento**.
@@ -44,11 +44,11 @@ Antes de afirmar algo “como cierto”, verificar en este orden:
 - Endpoints legacy (si existen): **DEPRECATED** y siempre con `workspace_id` explícito (nunca implícito).
 
 ## Documentación
-- `README.md` raíz como portal y `doc/README.md` como índice.
-- Arquitectura en `doc/architecture/overview.md`.
-- API en `doc/api/http-api.md` (alineado a `shared/contracts/openapi.json`).
-- Datos en `doc/data/postgres-schema.md` (alineado a `backend/alembic/`).
-- Runbook en `doc/runbook/local-dev.md`.
+- `README.md` raíz como portal y `docs/README.md` como índice.
+- Arquitectura en `docs/architecture/overview.md`.
+- API en `docs/api/http-api.md` (alineado a `shared/contracts/openapi.json`).
+- Datos en `docs/data/postgres-schema.md` (alineado a `backend/alembic/`).
+- Runbook en `docs/runbook/local-dev.md`.
 - Si un cambio impacta docs, **actualizarlas en el mismo commit**.
 - Si hay docs viejos que contradicen v6, marcarlos como **HISTORICAL/Deprecated** o reemplazarlos.
 
@@ -59,5 +59,5 @@ Antes de afirmar algo “como cierto”, verificar en este orden:
 - **Sí hacer commit automáticamente** cuando el prompt indique “hacer cambios y commitear” (o cuando el objetivo sea cerrar un área completa).
 - **No hacer push** salvo que el prompt lo pida explícitamente.
 - `git add -p` recomendado si hay mezcla accidental de cambios.
-- Si el repo usa “hitos” (`doc/hitos/*`), actualizarlo solo cuando aplique (sin asumir nombre de rama).
+- Si el repo usa “hitos” (`docs/hitos/*`), actualizarlo solo cuando aplique (sin asumir nombre de rama).
 ```

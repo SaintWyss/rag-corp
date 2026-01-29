@@ -75,6 +75,27 @@ Los guards de endpoints combinan JWT role gates con permisos RBAC para API keys.
 
 ---
 
+## Permission Matrix (v6)
+
+| Endpoint / Accion | Admin (JWT) | Employee (JWT) | Service/API Key |
+|---|---|---|---|
+| `GET /v1/workspaces` | ✅ | ✅ | ❌ (user-only) |
+| `GET /v1/workspaces/{id}` | ✅ | ✅ | ❌ (user-only) |
+| `POST /v1/workspaces` | ✅ | ❌ | ❌ (user-only admin) |
+| `PATCH /v1/workspaces/{id}` / `publish` / `share` / `archive` | ✅ | ❌ | ❌ (user-only admin) |
+| `GET /v1/workspaces/{id}/documents` | ✅ | ✅ (si tiene acceso) | ✅ (`documents:read`) |
+| `POST /v1/workspaces/{id}/documents/upload` | ✅ | ✅ (owner/admin) | ✅ (`documents:create`) |
+| `DELETE /v1/workspaces/{id}/documents/{doc_id}` | ✅ | ✅ (owner/admin) | ✅ (`documents:delete`) |
+| `POST /v1/workspaces/{id}/query` / `ask` / `ask/stream` | ✅ | ✅ (si tiene acceso) | ✅ (`query:*`) |
+| `GET /v1/admin/audit` | ✅ | ❌ | ✅ (`admin:config`) |
+| `/auth/users*` | ✅ | ❌ | ✅ (`admin:config`) |
+
+Notas:
+- “Service/API Key” aplica a principals con `X-API-Key` y permisos RBAC o scopes legacy.
+- Los endpoints **user-only** usan `require_user_*` y bloquean principals de servicio.
+
+---
+
 ## Configuration
 
 ### RBAC_CONFIG
@@ -109,7 +130,7 @@ print(key_hash)
 ## Usage in Routes
 
 ```python
-from app.rbac import require_permissions, Permission
+from app.identity.rbac import require_permissions, Permission
 
 @router.post("/ingest/text")
 def ingest(_: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE))):

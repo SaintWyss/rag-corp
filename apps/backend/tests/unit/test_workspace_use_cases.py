@@ -243,7 +243,7 @@ def test_create_workspace_defaults_private_and_owner():
         CreateWorkspaceInput(
             name="Finance",
             description="Q1 budgets",
-            actor=_actor(owner_id, UserRole.EMPLOYEE),
+            actor=_actor(owner_id, UserRole.ADMIN),
         )
     )
 
@@ -252,6 +252,23 @@ def test_create_workspace_defaults_private_and_owner():
     assert result.workspace.owner_user_id == owner_id
     assert result.workspace.visibility == WorkspaceVisibility.PRIVATE
     assert result.workspace.description == "Q1 budgets"
+
+
+def test_employee_cannot_create_workspace():
+    employee_id = uuid4()
+    repo = FakeWorkspaceRepository()
+    use_case = CreateWorkspaceUseCase(repository=repo)
+
+    result = use_case.execute(
+        CreateWorkspaceInput(
+            name="Finance",
+            description="Q1 budgets",
+            actor=_actor(employee_id, UserRole.EMPLOYEE),
+        )
+    )
+
+    assert result.error is not None
+    assert result.error.code == WorkspaceErrorCode.FORBIDDEN
 
 
 def test_create_workspace_validates_visibility_and_name():

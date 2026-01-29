@@ -18,7 +18,7 @@ Antes de afirmar algo “como cierto” en backend (endpoints, config, tablas, s
 2) `backend/app/main.py`, `backend/app/routes.py`, `backend/app/auth_routes.py`
 3) `backend/alembic/versions/*`
 4) `compose*.yaml`, `package.json`, CI workflows
-5) Docs vigentes v6 (`doc/system/...`, `doc/api/http-api.md`, `doc/data/postgres-schema.md`)
+5) Docs vigentes v6 (`docs/system/...`, `docs/api/http-api.md`, `docs/data/postgres-schema.md`)
 
 ## Arquitectura (Clean Architecture real en este repo)
 - Capas y ubicaciones:
@@ -58,7 +58,7 @@ Antes de afirmar algo “como cierto” en backend (endpoints, config, tablas, s
 - Si cambiás schema o queries:
   - crear/ajustar migración Alembic,
   - actualizar repositorios,
-  - actualizar docs: `doc/data/postgres-schema.md`.
+  - actualizar docs: `docs/data/postgres-schema.md`.
 
 ## Contratos (OpenAPI → Orval)
 - Export OpenAPI: `backend/scripts/export_openapi.py` (requiere `--out`).

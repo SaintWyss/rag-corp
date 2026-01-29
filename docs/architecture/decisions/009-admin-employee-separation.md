@@ -30,7 +30,7 @@ We adopt a **Strict Separation Model** enforced at both Frontend (Routing) and B
 ### 2. Backend Access Control
 
 - **Provisioning**: Only Admins can create (`POST`), update (`PATCH`), or archive (`DELETE`) workspaces.
-  - Source: `apps/backend/app/interfaces/api/http/routes.py` (e.g., `create_workspace` L447 uses `require_admin`).
+  - Source: `apps/backend/app/interfaces/api/http/routes.py` (e.g., `create_workspace` uses `require_user_admin`).
 - **Data Isolation**:
   - **Listing**: The `ListWorkspacesUseCase` enforces filtering at the database level.
     - If `role=admin`: Can view all or filter by specific owner.
