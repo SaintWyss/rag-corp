@@ -4,7 +4,7 @@
 
 ### 1. **API Key de Google Gemini**
 
-**Problema**: La variable `GOOGLE_API_KEY` estaba vacía en [compose.yaml](compose.yaml).  
+**Problema**: La variable `GOOGLE_API_KEY` estaba vacía en [compose.yaml](../../compose.yaml).  
 **Solución**: Ahora usa `${GOOGLE_API_KEY}` para leer desde el entorno del host.
 
 **Acción requerida**:
@@ -19,7 +19,7 @@ echo "GOOGLE_API_KEY=tu_clave_aqui" > .env
 ### 2. **CORS Bloqueando Requests del Frontend**
 
 **Problema**: FastAPI no tenía configuración CORS, bloqueando llamadas desde localhost:3000.  
-**Solución**: Agregado middleware CORS en [apps/backend/app/main.py](apps/backend/app/main.py).
+**Solución**: Agregado middleware CORS en [apps/backend/app/main.py](../../apps/backend/app/main.py).
 
 ```python
 app.add_middleware(
@@ -35,7 +35,7 @@ app.add_middleware(
 
 ### 3. **Cliente de API Mal Usado**
 
-**Problema**: [apps/frontend/app/page.tsx](apps/frontend/app/page.tsx) usaba `@ts-ignore` y llamaba `.json()` incorrectamente.  
+**Problema**: [apps/frontend/app/page.tsx](../../apps/frontend/app/page.tsx) usaba `@ts-ignore` y llamaba `.json()` incorrectamente.  
 **Solución**: El cliente generado por Orval ya retorna `{ status, data }`, no necesita `.json()`.
 
 **Antes**:
@@ -57,7 +57,7 @@ setAnswer(res.data.answer); // ✅ Correcto
 ### 4. **Configuración de Next.js Duplicada**
 
 **Problema**: Existían `next.config.ts` y `next.config.mjs` simultáneamente.  
-**Solución**: Consolidada la configuración de rewrites (proxy al backend) en [next.config.ts](apps/frontend/next.config.ts).
+**Solución**: Consolidada la configuración de rewrites (proxy al backend) en [next.config.mjs](../../apps/frontend/next.config.mjs).
 
 **Nota**: `next.config.mjs` puede eliminarse manualmente si sigue presente.
 
@@ -66,7 +66,7 @@ setAnswer(res.data.answer); // ✅ Correcto
 ### 5. **Falta de Índice Vectorial**
 
 **Problema**: La tabla `chunks` no tenía índice para búsquedas vectoriales, resultando en queries lentas.  
-**Solución**: Agregado índice IVFFlat en [infra/postgres/init.sql](infra/postgres/init.sql).
+**Solución**: Agregado índice IVFFlat en [infra/postgres/init.sql](../../infra/postgres/init.sql).
 
 ```sql
 CREATE INDEX IF NOT EXISTS chunks_embedding_idx

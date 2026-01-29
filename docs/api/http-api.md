@@ -73,8 +73,8 @@ Autenticación via header `X-API-Key`. Ideal para scripts, CI/CD, e integracione
 
 ```bash
 # En .env
-API_KEYS_CONFIG='[{"key":"sk-test-123","name":"ci-bot","scopes":["ingest","ask"]}]'
-RBAC_CONFIG='{"ingest":["documents:*"],"ask":["query:*","ask:*"]}'
+API_KEYS_CONFIG='{"sk-test-123":["ingest","ask"]}'
+RBAC_CONFIG='{"roles":{"admin":{"permissions":["*"]},"readonly":{"permissions":["documents:read","query:search","query:ask"]}},"key_roles":{"TODO(verify: api key hash)":"admin"}}'
 ```
 
 #### Scopes disponibles
@@ -84,7 +84,6 @@ RBAC_CONFIG='{"ingest":["documents:*"],"ask":["query:*","ask:*"]}'
 | `ingest` | `/v1/workspaces/{ws_id}/documents/*`, `/v1/workspaces/{ws_id}/ingest/*` |
 | `ask` | `/v1/workspaces/{ws_id}/query`, `/v1/workspaces/{ws_id}/ask/*` |
 | `metrics` | `/metrics` |
-| `admin:*` | Todos los endpoints admin |
 | `*` | Acceso total |
 
 #### Ejemplo con API Key

@@ -47,7 +47,7 @@ pnpm docker:up
 pnpm dev
 ```
 
-For detailed setup instructions, see [docs/runbook/local-dev.md](docs/runbook/local-dev.md).
+For detailed setup instructions, see [docs/runbook/local-dev.md](../runbook/local-dev.md).
 
 ## Development Workflow
 

@@ -44,7 +44,7 @@ Este documento describe los patrones de diseño **actualmente implementados** en
 - `apps/backend/app/domain/entities/` no importa FastAPI ni SQLAlchemy
 - `apps/backend/app/domain/repositories.py` define Protocols (interfaces)
 
-**ADR:** [ADR-001-clean-architecture.md](./decisions/ADR-001-clean-architecture.md)
+**ADR:** [ADR-001-clean-architecture.md](../architecture/decisions/ADR-001-clean-architecture.md)
 
 ---
 

@@ -139,8 +139,8 @@ Implementa los ports del dominio.
 
 - **Repositories:** `PostgresDocumentRepository`, `PostgresWorkspaceRepository`
 - **Services:** `GoogleEmbeddingService`, `GoogleLLMService`
-- **Storage:** `S3FileStorage`
-- **Queue:** `RQJobQueue`
+- **Storage:** `S3FileStorageAdapter`
+- **Queue:** `RQDocumentProcessingQueue`
 - **Cache:** `EmbeddingCache` (memory o Redis)
 
 ### API (`apps/backend/app/`)
@@ -178,7 +178,7 @@ Capa de presentación HTTP.
 ### Política de acceso
 
 ```python
-# Centralizada en domain/policies/workspace_policy.py
+# Centralizada en apps/backend/app/domain/workspace_policy.py
 can_read(actor, workspace, acl)   # Ver, listar, chat
 can_write(actor, workspace)        # Upload, delete, reprocess
 can_admin(actor, workspace)        # Publicar, compartir, archivar

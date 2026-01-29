@@ -130,7 +130,7 @@ Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.m
 ## Versionado
 
 - **v6**: version actual del sistema y la documentacion.
-- **HISTORICAL v4**: especificacion de origen y reportes historicos (ver `docs/hitos/`).
+- **HISTORICAL v4**: especificacion de origen y reportes historicos (`TODO(verify)`).
 
 ---
 

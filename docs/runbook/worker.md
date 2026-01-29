@@ -66,7 +66,7 @@ PENDING ──► PROCESSING ──► READY
 
 ```bash
 # Solo worker
-pnpm docker:worker
+docker compose --profile worker up -d --build
 
 # Stack completo (incluye worker + storage)
 pnpm stack:full
@@ -80,7 +80,7 @@ export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rag
 export REDIS_URL=redis://localhost:6379
 export GOOGLE_API_KEY=...  # o FAKE_LLM=1 FAKE_EMBEDDINGS=1
 
-python -m app.worker
+python -m app.worker.worker
 ```
 
 ---
@@ -113,7 +113,7 @@ curl http://localhost:8001/readyz
 | `FAKE_LLM` | `0` | Usar LLM fake |
 | `FAKE_EMBEDDINGS` | `0` | Usar embeddings fake |
 | `WORKER_HTTP_PORT` | `8001` | Puerto HTTP del worker |
-| `WORKER_CONCURRENCY` | `2` | Jobs paralelos |
+| `WORKER_CONCURRENCY` | `2` | TODO(verify) |
 
 ---
 
