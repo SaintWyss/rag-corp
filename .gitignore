@@ -170,3 +170,4 @@ docs/prod_backup/
 *.lib
 *.dll
 *.dylib
+cookies.txt
