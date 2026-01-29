@@ -4,6 +4,7 @@ import {
   adminEnsureUser,
   adminGetUserIdByEmail,
   clearApiKeyStorage,
+  hasAdminCredentials,
   login,
   loginAsAdmin,
 } from "./helpers";
@@ -16,6 +17,9 @@ let targetWorkspaceId = "";
 let targetWorkspaceName = "";
 
 test.describe.serial("Role Separation & Isolation", () => {
+  const hasAdminEnv = hasAdminCredentials();
+  test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
+
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();

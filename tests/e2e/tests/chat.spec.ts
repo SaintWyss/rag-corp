@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { createWorkspace, setSessionApiKey } from "./helpers";
+import { createWorkspace, hasAdminCredentials, loginAsAdmin } from "./helpers";
 
 test.describe("Chat flow", () => {
-    const apiKey = process.env.TEST_API_KEY || "e2e-key";
+    const hasAdminEnv = hasAdminCredentials();
+
+    test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
 
     test.beforeEach(async ({ page }) => {
-        await setSessionApiKey(page, apiKey);
+        await loginAsAdmin(page);
         await page.goto("/chat");
         await expect(page).toHaveURL(/\/workspaces$/);
         await expect(page.getByTestId("workspaces-page")).toBeVisible();

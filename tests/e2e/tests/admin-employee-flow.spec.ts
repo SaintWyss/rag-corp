@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { clearApiKeyStorage } from "./helpers";
+import { clearApiKeyStorage, hasAdminCredentials } from "./helpers";
 const fs = require("fs");
 
 // Support both seeded demo users and distinct CI users
@@ -22,6 +22,9 @@ async function login(page: Page, email: string, password: string) {
 }
 
 test.describe.serial("Admin Provisioning & Employee Access", () => {
+  const hasAdminEnv = hasAdminCredentials();
+  test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
+
   test.beforeEach(async ({ page }) => {
     await clearApiKeyStorage(page);
   });

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { expect, type Page } from "@playwright/test";
 
 function requireEnv(name: string): string {
@@ -6,6 +8,10 @@ function requireEnv(name: string): string {
     throw new Error(`Faltan env vars (${name}). Ejecuta: pnpm run e2e:run`);
   }
   return value;
+}
+
+export function hasAdminCredentials(): boolean {
+  return Boolean(process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD);
 }
 
 // Origen único y validado para cookies
@@ -150,7 +156,7 @@ async function apiLogin(page: Page, email: string, password: string) {
     );
   }
 
-  return { role };
+  return { role, token, expiresIn };
 }
 
 export async function clearApiKeyStorage(page: Page) {
@@ -192,6 +198,92 @@ export async function login(page: Page, email: string, password: string) {
     page,
     "Si termina en /login acá, NO hay sesión en el browser"
   ).not.toHaveURL(/\/login/, { timeout: 15_000 });
+}
+
+async function getAdminToken(page: Page): Promise<string> {
+  const email = requireEnv("E2E_ADMIN_EMAIL");
+  const password = requireEnv("E2E_ADMIN_PASSWORD");
+  const { role, token } = await apiLogin(page, email, password);
+  if (role !== "admin") {
+    throw new Error(`E2E_ADMIN_EMAIL no es admin. role=${role} email=${email}`);
+  }
+  return token;
+}
+
+export async function createWorkspace(page: Page, name: string) {
+  const token = await getAdminToken(page);
+  const response = await page.request.post("/api/workspaces", {
+    data: { name },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok()) {
+    const body = await response.text();
+    throw new Error(
+      `Failed to create workspace: ${response.status()} ${body}`
+    );
+  }
+
+  const data: any = await response.json();
+  if (!data?.id) {
+    throw new Error(`Workspace create response missing id: ${JSON.stringify(data)}`);
+  }
+  return data.id as string;
+}
+
+export async function uploadDocumentAndWaitReady(
+  page: Page,
+  workspaceId: string,
+  title: string,
+  filePath: string
+): Promise<string> {
+  const fileBuffer = fs.readFileSync(filePath);
+  const filename = path.basename(filePath);
+
+  const upload = await page.request.post(
+    `/api/workspaces/${workspaceId}/documents/upload`,
+    {
+      multipart: {
+        title,
+        file: {
+          name: filename,
+          mimeType: "application/pdf",
+          buffer: fileBuffer,
+        },
+      },
+    }
+  );
+
+  if (!upload.ok()) {
+    const body = await upload.text();
+    throw new Error(`Upload failed: ${upload.status()} ${body}`);
+  }
+
+  const uploadData: any = await upload.json();
+  const documentId = uploadData?.id;
+  if (!documentId) {
+    throw new Error(`Upload response missing id: ${JSON.stringify(uploadData)}`);
+  }
+
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get(
+          `/api/workspaces/${workspaceId}/documents/${documentId}`
+        );
+        if (!res.ok()) {
+          return { ok: false, status: res.status(), state: "ERROR" };
+        }
+        const doc = (await res.json()) as { status?: string; error_message?: string };
+        return { ok: true, status: res.status(), state: doc.status ?? "UNKNOWN" };
+      },
+      { timeout: 60_000, message: "Document did not reach READY in time." }
+    )
+    .toMatchObject({ ok: true, state: "READY" });
+
+  return documentId as string;
 }
 
 export async function adminListUsers(page: Page): Promise<any[]> {

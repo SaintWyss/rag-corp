@@ -3,11 +3,15 @@ import { expect, test } from "@playwright/test";
 import {
     clearApiKeyStorage,
     createWorkspace,
+    hasAdminCredentials,
     loginAsAdmin,
     uploadDocumentAndWaitReady,
 } from "./helpers";
 
 test.describe("Full pipeline", () => {
+    const hasAdminEnv = hasAdminCredentials();
+    test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
+
     test("upload -> ready -> chat streaming", async ({ page }) => {
         await clearApiKeyStorage(page);
         await loginAsAdmin(page);

@@ -1,12 +1,14 @@
 import path from "path";
 import { expect, test } from "@playwright/test";
-import { createWorkspace, setSessionApiKey } from "./helpers";
+import { createWorkspace, hasAdminCredentials, loginAsAdmin } from "./helpers";
 
 test.describe("Sources flow", () => {
-    const apiKey = process.env.TEST_API_KEY || "e2e-key";
+    const hasAdminEnv = hasAdminCredentials();
+
+    test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
 
     test.beforeEach(async ({ page }) => {
-        await setSessionApiKey(page, apiKey);
+        await loginAsAdmin(page);
         await page.goto("/documents");
         await expect(page).toHaveURL(/\/workspaces$/);
         await expect(page.getByTestId("workspaces-page")).toBeVisible();
@@ -41,15 +43,14 @@ test.describe("Sources flow", () => {
         const status = page.getByTestId("source-detail-status");
         await expect(status).toBeVisible();
 
-        for (let i = 0; i < 12; i += 1) {
-            const text = (await status.textContent()) || "";
-            if (text.includes("READY")) {
-                break;
-            }
-            await page.getByTestId("sources-refresh").click();
-            await page.waitForTimeout(2000);
-        }
-
-        await expect(status).toHaveText(/READY/);
+        await expect
+            .poll(
+                async () => {
+                    await page.getByTestId("sources-refresh").click();
+                    return (await status.textContent()) || "";
+                },
+                { timeout: 60_000 }
+            )
+            .toContain("READY");
     });
 });
