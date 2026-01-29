@@ -38,7 +38,9 @@ from ...domain.services import EmbeddingService, TextChunkerService
 from ...domain.tags import normalize_tags
 from ...domain.access import normalize_allowed_roles
 from ...domain.workspace_policy import WorkspaceActor
-from .document_results import IngestDocumentResult
+from ...crosscutting.metrics import record_prompt_injection_detected
+from ..prompt_injection_detector import detect
+from .document_results import DocumentError, DocumentErrorCode, IngestDocumentResult
 from .workspace_access import resolve_workspace_for_write
 
 
@@ -70,6 +72,14 @@ class IngestDocumentUseCase:
         self.chunker = chunker
 
     def execute(self, input_data: IngestDocumentInput) -> IngestDocumentResult:
+        if not input_data.workspace_id:
+            return IngestDocumentResult(
+                error=DocumentError(
+                    code=DocumentErrorCode.VALIDATION_ERROR,
+                    message="workspace_id is required",
+                    resource="Workspace",
+                )
+            )
         _, error = resolve_workspace_for_write(
             workspace_id=input_data.workspace_id,
             actor=input_data.actor,
@@ -79,7 +89,7 @@ class IngestDocumentUseCase:
             return IngestDocumentResult(error=error)
 
         doc_id = uuid4()
-        metadata = input_data.metadata or {}
+        metadata = dict(input_data.metadata or {})
         tags = normalize_tags(metadata)
         allowed_roles = normalize_allowed_roles(metadata)
 
@@ -104,15 +114,42 @@ class IngestDocumentUseCase:
 
         embeddings = self.embedding_service.embed_batch(chunks)
 
-        chunk_entities: List[Chunk] = [
-            Chunk(
-                content=content,
-                embedding=embedding,
-                document_id=doc_id,
-                chunk_index=index,
+        detected_flags: set[str] = set()
+        detected_patterns: set[str] = set()
+        max_risk_score = 0.0
+
+        chunk_entities: List[Chunk] = []
+        for index, (content, embedding) in enumerate(zip(chunks, embeddings)):
+            detection = detect(content)
+            chunk_metadata = {}
+            if detection.patterns:
+                chunk_metadata = {
+                    "security_flags": detection.flags,
+                    "risk_score": detection.risk_score,
+                    "detected_patterns": detection.patterns,
+                }
+                for pattern in detection.patterns:
+                    record_prompt_injection_detected(pattern)
+                detected_flags.update(detection.flags)
+                detected_patterns.update(detection.patterns)
+                max_risk_score = max(max_risk_score, detection.risk_score)
+
+            chunk_entities.append(
+                Chunk(
+                    content=content,
+                    embedding=embedding,
+                    document_id=doc_id,
+                    chunk_index=index,
+                    metadata=chunk_metadata,
+                )
             )
-            for index, (content, embedding) in enumerate(zip(chunks, embeddings))
-        ]
+
+        if detected_patterns:
+            metadata["rag_security"] = {
+                "security_flags": sorted(detected_flags),
+                "risk_score": round(max_risk_score, 4),
+                "detected_patterns": sorted(detected_patterns),
+            }
 
         # R: Atomic save - document and chunks in single transaction
         self.repository.save_document_with_chunks(document, chunk_entities)

@@ -147,7 +147,8 @@ class TestAnswerQueryUseCase:
         # Assert
         assert result.error is None
         assert (
-            result.result.answer == "No encontré documentos relacionados a tu pregunta."
+            result.result.answer
+            == "No hay evidencia suficiente en las fuentes. ¿Podés precisar más (keywords/fecha/documento)?"
         )
         assert result.result.chunks == []
         assert result.result.metadata["chunks_found"] == 0
@@ -379,11 +380,11 @@ class TestAnswerQueryUseCase:
         call_args = mock_llm_service.generate_answer.call_args
         context = call_args.kwargs["context"]
 
-        # New format uses ContextBuilder with FRAGMENTO delimiters
+        # New format uses ContextBuilder with [S#] delimiters
         assert "First chunk." in context
         assert "Second chunk." in context
         assert "Third chunk." in context
-        assert "FRAGMENTO" in context  # Uses new delimiter format
+        assert "[S" in context  # Uses new delimiter format
 
     def test_execute_preserves_chunk_order(
         self,
@@ -433,6 +434,30 @@ class TestAnswerQueryUseCase:
             assert chunk.chunk_index == i
         for i, chunk in enumerate(result.result.chunks):
             assert chunk.chunk_index == i
+
+    def test_execute_requires_workspace_id(
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+    ):
+        """R: Should reject missing workspace_id."""
+        use_case = AnswerQueryUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            llm_service=mock_llm_service,
+            context_builder=mock_context_builder,
+        )
+
+        result = use_case.execute(
+            AnswerQueryInput(query="Test", workspace_id=None, actor=_ACTOR)
+        )
+
+        assert result.error is not None
+        assert result.error.code.value == "VALIDATION_ERROR"
 
     def test_execute_with_single_chunk(
         self,

@@ -43,6 +43,7 @@ class TestPromptLoader:
         assert "{context}" in template
         assert "{query}" in template
         assert "CONTEXTO" in template  # Spanish
+        assert "Policy Contract" in template
 
     def test_loader_caches_template(self):
         """R: Should cache template after first load."""
@@ -68,6 +69,7 @@ class TestPromptLoader:
         assert "What is the answer?" in formatted
         assert "{context}" not in formatted
         assert "{query}" not in formatted
+        assert "Policy Contract" in formatted
 
     def test_loader_file_not_found_raises(self):
         """R: Should raise FileNotFoundError for missing version."""
@@ -121,6 +123,14 @@ class TestPromptTemplateContent:
         # Check for security-related content
         assert "NUNCA" in template or "NEVER" in template
         assert "instrucciones" in template.lower() or "instructions" in template.lower()
+
+    def test_policy_is_prepended_once(self):
+        """R: Policy contract should be at start and only once."""
+        loader = PromptLoader(version="v1")
+        template = loader.get_template()
+
+        assert template.startswith("# Policy Contract")
+        assert template.count("# Policy Contract") == 1
 
     def test_v1_template_has_spanish_response_rule(self):
         """R: Should instruct to respond in Spanish."""

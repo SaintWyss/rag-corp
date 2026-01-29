@@ -127,6 +127,29 @@ def workspace_context(db_conn):
     db_conn.execute("DELETE FROM users WHERE id = %s", (owner_user_id,))
 
 
+@pytest.fixture(scope="module")
+def dual_workspace_context(db_conn):
+    owner_user_id = uuid4()
+    workspace_a = uuid4()
+    workspace_b = uuid4()
+    email = f"repo-owner-{owner_user_id}@example.com"
+    _insert_user(db_conn, owner_user_id, email)
+    _insert_workspace(db_conn, workspace_a, owner_user_id, f"Repo Workspace A {workspace_a}")
+    _insert_workspace(db_conn, workspace_b, owner_user_id, f"Repo Workspace B {workspace_b}")
+    yield {
+        "owner_user_id": owner_user_id,
+        "workspace_a": workspace_a,
+        "workspace_b": workspace_b,
+    }
+    db_conn.execute(
+        "DELETE FROM documents WHERE workspace_id = %s OR workspace_id = %s",
+        (workspace_a, workspace_b),
+    )
+    db_conn.execute("DELETE FROM workspaces WHERE id = %s", (workspace_a,))
+    db_conn.execute("DELETE FROM workspaces WHERE id = %s", (workspace_b,))
+    db_conn.execute("DELETE FROM users WHERE id = %s", (owner_user_id,))
+
+
 @pytest.fixture(scope="function")
 def cleanup_test_data(db_conn):
     """
@@ -366,6 +389,67 @@ class TestPostgresDocumentRepositoryVectorSearch:
                 "DELETE FROM workspaces WHERE id = %s",
                 (other_workspace_id,),
             )
+
+    def test_find_similar_chunks_no_cross_workspace_leak(
+        self, db_repository, cleanup_test_data, dual_workspace_context
+    ):
+        """R: Ensure retrieval never returns chunks from another workspace."""
+        workspace_a = dual_workspace_context["workspace_a"]
+        workspace_b = dual_workspace_context["workspace_b"]
+
+        doc_a = uuid4()
+        doc_b = uuid4()
+        cleanup_test_data.extend([doc_a, doc_b])
+
+        db_repository.save_document(
+            Document(
+                id=doc_a,
+                title="Alpha Doc",
+                workspace_id=workspace_a,
+            )
+        )
+        db_repository.save_document(
+            Document(
+                id=doc_b,
+                title="Beta Doc",
+                workspace_id=workspace_b,
+            )
+        )
+
+        shared_embedding = [0.5] * 768
+        db_repository.save_chunks(
+            doc_a,
+            [
+                Chunk(
+                    content="Alpha",
+                    embedding=shared_embedding,
+                    document_id=doc_a,
+                    chunk_index=0,
+                )
+            ],
+            workspace_id=workspace_a,
+        )
+        db_repository.save_chunks(
+            doc_b,
+            [
+                Chunk(
+                    content="Beta",
+                    embedding=shared_embedding,
+                    document_id=doc_b,
+                    chunk_index=0,
+                )
+            ],
+            workspace_id=workspace_b,
+        )
+
+        results = db_repository.find_similar_chunks(
+            embedding=shared_embedding,
+            top_k=5,
+            workspace_id=workspace_a,
+        )
+
+        assert results
+        assert all(chunk.document_id == doc_a for chunk in results)
 
     def test_find_similar_chunks_mmr_scoped_to_workspace(
         self, db_repository, db_conn, workspace_context

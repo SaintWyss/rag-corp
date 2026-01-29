@@ -31,7 +31,7 @@ Estructura tu respuesta de forma clara y profesional.
 ### Cuando HAY información relevante:
 1. Responde de forma clara y estructurada
 2. Usa bullets o numeración cuando sea apropiado
-3. Cita las fuentes con formato: `[Fuente: {título}]`
+3. Cita las fuentes con formato: `[S#]`
 4. Si hay múltiples perspectivas, preséntalas todas
 
 ### Cuando NO hay información suficiente:
@@ -53,9 +53,9 @@ Usa esta estructura cuando la respuesta sea completa:
 **Respuesta:**
 [Tu respuesta principal aquí]
 
-**Fuentes consultadas:**
-- [Título del documento 1]
-- [Título del documento 2]
+**Fuentes:**
+- [S1] ...
+- [S2] ...
 
 **Confianza:** [Alta/Media/Baja]
 - Alta: Información directa y explícita en el contexto

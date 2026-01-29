@@ -53,6 +53,11 @@ _embedding_cache_misses: Optional["Counter"] = None
 _worker_processed_total: Optional["Counter"] = None
 _worker_failed_total: Optional["Counter"] = None
 _worker_duration: Optional["Histogram"] = None
+_policy_refusal_total: Optional["Counter"] = None
+_prompt_injection_detected_total: Optional["Counter"] = None
+_cross_scope_block_total: Optional["Counter"] = None
+_answer_without_sources_total: Optional["Counter"] = None
+_sources_returned_count: Optional["Histogram"] = None
 
 
 def _init_metrics() -> None:
@@ -61,6 +66,9 @@ def _init_metrics() -> None:
     global _embed_latency, _retrieve_latency, _llm_latency
     global _embedding_cache_hits, _embedding_cache_misses
     global _worker_processed_total, _worker_failed_total, _worker_duration
+    global _policy_refusal_total, _prompt_injection_detected_total
+    global _cross_scope_block_total, _answer_without_sources_total
+    global _sources_returned_count
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -136,6 +144,39 @@ def _init_metrics() -> None:
         "rag_worker_duration_seconds",
         "Worker document processing duration in seconds",
         buckets=(0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+        registry=_registry,
+    )
+
+    _policy_refusal_total = Counter(
+        "rag_policy_refusal_total",
+        "Total policy refusals",
+        ["reason"],
+        registry=_registry,
+    )
+
+    _prompt_injection_detected_total = Counter(
+        "rag_prompt_injection_detected_total",
+        "Prompt injection detections by pattern",
+        ["pattern"],
+        registry=_registry,
+    )
+
+    _cross_scope_block_total = Counter(
+        "rag_cross_scope_block_total",
+        "Cross-scope or missing scope blocks",
+        registry=_registry,
+    )
+
+    _answer_without_sources_total = Counter(
+        "rag_answer_without_sources_total",
+        "Answers returned without sources section",
+        registry=_registry,
+    )
+
+    _sources_returned_count = Histogram(
+        "rag_sources_returned_count",
+        "Number of sources returned in RAG responses",
+        buckets=(0, 1, 2, 3, 5, 8, 13, 21),
         registry=_registry,
     )
 
@@ -245,6 +286,46 @@ def observe_worker_duration(duration_seconds: float) -> None:
         return
     if _worker_duration:
         _worker_duration.observe(duration_seconds)
+
+
+def record_policy_refusal(reason: str) -> None:
+    """R: Record policy refusal with reason label."""
+    if not _prometheus_available:
+        return
+    if _policy_refusal_total:
+        _policy_refusal_total.labels(reason=reason).inc()
+
+
+def record_prompt_injection_detected(pattern: str) -> None:
+    """R: Record prompt injection detection by pattern slug."""
+    if not _prometheus_available:
+        return
+    if _prompt_injection_detected_total:
+        _prompt_injection_detected_total.labels(pattern=pattern).inc()
+
+
+def record_cross_scope_block(count: int = 1) -> None:
+    """R: Record cross-scope block count."""
+    if not _prometheus_available:
+        return
+    if _cross_scope_block_total:
+        _cross_scope_block_total.inc(count)
+
+
+def record_answer_without_sources(count: int = 1) -> None:
+    """R: Record answers without sources section."""
+    if not _prometheus_available:
+        return
+    if _answer_without_sources_total:
+        _answer_without_sources_total.inc(count)
+
+
+def observe_sources_returned_count(count: int) -> None:
+    """R: Observe number of sources returned."""
+    if not _prometheus_available:
+        return
+    if _sources_returned_count:
+        _sources_returned_count.observe(count)
 
 
 def _normalize_endpoint(path: str) -> str:

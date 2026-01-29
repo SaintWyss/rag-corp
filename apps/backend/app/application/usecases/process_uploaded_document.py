@@ -13,6 +13,8 @@ from uuid import UUID
 import logging
 
 from ...domain.entities import Chunk
+from ...crosscutting.metrics import record_prompt_injection_detected
+from ..prompt_injection_detector import detect
 from ...domain.repositories import DocumentRepository
 from ...domain.services import (
     DocumentTextExtractor,
@@ -67,6 +69,9 @@ class ProcessUploadedDocumentUseCase:
     def execute(
         self, input_data: ProcessUploadedDocumentInput
     ) -> ProcessUploadedDocumentOutput:
+        if not input_data.workspace_id:
+            logger.error("Process document: workspace_id is required")
+            return ProcessUploadedDocumentOutput(status="FAILED", chunks_created=0)
         document_id = input_data.document_id
         document = self.repository.get_document(
             document_id, workspace_id=input_data.workspace_id
@@ -113,17 +118,29 @@ class ProcessUploadedDocumentUseCase:
 
             if chunks:
                 embeddings = self.embedding_service.embed_batch(chunks)
-                chunk_entities = [
-                    Chunk(
-                        content=content_text,
-                        embedding=embedding,
-                        document_id=document_id,
-                        chunk_index=index,
+                chunk_entities = []
+                for index, (content_text, embedding) in enumerate(
+                    zip(chunks, embeddings)
+                ):
+                    detection = detect(content_text)
+                    chunk_metadata = {}
+                    if detection.patterns:
+                        chunk_metadata = {
+                            "security_flags": detection.flags,
+                            "risk_score": detection.risk_score,
+                            "detected_patterns": detection.patterns,
+                        }
+                        for pattern in detection.patterns:
+                            record_prompt_injection_detected(pattern)
+                    chunk_entities.append(
+                        Chunk(
+                            content=content_text,
+                            embedding=embedding,
+                            document_id=document_id,
+                            chunk_index=index,
+                            metadata=chunk_metadata,
+                        )
                     )
-                    for index, (content_text, embedding) in enumerate(
-                        zip(chunks, embeddings)
-                    )
-                ]
                 self.repository.save_chunks(
                     document_id, chunk_entities, workspace_id=workspace_id
                 )

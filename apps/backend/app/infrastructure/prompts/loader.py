@@ -24,6 +24,7 @@ from ...crosscutting.logger import logger
 
 # R: Directory containing prompt templates
 PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+POLICY_FILENAME = "policy_contract_es.md"
 
 
 class PromptLoader:
@@ -40,6 +41,7 @@ class PromptLoader:
         """
         self.version = version
         self._template: Optional[str] = None
+        self._policy: Optional[str] = None
 
     def get_template(self) -> str:
         """
@@ -52,13 +54,11 @@ class PromptLoader:
             FileNotFoundError: If template file doesn't exist
         """
         if self._template is None:
-            self._template = self._load_template()
+            self._template = self._compose_template()
         return self._template
 
     def _load_template(self) -> str:
-        """
-        R: Load template from file.
-        """
+        """R: Load template from file."""
         filename = f"{self.version}_answer_es.md"
         filepath = PROMPTS_DIR / filename
 
@@ -75,6 +75,30 @@ class PromptLoader:
             extra={"version": self.version, "chars": len(template)},
         )
         return template
+
+    def _load_policy(self) -> str:
+        """R: Load policy contract from file."""
+        filepath = PROMPTS_DIR / POLICY_FILENAME
+        if not filepath.exists():
+            logger.error(
+                f"Policy contract not found: {filepath}",
+                extra={"version": self.version},
+            )
+            raise FileNotFoundError(f"Policy contract not found: {filepath}")
+        policy = filepath.read_text(encoding="utf-8").strip()
+        logger.info(
+            "Loaded policy contract",
+            extra={"chars": len(policy)},
+        )
+        return policy
+
+    def _compose_template(self) -> str:
+        """R: Compose policy contract + versioned prompt template."""
+        if self._policy is None:
+            self._policy = self._load_policy()
+        template = self._load_template()
+        # R: Policy must appear exactly once, always before the template.
+        return f"{self._policy}\n\n{template}"
 
     def format(self, context: str, query: str) -> str:
         """

@@ -187,6 +187,37 @@ class PostgresWorkspaceRepository:
         where_sql = f"WHERE {' AND '.join(conditions)}"
         return self._select_workspaces(where_sql=where_sql, params=params)
 
+    def list_workspaces_visible_to_user(
+        self,
+        user_id: UUID,
+        *,
+        include_archived: bool = False,
+    ) -> list[Workspace]:
+        """
+        R: List workspaces visible to an employee in a single query.
+        """
+        conditions: list[str] = [
+            "("
+            "owner_user_id = %s "
+            "OR visibility = %s "
+            "OR (visibility = %s AND EXISTS ("
+            "SELECT 1 FROM workspace_acl wa "
+            "WHERE wa.workspace_id = workspaces.id AND wa.user_id = %s"
+            ")))"
+        ]
+        params: list[object] = [
+            user_id,
+            WorkspaceVisibility.ORG_READ.value,
+            WorkspaceVisibility.SHARED.value,
+            user_id,
+        ]
+
+        if not include_archived:
+            conditions.append("archived_at IS NULL")
+
+        where_sql = f"WHERE {' AND '.join(conditions)}"
+        return self._select_workspaces(where_sql=where_sql, params=params)
+
     def get_workspace(self, workspace_id: UUID) -> Workspace | None:
         """
         R: Fetch a workspace by ID.

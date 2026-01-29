@@ -35,7 +35,9 @@ from ..domain.services import EmbeddingService
 from ..crosscutting.timing import StageTimings
 from .context_builder import ContextBuilder, get_context_builder
 
-NO_RESULTS_ANSWER = "No encontré documentos relacionados a tu pregunta."
+NO_RESULTS_ANSWER = (
+    "No hay evidencia suficiente en las fuentes. ¿Podés precisar más (keywords/fecha/documento)?"
+)
 
 
 @dataclass
@@ -72,6 +74,8 @@ def run_rag_retrieval(
     R: Shared retrieval + context pipeline for sync and streaming flows.
     """
     timings = timings or StageTimings()
+    if not workspace_id:
+        raise ValueError("workspace_id is required")
 
     if top_k <= 0:
         return RagRetrievalResult(

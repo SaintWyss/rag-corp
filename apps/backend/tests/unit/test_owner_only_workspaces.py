@@ -50,10 +50,15 @@ pytestmark = pytest.mark.unit
 class FakeWorkspaceRepository:
     """Minimal fake repository implementing the methods required by v6 use cases."""
 
-    def __init__(self, workspaces: list[Workspace] | None = None):
+    def __init__(
+        self,
+        workspaces: list[Workspace] | None = None,
+        acl: dict[UUID, list[UUID]] | None = None,
+    ):
         self._workspaces: dict[UUID, Workspace] = {
             ws.id: ws for ws in (workspaces or [])
         }
+        self._acl = acl or {}
 
     def list_workspaces(
         self,
@@ -93,6 +98,28 @@ class FakeWorkspaceRepository:
         result = [ws for ws_id, ws in self._workspaces.items() if ws_id in wanted]
         if not include_archived:
             result = [ws for ws in result if ws.archived_at is None]
+        return result
+
+    def list_workspaces_visible_to_user(
+        self,
+        user_id: UUID,
+        *,
+        include_archived: bool = False,
+    ) -> list[Workspace]:
+        result = []
+        for ws in self._workspaces.values():
+            if not include_archived and ws.archived_at is not None:
+                continue
+            if ws.owner_user_id == user_id:
+                result.append(ws)
+                continue
+            if ws.visibility == WorkspaceVisibility.ORG_READ:
+                result.append(ws)
+                continue
+            if ws.visibility == WorkspaceVisibility.SHARED:
+                members = self._acl.get(ws.id, [])
+                if user_id in members:
+                    result.append(ws)
         return result
 
     def get_workspace(self, workspace_id: UUID) -> Workspace | None:
@@ -195,10 +222,12 @@ class TestListWorkspacesV6:
             visibility=WorkspaceVisibility.SHARED,
         )
 
+        acl_map = {ws_other_shared.id: [employee_id]}
         repo = FakeWorkspaceRepository(
-            [ws_own_private, ws_other_private, ws_other_org, ws_other_shared]
+            [ws_own_private, ws_other_private, ws_other_org, ws_other_shared],
+            acl=acl_map,
         )
-        acl_repo = FakeWorkspaceAclRepository({ws_other_shared.id: [employee_id]})
+        acl_repo = FakeWorkspaceAclRepository(acl_map)
         use_case = ListWorkspacesUseCase(repo, acl_repo)
 
         result = use_case.execute(actor=_actor(employee_id, UserRole.EMPLOYEE))

@@ -132,9 +132,12 @@ class Chunk:
     content: str
     embedding: List[float]
     document_id: Optional[UUID] = None
+    document_title: Optional[str] = None
+    document_source: Optional[str] = None
     chunk_index: Optional[int] = None
     chunk_id: Optional[UUID] = None
     similarity: Optional[float] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def similarity_score(self, other_embedding: List[float]) -> float:
         """

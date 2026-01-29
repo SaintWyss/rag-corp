@@ -77,6 +77,16 @@ class PostgresDocumentRepository:
 
     def _require_workspace_id(self, workspace_id: UUID | None, action: str) -> UUID:
         if workspace_id is None:
+            try:
+                from ...crosscutting.metrics import record_cross_scope_block
+
+                record_cross_scope_block()
+            except Exception:
+                pass
+            logger.warning(
+                "PostgresDocumentRepository: workspace_id required",
+                extra={"action": action},
+            )
             raise DatabaseError(f"workspace_id is required for {action}")
         return workspace_id
 
@@ -325,6 +335,7 @@ class PostgresDocumentRepository:
                         chunk.chunk_index or idx,
                         chunk.content,
                         chunk.embedding,
+                        Json(chunk.metadata or {}),
                     )
                     for idx, chunk in enumerate(chunks)
                 ]
@@ -332,8 +343,8 @@ class PostgresDocumentRepository:
                 # R: Batch insert using executemany
                 conn.executemany(
                     """
-                    INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     """,
                     batch_data,
                 )
@@ -418,14 +429,15 @@ class PostgresDocumentRepository:
                                 chunk.chunk_index or idx,
                                 chunk.content,
                                 chunk.embedding,
+                                Json(chunk.metadata or {}),
                             )
                             for idx, chunk in enumerate(chunks)
                         ]
 
                         conn.executemany(
                             """
-                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
-                            VALUES (%s, %s, %s, %s, %s)
+                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
+                            VALUES (%s, %s, %s, %s, %s, %s)
                             """,
                             batch_data,
                         )
@@ -608,9 +620,12 @@ class PostgresDocumentRepository:
                     SELECT
                       c.id,
                       c.document_id,
+                      d.title,
+                      d.source,
                       c.chunk_index,
                       c.content,
                       c.embedding,
+                      c.metadata,
                       (1 - (c.embedding <=> %s::vector)) as score
                     FROM chunks c
                     JOIN documents d ON d.id = c.document_id
@@ -629,10 +644,13 @@ class PostgresDocumentRepository:
             Chunk(
                 chunk_id=r[0],
                 document_id=r[1],
-                chunk_index=r[2],
-                content=r[3],
-                embedding=r[4],
-                similarity=float(r[5]) if r[5] is not None else None,
+                document_title=r[2],
+                document_source=r[3],
+                chunk_index=r[4],
+                content=r[5],
+                embedding=r[6],
+                metadata=r[7] or {},
+                similarity=float(r[8]) if r[8] is not None else None,
             )
             for r in rows
         ]

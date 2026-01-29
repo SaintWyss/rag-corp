@@ -55,39 +55,20 @@ class ListWorkspacesUseCase:
             )
             return WorkspaceListResult(workspaces=workspaces)
 
-        # Employee: return all workspaces visible under policy (owned + org-visible + shared).
-        owned = self.repository.list_workspaces(
-            owner_user_id=actor.user_id,
+        # Employee: single-query listing (owned + org-visible + shared via ACL).
+        combined = self.repository.list_workspaces_visible_to_user(
+            actor.user_id,
             include_archived=include_archived,
         )
-
-        org_read = self.repository.list_workspaces_by_visibility(
-            WorkspaceVisibility.ORG_READ,
-            include_archived=include_archived,
-        )
-
-        shared_ids = self.acl_repository.list_workspaces_for_user(actor.user_id)
-        shared = self.repository.list_workspaces_by_ids(
-            shared_ids,
-            include_archived=include_archived,
-        )
-
-        # De-duplicate by ID (owned may overlap with shared/org_read)
-        combined = []
-        seen_ids: set[UUID] = set()
-        for workspace in owned + shared + org_read:
-            if workspace.id in seen_ids:
-                continue
-            seen_ids.add(workspace.id)
-            combined.append(workspace)
 
         # Still apply can_read_workspace for consistent enforcement.
         visible = []
         for workspace in combined:
-            acl_user_ids = None
+            shared_ids = None
             if workspace.visibility == WorkspaceVisibility.SHARED:
-                acl_user_ids = self.acl_repository.list_workspace_acl(workspace.id)
-            if can_read_workspace(workspace, actor, shared_user_ids=acl_user_ids):
+                # R: Repo already filtered by ACL; avoid N+1 by passing actor as shared member.
+                shared_ids = [actor.user_id]
+            if can_read_workspace(workspace, actor, shared_user_ids=shared_ids):
                 visible.append(workspace)
 
         return WorkspaceListResult(workspaces=visible)

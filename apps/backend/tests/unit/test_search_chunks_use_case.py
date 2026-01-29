@@ -191,6 +191,31 @@ class TestSearchChunksUseCase:
             workspace_id=_WORKSPACE.id,
         )
 
+    def test_execute_requires_workspace_id(
+        self,
+        mock_repository,
+        mock_embedding_service,
+    ):
+        """R: Should reject missing workspace_id."""
+        use_case = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+        )
+
+        result = use_case.execute(
+            SearchChunksInput(
+                query="test",
+                workspace_id=None,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is not None
+        assert result.error.code.value == "VALIDATION_ERROR"
+
 
 @pytest.mark.unit
 class TestSearchChunksInput:

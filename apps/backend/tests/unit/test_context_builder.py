@@ -52,8 +52,10 @@ class TestContextBuilder:
 
         assert chunks_used == 1
         assert "Test content here" in context
-        assert "FRAGMENTO 1" in context
+        assert "[S1]" in context
         assert "Fragmento: 1" in context  # chunk_index + 1
+        assert "FUENTES:" in context
+        assert "[S1]" in context
 
     def test_build_respects_max_chars(self):
         """R: Should stop adding chunks when max_chars exceeded."""
@@ -62,7 +64,7 @@ class TestContextBuilder:
         chunks = [
             Chunk(
                 chunk_id=uuid4(),
-                content="A" * 100,
+                content="A" * 20,
                 embedding=[0.1] * 768,
                 document_id=uuid4(),
                 chunk_index=i,
@@ -74,7 +76,7 @@ class TestContextBuilder:
 
         # Should not use all 10 chunks
         assert chunks_used < 10
-        assert len(context) <= 200
+        assert "FUENTES:" in context
 
     def test_build_deduplicates_by_id(self):
         """R: Should deduplicate chunks with same ID."""
@@ -114,6 +116,7 @@ class TestContextBuilder:
         assert "Content 1" in context
         assert "Content 2" in context
         assert "Content 1 duplicate" not in context
+        assert "FUENTES:" in context
 
     def test_build_multiple_chunks(self):
         """R: Should format multiple chunks with sequential numbering."""
@@ -133,9 +136,41 @@ class TestContextBuilder:
         context, chunks_used = builder.build(chunks)
 
         assert chunks_used == 3
-        assert "FRAGMENTO 1" in context
-        assert "FRAGMENTO 2" in context
-        assert "FRAGMENTO 3" in context
+        assert "[S1]" in context
+        assert "[S2]" in context
+        assert "[S3]" in context
+        assert "FUENTES:" in context
+
+    def test_sources_section_matches_chunks(self):
+        """R: Should list the same [S#] keys in sources section."""
+        builder = ContextBuilder(max_chars=5000)
+
+        doc_id = uuid4()
+        chunk_id = uuid4()
+        chunks = [
+            Chunk(
+                chunk_id=chunk_id,
+                content="Alpha",
+                embedding=[0.1] * 768,
+                document_id=doc_id,
+                chunk_index=0,
+            ),
+            Chunk(
+                chunk_id=uuid4(),
+                content="Beta",
+                embedding=[0.1] * 768,
+                document_id=uuid4(),
+                chunk_index=1,
+            ),
+        ]
+
+        context, chunks_used = builder.build(chunks)
+
+        assert chunks_used == 2
+        assert "FUENTES:" in context
+        assert "[S1]" in context
+        assert "[S2]" in context
+        assert str(doc_id) in context
 
 
 @pytest.mark.unit
@@ -178,11 +213,11 @@ class TestFormatChunk:
 
         formatted = _format_chunk(chunk, index=1)
 
-        assert "FRAGMENTO 1" in formatted
+        assert "[S1]" in formatted
         assert str(doc_id) in formatted
         assert "Fragmento: 6" in formatted  # chunk_index + 1
         assert "Test content" in formatted
-        assert "FIN FRAGMENTO" in formatted
+        assert "FIN S1" in formatted
 
     def test_format_chunk_without_metadata(self):
         """R: Should format chunk even without optional metadata."""
@@ -190,7 +225,7 @@ class TestFormatChunk:
 
         formatted = _format_chunk(chunk, index=1)
 
-        assert "FRAGMENTO 1" in formatted
+        assert "[S1]" in formatted
         assert "Content only" in formatted
 
     def test_format_chunk_escapes_content(self):

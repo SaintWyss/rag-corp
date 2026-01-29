@@ -124,6 +124,37 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
         self._sort_workspaces(result)
         return result
 
+    def list_workspaces_visible_to_user(
+        self,
+        user_id: UUID,
+        *,
+        include_archived: bool = False,
+    ) -> List[Workspace]:
+        """
+        R: List workspaces visible to a user (owned + ORG_READ + SHARED if in shared_user_ids).
+        """
+        with self._lock:
+            workspaces = list(self._workspaces.values())
+
+        result: List[Workspace] = []
+        for workspace in workspaces:
+            if not include_archived and workspace.archived_at is not None:
+                continue
+            if workspace.owner_user_id == user_id:
+                result.append(workspace)
+                continue
+            if workspace.visibility == WorkspaceVisibility.ORG_READ:
+                result.append(workspace)
+                continue
+            if (
+                workspace.visibility == WorkspaceVisibility.SHARED
+                and user_id in set(workspace.shared_user_ids or [])
+            ):
+                result.append(workspace)
+
+        self._sort_workspaces(result)
+        return result
+
     def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
         """R: Fetch a workspace by ID."""
         with self._lock:

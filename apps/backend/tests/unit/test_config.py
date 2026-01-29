@@ -44,6 +44,8 @@ class TestSettings:
         assert settings.max_query_chars == 2_000
         assert settings.max_title_chars == 200
         assert settings.max_source_chars == 500
+        assert settings.rag_injection_filter_mode == "off"
+        assert settings.rag_injection_risk_threshold == 0.6
 
     def test_custom_chunk_settings(self, monkeypatch):
         """Settings respects custom chunk configuration."""
@@ -210,6 +212,38 @@ class TestSettings:
         settings.validate_chunk_params()  # Should not raise
 
         assert settings.chunk_overlap == 0
+
+    def test_invalid_injection_filter_mode_fails(self, monkeypatch):
+        """Invalid rag_injection_filter_mode raises ValidationError."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("RAG_INJECTION_FILTER_MODE", "block")
+
+        from pydantic import ValidationError
+        from app.crosscutting.config import Settings
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert "rag_injection_filter_mode must be off, downrank, or exclude" in str(
+            exc_info.value
+        )
+
+    def test_invalid_injection_threshold_fails(self, monkeypatch):
+        """Invalid rag_injection_risk_threshold raises ValidationError."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("RAG_INJECTION_RISK_THRESHOLD", "1.5")
+
+        from pydantic import ValidationError
+        from app.crosscutting.config import Settings
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert "rag_injection_risk_threshold must be between 0 and 1" in str(
+            exc_info.value
+        )
 
     def test_production_rejects_default_jwt_secret(self, monkeypatch):
         """Production must fail-fast with insecure default JWT secret."""

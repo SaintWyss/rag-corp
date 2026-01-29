@@ -235,12 +235,15 @@ def get_answer_query_use_case() -> AnswerQueryUseCase:
     """
     R: Create AnswerQueryUseCase with injected dependencies.
     """
+    settings = get_settings()
     return AnswerQueryUseCase(
         repository=get_document_repository(),
         workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
         embedding_service=get_embedding_service(),
         llm_service=get_llm_service(),
+        injection_filter_mode=settings.rag_injection_filter_mode,
+        injection_risk_threshold=settings.rag_injection_risk_threshold,
     )
 
 
@@ -262,11 +265,14 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
     """
     R: Create SearchChunksUseCase with injected dependencies.
     """
+    settings = get_settings()
     return SearchChunksUseCase(
         repository=get_document_repository(),
         workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
         embedding_service=get_embedding_service(),
+        injection_filter_mode=settings.rag_injection_filter_mode,
+        injection_risk_threshold=settings.rag_injection_risk_threshold,
     )
 
 

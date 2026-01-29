@@ -96,6 +96,44 @@ The RAG system includes protections against prompt injection:
 - System instructions cannot be overridden by document content
 - User input is sanitized before embedding
 
+#### Prompt Policy Contract
+- Policy central: `apps/backend/app/prompts/policy_contract_es.md`
+- Orden de instrucciones: system/developer > user > retrieved content
+- Contenido recuperado es input NO CONFIABLE
+- Respuestas deben citar fuentes [S#] y terminar con “Fuentes”
+- Sin evidencia suficiente: responder el mensaje estándar y pedir precisión
+
+#### Workspace Scoping
+- Scope estricto por `workspace_id` en API, use cases y repositorio
+- No existe `section_id` (no hay scoping por sección)
+- Cualquier operación sin `workspace_id` válido se rechaza
+
+#### Prompt Injection Detection (ingest)
+- Detector heurístico en `apps/backend/app/application/prompt_injection_detector.py`
+- Metadata en chunks:
+  - `security_flags`, `risk_score`, `detected_patterns`
+- Modos de filtrado en retrieval:
+  - `off` (default), `downrank`, `exclude`
+  - Config vía `RAG_INJECTION_FILTER_MODE`, `RAG_INJECTION_RISK_THRESHOLD`
+
+#### Observabilidad mínima
+- `rag_policy_refusal_total{reason}`
+- `rag_prompt_injection_detected_total{pattern}`
+- `rag_cross_scope_block_total`
+- `rag_answer_without_sources_total`
+- `rag_sources_returned_count`
+
+#### Tests relevantes
+Unit:
+```
+pytest -q apps/backend/tests/unit
+```
+Integration:
+```
+RUN_INTEGRATION=1 pytest -q apps/backend/tests/integration/test_postgres_document_repo.py
+RUN_INTEGRATION=1 pytest -q apps/backend/tests/integration/test_rag_security_pack.py
+```
+
 ### Data Privacy
 
 - Documents are stored with embeddings in PostgreSQL
@@ -116,4 +154,4 @@ This project follows security best practices aligned with:
 
 ---
 
-*Last updated: 2026-01-13*
+*Last updated: 2026-01-29*

@@ -255,7 +255,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -433,7 +433,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -619,7 +619,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -973,7 +973,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -1161,7 +1161,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -6940,7 +6940,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__admin_routes__WorkspaceRes"
+                  "$ref": "#/components/schemas/WorkspaceRes"
                 }
               }
             }
@@ -7486,7 +7486,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -7665,7 +7665,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -7852,7 +7852,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -8208,7 +8208,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -8397,7 +8397,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
                 }
               }
             }
@@ -14357,107 +14357,6 @@
             "type": "string",
             "title": "Name"
           },
-          "visibility": {
-            "$ref": "#/components/schemas/WorkspaceVisibility"
-          },
-          "owner_user_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner User Id"
-          },
-          "acl": {
-            "$ref": "#/components/schemas/WorkspaceACL"
-          },
-          "created_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
-          },
-          "updated_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
-          },
-          "archived_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Archived At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "visibility",
-          "acl"
-        ],
-        "title": "WorkspaceRes"
-      },
-      "WorkspaceVisibility": {
-        "type": "string",
-        "enum": [
-          "PRIVATE",
-          "ORG_READ",
-          "SHARED"
-        ],
-        "title": "WorkspaceVisibility",
-        "description": "R: Workspace visibility options."
-      },
-      "WorkspacesListRes": {
-        "properties": {
-          "workspaces": {
-            "items": {
-              "$ref": "#/components/schemas/WorkspaceRes"
-            },
-            "type": "array",
-            "title": "Workspaces"
-          }
-        },
-        "type": "object",
-        "required": [
-          "workspaces"
-        ],
-        "title": "WorkspacesListRes"
-      },
-      "app__api__admin_routes__WorkspaceRes": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
           "description": {
             "anyOf": [
               {
@@ -14532,11 +14431,37 @@
         "title": "WorkspaceRes",
         "description": "Workspace response for admin endpoints."
       },
+      "WorkspaceVisibility": {
+        "type": "string",
+        "enum": [
+          "PRIVATE",
+          "ORG_READ",
+          "SHARED"
+        ],
+        "title": "WorkspaceVisibility",
+        "description": "R: Workspace visibility options."
+      },
+      "WorkspacesListRes": {
+        "properties": {
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/app__interfaces__api__http__routes__WorkspaceRes"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspaces"
+        ],
+        "title": "WorkspacesListRes"
+      },
       "app__api__admin_routes__WorkspacesListRes": {
         "properties": {
           "workspaces": {
             "items": {
-              "$ref": "#/components/schemas/app__api__admin_routes__WorkspaceRes"
+              "$ref": "#/components/schemas/WorkspaceRes"
             },
             "type": "array",
             "title": "Workspaces"
@@ -14548,6 +14473,81 @@
         ],
         "title": "WorkspacesListRes",
         "description": "List of workspaces response."
+      },
+      "app__interfaces__api__http__routes__WorkspaceRes": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/WorkspaceVisibility"
+          },
+          "owner_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner User Id"
+          },
+          "acl": {
+            "$ref": "#/components/schemas/WorkspaceACL"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "visibility",
+          "acl"
+        ],
+        "title": "WorkspaceRes"
       }
     },
     "securitySchemes": {

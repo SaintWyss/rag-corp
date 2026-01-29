@@ -434,6 +434,8 @@ export interface WorkspaceACL {
   allowed_roles?: string[];
 }
 
+export type WorkspaceResDescription = string | null;
+
 export type WorkspaceResOwnerUserId = string | null;
 
 export type WorkspaceResCreatedAt = string | null;
@@ -442,15 +444,18 @@ export type WorkspaceResUpdatedAt = string | null;
 
 export type WorkspaceResArchivedAt = string | null;
 
+/**
+ * Workspace response for admin endpoints.
+ */
 export interface WorkspaceRes {
   id: string;
   name: string;
+  description: WorkspaceResDescription;
   visibility: WorkspaceVisibility;
-  owner_user_id?: WorkspaceResOwnerUserId;
-  acl: WorkspaceACL;
-  created_at?: WorkspaceResCreatedAt;
-  updated_at?: WorkspaceResUpdatedAt;
-  archived_at?: WorkspaceResArchivedAt;
+  owner_user_id: WorkspaceResOwnerUserId;
+  created_at: WorkspaceResCreatedAt;
+  updated_at: WorkspaceResUpdatedAt;
+  archived_at: WorkspaceResArchivedAt;
 }
 
 /**
@@ -467,38 +472,33 @@ export const WorkspaceVisibility = {
 } as const;
 
 export interface WorkspacesListRes {
-  workspaces: WorkspaceRes[];
-}
-
-export type AppApiAdminRoutesWorkspaceResDescription = string | null;
-
-export type AppApiAdminRoutesWorkspaceResOwnerUserId = string | null;
-
-export type AppApiAdminRoutesWorkspaceResCreatedAt = string | null;
-
-export type AppApiAdminRoutesWorkspaceResUpdatedAt = string | null;
-
-export type AppApiAdminRoutesWorkspaceResArchivedAt = string | null;
-
-/**
- * Workspace response for admin endpoints.
- */
-export interface AppApiAdminRoutesWorkspaceRes {
-  id: string;
-  name: string;
-  description: AppApiAdminRoutesWorkspaceResDescription;
-  visibility: WorkspaceVisibility;
-  owner_user_id: AppApiAdminRoutesWorkspaceResOwnerUserId;
-  created_at: AppApiAdminRoutesWorkspaceResCreatedAt;
-  updated_at: AppApiAdminRoutesWorkspaceResUpdatedAt;
-  archived_at: AppApiAdminRoutesWorkspaceResArchivedAt;
+  workspaces: AppInterfacesApiHttpRoutesWorkspaceRes[];
 }
 
 /**
  * List of workspaces response.
  */
 export interface AppApiAdminRoutesWorkspacesListRes {
-  workspaces: AppApiAdminRoutesWorkspaceRes[];
+  workspaces: WorkspaceRes[];
+}
+
+export type AppInterfacesApiHttpRoutesWorkspaceResOwnerUserId = string | null;
+
+export type AppInterfacesApiHttpRoutesWorkspaceResCreatedAt = string | null;
+
+export type AppInterfacesApiHttpRoutesWorkspaceResUpdatedAt = string | null;
+
+export type AppInterfacesApiHttpRoutesWorkspaceResArchivedAt = string | null;
+
+export interface AppInterfacesApiHttpRoutesWorkspaceRes {
+  id: string;
+  name: string;
+  visibility: WorkspaceVisibility;
+  owner_user_id?: AppInterfacesApiHttpRoutesWorkspaceResOwnerUserId;
+  acl: WorkspaceACL;
+  created_at?: AppInterfacesApiHttpRoutesWorkspaceResCreatedAt;
+  updated_at?: AppInterfacesApiHttpRoutesWorkspaceResUpdatedAt;
+  archived_at?: AppInterfacesApiHttpRoutesWorkspaceResArchivedAt;
 }
 
 export type ListWorkspacesV1WorkspacesGetParams = {
@@ -792,7 +792,7 @@ export const listWorkspacesV1WorkspacesGet = async (params?: ListWorkspacesV1Wor
  * @summary Create Workspace
  */
 export type createWorkspaceV1WorkspacesPostResponse201 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 201
 }
 
@@ -872,7 +872,7 @@ export const createWorkspaceV1WorkspacesPost = async (createWorkspaceReq: Create
  * @summary Get Workspace
  */
 export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -951,7 +951,7 @@ export const getWorkspaceV1WorkspacesWorkspaceIdGet = async (workspaceId: string
  * @summary Update Workspace
  */
 export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -1111,7 +1111,7 @@ export const archiveWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId:
  * @summary Publish Workspace
  */
 export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -1190,7 +1190,7 @@ export const publishWorkspaceV1WorkspacesWorkspaceIdPublishPost = async (workspa
  * @summary Share Workspace
  */
 export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -3744,7 +3744,7 @@ export const resetPasswordAdminAuthUsersUserIdResetPasswordPost = async (userId:
  * @summary Create workspace for user (admin-only)
  */
 export type adminCreateWorkspaceAdminWorkspacesPostResponse201 = {
-  data: AppApiAdminRoutesWorkspaceRes
+  data: WorkspaceRes
   status: 201
 }
 
@@ -3999,7 +3999,7 @@ export const listWorkspacesApiV1WorkspacesGet = async (params?: ListWorkspacesAp
  * @summary Create Workspace
  */
 export type createWorkspaceApiV1WorkspacesPostResponse201 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 201
 }
 
@@ -4079,7 +4079,7 @@ export const createWorkspaceApiV1WorkspacesPost = async (createWorkspaceReq: Cre
  * @summary Get Workspace
  */
 export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -4158,7 +4158,7 @@ export const getWorkspaceApiV1WorkspacesWorkspaceIdGet = async (workspaceId: str
  * @summary Update Workspace
  */
 export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -4318,7 +4318,7 @@ export const archiveWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspace
  * @summary Publish Workspace
  */
 export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 
@@ -4397,7 +4397,7 @@ export const publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPost = async (work
  * @summary Share Workspace
  */
 export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpRoutesWorkspaceRes
   status: 200
 }
 

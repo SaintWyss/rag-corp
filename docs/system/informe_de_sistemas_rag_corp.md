@@ -3,7 +3,7 @@
 **Autor:** Santiago Scacciaferro  
 **Fecha:** 2026-01-21 (America/Argentina/Cordoba)  
 **Repo:** `rag-corp` (v6)  
-**Fuente de verdad (producto, Especificación Base):** `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)` + `TODO(verify: missing .github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md)`  
+**Fuente de verdad (producto, Especificación Base):** `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`  
 **Fuente de verdad (arquitectura / decisiones):** `docs/architecture/overview.md` + `docs/architecture/decisions/ADR-001..ADR-007`  
 **Fuente de verdad (contratos):** `shared/contracts/openapi.json` + `docs/api/http-api.md`  
 **Fuente de verdad (datos):** `apps/backend/alembic/` + `docs/data/postgres-schema.md`
@@ -253,7 +253,7 @@ erDiagram
 ## 4. Requerimientos (La Ley)
 
 ### 4.1 Matriz de Requerimientos Funcionales (RF)
-> Fuente base: `TODO(verify: missing .github/informe_de_producto...)` + `TODO(verify: missing .github/rag_corp_informe...)`.  
+> Fuente base: `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`.  
 > Priorización MoSCoW enfocada en “100% v6”.
 
 | ID | Nombre | Descripción | Prioridad | Criterios de aceptación (DoD del requisito) |
@@ -697,8 +697,8 @@ El proyecto se considera **100%** cuando se cumplen todos:
 ---
 
 ## Apéndice B — Referencias internas (docs)
-- Producto: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`
-- Análisis: `TODO(verify: missing .github/rag_corp_informe_de_analisis_y_especificacion_v_4_→_secciones.md)`
+- Producto: `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md`
+- Análisis: `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`
 - Arquitectura: `docs/architecture/overview.md`
 - ADRs: `docs/architecture/decisions/ADR-001..ADR-007`
 - API: `docs/api/http-api.md`, `shared/contracts/openapi.json`

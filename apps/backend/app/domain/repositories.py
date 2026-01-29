@@ -258,6 +258,24 @@ class WorkspaceRepository(Protocol):
         """
         ...
 
+    def list_workspaces_visible_to_user(
+        self,
+        user_id: UUID,
+        *,
+        include_archived: bool = False,
+    ) -> List[Workspace]:
+        """
+        R: List workspaces visible to an employee in a single query.
+
+        Implementations MUST:
+            - Include owner_user_id = user_id
+            - Include visibility = ORG_READ
+            - Include visibility = SHARED when user_id is in workspace_acl
+            - Respect include_archived flag
+            - Return deterministic ordering (created_at desc, name asc)
+        """
+        ...
+
     def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
         """R: Fetch a workspace by ID."""
         ...

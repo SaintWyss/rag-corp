@@ -18,7 +18,8 @@ from ...domain.repositories import (
 )
 from ...domain.services import EmbeddingService
 from ...domain.workspace_policy import WorkspaceActor
-from .document_results import SearchChunksResult
+from .document_results import DocumentError, DocumentErrorCode, SearchChunksResult
+from ..prompt_injection_detector import apply_injection_filter
 from .workspace_access import resolve_workspace_for_read
 
 
@@ -42,13 +43,26 @@ class SearchChunksUseCase:
         workspace_repository: WorkspaceRepository,
         acl_repository: WorkspaceAclRepository,
         embedding_service: EmbeddingService,
+        injection_filter_mode: str = "off",
+        injection_risk_threshold: float = 0.6,
     ):
         self.repository = repository
         self.workspace_repository = workspace_repository
         self.acl_repository = acl_repository
         self.embedding_service = embedding_service
+        self.injection_filter_mode = injection_filter_mode
+        self.injection_risk_threshold = injection_risk_threshold
 
     def execute(self, input_data: SearchChunksInput) -> SearchChunksResult:
+        if not input_data.workspace_id:
+            return SearchChunksResult(
+                matches=[],
+                error=DocumentError(
+                    code=DocumentErrorCode.VALIDATION_ERROR,
+                    message="workspace_id is required",
+                    resource="Workspace",
+                ),
+            )
         _, error = resolve_workspace_for_read(
             workspace_id=input_data.workspace_id,
             actor=input_data.actor,
@@ -75,4 +89,9 @@ class SearchChunksUseCase:
                 top_k=input_data.top_k,
                 workspace_id=input_data.workspace_id,
             )
-        return SearchChunksResult(matches=chunks)
+        filtered = apply_injection_filter(
+            chunks,
+            mode=self.injection_filter_mode,
+            threshold=self.injection_risk_threshold,
+        )
+        return SearchChunksResult(matches=filtered)

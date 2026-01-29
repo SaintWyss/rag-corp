@@ -33,6 +33,7 @@ from typing import Optional
 from uuid import UUID
 
 from ...domain.entities import QueryResult
+from .document_results import DocumentError, DocumentErrorCode
 from ...domain.repositories import (
     DocumentRepository,
     WorkspaceRepository,
@@ -41,8 +42,14 @@ from ...domain.repositories import (
 from ...domain.services import EmbeddingService, LLMService
 from ...domain.workspace_policy import WorkspaceActor
 from ...crosscutting.timing import StageTimings
+from ...crosscutting.metrics import (
+    observe_sources_returned_count,
+    record_answer_without_sources,
+    record_policy_refusal,
+)
 from ...crosscutting.logger import logger
 from ..context_builder import ContextBuilder, get_context_builder
+from ..prompt_injection_detector import apply_injection_filter
 from .document_results import AnswerQueryResult
 from .workspace_access import resolve_workspace_for_read
 
@@ -85,6 +92,8 @@ class AnswerQueryUseCase:
         embedding_service: EmbeddingService,
         llm_service: LLMService,
         context_builder: Optional[ContextBuilder] = None,
+        injection_filter_mode: str = "off",
+        injection_risk_threshold: float = 0.6,
     ):
         """
         R: Initialize use case with injected dependencies.
@@ -101,6 +110,8 @@ class AnswerQueryUseCase:
         self.embedding_service = embedding_service
         self.llm_service = llm_service
         self.context_builder = context_builder or get_context_builder()
+        self.injection_filter_mode = injection_filter_mode
+        self.injection_risk_threshold = injection_risk_threshold
 
     def execute(self, input_data: AnswerQueryInput) -> AnswerQueryResult:
         """
@@ -117,6 +128,14 @@ class AnswerQueryUseCase:
             2. Context is assembled with metadata for grounding
             3. LLM must answer based only on provided context
         """
+        if not input_data.workspace_id:
+            return AnswerQueryResult(
+                error=DocumentError(
+                    code=DocumentErrorCode.VALIDATION_ERROR,
+                    message="workspace_id is required",
+                    resource="Workspace",
+                )
+            )
         _, error = resolve_workspace_for_read(
             workspace_id=input_data.workspace_id,
             actor=input_data.actor,
@@ -136,7 +155,7 @@ class AnswerQueryUseCase:
             timing_data = timings.to_dict()
             return AnswerQueryResult(
                 result=QueryResult(
-                    answer="No encontré documentos relacionados a tu pregunta.",
+                    answer="No hay evidencia suficiente en las fuentes. ¿Podés precisar más (keywords/fecha/documento)?",
                     chunks=[],
                     query=input_data.query,
                     metadata={
@@ -172,10 +191,17 @@ class AnswerQueryUseCase:
                     workspace_id=input_data.workspace_id,
                 )
 
+        chunks = apply_injection_filter(
+            chunks,
+            mode=self.injection_filter_mode,
+            threshold=self.injection_risk_threshold,
+        )
+
         # R: STEP 3 - Assemble context from retrieved chunks
         if not chunks:
             # R: Business rule: If no relevant chunks, return fallback message
             timing_data = timings.to_dict()
+            record_policy_refusal("insufficient_evidence")
             logger.info(
                 "no chunks found for query",
                 extra={
@@ -186,7 +212,7 @@ class AnswerQueryUseCase:
             )
             return AnswerQueryResult(
                 result=QueryResult(
-                    answer="No encontré documentos relacionados a tu pregunta.",
+                    answer="No hay evidencia suficiente en las fuentes. ¿Podés precisar más (keywords/fecha/documento)?",
                     chunks=[],
                     query=input_data.query,
                     metadata={
@@ -237,6 +263,11 @@ class AnswerQueryUseCase:
             pass
 
         # R: Return structured result with answer and sources
+        observe_sources_returned_count(chunks_used)
+        if chunks_used > 0:
+            answer_lower = (answer or "").lower()
+            if "fuentes" not in answer_lower and "[s" not in answer_lower:
+                record_answer_without_sources()
         return AnswerQueryResult(
             result=QueryResult(
                 answer=answer,

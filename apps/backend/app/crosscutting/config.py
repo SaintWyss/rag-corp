@@ -64,6 +64,8 @@ class Settings(BaseSettings):
         max_upload_bytes: Maximum upload size in bytes (default: 25MB)
         redis_url: Redis connection string for queues/cache (optional)
         legacy_workspace_id: Implicit workspace UUID for legacy endpoints
+        rag_injection_filter_mode: off|downrank|exclude (default: off)
+        rag_injection_risk_threshold: Risk threshold [0..1] (default: 0.6)
     """
 
     # Required (no defaults)
@@ -138,6 +140,8 @@ class Settings(BaseSettings):
     max_context_chars: int = 12000
     default_use_mmr: bool = False  # R: MMR for diverse retrieval (default off for perf)
     max_conversation_messages: int = 12
+    rag_injection_filter_mode: str = "off"
+    rag_injection_risk_threshold: float = 0.6
 
     # Retry/Resilience
     retry_max_attempts: int = 3
@@ -169,6 +173,21 @@ class Settings(BaseSettings):
     def chunk_overlap_must_be_non_negative(cls, v: int) -> int:
         if v < 0:
             raise ValueError("chunk_overlap must be >= 0")
+        return v
+
+    @field_validator("rag_injection_filter_mode")
+    @classmethod
+    def rag_injection_filter_mode_valid(cls, v: str) -> str:
+        mode = (v or "off").strip().lower()
+        if mode not in {"off", "downrank", "exclude"}:
+            raise ValueError("rag_injection_filter_mode must be off, downrank, or exclude")
+        return mode
+
+    @field_validator("rag_injection_risk_threshold")
+    @classmethod
+    def rag_injection_risk_threshold_valid(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("rag_injection_risk_threshold must be between 0 and 1")
         return v
 
     def validate_chunk_params(self) -> None:
