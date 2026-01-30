@@ -1,47 +1,54 @@
 """
-Name: PostgreSQL Document Repository Implementation
+============================================================
+TARJETA CRC — infrastructure/repositories/postgres_document_repo.py
+============================================================
+Class: PostgresDocumentRepository
 
 Responsibilities:
-  - Implement DocumentRepository interface for PostgreSQL + pgvector
-  - Use connection pool for efficient connection reuse
-  - Atomic operations with transactions
-  - Batch insert for performance
-  - Vector similarity searches using cosine distance
-  - Maximal Marginal Relevance (MMR) for diverse retrieval
+- Implementar el repositorio de documentos y chunks sobre PostgreSQL + pgvector.
+- Operaciones de escritura atómicas mediante transacciones (evitar estados parciales).
+- Inserción batch de chunks (performance / menos round-trips).
+- Búsqueda vectorial por similitud (cosine distance) usando pgvector.
+- Re-ranking opcional con MMR (diversidad vs relevancia).
 
 Collaborators:
-  - domain.repositories.DocumentRepository: Interface implementation
-  - domain.entities: Document, Chunk
-  - infrastructure.db.pool: Connection pool
-  - pgvector: Vector extension
+- domain.entities: Document, Chunk
+- infrastructure.db.pool: get_pool() (ConnectionPool)
+- psycopg / psycopg_pool: ejecución SQL y pooling
+- pgvector: tipo vector + operador <=> (distancia)
+- crosscutting.logger / crosscutting.exceptions
 
-Constraints:
-  - 768-dimensional embeddings (validated)
-  - Statement timeout configured per session
-
-Notes:
-  - Implements Repository pattern from domain layer
-  - Uses dependency inversion (domain doesn't depend on this)
-  - Pool must be initialized before use
-  - MMR balances relevance vs diversity
+Constraints / Notes (Clean / KISS):
+- Este archivo es “infra”: NO contiene políticas de negocio (RBAC/ACL/visibilidad).
+- Todas las queries son parametrizadas (no interpolar input de usuario).
+- `workspace_id` es un boundary: se exige para evitar accesos cross-scope.
+- Dimensión de embeddings fija (768) y validada al persistir chunks.
+============================================================
 """
 
-from uuid import UUID, uuid4
-from typing import List, Optional
-import numpy as np
+from __future__ import annotations
 
+from dataclasses import asdict
+from typing import Iterable
+from uuid import UUID, uuid4
+
+import numpy as np
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
-from ...domain.entities import Document, Chunk
-from ...crosscutting.logger import logger
 from ...crosscutting.exceptions import DatabaseError
+from ...crosscutting.logger import logger
+from ...domain.entities import Chunk, Document
 
+# ============================================================
+# Constantes de contrato (DB / embeddings)
+# ============================================================
 
-# R: Expected embedding dimension (Google Gemini)
+# Dimensión esperada del embedding (debe matchear chunks.embedding vector(768))
 EMBEDDING_DIMENSION = 768
 
-_DOCUMENT_SORTS = {
+# Allowlist de ORDER BY: evita inyección y mantiene un contrato estable de sorting.
+_DOCUMENT_SORTS: dict[str, str] = {
     "created_at_desc": "created_at DESC NULLS LAST",
     "created_at_asc": "created_at ASC NULLS LAST",
     "title_asc": "title ASC NULLS LAST",
@@ -51,23 +58,31 @@ _DOCUMENT_SORTS = {
 
 class PostgresDocumentRepository:
     """
-    R: PostgreSQL implementation of DocumentRepository.
+    Repositorio PostgreSQL para Documentos + Chunks.
 
-    Uses connection pool for efficient connection reuse.
-    All write operations use transactions for atomicity.
+    Modelo mental:
+    - documents: metadata + estado del pipeline (status, error_message, file_*, etc.)
+    - chunks: contenido segmentado + embedding vectorial para retrieval
     """
 
-    def __init__(self, pool: Optional[ConnectionPool] = None):
-        """
-        R: Initialize repository with connection pool.
+    # ---------------------------------------------------------------------
+    # SQL SELECT “canon” (misma proyección => mapeo consistente)
+    # ---------------------------------------------------------------------
+    _DOC_SELECT_COLUMNS = """
+        id, workspace_id, title, source, metadata, created_at, deleted_at,
+        file_name, mime_type, storage_key,
+        uploaded_by_user_id, status, error_message, tags, allowed_roles
+    """
 
-        Args:
-            pool: Connection pool (if None, uses global pool)
-        """
+    def __init__(self, pool: ConnectionPool | None = None):
+        # Pool inyectable: tests pueden usar un pool controlado o fake.
         self._pool = pool
 
+    # ============================================================
+    # Pool / Scope guards
+    # ============================================================
     def _get_pool(self) -> ConnectionPool:
-        """R: Get pool, falling back to global if not injected."""
+        """Devuelve el pool inyectado o el pool global (lazy import)."""
         if self._pool is not None:
             return self._pool
 
@@ -76,85 +91,181 @@ class PostgresDocumentRepository:
         return get_pool()
 
     def _require_workspace_id(self, workspace_id: UUID | None, action: str) -> UUID:
+        """
+        Guard clause: obliga scoping por workspace.
+
+        Por qué:
+        - Evita consultas “cross-scope” accidentales.
+        - Hace explícito el boundary de multi-tenant.
+        """
         if workspace_id is None:
+            # Métrica opcional (no rompemos si no existe).
             try:
                 from ...crosscutting.metrics import record_cross_scope_block
 
                 record_cross_scope_block()
             except Exception:
                 pass
+
             logger.warning(
                 "PostgresDocumentRepository: workspace_id required",
                 extra={"action": action},
             )
             raise DatabaseError(f"workspace_id is required for {action}")
+
         return workspace_id
 
-    def _validate_embeddings(self, chunks: List[Chunk]) -> None:
-        """
-        R: Validate all chunks have correct embedding dimension.
+    # ============================================================
+    # Validaciones (contrato embedding)
+    # ============================================================
+    def _validate_embedding(self, embedding: list[float] | None, *, ctx: str) -> None:
+        """Valida existencia y dimensión del embedding."""
+        if embedding is None:
+            raise ValueError(f"{ctx}: embedding is required")
+        if len(embedding) != EMBEDDING_DIMENSION:
+            raise ValueError(
+                f"{ctx}: embedding has {len(embedding)} dimensions, expected {EMBEDDING_DIMENSION}"
+            )
 
-        Raises:
-            ValueError: If any embedding has wrong dimension
-        """
+    def _validate_embeddings(self, chunks: list[Chunk]) -> None:
+        """Valida embeddings de todos los chunks (fail fast)."""
         for i, chunk in enumerate(chunks):
-            if chunk.embedding is None:
-                raise ValueError(f"Chunk {i} has no embedding")
-            if len(chunk.embedding) != EMBEDDING_DIMENSION:
-                raise ValueError(
-                    f"Chunk {i} embedding has {len(chunk.embedding)} dimensions, "
-                    f"expected {EMBEDDING_DIMENSION}"
-                )
+            self._validate_embedding(
+                chunk.embedding,
+                ctx=f"Chunk[{i}]",
+            )
 
-    def save_document(self, document: Document) -> None:
-        """
-        R: Persist document metadata to PostgreSQL.
-
-        Raises:
-            DatabaseError: If database operation fails
-        """
-        if document.workspace_id is None:
-            raise DatabaseError("workspace_id is required to save document")
+    # ============================================================
+    # Helpers DB (DRY: logging + exception wrapping consistente)
+    # ============================================================
+    def _fetchall(
+        self,
+        *,
+        query: str,
+        params: Iterable[object],
+        context_msg: str,
+        extra: dict,
+    ) -> list[tuple]:
+        """Ejecuta SELECT y devuelve todas las filas."""
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
-                conn.execute(
-                    """
-                    INSERT INTO documents (
-                        id,
-                        workspace_id,
-                        title,
-                        source,
-                        metadata,
-                        tags,
-                        allowed_roles
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (id) DO UPDATE
-                    SET workspace_id = EXCLUDED.workspace_id,
-                        title = EXCLUDED.title,
-                        source = EXCLUDED.source,
-                        metadata = EXCLUDED.metadata,
-                        tags = EXCLUDED.tags,
-                        allowed_roles = EXCLUDED.allowed_roles
-                    """,
-                    (
-                        document.id,
-                        document.workspace_id,
-                        document.title,
-                        document.source,
-                        Json(document.metadata),
-                        document.tags or [],
-                        document.allowed_roles or [],
-                    ),
-                )
-            logger.info(f"PostgresDocumentRepository: Document saved: {document.id}")
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Failed to save document {document.id}: {e}"
-            )
-            raise DatabaseError(f"Failed to save document: {e}")
+                return conn.execute(query, tuple(params)).fetchall()
+        except Exception as exc:
+            logger.exception(context_msg, extra={**extra, "error": str(exc)})
+            raise DatabaseError(f"{context_msg}: {exc}") from exc
 
+    def _fetchone(
+        self,
+        *,
+        query: str,
+        params: Iterable[object],
+        context_msg: str,
+        extra: dict,
+    ) -> tuple | None:
+        """Ejecuta SELECT y devuelve una fila o None."""
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                return conn.execute(query, tuple(params)).fetchone()
+        except Exception as exc:
+            logger.exception(context_msg, extra={**extra, "error": str(exc)})
+            raise DatabaseError(f"{context_msg}: {exc}") from exc
+
+    # ============================================================
+    # Mapping (SQL row -> entidades)
+    # ============================================================
+    def _row_to_document(self, row: tuple) -> Document:
+        """
+        Mapea un row de documents al entity Document.
+
+        Mantener esta función “única” reduce bugs por desalineación de columnas.
+        """
+        return Document(
+            id=row[0],
+            workspace_id=row[1],
+            title=row[2],
+            source=row[3],
+            metadata=row[4] or {},
+            created_at=row[5],
+            deleted_at=row[6],
+            file_name=row[7],
+            mime_type=row[8],
+            storage_key=row[9],
+            uploaded_by_user_id=row[10],
+            status=row[11],
+            error_message=row[12],
+            tags=row[13] or [],
+            allowed_roles=row[14] or [],
+        )
+
+    def _rows_to_documents(self, rows: list[tuple]) -> list[Document]:
+        """Helper de conversión masiva (list comprehension limpia)."""
+        return [self._row_to_document(r) for r in rows]
+
+    # ============================================================
+    # Persistencia de Document (metadata)
+    # ============================================================
+    def save_document(self, document: Document) -> None:
+        """
+        Upsert de documento (metadata/estado).
+
+        - Requiere workspace_id (scope).
+        - ON CONFLICT (id): actualiza campos relevantes.
+        - No maneja chunks (eso va por save_chunks / save_document_with_chunks).
+        """
+        workspace_id = self._require_workspace_id(
+            document.workspace_id, "save_document"
+        )
+
+        query = """
+            INSERT INTO documents (
+                id,
+                workspace_id,
+                title,
+                source,
+                metadata,
+                tags,
+                allowed_roles
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO UPDATE
+            SET workspace_id = EXCLUDED.workspace_id,
+                title = EXCLUDED.title,
+                source = EXCLUDED.source,
+                metadata = EXCLUDED.metadata,
+                tags = EXCLUDED.tags,
+                allowed_roles = EXCLUDED.allowed_roles
+        """
+
+        params = (
+            document.id,
+            workspace_id,
+            document.title,
+            document.source,
+            Json(document.metadata),
+            document.tags or [],
+            document.allowed_roles or [],
+        )
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                conn.execute(query, params)
+            logger.info(
+                "PostgresDocumentRepository: Document saved",
+                extra={"document_id": str(document.id)},
+            )
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Failed to save document",
+                extra={"document_id": str(document.id), "error": str(exc)},
+            )
+            raise DatabaseError(f"Failed to save document: {exc}") from exc
+
+    # ============================================================
+    # Listado / Lectura de documents
+    # ============================================================
     def list_documents(
         self,
         limit: int = 50,
@@ -165,157 +276,132 @@ class PostgresDocumentRepository:
         status: str | None = None,
         tag: str | None = None,
         sort: str | None = None,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """
-        R: List document metadata ordered by creation time (descending).
+        Lista documentos (metadata) por workspace, excluyendo soft-deleted.
 
-        Returns:
-            List of Document entities
+        Filtros soportados:
+        - query: búsqueda textual (title/source/file_name/metadata::text)
+        - status: estado del pipeline
+        - tag: pertenencia a tags (ANY(tags))
+
+        Sorting:
+        - allowlist (_DOCUMENT_SORTS) => evita inyección y mantiene API estable.
         """
-        try:
-            pool = self._get_pool()
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "list_documents"
+        scoped_workspace_id = self._require_workspace_id(workspace_id, "list_documents")
+
+        # Guard rails básicos (evitan parámetros absurdos).
+        if limit <= 0:
+            return []
+        if offset < 0:
+            offset = 0
+
+        filters: list[str] = ["deleted_at IS NULL", "workspace_id = %s"]
+        params: list[object] = [scoped_workspace_id]
+
+        if query:
+            # ILIKE es case-insensitive.
+            like = f"%{query}%"
+            filters.append(
+                "(title ILIKE %s OR source ILIKE %s OR file_name ILIKE %s OR metadata::text ILIKE %s)"
             )
-            filters = ["deleted_at IS NULL", "workspace_id = %s"]
-            params: list[object] = [scoped_workspace_id]
+            params.extend([like, like, like, like])
 
-            if query:
-                like_query = f"%{query}%"
-                filters.append(
-                    "(title ILIKE %s OR source ILIKE %s OR file_name ILIKE %s OR metadata::text ILIKE %s)"
-                )
-                params.extend([like_query, like_query, like_query, like_query])
+        if status:
+            filters.append("status = %s")
+            params.append(status)
 
-            if status:
-                filters.append("status = %s")
-                params.append(status)
+        if tag:
+            filters.append("%s = ANY(tags)")
+            params.append(tag)
 
-            if tag:
-                filters.append("%s = ANY(tags)")
-                params.append(tag)
+        where_clause = " AND ".join(filters)
 
-            order_by = _DOCUMENT_SORTS.get(
-                sort or "created_at_desc", _DOCUMENT_SORTS["created_at_desc"]
-            )
-            where_clause = " AND ".join(filters)
+        order_by = _DOCUMENT_SORTS.get(
+            sort or "created_at_desc", _DOCUMENT_SORTS["created_at_desc"]
+        )
 
-            with pool.connection() as conn:
-                rows = conn.execute(
-                    f"""
-                    SELECT id, workspace_id, title, source, metadata, created_at, deleted_at,
-                           file_name, mime_type, storage_key,
-                           uploaded_by_user_id, status, error_message, tags, allowed_roles
-                    FROM documents
-                    WHERE {where_clause}
-                    ORDER BY {order_by}
-                    LIMIT %s OFFSET %s
-                    """,
-                    (*params, limit, offset),
-                ).fetchall()
+        sql = f"""
+            SELECT {self._DOC_SELECT_COLUMNS}
+            FROM documents
+            WHERE {where_clause}
+            ORDER BY {order_by}
+            LIMIT %s OFFSET %s
+        """
 
-            return [
-                Document(
-                    id=row[0],
-                    workspace_id=row[1],
-                    title=row[2],
-                    source=row[3],
-                    metadata=row[4] or {},
-                    created_at=row[5],
-                    deleted_at=row[6],
-                    file_name=row[7],
-                    mime_type=row[8],
-                    storage_key=row[9],
-                    uploaded_by_user_id=row[10],
-                    status=row[11],
-                    error_message=row[12],
-                    tags=row[13] or [],
-                    allowed_roles=row[14] or [],
-                )
-                for row in rows
-            ]
-        except Exception as e:
-            logger.error(f"PostgresDocumentRepository: List documents failed: {e}")
-            raise DatabaseError(f"List documents failed: {e}")
+        rows = self._fetchall(
+            query=sql,
+            params=[*params, limit, offset],
+            context_msg="PostgresDocumentRepository: List documents failed",
+            extra={
+                "workspace_id": str(scoped_workspace_id),
+                "sort": sort or "created_at_desc",
+            },
+        )
+
+        return self._rows_to_documents(rows)
 
     def get_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
-    ) -> Optional[Document]:
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> Document | None:
         """
-        R: Fetch a single document by ID (excluding deleted).
+        Obtiene un documento por ID (scoped por workspace) excluyendo deleted.
 
-        Returns:
-            Document or None if not found
+        Retorna:
+        - Document si existe y no está borrado
+        - None si no existe (o si está soft-deleted)
         """
-        try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "get_document"
-            )
-            pool = self._get_pool()
-            query = """
-                SELECT id, workspace_id, title, source, metadata, created_at, deleted_at,
-                       file_name, mime_type, storage_key,
-                       uploaded_by_user_id, status, error_message, tags, allowed_roles
+        scoped_workspace_id = self._require_workspace_id(workspace_id, "get_document")
+
+        row = self._fetchone(
+            query=f"""
+                SELECT {self._DOC_SELECT_COLUMNS}
                 FROM documents
-                WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
-            """
-            params: list[object] = [document_id, scoped_workspace_id]
+                WHERE id = %s
+                  AND workspace_id = %s
+                  AND deleted_at IS NULL
+            """,
+            params=[document_id, scoped_workspace_id],
+            context_msg="PostgresDocumentRepository: Get document failed",
+            extra={
+                "document_id": str(document_id),
+                "workspace_id": str(scoped_workspace_id),
+            },
+        )
 
-            with pool.connection() as conn:
-                row = conn.execute(query, params).fetchone()
+        return None if not row else self._row_to_document(row)
 
-            if not row:
-                return None
-
-            return Document(
-                id=row[0],
-                workspace_id=row[1],
-                title=row[2],
-                source=row[3],
-                metadata=row[4] or {},
-                created_at=row[5],
-                deleted_at=row[6],
-                file_name=row[7],
-                mime_type=row[8],
-                storage_key=row[9],
-                uploaded_by_user_id=row[10],
-                status=row[11],
-                error_message=row[12],
-                tags=row[13] or [],
-                allowed_roles=row[14] or [],
-            )
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Get document failed for {document_id}: {e}"
-            )
-            raise DatabaseError(f"Get document failed: {e}")
-
+    # ============================================================
+    # Persistencia de Chunks
+    # ============================================================
     def save_chunks(
         self,
         document_id: UUID,
-        chunks: List[Chunk],
+        chunks: list[Chunk],
         *,
         workspace_id: UUID | None = None,
     ) -> None:
         """
-        R: Persist chunks with embeddings to PostgreSQL (batch insert).
+        Inserta chunks para un documento (batch insert).
 
-        Raises:
-            DatabaseError: If database operation fails
-            ValueError: If embedding dimension is invalid
+        - Valida embeddings (dimensión).
+        - Verifica que el documento exista en el workspace y no esté deleted.
+        - Inserta N chunks con executemany (performance).
         """
         if not chunks:
             return
 
+        scoped_workspace_id = self._require_workspace_id(workspace_id, "save_chunks")
         self._validate_embeddings(chunks)
 
         try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "save_chunks"
-            )
             pool = self._get_pool()
             with pool.connection() as conn:
-                row = conn.execute(
+                # 1) Verificación de existencia del documento (scope + no deleted)
+                exists = conn.execute(
                     """
                     SELECT 1
                     FROM documents
@@ -323,72 +409,72 @@ class PostgresDocumentRepository:
                     """,
                     (document_id, scoped_workspace_id),
                 ).fetchone()
-                if not row:
+
+                if not exists:
                     raise DatabaseError(
                         f"Document {document_id} not found for workspace {scoped_workspace_id}"
                     )
-                # R: Prepare batch data
-                batch_data = [
+
+                # 2) Preparación del batch (cada fila corresponde a un INSERT)
+                batch = [
                     (
                         chunk.chunk_id or uuid4(),
                         document_id,
-                        chunk.chunk_index or idx,
+                        chunk.chunk_index if chunk.chunk_index is not None else idx,
                         chunk.content,
-                        chunk.embedding,
+                        chunk.embedding,  # pgvector acepta lista/array
                         Json(chunk.metadata or {}),
                     )
                     for idx, chunk in enumerate(chunks)
                 ]
 
-                # R: Batch insert using executemany
+                # 3) Inserción batch
                 conn.executemany(
                     """
                     INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
                     VALUES (%s, %s, %s, %s, %s, %s)
                     """,
-                    batch_data,
+                    batch,
                 )
+
             logger.info(
-                f"PostgresDocumentRepository: Saved {len(chunks)} chunks for document {document_id}"
+                "PostgresDocumentRepository: Saved chunks",
+                extra={"document_id": str(document_id), "count": len(chunks)},
             )
+
         except ValueError:
+            # Propagamos tal cual: es error de contrato (embedding inválido)
             raise
         except DatabaseError:
             raise
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Failed to save chunks for {document_id}: {e}"
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Failed to save chunks",
+                extra={"document_id": str(document_id), "error": str(exc)},
             )
-            raise DatabaseError(f"Failed to save chunks: {e}")
+            raise DatabaseError(f"Failed to save chunks: {exc}") from exc
 
     def save_document_with_chunks(
-        self, document: Document, chunks: List[Chunk]
+        self, document: Document, chunks: list[Chunk]
     ) -> None:
         """
-        R: Atomically save document and its chunks in a single transaction.
+        Guardado atómico: documento + chunks en una misma transacción.
 
-        This is the preferred method for ingestion - ensures no orphan
-        documents or partial chunk sets exist.
-
-        Args:
-            document: Document entity to save
-            chunks: List of Chunk entities with embeddings
-
-        Raises:
-            DatabaseError: If any operation fails (entire transaction rolls back)
-            ValueError: If embedding dimension is invalid
+        Qué garantiza:
+        - No quedan “documents sin chunks” por fallos intermedios.
+        - No quedan “chunks huérfanos” sin documento.
         """
-        if document.workspace_id is None:
-            raise DatabaseError("workspace_id is required to save document with chunks")
+        workspace_id = self._require_workspace_id(
+            document.workspace_id, "save_document_with_chunks"
+        )
         if chunks:
             self._validate_embeddings(chunks)
 
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
-                # R: Use explicit transaction for atomicity
                 with conn.transaction():
-                    # R: Insert document
+                    # 1) Upsert del documento
                     conn.execute(
                         """
                         INSERT INTO documents (
@@ -411,7 +497,7 @@ class PostgresDocumentRepository:
                         """,
                         (
                             document.id,
-                            document.workspace_id,
+                            workspace_id,
                             document.title,
                             document.source,
                             Json(document.metadata),
@@ -420,13 +506,17 @@ class PostgresDocumentRepository:
                         ),
                     )
 
-                    # R: Batch insert chunks if any
+                    # 2) Inserción de chunks (si hay)
                     if chunks:
-                        batch_data = [
+                        batch = [
                             (
                                 chunk.chunk_id or uuid4(),
                                 document.id,
-                                chunk.chunk_index or idx,
+                                (
+                                    chunk.chunk_index
+                                    if chunk.chunk_index is not None
+                                    else idx
+                                ),
                                 chunk.content,
                                 chunk.embedding,
                                 Json(chunk.metadata or {}),
@@ -439,24 +529,26 @@ class PostgresDocumentRepository:
                             INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
                             VALUES (%s, %s, %s, %s, %s, %s)
                             """,
-                            batch_data,
+                            batch,
                         )
-
-                    # R: Transaction commits here if no exception
 
             logger.info(
                 "PostgresDocumentRepository: Atomic save completed",
                 extra={"document_id": str(document.id), "chunks": len(chunks)},
             )
+
         except ValueError:
             raise
-        except Exception as e:
-            logger.error(
-                "PostgresDocumentRepository: Atomic save failed, rolled back",
-                extra={"document_id": str(document.id), "error": str(e)},
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Atomic save failed (rolled back)",
+                extra={"document_id": str(document.id), "error": str(exc)},
             )
-            raise DatabaseError(f"Failed to save document with chunks: {e}")
+            raise DatabaseError(f"Failed to save document with chunks: {exc}") from exc
 
+    # ============================================================
+    # Update metadata / status (pipeline)
+    # ============================================================
     def update_document_file_metadata(
         self,
         document_id: UUID,
@@ -470,17 +562,21 @@ class PostgresDocumentRepository:
         error_message: str | None = None,
     ) -> bool:
         """
-        R: Update file metadata for a document.
+        Actualiza metadata de archivo y estado.
 
-        Returns True if a document was updated, otherwise False.
+        Retorna:
+        - True si se actualizó una fila
+        - False si no existe (o no matchea el workspace)
         """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "update_document_file_metadata"
+        )
+
         try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "update_document_file_metadata"
-            )
             pool = self._get_pool()
             with pool.connection() as conn:
-                query = """
+                result = conn.execute(
+                    """
                     UPDATE documents
                     SET file_name = %s,
                         mime_type = %s,
@@ -489,24 +585,30 @@ class PostgresDocumentRepository:
                         status = %s,
                         error_message = %s
                     WHERE id = %s AND workspace_id = %s
-                """
-                params: list[object] = [
-                    file_name,
-                    mime_type,
-                    storage_key,
-                    uploaded_by_user_id,
-                    status,
-                    error_message,
-                    document_id,
-                    scoped_workspace_id,
-                ]
-                result = conn.execute(query, params)
-            return result.rowcount > 0
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Update file metadata failed: {e}"
+                    """,
+                    (
+                        file_name,
+                        mime_type,
+                        storage_key,
+                        uploaded_by_user_id,
+                        status,
+                        error_message,
+                        document_id,
+                        scoped_workspace_id,
+                    ),
+                )
+            return bool(result.rowcount and result.rowcount > 0)
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Update file metadata failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
             )
-            raise DatabaseError(f"Failed to update file metadata: {e}")
+            raise DatabaseError(f"Failed to update file metadata: {exc}") from exc
 
     def transition_document_status(
         self,
@@ -518,23 +620,27 @@ class PostgresDocumentRepository:
         error_message: str | None = None,
     ) -> bool:
         """
-        R: Update status if current status is in allowed set.
+        Transición de estado condicional (optimistic):
 
-        Returns True if a document was updated, otherwise False.
+        - Solo actualiza si el status actual está en from_statuses.
+        - from_statuses puede incluir None (status IS NULL).
+
+        Retorna True si se actualizó; False si no (status no permitido o no existe).
         """
         if not from_statuses:
             return False
 
-        include_null = any(status is None for status in from_statuses)
-        allowed_statuses = [status for status in from_statuses if status is not None]
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "transition_document_status"
+        )
+
+        include_null = any(s is None for s in from_statuses)
+        allowed = [s for s in from_statuses if s is not None]
 
         try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "transition_document_status"
-            )
             pool = self._get_pool()
             with pool.connection() as conn:
-                query = """
+                sql = """
                     UPDATE documents
                     SET status = %s,
                         error_message = %s
@@ -547,29 +653,47 @@ class PostgresDocumentRepository:
                     scoped_workspace_id,
                 ]
 
-                if allowed_statuses and include_null:
-                    query += " AND (status = ANY(%s) OR status IS NULL)"
-                    params.append(allowed_statuses)
-                elif allowed_statuses:
-                    query += " AND status = ANY(%s)"
-                    params.append(allowed_statuses)
+                # Construcción controlada (no hay input directo: allowed viene de la app)
+                if allowed and include_null:
+                    sql += " AND (status = ANY(%s) OR status IS NULL)"
+                    params.append(allowed)
+                elif allowed:
+                    sql += " AND status = ANY(%s)"
+                    params.append(allowed)
                 elif include_null:
-                    query += " AND status IS NULL"
+                    sql += " AND status IS NULL"
 
-                result = conn.execute(query, params)
-            return result.rowcount > 0
-        except Exception as e:
-            logger.error(f"PostgresDocumentRepository: Status transition failed: {e}")
-            raise DatabaseError(f"Failed to transition status: {e}")
+                result = conn.execute(sql, params)
 
+            return bool(result.rowcount and result.rowcount > 0)
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Status transition failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
+            )
+            raise DatabaseError(f"Failed to transition status: {exc}") from exc
+
+    # ============================================================
+    # Deletes / Restore
+    # ============================================================
     def delete_chunks_for_document(
         self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> int:
-        """R: Delete all chunks for a document."""
+        """
+        Borra chunks de un documento (scoped por workspace vía join).
+
+        Retorna cantidad de filas eliminadas.
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "delete_chunks_for_document"
+        )
+
         try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "delete_chunks_for_document"
-            )
             pool = self._get_pool()
             with pool.connection() as conn:
                 result = conn.execute(
@@ -582,64 +706,199 @@ class PostgresDocumentRepository:
                     """,
                     (document_id, scoped_workspace_id),
                 )
-            return result.rowcount
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Delete chunks failed for {document_id}: {e}"
+            return int(result.rowcount or 0)
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Delete chunks failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
             )
-            raise DatabaseError(f"Failed to delete chunks: {e}")
+            raise DatabaseError(f"Failed to delete chunks: {exc}") from exc
 
-    def find_similar_chunks(
-        self,
-        embedding: List[float],
-        top_k: int,
-        *,
-        workspace_id: UUID | None = None,
-    ) -> List[Chunk]:
+    def soft_delete_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> bool:
         """
-        R: Search for similar chunks using vector cosine similarity.
+        Soft delete: set deleted_at = NOW() si aún no estaba borrado.
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "soft_delete_document"
+        )
 
-        Returns:
-            List of Chunk entities ordered by similarity (descending)
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NOW()
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
+                    """,
+                    (document_id, scoped_workspace_id),
+                )
 
-        Raises:
-            DatabaseError: If search query fails
+            deleted = bool(result.rowcount and result.rowcount > 0)
+            if deleted:
+                logger.info(
+                    "PostgresDocumentRepository: Soft deleted document",
+                    extra={"document_id": str(document_id)},
+                )
+            return deleted
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Soft delete failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
+            )
+            raise DatabaseError(f"Soft delete failed: {exc}") from exc
+
+    def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
+        """
+        Soft delete masivo por workspace (sin scope adicional).
+        Retorna cantidad de documents marcados.
         """
         try:
             pool = self._get_pool()
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "find_similar_chunks"
-            )
-            filters = ["d.deleted_at IS NULL", "d.workspace_id = %s"]
-            params: list[object] = [scoped_workspace_id]
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NOW()
+                    WHERE workspace_id = %s AND deleted_at IS NULL
+                    """,
+                    (workspace_id,),
+                )
+            return int(result.rowcount or 0)
 
-            where_clause = " AND ".join(filters)
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Workspace soft delete failed",
+                extra={"workspace_id": str(workspace_id), "error": str(exc)},
+            )
+            raise DatabaseError(f"Workspace soft delete failed: {exc}") from exc
+
+    def restore_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> bool:
+        """
+        Restaura un documento soft-deleted (deleted_at -> NULL).
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "restore_document"
+        )
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NULL
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NOT NULL
+                    """,
+                    (document_id, scoped_workspace_id),
+                )
+
+            restored = bool(result.rowcount and result.rowcount > 0)
+            if restored:
+                logger.info(
+                    "PostgresDocumentRepository: Restored document",
+                    extra={"document_id": str(document_id)},
+                )
+            return restored
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Restore failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
+            )
+            raise DatabaseError(f"Restore failed: {exc}") from exc
+
+    # ============================================================
+    # Vector search (pgvector)
+    # ============================================================
+    def find_similar_chunks(
+        self,
+        embedding: list[float],
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Chunk]:
+        """
+        Búsqueda vectorial por similitud (cosine distance).
+
+        - Usa operador <=> de pgvector:
+            ORDER BY embedding <=> query_vector  (menor distancia = mejor)
+        - Score aproximado:
+            score = 1 - distance
+          (útil para ranking/telemetría; no es “probabilidad”)
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "find_similar_chunks"
+        )
+        self._validate_embedding(embedding, ctx="Query")
+
+        if top_k <= 0:
+            return []
+
+        # Filtro base: solo documentos vivos y del workspace
+        where_clause = "d.deleted_at IS NULL AND d.workspace_id = %s"
+
+        sql = f"""
+            SELECT
+              c.id,
+              c.document_id,
+              d.title,
+              d.source,
+              c.chunk_index,
+              c.content,
+              c.embedding,
+              c.metadata,
+              (1 - (c.embedding <=> %s::vector)) as score
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            WHERE {where_clause}
+            ORDER BY c.embedding <=> %s::vector
+            LIMIT %s
+        """
+
+        try:
+            pool = self._get_pool()
             with pool.connection() as conn:
                 rows = conn.execute(
-                    f"""
-                    SELECT
-                      c.id,
-                      c.document_id,
-                      d.title,
-                      d.source,
-                      c.chunk_index,
-                      c.content,
-                      c.embedding,
-                      c.metadata,
-                      (1 - (c.embedding <=> %s::vector)) as score
-                    FROM chunks c
-                    JOIN documents d ON d.id = c.document_id
-                    WHERE {where_clause}
-                    ORDER BY c.embedding <=> %s::vector
-                    LIMIT %s
-                    """,
-                    (embedding, *params, embedding, top_k),
+                    sql,
+                    (embedding, scoped_workspace_id, embedding, top_k),
                 ).fetchall()
-            logger.info(f"PostgresDocumentRepository: Found {len(rows)} similar chunks")
-        except Exception as e:
-            logger.error(f"PostgresDocumentRepository: Search failed: {e}")
-            raise DatabaseError(f"Search query failed: {e}")
 
+            logger.info(
+                "PostgresDocumentRepository: Similar chunks retrieved",
+                extra={
+                    "workspace_id": str(scoped_workspace_id),
+                    "count": len(rows),
+                    "top_k": top_k,
+                },
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Search query failed",
+                extra={"workspace_id": str(scoped_workspace_id), "error": str(exc)},
+            )
+            raise DatabaseError(f"Search query failed: {exc}") from exc
+
+        # Mapeo a Chunk: incluye datos del documento para contexto en RAG
         return [
             Chunk(
                 chunk_id=r[0],
@@ -655,255 +914,148 @@ class PostgresDocumentRepository:
             for r in rows
         ]
 
-    def ping(self) -> bool:
-        """
-        R: Verify database connectivity via pool.
-
-        Returns:
-            True if a trivial query succeeds.
-        """
-        try:
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                conn.execute("SELECT 1")
-            return True
-        except Exception as e:
-            logger.warning(f"PostgresDocumentRepository: ping failed: {e}")
-            raise DatabaseError(f"Ping failed: {e}")
-
-    def soft_delete_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
-    ) -> bool:
-        """
-        R: Soft delete a document by setting deleted_at timestamp.
-
-        Args:
-            document_id: Document UUID to soft delete
-
-        Returns:
-            True if document was found and deleted, False otherwise
-
-        Raises:
-            DatabaseError: If database operation fails
-        """
-        try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "soft_delete_document"
-            )
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                query = """
-                    UPDATE documents
-                    SET deleted_at = NOW()
-                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
-                """
-                params: list[object] = [document_id, scoped_workspace_id]
-                result = conn.execute(query, params)
-                deleted = result.rowcount > 0
-            if deleted:
-                logger.info(
-                    f"PostgresDocumentRepository: Soft deleted document {document_id}"
-                )
-            return deleted
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Soft delete failed for {document_id}: {e}"
-            )
-            raise DatabaseError(f"Soft delete failed: {e}")
-
-    def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
-        """
-        R: Soft delete all documents for a workspace.
-
-        Args:
-            workspace_id: Workspace UUID to delete documents for
-
-        Returns:
-            Number of documents soft-deleted
-        """
-        try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "soft_delete_documents_by_workspace"
-            )
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                result = conn.execute(
-                    """
-                    UPDATE documents
-                    SET deleted_at = NOW()
-                    WHERE workspace_id = %s AND deleted_at IS NULL
-                    """,
-                    (scoped_workspace_id,),
-                )
-                return result.rowcount or 0
-        except Exception as e:
-            logger.error(
-                "PostgresDocumentRepository: Workspace soft delete failed",
-                extra={"workspace_id": str(workspace_id), "error": str(e)},
-            )
-            raise DatabaseError(f"Workspace soft delete failed: {e}")
-
-    def restore_document(
-        self, document_id: UUID, *, workspace_id: UUID | None = None
-    ) -> bool:
-        """
-        R: Restore a soft-deleted document.
-
-        Args:
-            document_id: Document UUID to restore
-
-        Returns:
-            True if document was found and restored, False otherwise
-
-        Raises:
-            DatabaseError: If database operation fails
-        """
-        try:
-            scoped_workspace_id = self._require_workspace_id(
-                workspace_id, "restore_document"
-            )
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                query = """
-                    UPDATE documents
-                    SET deleted_at = NULL
-                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NOT NULL
-                """
-                params: list[object] = [document_id, scoped_workspace_id]
-                result = conn.execute(query, params)
-                restored = result.rowcount > 0
-            if restored:
-                logger.info(
-                    f"PostgresDocumentRepository: Restored document {document_id}"
-                )
-            return restored
-        except Exception as e:
-            logger.error(
-                f"PostgresDocumentRepository: Restore failed for {document_id}: {e}"
-            )
-            raise DatabaseError(f"Restore failed: {e}")
-
     def find_similar_chunks_mmr(
         self,
-        embedding: List[float],
+        embedding: list[float],
         top_k: int,
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         *,
         workspace_id: UUID | None = None,
-    ) -> List[Chunk]:
+    ) -> list[Chunk]:
         """
-        R: Search for similar chunks using Maximal Marginal Relevance.
+        Vector search + MMR (Maximal Marginal Relevance).
 
-        MMR balances relevance to the query with diversity among results,
-        reducing redundant/similar chunks in the output.
+        Idea:
+        - Primero buscamos candidatos por similitud (fetch_k).
+        - Luego re-rankeamos para reducir redundancia (diversidad).
 
-        Args:
-            embedding: Query embedding vector
-            top_k: Number of chunks to return
-            fetch_k: Number of candidates to fetch before reranking (should be > top_k)
-            lambda_mult: Balance between relevance (1.0) and diversity (0.0)
-                        Default 0.5 is a good balance.
-
-        Returns:
-            List of Chunk entities ordered by MMR score
-
-        Raises:
-            DatabaseError: If search query fails
+        Parámetros:
+        - lambda_mult: 1.0 => solo relevancia, 0.0 => solo diversidad.
         """
-        # R: Fetch more candidates than needed for MMR selection
+        self._validate_embedding(embedding, ctx="Query")
+
+        if top_k <= 0:
+            return []
+
+        # Aseguramos un pool razonable de candidatos
+        effective_fetch = max(fetch_k, top_k * 2)
+
         candidates = self.find_similar_chunks(
-            embedding,
-            max(fetch_k, top_k * 2),
+            embedding=embedding,
+            top_k=effective_fetch,
             workspace_id=workspace_id,
         )
 
         if len(candidates) <= top_k:
             return candidates
 
-        # R: Apply MMR algorithm
-        return self._mmr_rerank(embedding, candidates, top_k, lambda_mult)
+        return self._mmr_rerank(
+            query_embedding=embedding,
+            candidates=candidates,
+            top_k=top_k,
+            lambda_mult=lambda_mult,
+        )
 
+    # ============================================================
+    # MMR (algoritmo local) — se mantiene privado para no “ensuciar” la capa pública
+    # ============================================================
     def _mmr_rerank(
         self,
-        query_embedding: List[float],
-        candidates: List[Chunk],
+        query_embedding: list[float],
+        candidates: list[Chunk],
         top_k: int,
         lambda_mult: float,
-    ) -> List[Chunk]:
+    ) -> list[Chunk]:
         """
-        R: Rerank candidates using Maximal Marginal Relevance algorithm.
+        Re-ranking con MMR:
 
-        MMR = argmax[λ * sim(d, q) - (1 - λ) * max(sim(d, d_i))]
+        score(d) = λ * sim(d, q) - (1-λ) * max(sim(d, d_i))
+        - sim: cosine similarity
+        - q: query
+        - d_i: elementos ya seleccionados
 
-        Where:
-            d = candidate document
-            q = query
-            d_i = already selected documents
-            λ = lambda_mult (relevance vs diversity tradeoff)
+        Esto evita devolver chunks casi idénticos cuando el embedding captura la misma idea.
         """
-        query_vec = np.array(query_embedding)
+        q = np.array(query_embedding, dtype=float)
 
-        # R: Pre-compute candidate embeddings and similarities to query
-        candidate_vecs = []
-        query_sims = []
+        # Precomputamos vectores candidatos y similitud a la query
+        cand_vecs: list[np.ndarray] = []
+        query_sims: list[float] = []
         for c in candidates:
-            if c.embedding:
-                vec = np.array(c.embedding)
-                candidate_vecs.append(vec)
-                # R: Cosine similarity to query
-                query_sims.append(self._cosine_similarity(query_vec, vec))
-            else:
-                candidate_vecs.append(None)
+            emb = c.embedding or []
+            if len(emb) != EMBEDDING_DIMENSION:
+                # Si algo raro entró, lo tratamos como “no elegible”
+                cand_vecs.append(np.zeros(EMBEDDING_DIMENSION))
                 query_sims.append(0.0)
+                continue
 
-        selected_indices: List[int] = []
-        selected_vecs: List[np.ndarray] = []
+            v = np.array(emb, dtype=float)
+            cand_vecs.append(v)
+            query_sims.append(self._cosine_similarity(q, v))
+
+        selected: list[int] = []
+        selected_vecs: list[np.ndarray] = []
 
         for _ in range(min(top_k, len(candidates))):
-            best_score = -float("inf")
             best_idx = -1
+            best_score = -float("inf")
 
-            for i, c in enumerate(candidates):
-                if i in selected_indices or candidate_vecs[i] is None:
+            for i in range(len(candidates)):
+                if i in selected:
                     continue
 
-                # R: Relevance term
                 relevance = query_sims[i]
 
-                # R: Diversity term (max similarity to already selected)
+                # Penalización por redundancia con lo ya seleccionado
                 diversity_penalty = 0.0
                 if selected_vecs:
-                    max_sim = max(
-                        self._cosine_similarity(candidate_vecs[i], sv)
+                    diversity_penalty = max(
+                        self._cosine_similarity(cand_vecs[i], sv)
                         for sv in selected_vecs
                     )
-                    diversity_penalty = max_sim
 
-                # R: MMR score
-                mmr_score = (
-                    lambda_mult * relevance - (1 - lambda_mult) * diversity_penalty
-                )
-
-                if mmr_score > best_score:
-                    best_score = mmr_score
+                mmr = lambda_mult * relevance - (1.0 - lambda_mult) * diversity_penalty
+                if mmr > best_score:
+                    best_score = mmr
                     best_idx = i
 
             if best_idx >= 0:
-                selected_indices.append(best_idx)
-                selected_vecs.append(candidate_vecs[best_idx])
+                selected.append(best_idx)
+                selected_vecs.append(cand_vecs[best_idx])
 
         logger.info(
-            f"PostgresDocumentRepository: MMR reranked {len(candidates)} → {len(selected_indices)} chunks"
+            "PostgresDocumentRepository: MMR rerank completed",
+            extra={
+                "candidates": len(candidates),
+                "selected": len(selected),
+                "lambda": lambda_mult,
+            },
         )
 
-        return [candidates[i] for i in selected_indices]
+        return [candidates[i] for i in selected]
 
     @staticmethod
     def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-        """Compute cosine similarity between two vectors."""
-        norm_a = np.linalg.norm(a)
-        norm_b = np.linalg.norm(b)
-        if norm_a == 0 or norm_b == 0:
+        """Cosine similarity estable (maneja norma cero)."""
+        na = np.linalg.norm(a)
+        nb = np.linalg.norm(b)
+        if na == 0.0 or nb == 0.0:
             return 0.0
-        return float(np.dot(a, b) / (norm_a * norm_b))
+        return float(np.dot(a, b) / (na * nb))
+
+    # ============================================================
+    # Health
+    # ============================================================
+    def ping(self) -> bool:
+        """Chequeo trivial de conectividad."""
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                conn.execute("SELECT 1")
+            return True
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: ping failed", extra={"error": str(exc)}
+            )
+            raise DatabaseError(f"Ping failed: {exc}") from exc

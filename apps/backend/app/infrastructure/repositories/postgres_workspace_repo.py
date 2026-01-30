@@ -1,32 +1,38 @@
 """
-CRC — infrastructure/repositories/postgres_workspace_repo.py
+============================================================
+TARJETA CRC — infrastructure/repositories/postgres_workspace_repo.py
+============================================================
+Class: PostgresWorkspaceRepository
 
-Name
-- PostgresWorkspaceRepository
+Responsibilities:
+- Implementar acceso a datos de Workspaces en PostgreSQL (SQL crudo).
+- Proveer operaciones CRUD + semántica de archivado (soft-delete via archived_at).
+- Exponer listados determinísticos y reutilizables por la capa de aplicación:
+  - list_workspaces()
+  - list_workspaces_by_visibility()
+  - list_workspaces_by_ids()
+  - list_workspaces_visible_to_user()
+  - get_workspace(), get_workspace_by_owner_and_name()
+  - create_workspace(), update_workspace(), archive_workspace()
 
-Responsibilities
-- Implement WorkspaceRepository for PostgreSQL.
-- Provide workspace CRUD and archive semantics (archived_at).
-- Provide v6 listing helpers used by application use cases:
-  - list_workspaces_by_visibility (e.g., ORG_READ)
-  - list_workspaces_by_ids (e.g., SHARED via ACL reverse lookup)
-
-Collaborators
+Collaborators:
 - domain.entities.Workspace, WorkspaceVisibility
 - crosscutting.exceptions.DatabaseError
 - crosscutting.logger.logger
 - psycopg_pool.ConnectionPool
+- Tablas: workspaces, workspace_acl
 
-Constraints / Notes
-- No business policy here (RBAC/ACL decisions live in domain/application).
-- Queries must be parameterized (no string interpolation of user input).
-- Methods must respect include_archived flag consistently.
-- Ordering should be deterministic and consistent across listing methods.
+Constraints / Notes (Clean / KISS):
+- Sin lógica de negocio aquí (RBAC/ACL/políticas viven arriba). Este repo solo “filtra” y “devuelve”.
+- Queries siempre parametrizadas (nada de interpolación de input de usuario).
+- include_archived debe respetarse de forma consistente en listados.
+- Ordenamiento determinístico en todos los listados.
+============================================================
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Iterable, Optional
 from uuid import UUID
 
 from psycopg_pool import ConnectionPool
@@ -37,14 +43,23 @@ from ...domain.entities import Workspace, WorkspaceVisibility
 
 
 class PostgresWorkspaceRepository:
-    """R: PostgreSQL implementation of WorkspaceRepository."""
+    """R: Implementación PostgreSQL del repositorio de Workspaces."""
+
+    # R: SELECT base reutilizable (mismo orden de columnas para mapping consistente)
+    _SELECT_COLUMNS = """
+        id, name, description, visibility, owner_user_id,
+        archived_at, created_at, updated_at
+    """
+
+    # R: Orden determinístico: primero más recientes, luego nombre (estable)
+    _ORDER_BY = "ORDER BY created_at DESC NULLS LAST, name ASC"
 
     def __init__(self, pool: Optional[ConnectionPool] = None):
-        # R: Pool is injectable for tests; production uses the global pool factory.
+        # R: Pool inyectable para tests; en producción se obtiene por factory global.
         self._pool = pool
 
     def _get_pool(self) -> ConnectionPool:
-        # R: Lazy-load the pool when not injected.
+        # R: Lazy-load para no acoplarse fuerte en import-time.
         if self._pool is not None:
             return self._pool
 
@@ -52,8 +67,11 @@ class PostgresWorkspaceRepository:
 
         return get_pool()
 
+    # =========================================================
+    # Mapping
+    # =========================================================
     def _row_to_workspace(self, row: tuple) -> Workspace:
-        # R: Keep mapping logic centralized and consistent.
+        # R: Mapping centralizado para mantener consistencia.
         (
             workspace_id,
             name,
@@ -74,12 +92,41 @@ class PostgresWorkspaceRepository:
             created_at=created_at,
             updated_at=updated_at,
             archived_at=archived_at,
-            # R: allowed_roles & shared_user_ids are not stored in workspaces table
-            # (ACL is stored in workspace_acl). Keep empty here.
+            # R: allowed_roles & shared_user_ids NO viven en workspaces (ACL está en workspace_acl).
             allowed_roles=[],
             shared_user_ids=[],
         )
 
+    # =========================================================
+    # Helpers de ejecución (DRY + errores consistentes)
+    # =========================================================
+    def _fetchall(self, *, query: str, params: Iterable[object], context_msg: str, extra: dict) -> list[tuple]:
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                return conn.execute(query, tuple(params)).fetchall()
+        except Exception as exc:
+            logger.exception(
+                context_msg,
+                extra={**extra, "error": str(exc)},
+            )
+            raise DatabaseError(f"{context_msg}: {exc}") from exc
+
+    def _fetchone(self, *, query: str, params: Iterable[object], context_msg: str, extra: dict) -> tuple | None:
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                return conn.execute(query, tuple(params)).fetchone()
+        except Exception as exc:
+            logger.exception(
+                context_msg,
+                extra={**extra, "error": str(exc)},
+            )
+            raise DatabaseError(f"{context_msg}: {exc}") from exc
+
+    # =========================================================
+    # Internal query builders
+    # =========================================================
     def _select_workspaces(
         self,
         *,
@@ -87,42 +134,37 @@ class PostgresWorkspaceRepository:
         params: list[object],
     ) -> list[Workspace]:
         """
-        R: Internal helper to execute a workspace SELECT with deterministic ordering.
+        R: Helper interno para SELECT con orden determinístico.
 
-        Args:
-            where_sql: Must include leading 'WHERE ...' or be empty string.
-            params: Parameters for the query (psycopg style).
+        where_sql:
+          - Debe ser "" o comenzar con "WHERE ..."
+          - Se construye SOLO desde este repositorio (no desde input del usuario).
         """
         query = f"""
-            SELECT id, name, description, visibility, owner_user_id,
-                   archived_at, created_at, updated_at
+            SELECT {self._SELECT_COLUMNS}
             FROM workspaces
             {where_sql}
-            ORDER BY created_at DESC NULLS LAST, name ASC
+            {self._ORDER_BY}
         """
 
-        try:
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                rows = conn.execute(query, params).fetchall()
-        except Exception as exc:
-            logger.warning(
-                "PostgresWorkspaceRepository: Failed to select workspaces",
-                extra={"error": str(exc), "where_sql": where_sql},
-            )
-            raise DatabaseError(f"Failed to select workspaces: {exc}")
+        rows = self._fetchall(
+            query=query,
+            params=params,
+            context_msg="PostgresWorkspaceRepository: Failed to select workspaces",
+            extra={"where_sql": where_sql},
+        )
+        return [self._row_to_workspace(r) for r in rows]
 
-        return [self._row_to_workspace(row) for row in rows]
-
+    # =========================================================
+    # Public API
+    # =========================================================
     def list_workspaces(
         self,
         *,
         owner_user_id: UUID | None = None,
         include_archived: bool = False,
     ) -> list[Workspace]:
-        """
-        R: List workspaces (optionally filtered by owner).
-        """
+        """R: Lista workspaces (opcionalmente filtrado por owner)."""
         conditions: list[str] = []
         params: list[object] = []
 
@@ -143,11 +185,8 @@ class PostgresWorkspaceRepository:
         include_archived: bool = False,
     ) -> list[Workspace]:
         """
-        R: List workspaces filtered by visibility (e.g., ORG_READ).
-
-        Notes:
-            - Used by v6 employee listing logic to fetch org-visible workspaces.
-            - This method does not apply any user policy; it only filters by visibility.
+        R: Lista workspaces por visibilidad (ej: ORG_READ).
+        Nota: este método NO aplica política de usuario; solo filtra por visibilidad.
         """
         conditions: list[str] = ["visibility = %s"]
         params: list[object] = [visibility.value]
@@ -165,21 +204,21 @@ class PostgresWorkspaceRepository:
         include_archived: bool = False,
     ) -> list[Workspace]:
         """
-        R: List workspaces by an explicit set of IDs.
+        R: Lista workspaces por un conjunto explícito de IDs.
 
-        Contract requirements:
-            - Return [] when workspace_ids is empty.
-            - Do not raise if some IDs don't exist; just skip them.
-            - Respect include_archived.
+        Contrato:
+        - Si workspace_ids está vacío => []
+        - Si algunos IDs no existen => se omiten (no error)
+        - Respeta include_archived
         """
         if not workspace_ids:
-            # R: Avoid generating invalid SQL and avoid unnecessary DB round-trip.
             return []
 
-        # R: Use placeholders to remain fully parameterized.
-        placeholders = ", ".join(["%s"] * len(workspace_ids))
-        conditions: list[str] = [f"id IN ({placeholders})"]
-        params: list[object] = list(workspace_ids)
+        # R: Versión PRO (más limpia que IN con placeholders dinámicos):
+        #     id = ANY(%s::uuid[])
+        # Esto evita construir SQL con N placeholders y reduce complejidad accidental.
+        conditions: list[str] = ["id = ANY(%s::uuid[])"]
+        params: list[object] = [workspace_ids]
 
         if not include_archived:
             conditions.append("archived_at IS NULL")
@@ -194,15 +233,19 @@ class PostgresWorkspaceRepository:
         include_archived: bool = False,
     ) -> list[Workspace]:
         """
-        R: List workspaces visible to an employee in a single query.
+        R: Lista workspaces visibles para un usuario en una sola query.
+        Semántica (datos, no política):
+        - owner_user_id = user
+        - OR visibility = ORG_READ
+        - OR visibility = SHARED y existe ACL para el usuario
         """
         conditions: list[str] = [
             "("
             "owner_user_id = %s "
             "OR visibility = %s "
             "OR (visibility = %s AND EXISTS ("
-            "SELECT 1 FROM workspace_acl wa "
-            "WHERE wa.workspace_id = workspaces.id AND wa.user_id = %s"
+            "  SELECT 1 FROM workspace_acl wa "
+            "  WHERE wa.workspace_id = workspaces.id AND wa.user_id = %s"
             ")))"
         ]
         params: list[object] = [
@@ -219,31 +262,19 @@ class PostgresWorkspaceRepository:
         return self._select_workspaces(where_sql=where_sql, params=params)
 
     def get_workspace(self, workspace_id: UUID) -> Workspace | None:
-        """
-        R: Fetch a workspace by ID.
-        """
-        try:
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                row = conn.execute(
-                    """
-                    SELECT id, name, description, visibility, owner_user_id,
-                           archived_at, created_at, updated_at
-                    FROM workspaces
-                    WHERE id = %s
-                    """,
-                    (workspace_id,),
-                ).fetchone()
-        except Exception as exc:
-            logger.warning(
-                "PostgresWorkspaceRepository: Failed to get workspace",
-                extra={"error": str(exc), "workspace_id": str(workspace_id)},
-            )
-            raise DatabaseError(f"Failed to get workspace: {exc}")
+        """R: Obtiene un workspace por ID."""
+        row = self._fetchone(
+            query=f"""
+                SELECT {self._SELECT_COLUMNS}
+                FROM workspaces
+                WHERE id = %s
+            """,
+            params=[workspace_id],
+            context_msg="PostgresWorkspaceRepository: Failed to get workspace",
+            extra={"workspace_id": str(workspace_id)},
+        )
 
-        if not row:
-            return None
-        return self._row_to_workspace(row)
+        return None if not row else self._row_to_workspace(row)
 
     def get_workspace_by_owner_and_name(
         self,
@@ -251,77 +282,55 @@ class PostgresWorkspaceRepository:
         name: str,
     ) -> Workspace | None:
         """
-        R: Fetch a workspace by owner + name (used for uniqueness checks).
+        R: Busca workspace por owner + name (usado para checks de unicidad lógica).
+        Nota: usa LOWER(name) para comparación case-insensitive.
         """
         if owner_user_id is None:
             return None
 
-        try:
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                row = conn.execute(
-                    """
-                    SELECT id, name, description, visibility, owner_user_id,
-                           archived_at, created_at, updated_at
-                    FROM workspaces
-                    WHERE owner_user_id = %s AND LOWER(name) = LOWER(%s)
-                    """,
-                    (owner_user_id, name),
-                ).fetchone()
-        except Exception as exc:
-            logger.warning(
-                "PostgresWorkspaceRepository: Failed to lookup workspace by owner+name",
-                extra={
-                    "error": str(exc),
-                    "owner_user_id": str(owner_user_id),
-                    "name": name,
-                },
-            )
-            raise DatabaseError(f"Failed to lookup workspace: {exc}")
+        row = self._fetchone(
+            query=f"""
+                SELECT {self._SELECT_COLUMNS}
+                FROM workspaces
+                WHERE owner_user_id = %s AND LOWER(name) = LOWER(%s)
+            """,
+            params=[owner_user_id, name],
+            context_msg="PostgresWorkspaceRepository: Failed to lookup workspace by owner+name",
+            extra={"owner_user_id": str(owner_user_id), "name": name},
+        )
 
-        if not row:
-            return None
-        return self._row_to_workspace(row)
+        return None if not row else self._row_to_workspace(row)
 
     def create_workspace(self, workspace: Workspace) -> Workspace:
-        """
-        R: Persist a new workspace.
-        """
-        try:
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                row = conn.execute(
-                    """
-                    INSERT INTO workspaces (
-                        id,
-                        name,
-                        description,
-                        visibility,
-                        owner_user_id,
-                        archived_at
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING id, name, description, visibility, owner_user_id,
-                              archived_at, created_at, updated_at
-                    """,
-                    (
-                        workspace.id,
-                        workspace.name,
-                        workspace.description,
-                        workspace.visibility.value,
-                        workspace.owner_user_id,
-                        workspace.archived_at,
-                    ),
-                ).fetchone()
-        except Exception as exc:
-            logger.warning(
-                "PostgresWorkspaceRepository: Failed to create workspace",
-                extra={"error": str(exc), "workspace_id": str(workspace.id)},
-            )
-            raise DatabaseError(f"Failed to create workspace: {exc}")
+        """R: Persiste un workspace nuevo."""
+        row = self._fetchone(
+            query="""
+                INSERT INTO workspaces (
+                    id,
+                    name,
+                    description,
+                    visibility,
+                    owner_user_id,
+                    archived_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, name, description, visibility, owner_user_id,
+                          archived_at, created_at, updated_at
+            """,
+            params=[
+                workspace.id,
+                workspace.name,
+                workspace.description,
+                workspace.visibility.value,
+                workspace.owner_user_id,
+                workspace.archived_at,
+            ],
+            context_msg="PostgresWorkspaceRepository: Failed to create workspace",
+            extra={"workspace_id": str(workspace.id)},
+        )
 
         if not row:
-            raise DatabaseError("Failed to create workspace: no row returned")
+            raise DatabaseError("PostgresWorkspaceRepository: Failed to create workspace: no row returned")
         return self._row_to_workspace(row)
 
     def update_workspace(
@@ -334,10 +343,10 @@ class PostgresWorkspaceRepository:
         allowed_roles: list[str] | None = None,
     ) -> Workspace | None:
         """
-        R: Update workspace attributes.
+        R: Actualiza atributos del workspace.
 
-        Note:
-            - allowed_roles are not stored in workspaces table (ACL is separate).
+        Nota:
+        - allowed_roles NO se persiste en workspaces (ACL es tabla separada).
         """
         fields: list[str] = []
         params: list[object] = []
@@ -354,12 +363,13 @@ class PostgresWorkspaceRepository:
             fields.append("visibility = %s")
             params.append(visibility.value)
 
-        # R: Explicitly ignore allowed_roles here (ACL stored separately).
+        # R: Se ignora explícitamente (documentación de contrato)
         _ = allowed_roles
 
         if not fields:
             return self.get_workspace(workspace_id)
 
+        # R: Mantener updated_at consistente desde DB.
         fields.append("updated_at = NOW()")
 
         query = f"""
@@ -371,24 +381,22 @@ class PostgresWorkspaceRepository:
         """
         params.append(workspace_id)
 
-        try:
-            pool = self._get_pool()
-            with pool.connection() as conn:
-                row = conn.execute(query, params).fetchone()
-        except Exception as exc:
-            logger.warning(
-                "PostgresWorkspaceRepository: Failed to update workspace",
-                extra={"error": str(exc), "workspace_id": str(workspace_id)},
-            )
-            raise DatabaseError(f"Failed to update workspace: {exc}")
+        row = self._fetchone(
+            query=query,
+            params=params,
+            context_msg="PostgresWorkspaceRepository: Failed to update workspace",
+            extra={"workspace_id": str(workspace_id)},
+        )
 
-        if not row:
-            return None
-        return self._row_to_workspace(row)
+        return None if not row else self._row_to_workspace(row)
 
     def archive_workspace(self, workspace_id: UUID) -> bool:
         """
-        R: Archive (soft-delete) a workspace (sets archived_at).
+        R: Archiva (soft-delete) un workspace (set archived_at).
+
+        Contract (explícito):
+        - True  => el workspace existe (se haya archivado en esta llamada o ya estuviera archivado)
+        - False => el workspace no existe
         """
         try:
             pool = self._get_pool()
@@ -401,6 +409,8 @@ class PostgresWorkspaceRepository:
                     """,
                     (workspace_id,),
                 )
+
+                # R: Idempotencia: si ya estaba archivado, no hacemos update, pero igual existe.
                 if cursor.rowcount and cursor.rowcount > 0:
                     return True
 
@@ -409,10 +419,10 @@ class PostgresWorkspaceRepository:
                     (workspace_id,),
                 ).fetchone()
         except Exception as exc:
-            logger.warning(
+            logger.exception(
                 "PostgresWorkspaceRepository: Failed to archive workspace",
                 extra={"error": str(exc), "workspace_id": str(workspace_id)},
             )
-            raise DatabaseError(f"Failed to archive workspace: {exc}")
+            raise DatabaseError(f"Failed to archive workspace: {exc}") from exc
 
         return row is not None

@@ -5,7 +5,7 @@ TARJETA CRC (Class / Responsibilities / Collaborators)
 Class: 001_foundation (Alembic Migration)
 
 Responsibilities:
-  - Crear el esquema completo de RAG Corp desde cero (migración fundacional).
+  - Crear el esquema completo desde cero (migración fundacional).
   - Definir tablas, constraints e índices necesarios para el funcionamiento base.
   - Habilitar extensión pgvector para búsquedas de similitud (embeddings).
 
@@ -15,14 +15,14 @@ Collaborators:
   - Capa de repositorios / aplicación (usa este esquema como contrato)
 
 Policy:
-  - Esta es una migración BASELINE (fundación). Downgrade NO soportado.
+  - Esta es una migración BASELINE. Downgrade NO soportado.
   - Toda evolución futura del esquema debe hacerse con migraciones aditivas (002+).
   - Convención de nombres (constraints / indexes):
       pk_<tabla>                         - Primary keys
       uq_<tabla>_<col>                   - Unique constraints
       ix_<tabla>_<col>                   - Indexes
       fk_<tabla>_<col>__<ref_tabla>      - Foreign keys
-  - No modificar este archivo una vez “adoptado” por el equipo.
+  - No modificar este archivo una vez adoptado por el equipo.
 ============================================================
 """
 
@@ -35,6 +35,8 @@ from sqlalchemy.dialects import postgresql
 # ============================================================
 # Alembic identifiers
 # ============================================================
+# Nota pro: Alembic normalmente usa hashes. Usar "001_foundation" es válido,
+# pero asegurate de que sea ÚNICO en todo el historial.
 revision: str = "001_foundation"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
@@ -46,7 +48,7 @@ def upgrade() -> None:
     Crea el esquema fundacional completo.
 
     Orden por carga cognitiva:
-      1) Extensiones (pgvector)
+      1) Extensiones
       2) Workspaces
       3) Identity (users)
       4) Documents / Storage
@@ -58,7 +60,11 @@ def upgrade() -> None:
     # =========================================================
     # 1) EXTENSIONS
     # =========================================================
+    # pgvector agrega el tipo vector(n) y operadores (<=>) para búsqueda.
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
+    # (Opcional, si algún día querés índices para ILIKE con trigramas)
+    # op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
 
     # =========================================================
     # 2) WORKSPACES
@@ -68,14 +74,23 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
+
+        # visibility es string por simplicidad (evita acople a enums DB).
+        # Default 'PRIVATE' por contrato.
         sa.Column(
             "visibility",
             sa.String(50),
             nullable=False,
             server_default=sa.text("'PRIVATE'"),
         ),
+
+        # owner_user_id puede ser NULL (workspaces sin dueño explícito).
         sa.Column("owner_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+
+        # archived_at = soft delete del workspace (semántica de “archivo”).
         sa.Column("archived_at", sa.DateTime(timezone=True), nullable=True),
+
+        # created_at / updated_at: timestamps de auditoría liviana
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -89,12 +104,27 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id", name="pk_workspaces"),
+        # (Opcional) Check constraint para limitar values de visibility:
+        # sa.CheckConstraint(
+        #     "visibility IN ('PRIVATE','ORG_READ','SHARED')",
+        #     name="ck_workspaces_visibility",
+        # ),
     )
 
-    # Nota: updated_at se actualiza a nivel aplicación (no trigger).
+    # Índices según queries reales:
     op.create_index("ix_workspaces_owner_user_id", "workspaces", ["owner_user_id"])
     op.create_index("ix_workspaces_visibility", "workspaces", ["visibility"])
     op.create_index("ix_workspaces_archived_at", "workspaces", ["archived_at"])
+
+    # Ayuda a ORDER BY created_at DESC cuando crece.
+    op.create_index("ix_workspaces_created_at", "workspaces", ["created_at"])
+
+    # Índice funcional para lookup por owner + lower(name)
+    # (usado por get_workspace_by_owner_and_name)
+    op.execute(
+        "CREATE INDEX ix_workspaces_owner_lower_name "
+        "ON workspaces (owner_user_id, lower(name))"
+    )
 
     # =========================================================
     # 3) IDENTITY (users)
@@ -105,10 +135,16 @@ def upgrade() -> None:
         sa.Column("email", sa.String(255), nullable=False),
         sa.Column("password_hash", sa.Text, nullable=False),
         sa.Column(
-            "role", sa.String(50), nullable=False, server_default=sa.text("'employee'")
+            "role",
+            sa.String(50),
+            nullable=False,
+            server_default=sa.text("'employee'"),
         ),
         sa.Column(
-            "is_active", sa.Boolean, nullable=False, server_default=sa.text("true")
+            "is_active",
+            sa.Boolean,
+            nullable=False,
+            server_default=sa.text("true"),
         ),
         sa.Column(
             "created_at",
@@ -120,10 +156,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("email", name="uq_users_email"),
     )
 
-    # Útil para filtros por rol. (El unique de email ya crea índice implícito.)
+    # Útil para filtros por rol (tu repo/listados lo usan).
     op.create_index("ix_users_role", "users", ["role"])
 
-    # FK diferida: workspaces.owner_user_id -> users.id (ahora que users existe)
+    # FK diferida: ahora que users existe, conectamos workspaces.owner_user_id
     op.create_foreign_key(
         "fk_workspaces_owner_user_id__users",
         "workspaces",
@@ -140,34 +176,40 @@ def upgrade() -> None:
         "documents",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("source", sa.String(1000), nullable=True),
+
+        # metadata/tags/allowed_roles: por contrato del repo conviene NO NULL + defaults.
         sa.Column(
             "metadata",
             postgresql.JSONB,
-            nullable=True,
+            nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),
         sa.Column(
             "tags",
             postgresql.ARRAY(sa.String(100)),
-            nullable=True,
+            nullable=False,
             server_default=sa.text("ARRAY[]::varchar[]"),
         ),
         sa.Column(
             "allowed_roles",
             postgresql.ARRAY(sa.String(50)),
-            nullable=True,
+            nullable=False,
             server_default=sa.text("ARRAY[]::varchar[]"),
         ),
+
         # Upload / storage
         sa.Column("file_name", sa.String(500), nullable=True),
         sa.Column("mime_type", sa.String(100), nullable=True),
         sa.Column("storage_key", sa.String(1000), nullable=True),
         sa.Column("uploaded_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+
         # Estado de procesamiento
         sa.Column("status", sa.String(50), nullable=True),
         sa.Column("error_message", sa.Text, nullable=True),
+
         # Timestamps
         sa.Column(
             "created_at",
@@ -176,6 +218,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+
         sa.PrimaryKeyConstraint("id", name="pk_documents"),
         sa.ForeignKeyConstraint(
             ["workspace_id"],
@@ -191,10 +234,40 @@ def upgrade() -> None:
         ),
     )
 
+    # Índices base por queries reales
     op.create_index("ix_documents_workspace_id", "documents", ["workspace_id"])
     op.create_index("ix_documents_status", "documents", ["status"])
     op.create_index("ix_documents_deleted_at", "documents", ["deleted_at"])
     op.create_index("ix_documents_created_at", "documents", ["created_at"])
+
+    # Índice parcial clave:
+    # list_documents filtra siempre deleted_at IS NULL + workspace_id y ordena por created_at.
+    op.create_index(
+        "ix_documents_ws_created_alive",
+        "documents",
+        ["workspace_id", "created_at"],
+        postgresql_where=sa.text("deleted_at IS NULL"),
+    )
+
+    # GIN: acelera tag lookups (%s = ANY(tags)) y filtros por roles si los usás.
+    op.create_index(
+        "ix_documents_tags_gin",
+        "documents",
+        ["tags"],
+        postgresql_using="gin",
+    )
+    op.create_index(
+        "ix_documents_allowed_roles_gin",
+        "documents",
+        ["allowed_roles"],
+        postgresql_using="gin",
+    )
+
+    # (Opcional) Si querés acelerar ILIKE en title/source/file_name:
+    # requiere pg_trgm. Lo dejo comentado para no agregar complejidad todavía.
+    # op.execute("CREATE INDEX ix_documents_title_trgm ON documents USING gin (title gin_trgm_ops)")
+    # op.execute("CREATE INDEX ix_documents_source_trgm ON documents USING gin (source gin_trgm_ops)")
+    # op.execute("CREATE INDEX ix_documents_file_name_trgm ON documents USING gin (file_name gin_trgm_ops)")
 
     # =========================================================
     # 5) CHUNKS / EMBEDDINGS / RETRIEVAL
@@ -208,7 +281,7 @@ def upgrade() -> None:
         sa.Column(
             "metadata",
             postgresql.JSONB,
-            nullable=True,
+            nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),
         sa.PrimaryKeyConstraint("id", name="pk_chunks"),
@@ -218,18 +291,24 @@ def upgrade() -> None:
             name="fk_chunks_document_id__documents",
             ondelete="CASCADE",
         ),
+        # (Opcional) Garantiza índices no negativos:
+        # sa.CheckConstraint("chunk_index >= 0", name="ck_chunks_chunk_index"),
+        # (Opcional) Unicidad por documento si querés evitar duplicados:
+        # sa.UniqueConstraint("document_id", "chunk_index", name="uq_chunks_document_id_chunk_index"),
     )
 
-    # pgvector: el tipo `vector(n)` se crea por SQL directo.
-    # Dimensión 768: ajustar si cambia el proveedor/embedding model.
-    op.execute("ALTER TABLE chunks ADD COLUMN embedding vector(768)")
+    # pgvector: tipo vector(768) (contrato del repo). Lo dejamos NOT NULL por consistencia.
+    op.execute("ALTER TABLE chunks ADD COLUMN embedding vector(768) NOT NULL")
 
+    # Índices de acceso: tus deletes y joins usan document_id.
     op.create_index("ix_chunks_document_id", "chunks", ["document_id"])
+    op.create_index("ix_chunks_document_id_chunk_index", "chunks", ["document_id", "chunk_index"])
 
-    # Índice ANN opcional (ivfflat). Conviene crear cuando haya datos y se defina estrategia.
+    # Índice ANN (opcional): conviene decidir estrategia cuando haya datos.
+    # HNSW suele dar buen recall/latencia, pero requiere tuning.
     # op.execute(
-    #     "CREATE INDEX ix_chunks_embedding_ivfflat "
-    #     "ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
+    #     "CREATE INDEX ix_chunks_embedding_hnsw "
+    #     "ON chunks USING hnsw (embedding vector_cosine_ops)"
     # )
 
     # =========================================================
@@ -244,7 +323,7 @@ def upgrade() -> None:
         sa.Column(
             "metadata",
             postgresql.JSONB,
-            nullable=True,
+            nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),
         sa.Column(
@@ -268,7 +347,10 @@ def upgrade() -> None:
         sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column(
-            "access", sa.String(50), nullable=False, server_default=sa.text("'READ'")
+            "access",
+            sa.String(50),
+            nullable=False,
+            server_default=sa.text("'READ'"),
         ),
         sa.Column(
             "created_at",
@@ -289,10 +371,23 @@ def upgrade() -> None:
             name="fk_workspace_acl_user_id__users",
             ondelete="CASCADE",
         ),
+        # (Opcional) Check para access:
+        # sa.CheckConstraint("access IN ('READ')", name="ck_workspace_acl_access"),
     )
 
-    # El PK compuesto ya indexa (workspace_id, user_id). Este índice sí aporta para queries por user_id.
+    # PK compuesta ya indexa (workspace_id, user_id).
+    # Índice adicional para queries por user_id y para ORDER BY created_at.
     op.create_index("ix_workspace_acl_user_id", "workspace_acl", ["user_id"])
+    op.create_index(
+        "ix_workspace_acl_user_created",
+        "workspace_acl",
+        ["user_id", "created_at", "workspace_id"],
+    )
+    op.create_index(
+        "ix_workspace_acl_ws_created",
+        "workspace_acl",
+        ["workspace_id", "created_at", "user_id"],
+    )
 
 
 def downgrade() -> None:
