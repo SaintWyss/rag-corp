@@ -5,22 +5,22 @@ TARJETA CRC — infrastructure/repositories/postgres_audit_repo.py
 Class: PostgresAuditEventRepository
 
 Responsibilities:
-- Persistir eventos de auditoría en PostgreSQL (tabla audit_events).
-- Proveer listados filtrables (actor, action_prefix, rango de fechas).
-- Permitir “scoping” por workspace vía metadata->>'workspace_id' (cuando aplique).
+  - Persistir eventos de auditoría en PostgreSQL (tabla audit_events).
+  - Listar eventos con filtros opcionales (workspace_id, actor_id, action_prefix, fechas).
+  - Mantener respuestas determinísticas (orden estable) para APIs/tests.
 
 Collaborators:
-- domain.audit.AuditEvent (entidad de dominio)
-- psycopg_pool.ConnectionPool (pool de conexiones)
-- psycopg.types.json.Json (serialización segura JSON)
-- crosscutting.logger.logger
-- crosscutting.exceptions.DatabaseError
+  - app.domain.audit.AuditEvent (entidad de dominio)
+  - psycopg_pool.ConnectionPool (pool de conexiones)
+  - psycopg.types.json.Json (JSON seguro hacia PostgreSQL)
+  - crosscutting.logger.logger (observabilidad)
+  - crosscutting.exceptions.DatabaseError (contrato de errores infra)
 
-Constraints / Notes (Clean / KISS):
-- Repo puro: NO decide políticas de auditoría (qué se audita / cuándo).
-- Queries SIEMPRE parametrizadas.
-- Ordenamiento determinístico: created_at DESC, id DESC (desempate estable).
-- workspace_id se filtra por JSONB metadata: conviene índice por performance (ver mejoras).
+Constraints / Notes:
+  - Repo puro: NO define políticas (qué auditar / autorización / RBAC).
+  - Queries SIEMPRE parametrizadas (nunca interpolar input del usuario).
+  - workspace_id se guarda en metadata como string: metadata->>'workspace_id' = '<uuid>'.
+  - actor sigue convención del proyecto: "user:<uuid>" / "service:<hash>" / "anonymous".
 ============================================================
 """
 
@@ -39,20 +39,14 @@ from ...domain.audit import AuditEvent
 
 
 class PostgresAuditEventRepository:
-    """
-    Repositorio PostgreSQL para auditoría.
-
-    Modelo mental:
-    - audit_events es un log append-only.
-    - metadata (JSONB) permite “payload” flexible y filtros por claves (ej workspace_id).
-    """
+    """Repositorio PostgreSQL para auditoría (audit_events)."""
 
     def __init__(self, pool: ConnectionPool | None = None):
-        # Pool inyectable para tests / ambientes controlados.
+        # Pool inyectable: tests pueden pasar su pool; prod usa el pool global.
         self._pool = pool
 
     def _get_pool(self) -> ConnectionPool:
-        """Lazy-load del pool global si no fue inyectado."""
+        """Obtiene el pool: si no fue inyectado, usa la factory global."""
         if self._pool is not None:
             return self._pool
 
@@ -60,36 +54,43 @@ class PostgresAuditEventRepository:
 
         return get_pool()
 
-    # ============================================================
-    # Helpers DB (DRY: errores y logging consistentes)
-    # ============================================================
+    # ------------------------------------------------------------
+    # Helpers internos (DRY: errores/logging consistentes)
+    # ------------------------------------------------------------
     def _fetchall(
         self,
         *,
         query: str,
         params: Iterable[object],
-        context_msg: str,
-        extra: dict,
+        error_message: str,
+        extra: dict[str, object],
     ) -> list[tuple]:
-        """Ejecuta un SELECT y devuelve todas las filas."""
+        """
+        Ejecuta un SELECT y devuelve todas las filas.
+
+        Centralizamos el manejo de errores para:
+        - loggear con contexto consistente
+        - levantar DatabaseError con encadenamiento (from exc)
+        """
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
                 return conn.execute(query, tuple(params)).fetchall()
         except Exception as exc:
-            logger.exception(context_msg, extra={**extra, "error": str(exc)})
-            raise DatabaseError(f"{context_msg}: {exc}") from exc
+            logger.exception(error_message, extra={**extra, "error": str(exc)})
+            raise DatabaseError(f"{error_message}: {exc}") from exc
 
-    # ============================================================
+    # ------------------------------------------------------------
     # Escritura (append-only)
-    # ============================================================
+    # ------------------------------------------------------------
     def record_event(self, event: AuditEvent) -> None:
         """
         Inserta un evento de auditoría.
 
-        Diseño:
-        - Append-only: no hay UPDATE/DELETE en auditoría.
-        - metadata se persiste como JSONB.
+        Decisión:
+        - Auditoría es un log append-only: no se edita, no se borra.
+        - Si falla, se propaga DatabaseError; la capa superior decide si “swallow”
+          (en tu proyecto, emit_audit_event ya traga errores).
         """
         try:
             pool = self._get_pool()
@@ -104,6 +105,7 @@ class PostgresAuditEventRepository:
                         event.actor,
                         event.action,
                         event.target_id,
+                        # metadata default defensivo: evita NULLs inesperados
                         Json(event.metadata or {}),
                     ),
                 )
@@ -111,17 +113,17 @@ class PostgresAuditEventRepository:
             logger.exception(
                 "PostgresAuditEventRepository: Failed to record audit event",
                 extra={
-                    "error": str(exc),
                     "event_id": str(getattr(event, "id", "")),
                     "actor": getattr(event, "actor", None),
                     "action": getattr(event, "action", None),
+                    "error": str(exc),
                 },
             )
             raise DatabaseError(f"Failed to record audit event: {exc}") from exc
 
-    # ============================================================
+    # ------------------------------------------------------------
     # Lectura (listado con filtros)
-    # ============================================================
+    # ------------------------------------------------------------
     def list_events(
         self,
         *,
@@ -136,19 +138,30 @@ class PostgresAuditEventRepository:
         """
         Lista eventos con filtros opcionales.
 
-        Filtros:
-        - workspace_id: metadata->>'workspace_id' = '<uuid>'
-          (esto asume que vos guardás esa key como string en metadata)
+        Filtros soportados:
+        - workspace_id:
+            Se guarda en JSONB metadata como string:
+            metadata["workspace_id"] = "<uuid>"
+            => filtramos con metadata->>'workspace_id' = %s
+
         - actor_id:
-            * si viene con ":", se asume "tipo:uuid" exacto
-            * si viene sin ":", se busca por sufijo ":%actor_id" (compat con tu formato)
-        - action_prefix: "LOGIN_" -> "LOGIN_%"
-        - start_at/end_at: rango temporal inclusivo
+            En el proyecto actor se normaliza como:
+              "user:<uuid>" o "service:<hash>" o "anonymous"
+            Por eso:
+              * si actor_id ya trae ":", es un match exacto (actor = %s)
+              * si NO trae ":", asumimos que es un id “crudo” (uuid/hash) y
+                buscamos por sufijo ":%actor_id" (actor LIKE %s)
+
+        - action_prefix:
+            Match prefix por LIKE: "workspaces." -> "workspaces.%"
+
+        - start_at / end_at:
+            Rango inclusivo (>=, <=) por simplicidad y compatibilidad.
 
         Orden:
-        - created_at DESC, id DESC para estabilidad cuando hay mismos timestamps.
+        - created_at DESC, id DESC -> estable incluso con timestamps iguales.
         """
-        # Guard rails: evita queries raras / inputs negativos
+        # Guard rails: evita queries raras y hace el método “totalmente predecible”.
         if limit <= 0:
             return []
         if offset < 0:
@@ -157,35 +170,33 @@ class PostgresAuditEventRepository:
         conditions: list[str] = []
         params: list[object] = []
 
-        # ---- workspace_id (JSONB) ----
-        if workspace_id:
-            # metadata almacena strings: comparamos con string uuid.
+        # ---- workspace_id (scope por workspace vía metadata JSONB)
+        if workspace_id is not None:
             conditions.append("metadata->>'workspace_id' = %s")
             params.append(str(workspace_id))
 
-        # ---- actor_id ----
+        # ---- actor_id (match exacto o por sufijo)
         if actor_id:
-            # Convención: actor = "<kind>:<id>" (ej: "user:2f..." o "api_key:abc")
             if ":" in actor_id:
+                # Ej: "user:<uuid>" o "service:<hash>"
                 conditions.append("actor = %s")
                 params.append(actor_id)
             else:
-                # Busca por sufijo ":%actor_id" para matchear kind variable.
-                # Ej: actor_id="2f..." -> "user:2f..."
+                # Ej: "<uuid>" -> matchea "user:<uuid>" o "service:<uuid-like>"
                 conditions.append("actor LIKE %s")
                 params.append(f"%:{actor_id}")
 
-        # ---- action_prefix ----
+        # ---- action prefix
         if action_prefix:
             conditions.append("action LIKE %s")
             params.append(f"{action_prefix}%")
 
-        # ---- fecha inicio/fin ----
-        if start_at:
+        # ---- rango temporal
+        if start_at is not None:
             conditions.append("created_at >= %s")
             params.append(start_at)
 
-        if end_at:
+        if end_at is not None:
             conditions.append("created_at <= %s")
             params.append(end_at)
 
@@ -202,7 +213,7 @@ class PostgresAuditEventRepository:
         rows = self._fetchall(
             query=query,
             params=[*params, limit, offset],
-            context_msg="PostgresAuditEventRepository: Failed to list audit events",
+            error_message="PostgresAuditEventRepository: Failed to list audit events",
             extra={
                 "workspace_id": str(workspace_id) if workspace_id else None,
                 "actor_id": actor_id,
@@ -214,10 +225,9 @@ class PostgresAuditEventRepository:
             },
         )
 
-        # Mapping explícito (fácil de leer/maintain).
+        # Mapping explícito: fácil de mantener / debuggear.
         events: list[AuditEvent] = []
-        for row in rows:
-            event_id, actor, action, target_id, metadata, created_at = row
+        for (event_id, actor, action, target_id, metadata, created_at) in rows:
             events.append(
                 AuditEvent(
                     id=event_id,

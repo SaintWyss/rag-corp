@@ -74,7 +74,6 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
-
         # visibility es string por simplicidad (evita acople a enums DB).
         # Default 'PRIVATE' por contrato.
         sa.Column(
@@ -83,13 +82,10 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("'PRIVATE'"),
         ),
-
         # owner_user_id puede ser NULL (workspaces sin dueño explícito).
         sa.Column("owner_user_id", postgresql.UUID(as_uuid=True), nullable=True),
-
         # archived_at = soft delete del workspace (semántica de “archivo”).
         sa.Column("archived_at", sa.DateTime(timezone=True), nullable=True),
-
         # created_at / updated_at: timestamps de auditoría liviana
         sa.Column(
             "created_at",
@@ -176,10 +172,8 @@ def upgrade() -> None:
         "documents",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("source", sa.String(1000), nullable=True),
-
         # metadata/tags/allowed_roles: por contrato del repo conviene NO NULL + defaults.
         sa.Column(
             "metadata",
@@ -198,18 +192,15 @@ def upgrade() -> None:
             postgresql.ARRAY(sa.String(50)),
             nullable=False,
             server_default=sa.text("ARRAY[]::varchar[]"),
-        ),
-
+        ), 
         # Upload / storage
         sa.Column("file_name", sa.String(500), nullable=True),
         sa.Column("mime_type", sa.String(100), nullable=True),
         sa.Column("storage_key", sa.String(1000), nullable=True),
         sa.Column("uploaded_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
-
         # Estado de procesamiento
         sa.Column("status", sa.String(50), nullable=True),
         sa.Column("error_message", sa.Text, nullable=True),
-
         # Timestamps
         sa.Column(
             "created_at",
@@ -218,7 +209,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-
         sa.PrimaryKeyConstraint("id", name="pk_documents"),
         sa.ForeignKeyConstraint(
             ["workspace_id"],
@@ -302,7 +292,9 @@ def upgrade() -> None:
 
     # Índices de acceso: tus deletes y joins usan document_id.
     op.create_index("ix_chunks_document_id", "chunks", ["document_id"])
-    op.create_index("ix_chunks_document_id_chunk_index", "chunks", ["document_id", "chunk_index"])
+    op.create_index(
+        "ix_chunks_document_id_chunk_index", "chunks", ["document_id", "chunk_index"]
+    )
 
     # Índice ANN (opcional): conviene decidir estrategia cuando haya datos.
     # HNSW suele dar buen recall/latencia, pero requiere tuning.
@@ -338,6 +330,16 @@ def upgrade() -> None:
     op.create_index("ix_audit_events_actor", "audit_events", ["actor"])
     op.create_index("ix_audit_events_action", "audit_events", ["action"])
     op.create_index("ix_audit_events_created_at", "audit_events", ["created_at"])
+
+    # Índices sobre JSONB (metadata->>'workspace_id') para alta performance en multi-tenant
+    op.execute(
+        "CREATE INDEX ix_audit_events_workspace_id "
+        "ON audit_events ((metadata->>'workspace_id'))"
+    )
+    op.execute(
+        "CREATE INDEX ix_audit_events_workspace_created "
+        "ON audit_events ((metadata->>'workspace_id'), created_at DESC)"
+    )
 
     # =========================================================
     # 7) ACL (Access Control Lists)
