@@ -13,7 +13,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "lint:cache:clear": "turbo clean",
-    "clean:cache": "find . -type d -name \"__pycache__\" -exec rm -rf {} + && find . -type d -name \".pytest_cache\" -exec rm -rf {} + && find . -type d -name \".ruff_cache\" -exec rm -rf {} + && find . -type d -name \".mypy_cache\" -exec rm -rf {} + && find . -type d -name \".next\" -exec rm -rf {} + && find . -type d -name \".turbo\" -exec rm -rf {} + && find . -type d -name \"dist\" -exec rm -rf {} + && echo \"Full stack caches cleaned (Python + JS) 🧹\"",
+    "clean:cache": "find . -type d -name \"__pycache__\" -exec rm -rf {} + && find . -type d -name \".pytest_cache\" -exec rm -rf {} + && find . -type d -name \".ruff_cache\" -exec rm -rf {} + && find . -type d -name \".mypy_cache\" -exec rm -rf {} + && find . -type d -name \".next\" -exec rm -rf {} + && find . -type d -name \".turbo\" -exec rm -rf {} + && find . -type d -name \"dist\" -exec rm -rf {} + && find . -type d -name \"htmlcov\" -exec rm -rf {} + && find . -type d -name \"coverage\" -exec rm -rf {} + && find . -type f -name \".coverage\" -delete && find . -type f -name \"coverage.xml\" -delete && echo \"Full stack caches cleaned (Python + JS) 🧹\"",
     "stack:core": "docker compose up -d --build db migrate rag-api",
     "stack:ui": "docker compose --profile ui up -d --build db migrate rag-api web",
     "stack:rag": "docker compose --profile rag up -d --build",

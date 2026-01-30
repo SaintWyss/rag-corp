@@ -1,46 +1,77 @@
-"""
+"""app.infrastructure.services.retry
+
 Name: Retry Helper with Exponential Backoff + Jitter
 
+Qué es
+------
+Utilidad cross-cutting de **resiliencia** para llamadas a servicios externos.
+Implementa:
+  - Clasificación de errores: **transient** (reintentar) vs **permanent** (fail-fast)
+  - Decorator de `tenacity` para aplicar **exponential backoff + jitter**
+  - Logging estructurado de intentos de retry (incluye correlation/request id cuando está disponible)
+
+Arquitectura
+------------
+- Estilo: Clean Architecture / Hexagonal
+- Capa: Infrastructure (crosscutting/resilience)
+- Rol: Proveer un mecanismo reutilizable para providers externos (Google, HTTP, etc.)
+
+Patrones de diseño
+------------------
+- **Decorator**: `create_retry_decorator()` retorna un decorator que envuelve una función.
+- **Policy Object** (implícito): `is_transient_error()` es la política de clasificación.
+- **Fail-fast**: errores permanentes no se reintentan.
+
+SOLID
+-----
+- SRP: este módulo solo trata resiliencia/observabilidad (no hace negocio).
+- OCP: podés extender la clasificación (códigos/excepciones) sin tocar consumidores.
+- DIP: los consumidores dependen de una abstracción simple (decorator), no de detalles.
+
+CRC (Component Card)
+--------------------
+Component: retry helper
 Responsibilities:
-  - Classify transient vs permanent errors (HTTP codes, exceptions)
-  - Provide tenacity-based retry decorator for Google API calls
-  - Apply exponential backoff with jitter to prevent thundering herd
-  - Log retry attempts with request_id for observability
-
+  - Decidir qué errores son reintentables
+  - Proveer un decorator estándar (tenacity) con backoff+jitter
+  - Loguear intentos y contexto útil para debugging/observabilidad
 Collaborators:
-  - tenacity: Retry library with configurable strategies
-  - config.Settings: Retry configuration (max_attempts, delays)
-  - logger: Structured logging with request correlation
-
+  - tenacity (motor de retry)
+  - crosscutting.config.get_settings (config de attempts/delays)
+  - crosscutting.logger (logging estructurado)
 Constraints:
-  - Only retry transient errors (429, 5xx, timeouts, connection errors)
-  - Never retry permanent errors (400, 401, 403)
-  - Jitter prevents synchronized retries across instances
-
-Notes:
-  - Based on Google Cloud best practices for retry
-  - Exponential backoff: delay = min(base * 2^attempt, max_delay)
-  - Jitter: random factor [0.5, 1.5] applied to delay
+  - Reintentar SOLO errores transitorios (429, 5xx, timeouts, connection issues)
+  - No reintentar errores permanentes (400, 401, 403, 404)
+  - Jitter para evitar thundering herd
 """
 
+from __future__ import annotations
+
 from functools import wraps
-from typing import Callable
+from typing import Any, Callable, Optional, TypeVar
 
 from tenacity import (
+    RetryCallState,
     retry,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential_jitter,
-    retry_if_exception,
-    RetryCallState,
 )
 
-from ...crosscutting.logger import logger
 from ...crosscutting.config import get_settings
+from ...crosscutting.logger import logger
+
+T = TypeVar("T")
 
 
-# R: HTTP status codes that indicate transient errors (retry-able)
+# ---------------------------------------------------------------------------
+# HTTP code policies
+# ---------------------------------------------------------------------------
+
+# R: HTTP status codes que indican fallas transitorias (reintentables)
 TRANSIENT_HTTP_CODES: frozenset[int] = frozenset(
     {
+        408,  # Request Timeout
         429,  # Too Many Requests (rate limit)
         500,  # Internal Server Error
         502,  # Bad Gateway
@@ -49,7 +80,7 @@ TRANSIENT_HTTP_CODES: frozenset[int] = frozenset(
     }
 )
 
-# R: HTTP status codes that indicate permanent errors (no retry)
+# R: HTTP status codes que indican fallas permanentes (no reintentar)
 PERMANENT_HTTP_CODES: frozenset[int] = frozenset(
     {
         400,  # Bad Request
@@ -61,53 +92,50 @@ PERMANENT_HTTP_CODES: frozenset[int] = frozenset(
 
 
 def get_http_status_code(exception: BaseException) -> int | None:
-    """
-    R: Extract HTTP status code from various exception types.
+    """R: Extrae un status code HTTP desde distintos tipos de exception.
 
-    Supports google.api_core exceptions and httpx responses.
+    Soporta (best-effort):
+      - google.api_core.exceptions.* (atributo `code`)
+      - httpx.HTTPStatusError (exception.response.status_code)
+      - excepciones de SDKs que expongan `status_code`
 
     Returns:
-        HTTP status code if found, None otherwise
+        int | None: HTTP status code si se encuentra, o None si no.
     """
-    # Google API Core exceptions (google.api_core.exceptions.*)
+
+    # R: Google API Core exceptions suelen exponer `code`.
     if hasattr(exception, "code"):
-        code = exception.code
-        # Handle gRPC status codes vs HTTP codes
+        code = getattr(exception, "code")
+        # R: En algunos SDKs `code` puede ser gRPC status; filtramos a códigos HTTP (>=100).
         if isinstance(code, int) and code >= 100:
             return code
 
-    # httpx.HTTPStatusError
-    if hasattr(exception, "response") and hasattr(exception.response, "status_code"):
-        return exception.response.status_code
+    # R: httpx.HTTPStatusError expone `response.status_code`.
+    resp = getattr(exception, "response", None)
+    if resp is not None and hasattr(resp, "status_code"):
+        status_code = getattr(resp, "status_code")
+        if isinstance(status_code, int):
+            return status_code
 
-    # google-genai specific exceptions
-    if hasattr(exception, "status_code"):
-        return exception.status_code
+    # R: Algunos SDKs exponen `status_code` directamente.
+    status_code = getattr(exception, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code
 
     return None
 
 
 def is_transient_error(exception: BaseException) -> bool:
+    """R: Decide si un error es transitorio (reintentar) o permanente (fail-fast).
+
+    Reglas (en orden):
+      1) Si hay status code HTTP: permanent → False, transient → True.
+      2) Si es una excepción típica de timeout/connection (built-in): True.
+      3) Heurística por nombre/mensaje (best-effort) para SDKs que no tipifican bien.
+      4) Default: fail-fast (False) para no reintentar errores desconocidos.
     """
-    R: Determine if an exception is transient (should retry).
 
-    Transient errors include:
-      - HTTP 429, 5xx
-      - Connection/timeout errors
-      - Temporary API unavailability
-
-    Permanent errors (no retry):
-      - HTTP 400, 401, 403, 404
-      - Invalid API key
-      - Malformed requests
-
-    Args:
-        exception: The exception to classify
-
-    Returns:
-        True if transient (retry), False if permanent (fail fast)
-    """
-    # R: Check for HTTP status codes
+    # R: 1) Clasificación por status code
     status_code = get_http_status_code(exception)
     if status_code is not None:
         if status_code in PERMANENT_HTTP_CODES:
@@ -115,11 +143,19 @@ def is_transient_error(exception: BaseException) -> bool:
         if status_code in TRANSIENT_HTTP_CODES:
             return True
 
-    # R: Common transient exception types (connection errors, timeouts)
+    # R: 2) Tipos built-in comunes (sin depender de librerías opcionales)
+    if isinstance(exception, (TimeoutError, ConnectionError, OSError)):
+        # R: OSError cubre casos como "Connection reset", "Network unreachable".
+        #     Es un poco amplio, pero preferimos resiliencia para IO/red.
+        return True
+
+    # R: 3) Heurística por nombre de clase (SDKs variados)
     exception_name = type(exception).__name__.lower()
-    transient_patterns = (
+    transient_name_patterns = (
         "timeout",
+        "timedout",
         "connection",
+        "connect",
         "temporary",
         "unavailable",
         "resourceexhausted",
@@ -127,51 +163,79 @@ def is_transient_error(exception: BaseException) -> bool:
         "aborted",
         "cancelled",
     )
-
-    if any(pattern in exception_name for pattern in transient_patterns):
+    if any(p in exception_name for p in transient_name_patterns):
         return True
 
-    # R: Check exception message for transient indicators
+    # R: 4) Heurística por mensaje (último recurso)
     message = str(exception).lower()
     transient_message_patterns = (
         "rate limit",
         "too many requests",
         "quota exceeded",
         "temporarily unavailable",
+        "service unavailable",
         "connection reset",
         "connection refused",
+        "network is unreachable",
         "timed out",
         "deadline exceeded",
     )
-
-    if any(pattern in message for pattern in transient_message_patterns):
+    if any(p in message for p in transient_message_patterns):
         return True
 
-    # R: Default: treat unknown errors as non-transient (fail fast)
+    # R: Default conservador: si no sabemos, NO reintentamos.
     return False
 
 
+def _extract_request_id(retry_state: RetryCallState) -> Optional[str]:
+    """R: Extrae request_id/correlation_id de kwargs para observabilidad.
+
+    Nota:
+      - Tenacity mantiene `args`/`kwargs` dentro de `RetryCallState`.
+      - Esta función es best-effort (si no hay id, retorna None).
+    """
+    kwargs = getattr(retry_state, "kwargs", None) or {}
+    for key in ("request_id", "correlation_id", "trace_id"):
+        value = kwargs.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
 def _log_retry(retry_state: RetryCallState) -> None:
-    """
-    R: Log retry attempts with context for observability.
+    """R: Loguea cada intento antes de dormir (before_sleep).
 
-    Called before each retry to record:
-      - Function name
-      - Attempt number
-      - Wait time before next attempt
-      - Last exception
+    Incluye:
+      - nombre de función
+      - intento actual
+      - tiempo de espera hasta el próximo intento
+      - excepción previa
+      - request_id/correlation_id si existe en kwargs
     """
-    fn_name = getattr(retry_state.fn, "__name__", "unknown")
-    attempt = retry_state.attempt_number
-    wait_time = retry_state.next_action.sleep if retry_state.next_action else 0
-    exc = retry_state.outcome.exception() if retry_state.outcome else None
 
+    fn = getattr(retry_state, "fn", None)
+    fn_name = getattr(fn, "__name__", "unknown")
+    attempt = getattr(retry_state, "attempt_number", 0)
+    wait_time = (
+        retry_state.next_action.sleep
+        if getattr(retry_state, "next_action", None) is not None
+        else 0
+    )
+
+    exc: Optional[BaseException] = None
+    if getattr(retry_state, "outcome", None) is not None:
+        exc = retry_state.outcome.exception()
+
+    request_id = _extract_request_id(retry_state)
+
+    # R: Logging estructurado (sin interpolar información importante en el mensaje)
     logger.warning(
-        f"Retry attempt {attempt} for {fn_name}",
+        "Retrying external call",
         extra={
             "function": fn_name,
             "attempt": attempt,
-            "wait_seconds": round(wait_time, 2),
+            "wait_seconds": round(float(wait_time), 2),
+            "request_id": request_id,
             "error": str(exc) if exc else None,
             "error_type": type(exc).__name__ if exc else None,
         },
@@ -182,59 +246,64 @@ def create_retry_decorator(
     max_attempts: int | None = None,
     base_delay: float | None = None,
     max_delay: float | None = None,
-) -> Callable:
-    """
-    R: Create a retry decorator with exponential backoff + jitter.
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """R: Crea un decorator `tenacity` con exponential backoff + jitter.
 
-    Uses settings from config unless overridden. Applies:
-      - Exponential backoff: delay doubles each attempt
-      - Jitter: randomizes delay to prevent thundering herd
-      - Transient error filtering: only retries appropriate errors
-
-    Args:
-        max_attempts: Max retry attempts (default from settings)
-        base_delay: Initial delay in seconds (default from settings)
-        max_delay: Maximum delay cap in seconds (default from settings)
-
-    Returns:
-        Configured tenacity retry decorator
+    Config:
+      - stop: `stop_after_attempt(max_attempts)`
+      - wait: `wait_exponential_jitter(initial=base_delay, max=max_delay)`
+      - retry: solo si `is_transient_error(exception)`
+      - before_sleep: `_log_retry`
+      - reraise: True (propaga la última excepción)
     """
     settings = get_settings()
 
-    _max_attempts = max_attempts or settings.retry_max_attempts
-    _base_delay = base_delay or settings.retry_base_delay_seconds
-    _max_delay = max_delay or settings.retry_max_delay_seconds
+    # R: Usar overrides solo si fueron provistos explícitamente.
+    _max_attempts = (
+        settings.retry_max_attempts if max_attempts is None else max_attempts
+    )
+    _base_delay = (
+        settings.retry_base_delay_seconds if base_delay is None else float(base_delay)
+    )
+    _max_delay = (
+        settings.retry_max_delay_seconds if max_delay is None else float(max_delay)
+    )
 
+    if _max_attempts <= 0:
+        raise ValueError("max_attempts must be > 0")
+    if _base_delay < 0:
+        raise ValueError("base_delay must be >= 0")
+    if _max_delay <= 0:
+        raise ValueError("max_delay must be > 0")
+
+    # R: Decorator de tenacity. `wait_exponential_jitter` ya agrega jitter.
     return retry(
         stop=stop_after_attempt(_max_attempts),
         wait=wait_exponential_jitter(
             initial=_base_delay,
             max=_max_delay,
-            jitter=_base_delay,  # R: Jitter up to base_delay seconds
+            jitter=_base_delay,  # R: jitter adicional best-effort (mantiene compatibilidad)
         ),
         retry=retry_if_exception(is_transient_error),
         before_sleep=_log_retry,
-        reraise=True,  # R: Re-raise last exception after all retries exhausted
+        reraise=True,
     )
 
 
-def with_retry(func: Callable) -> Callable:
-    """
-    R: Decorator that applies retry with default settings.
+def with_retry(func: Callable[..., T]) -> Callable[..., T]:
+    """R: Decorator simple que aplica retry con settings por defecto.
 
-    Convenience wrapper around create_retry_decorator() using
-    settings from config.
-
-    Usage:
-        @with_retry
-        def call_external_api():
-            ...
+    Nota de diseño:
+      - Creamos la función reintentable UNA vez en tiempo de decoración (no en cada llamada)
+        para reducir overhead y hacer más predecible el comportamiento.
     """
+
+    # R: Construimos la función reintentable una sola vez.
+    decorator = create_retry_decorator()
+    wrapped_func = decorator(func)
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
-        # R: Create decorator at call time to pick up current settings
-        decorator = create_retry_decorator()
-        return decorator(func)(*args, **kwargs)
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        return wrapped_func(*args, **kwargs)
 
     return wrapper

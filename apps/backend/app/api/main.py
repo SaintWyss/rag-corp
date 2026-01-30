@@ -32,6 +32,7 @@ Production Readiness:
 
 import os
 from contextlib import asynccontextmanager
+from typing import Callable
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,12 +70,89 @@ async def lifespan(app: FastAPI):
     )
 
     try:
-        # Dev seed admin/demo (only does something if enabled in settings/env)
+        # ------------------------------------------------------------------
+        # DEV SEED (Composition Root wiring)
+        # ------------------------------------------------------------------
+        # R: Seed admin/demo only when enabled in settings.
+        #     Seed must run AFTER init_pool() because repositories need DB access.
         try:
-            ensure_dev_admin(settings)
-            ensure_dev_demo(settings)
+
+            # R: Wire concrete infrastructure repos into dev seed (DIP-friendly)
+            from ..identity.auth_users import hash_password
+            from ..infrastructure.repositories.postgres_user_repo import (
+                create_user as pg_create_user,
+            )
+            from ..infrastructure.repositories.postgres_user_repo import (
+                get_user_by_email as pg_get_user_by_email,
+            )
+            from ..infrastructure.repositories.postgres_user_repo import (
+                update_user as pg_update_user,
+            )
+            from ..infrastructure.repositories.postgres_workspace_repo import (
+                PostgresWorkspaceRepository,
+            )
+
+            class _PostgresUserRepoAdapter:
+                """
+                R: Minimal adapter to satisfy the UserPort expected by ensure_dev_admin/demo.
+                Keeps dev_seed modules decoupled from concrete Postgres modules.
+                """
+
+                def get_user_by_email(self, email: str):
+                    return pg_get_user_by_email(email)
+
+                def create_user(
+                    self,
+                    *,
+                    email: str,
+                    password_hash: str,
+                    role,
+                    is_active: bool,
+                ):
+                    return pg_create_user(
+                        email=email,
+                        password_hash=password_hash,
+                        role=role,
+                        is_active=is_active,
+                    )
+
+                def update_user(
+                    self,
+                    user_id,
+                    *,
+                    password_hash=None,
+                    role=None,
+                    is_active=None,
+                ):
+                    return pg_update_user(
+                        user_id,
+                        password_hash=password_hash,
+                        role=role,
+                        is_active=is_active,
+                    )
+
+            user_repo = _PostgresUserRepoAdapter()
+            workspace_repo = PostgresWorkspaceRepository()
+            password_hasher: Callable[[str], str] = hash_password
+
+            ensure_dev_admin(
+                settings,
+                user_repo=user_repo,
+                password_hasher=password_hasher,
+                env=os.environ,
+            )
+
+            ensure_dev_demo(
+                settings,
+                user_repo=user_repo,
+                workspace_repo=workspace_repo,
+                password_hasher=password_hasher,
+            )
+
         except Exception as e:
-            logger.error(f"Startup failed: {e}")
+            logger.error(
+                "Startup failed during dev seed", exc_info=True, extra={"error": str(e)}
+            )
             raise
 
         logger.info(
@@ -352,10 +430,7 @@ def _check_google_api() -> str:
         "unavailable": API is not responding or erroring
         "disabled": No API key configured
     """
-    import os
-
     api_key = os.getenv("GOOGLE_API_KEY")
-
     if not api_key:
         return "disabled"
 

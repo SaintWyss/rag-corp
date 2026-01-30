@@ -1,93 +1,238 @@
 """
-Name: Dev Seed Demo
-Description: Logic to seed a full demo environment (admin + employees + workspaces).
+Name: Dev Seed Demo (Local-only)
+
+Responsibilities:
+  - Provision a local demo environment (admin + employees + workspaces)
+  - Enforce safety guard: only allowed in local environment
+  - Keep operations idempotent (safe to run multiple times)
+
+Architecture:
+  - Clean Architecture / Hexagonal
+  - Layer: Application task (but should be wired by Infrastructure/composition root)
+  - Depends on abstractions (repos/ports), not concrete Postgres implementations
+
+Patterns:
+  - Use-case/task orchestration (seed task)
+  - Dependency Injection (repos + hasher injected)
+  - Fail-fast guard (safety boundary)
+  - Idempotent provisioning (ensure-* functions)
+
+SOLID:
+  - SRP: orchestration only; helpers split user/workspace creation
+  - DIP: depends on repo ports, not Postgres modules
+
+CRC:
+  Component: ensure_dev_demo
+  Responsibilities:
+    - Validate environment guard
+    - Ensure demo users exist
+    - Ensure each user has a default workspace
+  Collaborators:
+    - user_repo (get_by_email/create)
+    - workspace_repo (list_by_owner/create)
+    - password_hasher
+    - Settings (dev_seed_demo/app_env)
+  Constraints:
+    - Must NEVER run outside local environment
+    - Must be idempotent
 """
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Callable, Protocol
+from uuid import UUID
 
 from ..crosscutting.config import Settings
 from ..crosscutting.logger import logger
 from ..domain.entities import Workspace, WorkspaceVisibility
-from ..identity.auth_users import hash_password
 from ..identity.users import UserRole
-from ..infrastructure.repositories.postgres_user_repo import (
-    create_user,
-    get_user_by_email,
-)
-from ..infrastructure.repositories.postgres_workspace_repo import (
-    PostgresWorkspaceRepository,
+
+# -----------------------------
+# Ports (duck-typed protocols)
+# -----------------------------
+
+
+class UserRecord(Protocol):
+    """R: Minimal user shape required by this seed task."""
+
+    id: UUID
+
+
+class UserPort(Protocol):
+    """R: User repository port needed by the seed task."""
+
+    def get_user_by_email(self, email: str) -> UserRecord | None: ...
+
+    def create_user(
+        self, *, email: str, password_hash: str, role: UserRole, is_active: bool
+    ) -> UserRecord: ...
+
+
+class WorkspacePort(Protocol):
+    """R: Workspace repository port needed by the seed task."""
+
+    def list_workspaces(self, *, owner_user_id: UUID): ...
+
+    def create_workspace(self, workspace: Workspace) -> None: ...
+
+
+# -----------------------------
+# Seed specs
+# -----------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class _SeedUserSpec:
+    """R: Declarative user seed spec (no side effects)."""
+
+    email: str
+    password: str
+    role: UserRole
+
+
+# R: Canonical demo users (local only)
+_DEMO_USERS: tuple[_SeedUserSpec, ...] = (
+    _SeedUserSpec(email="admin@local", password="admin", role=UserRole.ADMIN),
+    _SeedUserSpec(
+        email="employee1@local", password="employee1", role=UserRole.EMPLOYEE
+    ),
+    _SeedUserSpec(
+        email="employee2@local", password="employee2", role=UserRole.EMPLOYEE
+    ),
 )
 
 
-def ensure_dev_demo(settings: Settings) -> None:
+def _assert_local_env(settings: Settings) -> None:
+    """
+    R: Safety guard: DEV_SEED_DEMO must only run in local.
+    Fail-fast to prevent accidental seeding in real environments.
+    """
+    env = (settings.app_env or "").strip().lower()
+    if env != "local":
+        raise RuntimeError(
+            f"FATAL: DEV_SEED_DEMO is enabled but ENV is '{env}' (must be 'local'). "
+            "Safety guard prevents accidental overrides."
+        )
+
+
+def _default_workspace_name(email: str) -> str:
+    """R: Stable naming convention for demo workspaces (idempotency)."""
+    owner_label = (email.split("@", 1)[0] or "User").strip()
+    return f"{owner_label.capitalize()} Workspace"
+
+
+def _ensure_user(
+    *,
+    spec: _SeedUserSpec,
+    user_repo: UserPort,
+    password_hasher: Callable[[str], str],
+) -> UserRecord:
+    """
+    R: Ensure a user exists (idempotent).
+
+    Returns:
+        User entity shape with `.id`
+    """
+    email = spec.email
+    role = spec.role
+
+    user = user_repo.get_user_by_email(email)
+    if user:
+        logger.info(
+            "Dev seed demo: user already exists",
+            extra={"email": email, "role": str(role)},
+        )
+        return user
+
+    password_hash = password_hasher(spec.password)
+    user = user_repo.create_user(
+        email=email,
+        password_hash=password_hash,
+        role=role,
+        is_active=True,
+    )
+    logger.info(
+        "Dev seed demo: user created", extra={"email": email, "role": str(role)}
+    )
+    return user
+
+
+def _ensure_workspace(
+    *,
+    owner_user_id: UUID,
+    owner_email: str,
+    workspace_repo: WorkspacePort,
+    visibility: WorkspaceVisibility = WorkspaceVisibility.PRIVATE,
+) -> None:
+    """
+    R: Ensure the default workspace exists for the given owner (idempotent).
+
+    Nota:
+      - Hoy usamos list_workspaces + scan in-memory por simplicidad (seed local).
+      - Senior upgrade futuro: repo.get_by_owner_and_name(owner_id, name).
+    """
+    ws_name = _default_workspace_name(owner_email)
+
+    existing = workspace_repo.list_workspaces(owner_user_id=owner_user_id)
+    if any(getattr(ws, "name", None) == ws_name for ws in existing):
+        logger.info(
+            "Dev seed demo: workspace already exists",
+            extra={"owner_email": owner_email, "workspace_name": ws_name},
+        )
+        return
+
+    workspace_repo.create_workspace(
+        Workspace(
+            name=ws_name,
+            owner_user_id=owner_user_id,
+            visibility=visibility,
+        )
+    )
+    logger.info(
+        "Dev seed demo: workspace created",
+        extra={
+            "owner_email": owner_email,
+            "workspace_name": ws_name,
+            "visibility": str(visibility),
+        },
+    )
+
+
+def ensure_dev_demo(
+    settings: Settings,
+    *,
+    user_repo: UserPort,
+    workspace_repo: WorkspacePort,
+    password_hasher: Callable[[str], str],
+) -> None:
     """
     R: Ensure demo environment exists if configured.
-    FAIL-FAST if enabled in non-local environments.
 
-    Creates:
-    - Admin user (admin@local / admin)
-    - Employee 1 (employee1@local / employee1)
-    - Employee 2 (employee2@local / employee2)
-    - Workspaces for each user
+    Creates (local only):
+      - Admin user (admin@local / admin)
+      - Employee users (employee1@local, employee2@local)
+      - A default private workspace per user
+
+    Fail-fast:
+      - If dev_seed_demo is enabled but env != local
     """
     if not settings.dev_seed_demo:
         return
 
-    # Guard: Fail fast in non-local environments
-    current_env = settings.app_env.strip().lower()
-    if current_env != "local":
-        raise RuntimeError(
-            f"FATAL: DEV_SEED_DEMO is enabled but ENV is '{current_env}' (must be 'local'). "
-            "This is a safety guard to prevent accidental overrides."
+    _assert_local_env(settings)
+
+    logger.info("Dev seed demo: starting provisioning")
+
+    for spec in _DEMO_USERS:
+        user = _ensure_user(
+            spec=spec, user_repo=user_repo, password_hasher=password_hasher
+        )
+        _ensure_workspace(
+            owner_user_id=user.id,
+            owner_email=spec.email,
+            workspace_repo=workspace_repo,
+            visibility=WorkspaceVisibility.PRIVATE,
         )
 
-    logger.info("Dev seed demo: Starting provisioning...")
-
-    workspace_repo = PostgresWorkspaceRepository()
-
-    # 1. Define Users
-    users_to_seed = [
-        {"email": "admin@local", "pass": "admin", "role": UserRole.ADMIN},
-        {"email": "employee1@local", "pass": "employee1", "role": UserRole.EMPLOYEE},
-        {"email": "employee2@local", "pass": "employee2", "role": UserRole.EMPLOYEE},
-    ]
-
-    for u in users_to_seed:
-        email = u["email"]
-        role = u["role"]
-
-        user = get_user_by_email(email)
-        if not user:
-            hashed = hash_password(u["pass"])
-            user = create_user(
-                email=email,
-                password_hash=hashed,
-                role=role,
-                is_active=True,
-            )
-            logger.info(f"Dev seed demo: Created user {email} ({role})")
-        else:
-            logger.info(f"Dev seed demo: User {email} already exists")
-
-        # 2. Ensure each user has at least one workspace
-        # We check by name convention logic to be idempotent
-        ws_name = f"{email.split('@')[0].capitalize()} Workspace"
-
-        # Check if workspace exists for this owner with this name
-        # Since repo doesn't have exact "get by owner and name", we can list by owner
-        # and check in memory (safe for small local seed)
-        user_workspaces = workspace_repo.list_workspaces(owner_user_id=user.id)
-        existing_ws = next((ws for ws in user_workspaces if ws.name == ws_name), None)
-
-        if not existing_ws:
-            new_ws = Workspace(
-                name=ws_name,
-                owner_user_id=user.id,
-                visibility=WorkspaceVisibility.PRIVATE,
-            )
-            workspace_repo.create_workspace(new_ws)
-            logger.info(f"Dev seed demo: Created workspace '{ws_name}' for {email}")
-        else:
-            logger.info(
-                f"Dev seed demo: Workspace '{ws_name}' already exists for {email}"
-            )
-
-    logger.info("Dev seed demo: Provisioning complete.")
+    logger.info("Dev seed demo: provisioning complete")

@@ -1,164 +1,283 @@
 """
-Name: Google Gemini LLM Service Implementation
+Name: Google Gemini LLM Service Implementation (Adapter)
 
+Qué hace
+--------
+Implementación concreta de `domain.services.LLMService` usando Google GenAI (Gemini).
+Este componente se encarga de:
+  - Formatear prompts versionados (PromptLoader)
+  - Generar respuestas RAG basadas en contexto (context-only policy)
+  - Reintentar errores transitorios con exponential backoff + jitter (tenacity)
+  - Streaming incremental para UX (SSE / token-like chunks)
+
+Arquitectura
+------------
+- Estilo: Clean Architecture / Hexagonal
+- Capa: Infrastructure
+- Rol: Adapter hacia un proveedor externo (Google GenAI)
+
+Patrones
+--------
+- Adapter: traduce contrato `LLMService` a llamadas al SDK (genai)
+- Policy (fail-fast / retry): `retry.py` define qué errores reintentar
+- Factory/DI (fuera de este módulo): el composition root inyecta API key, loader, builder, etc.
+
+SOLID
+-----
+- SRP: este service sólo orquesta prompt + llamada al proveedor + manejo de errores.
+- OCP: swappeable por otro provider (OpenAI/Claude) sin cambiar use cases.
+- LSP: respeta el contrato de `LLMService`.
+- ISP/DIP: depende de abstracciones (LLMService, PromptLoader, ContextBuilderPort), no de detalles del SDK.
+
+CRC (Class-Responsibility-Collaboration)
+----------------------------------------
+Class: GoogleLLMService
 Responsibilities:
-  - Implement LLMService interface for Google Gemini 1.5 Flash
-  - Generate RAG answers using versioned prompt templates
-  - Apply business rules (context-only responses)
-  - Handle generation errors gracefully
-  - Retry transient errors with exponential backoff + jitter
-  - Stream responses token-by-token for better UX
-
+  - Generar respuesta completa (generate_answer) basada en prompt versionado
+  - Emitir stream incremental (generate_stream) para mejor UX
+  - Aplicar política "context-only" (no llamar LLM si no hay contexto)
+  - Reintentar errores transitorios (retry) y loguear observabilidad básica
 Collaborators:
-  - domain.services.LLMService: Interface implementation
-  - infrastructure.prompts.PromptLoader: Template loading
-  - google.genai: Google Gen AI SDK
-  - retry: Resilience helper for transient errors
-
+  - PromptLoader (infra.prompts): arma template versionado
+  - ContextBuilderPort (port por duck-typing): convierte chunks → context string
+  - google.genai.Client: SDK externo
+  - retry.create_retry_decorator: resiliencia
 Constraints:
-  - Prompt loaded from versioned template files
-  - No control over generation parameters
-  - Responses in Spanish (by prompt)
-  - Retries on 429, 5xx, timeouts
-
-Notes:
-  - Implements Service interface from domain layer
-  - Can be swapped with other providers (OpenAI, Claude)
-  - Uses dependency inversion principle
+  - Streaming: si el error ocurre a mitad de stream, NO se reintenta (no se puede reemitir tokens ya enviados)
+  - Respuestas en español (por prompt/policy)
 """
 
+from __future__ import annotations
+
 import os
-from typing import Optional, List, AsyncGenerator
+from typing import AsyncGenerator, List, Optional, Protocol
 
 from google import genai
 
-from ....domain.entities import Chunk
-from ....crosscutting.logger import logger
 from ....crosscutting.exceptions import LLMError
+from ....crosscutting.logger import logger
+from ....domain.entities import Chunk
+from ....domain.services import LLMService
 from ...prompts import PromptLoader, get_prompt_loader
 from ..retry import create_retry_decorator
-from ....application.context_builder import get_context_builder
 
 
-class GoogleLLMService:
+class ContextBuilderPort(Protocol):
+    """
+    R: Port (duck-typed) para construir contexto desde chunks.
+
+    Nota de arquitectura:
+      - Esto evita que Infrastructure dependa de Application.
+      - El composition root puede inyectar `application.context_builder.ContextBuilder`.
+    """
+
+    def build(self, chunks: List[Chunk]) -> tuple[str, int]: ...
+
+
+class GoogleLLMService(LLMService):
     """
     R: Google Gemini implementation of LLMService.
 
-    Implements domain.services.LLMService interface
-    using Gemini 1.5 Flash model.
+    Implementa el contrato del dominio usando Gemini (por defecto gemini-1.5-flash).
     """
 
+    DEFAULT_MODEL_ID = "gemini-1.5-flash"
+
     def __init__(
-        self, api_key: str | None = None, prompt_loader: Optional[PromptLoader] = None
-    ):
+        self,
+        api_key: str | None = None,
+        *,
+        client: genai.Client | None = None,
+        model_id: str | None = None,
+        prompt_loader: Optional[PromptLoader] = None,
+        context_builder: ContextBuilderPort | None = None,
+        retry_decorator=None,
+    ) -> None:
         """
-        R: Initialize Google LLM Service.
+        R: Inicializa el servicio (preferible vía DI).
 
         Args:
-            api_key: Google API key (defaults to GOOGLE_API_KEY env var)
-            prompt_loader: Optional PromptLoader (defaults to singleton)
+            api_key: API key (ideal: inyectar desde Settings)
+            client: Cliente genai preconstruido (útil para tests)
+            model_id: Override del modelo (default: gemini-1.5-flash)
+            prompt_loader: Loader versionado (default: singleton)
+            context_builder: Builder para chunks → string (inyectable)
+            retry_decorator: Decorator tenacity (inyectable para tests)
 
         Raises:
-            LLMError: If API key not configured
+            LLMError: si no hay API key y no se inyectó `client`.
         """
-        # R: Use provided key or fall back to environment variable
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
-
-        if not self.api_key:
+        resolved_key = (api_key or os.getenv("GOOGLE_API_KEY") or "").strip()
+        if not resolved_key and client is None:
             logger.error("GoogleLLMService: GOOGLE_API_KEY not configured")
             raise LLMError("GOOGLE_API_KEY not configured")
 
-        # R: Initialize Google Gen AI client
-        self.client = genai.Client(api_key=self.api_key)
-        self.model_id = "gemini-1.5-flash"
+        # R: SDK client (inyectable para tests; si no, se crea con api_key)
+        self._client = client or genai.Client(api_key=resolved_key)
 
-        # R: Get prompt loader (use provided or default singleton)
-        self.prompt_loader = prompt_loader or get_prompt_loader()
+        # R: Config del modelo
+        self._model_id = (model_id or self.DEFAULT_MODEL_ID).strip()
+
+        # R: Prompt loader versionado (inyectable)
+        self._prompt_loader = prompt_loader or get_prompt_loader()
+
+        # R: Context builder (inyectable). Si no se inyecta, se construye lazy como fallback.
+        #     Ideal: mover ContextBuilder a un puerto de dominio/crosscutting y siempre inyectar.
+        self._context_builder = context_builder
+
+        # R: Preconstruimos wrappers con retry para no redefinir closures por llamada.
+        decorator = retry_decorator or create_retry_decorator()
+        self._generate_content = decorator(self._client.models.generate_content)
+        self._create_stream = decorator(self._client.models.generate_content_stream)
 
         logger.info(
             "GoogleLLMService initialized",
-            extra={"prompt_version": self.prompt_loader.version},
+            extra={
+                "model_id": self._model_id,
+                "prompt_version": self._prompt_loader.version,
+            },
         )
 
     @property
     def prompt_version(self) -> str:
-        """R: Get current prompt version."""
-        return self.prompt_loader.version
+        """R: Versión actual del prompt (para observabilidad)."""
+        return self._prompt_loader.version
+
+    @property
+    def model_id(self) -> str:
+        """R: Identificador del modelo (para logs/debug)."""
+        return self._model_id
+
+    def _context_only_fallback(self) -> str:
+        """
+        R: Respuesta estándar si no hay contexto.
+
+        Evita alucinaciones: si no hay fuentes, no llamamos al LLM.
+        """
+        return (
+            "No encontré información suficiente en tus documentos para responder con certeza. "
+            "Probá reformular la pregunta o cargá documentos relevantes."
+        )
+
+    def _build_prompt(self, *, query: str, context: str) -> str:
+        """R: Arma el prompt final usando template versionado."""
+        return self._prompt_loader.format(context=context, query=query)
+
+    def _get_context_builder(self) -> ContextBuilderPort:
+        """
+        R: Obtiene el context builder.
+
+        Nota:
+          - Este fallback mantiene compatibilidad sin acoplar el módulo en import-time.
+          - Recomendación: inyectarlo desde el composition root.
+        """
+        if self._context_builder is not None:
+            return self._context_builder
+
+        # R: Import lazy para evitar dependencia directa de capa application al importar el módulo.
+        from ....application.context_builder import get_context_builder  # noqa: WPS433
+
+        self._context_builder = get_context_builder()
+        return self._context_builder
 
     def generate_answer(self, query: str, context: str) -> str:
         """
-        R: Generate answer based on query and retrieved context.
+        R: Genera una respuesta basada en `query` + `context` (RAG).
 
-        Implements LLMService.generate_answer()
-
-        Raises:
-            LLMError: If response generation fails
+        Política:
+          - Si `context` está vacío → no llamamos al LLM (context-only).
         """
-        # R: Format prompt using versioned template
-        prompt = self.prompt_loader.format(context=context, query=query)
+        if not (query or "").strip():
+            raise LLMError("Query must not be empty")
+
+        if not (context or "").strip():
+            return self._context_only_fallback()
+
+        prompt = self._build_prompt(query=query, context=context)
 
         try:
-            # R: Create retry decorator for API calls
-            retry_decorator = create_retry_decorator()
+            # R: Llamada al provider con retry (errores transitorios)
+            response = self._generate_content(model=self._model_id, contents=prompt)
+            text = (getattr(response, "text", "") or "").strip()
 
-            @retry_decorator
-            def _generate_with_retry(prompt_text: str) -> str:
-                response = self.client.models.generate_content(
-                    model=self.model_id,
-                    contents=prompt_text,
-                )
-                return (response.text or "").strip()
-
-            result = _generate_with_retry(prompt)
             logger.info(
                 "GoogleLLMService: Response generated",
-                extra={"prompt_version": self.prompt_version},
+                extra={
+                    "model_id": self._model_id,
+                    "prompt_version": self.prompt_version,
+                    "answer_chars": len(text),
+                },
             )
-            return result
+            return text
+
         except LLMError:
             raise
-        except Exception as e:
-            logger.error(f"GoogleLLMService: Generation failed: {e}")
-            raise LLMError(f"Failed to generate response: {e}")
+        except Exception as exc:
+            logger.error(
+                "GoogleLLMService: Generation failed",
+                exc_info=True,
+                extra={
+                    "model_id": self._model_id,
+                    "prompt_version": self.prompt_version,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            raise LLMError("Failed to generate response") from exc
 
     async def generate_stream(
         self, query: str, chunks: List[Chunk]
     ) -> AsyncGenerator[str, None]:
         """
-        R: Stream answer token by token.
+        R: Stream incremental de la respuesta (SSE friendly).
 
-        Implements LLMService.generate_stream()
-
-        Args:
-            query: User's question
-            chunks: Retrieved context chunks
-
-        Yields:
-            Individual tokens as they are generated
-
-        Raises:
-            LLMError: If streaming fails
+        Importante:
+          - Si el error ocurre durante la iteración del stream, NO reintentamos,
+            porque no podemos garantizar idempotencia del output (ya se emitieron tokens).
+          - Reintentamos solamente la creación del stream (errores al iniciar).
         """
-        # R: Build context from chunks
-        context_builder = get_context_builder()
-        context, _ = context_builder.build(chunks)
+        if not (query or "").strip():
+            raise LLMError("Query must not be empty")
 
-        # R: Format prompt using versioned template
-        prompt = self.prompt_loader.format(context=context, query=query)
+        # R: Construimos context en este método por contrato del dominio (recibe chunks).
+        #     El builder se inyecta para respetar DIP y evitar depender de Application.
+        context_builder = self._get_context_builder()
+        context, chunks_used = context_builder.build(chunks)
+
+        if not context.strip():
+            # R: Si no hay fuentes, devolvemos fallback en modo streaming.
+            yield self._context_only_fallback()
+            return
+
+        prompt = self._build_prompt(query=query, context=context)
 
         try:
-            # R: Use streaming API
-            for chunk in self.client.models.generate_content_stream(
-                model=self.model_id,
-                contents=prompt,
-            ):
-                if chunk.text:
-                    yield chunk.text
+            # R: Creamos stream con retry (errores transitorios al iniciar)
+            stream_iter = self._create_stream(model=self._model_id, contents=prompt)
+
+            # R: Emitimos texto a medida que llega (chunk.text).
+            for piece in stream_iter:
+                text = getattr(piece, "text", None)
+                if text:
+                    yield text
 
             logger.info(
-                "GoogleLLMService: Streaming response completed",
-                extra={"prompt_version": self.prompt_version},
+                "GoogleLLMService: Streaming completed",
+                extra={
+                    "model_id": self._model_id,
+                    "prompt_version": self.prompt_version,
+                    "chunks_used": chunks_used,
+                },
             )
-        except Exception as e:
-            logger.error(f"GoogleLLMService: Streaming failed: {e}")
-            raise LLMError(f"Failed to stream response: {e}")
+
+        except Exception as exc:
+            logger.error(
+                "GoogleLLMService: Streaming failed",
+                exc_info=True,
+                extra={
+                    "model_id": self._model_id,
+                    "prompt_version": self.prompt_version,
+                    "chunks_used": chunks_used,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            raise LLMError("Failed to stream response") from exc
