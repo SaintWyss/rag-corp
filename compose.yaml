@@ -1,255 +1,95 @@
-services:
-  # =============================================
-  # PROFILES (mental model):
-  # - default (sin profile): Core API + DB
-  # - ui: Next.js en contenedor (opcional)
-  # - rag: pipeline async de RAG (worker + redis + storage)
-  # - observability: Prometheus + Grafana (opcional)
-  # - full: rag + observability
-  # =============================================
-  db:
-    image: pgvector/pgvector:0.8.1-pg16-trixie
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: rag
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d rag"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+# ============================================================
+# TARJETA CRC (Class / Responsibilities / Collaborators)
+# ============================================================
+# Class (Artefacto): compose.yaml (Orquestación local de RAG Corp)
+#
+# Responsibilities (Responsabilidades):
+# - Definir un runtime local reproducible para el sistema (DB + API) y opcionales:
+#   UI, pipeline async de RAG (worker/redis/storage), observabilidad.
+# - Modelar perfiles para activar solo lo necesario (core/ui/rag/observability/full).
+# - Centralizar configuración repetida (anchors) para evitar drift.
+# - Ejecutar migraciones de forma controlada (job one-shot) antes de servicios.
+#
+# Collaborators (Colaboradores):
+# - Backend: FastAPI + worker (apps/backend)
+# - Frontend: Next.js (apps/frontend)
+# - DB: Postgres + pgvector
+# - Redis: cola/cache para jobs async
+# - MinIO + mc: storage S3-compatible + bootstrap bucket
+# - Prometheus + Grafana + postgres-exporter: observabilidad
+#
+# PROFILES (mental model):
+# - default (sin profile): db + migrate + rag-api
+# - ui: Next.js en contenedor (opcional)
+# - rag: pipeline async (redis + worker + minio + minio-init)
+# - observability: Prometheus + Grafana (+ exporter)
+# - full: rag + observability
+# ============================================================
 
-  rag-api:
-    build:
-      context: ./apps/backend
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
-      # Pasamos la variable del host al contenedor
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      FAKE_LLM: ${FAKE_LLM:-}
-      FAKE_EMBEDDINGS: ${FAKE_EMBEDDINGS:-}
-      # Dev Seed Admin
-      DEV_SEED_ADMIN: ${DEV_SEED_ADMIN:-0}
-      DEV_SEED_ADMIN_EMAIL: ${DEV_SEED_ADMIN_EMAIL:-admin@local}
-      DEV_SEED_ADMIN_PASSWORD: ${DEV_SEED_ADMIN_PASSWORD:-admin}
-      DEV_SEED_ADMIN_ROLE: ${DEV_SEED_ADMIN_ROLE:-admin}
-      DEV_SEED_ADMIN_FORCE_RESET: ${DEV_SEED_ADMIN_FORCE_RESET:-0}
-      # Other config
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
-      RBAC_CONFIG: ${RBAC_CONFIG:-}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_REGION: ${S3_REGION:-}
-      # E2E Seed Config
-      E2E_SEED_ADMIN: ${E2E_SEED_ADMIN:-}
-      E2E_ADMIN_EMAIL: ${E2E_ADMIN_EMAIL:-admin@local}
-      E2E_ADMIN_PASSWORD: ${E2E_ADMIN_PASSWORD:-admin}
-    volumes:
-      - ./:/repo
-    working_dir: /repo/apps/backend
-    command:
-      - sh
-      - -c
-      - alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000
-    ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request as u; u.urlopen('http://localhost:8000/healthz')",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+name: rag-corp
 
-  worker:
-    build:
-      context: ./apps/backend
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      FAKE_LLM: ${FAKE_LLM:-}
-      FAKE_EMBEDDINGS: ${FAKE_EMBEDDINGS:-}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
-      RBAC_CONFIG: ${RBAC_CONFIG:-}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_REGION: ${S3_REGION:-}
-      WORKER_HTTP_PORT: ${WORKER_HTTP_PORT:-8001}
-    volumes:
-      - ./:/repo
-    working_dir: /repo/apps/backend
-    command:
-      - sh
-      - -c
-      - alembic upgrade head && python -m app.worker.worker
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rag-api:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request as u; u.urlopen('http://localhost:8001/readyz')",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    profiles:
-      - worker
-      - rag
-      - full
+# ------------------------------------------------------------
+# EXTENSIONS (x-*) / ANCHORS para evitar duplicación (DRY)
+# ------------------------------------------------------------
 
-  web:
-    build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
-    environment:
-      NEXT_PUBLIC_API_URL: http://rag-api:8000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - rag-api
-    profiles:
-      - ui
-      - e2e
+# Build común del backend (API / Worker / Migrate)
+x-backend-build: &backend_build
+  context: ./apps/backend
 
-  # Redis cache (optional, for production)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    profiles:
-      - cache
-      - worker
-      - rag
-      - full
+# Entorno común del backend (se mergea con "<<" y se sobre-escribe si hace falta)
+x-backend-env: &backend_env
+  APP_ENV: ${APP_ENV:-development}
 
-  # Observability stack (optional, use --profile observability)
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-lifecycle"
-    ports:
-      - "9090:9090"
-    restart: unless-stopped
-    profiles:
-      - observability
-      - full
+  # Conexión interna usando el service name "db"
+  DATABASE_URL: postgresql://postgres:postgres@db:5432/rag
 
-  grafana:
-    image: grafana/grafana:10.2.0
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - ./infra/grafana/provisioning-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
-      - ./infra/grafana/provisioning-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    ports:
-      - "3001:3000"
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-    profiles:
-      - observability
-      - full
+  # Proveedor LLM/Embeddings (si no, usar FAKE_*)
+  GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
 
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
-    environment:
-      DATA_SOURCE_NAME: postgresql://postgres:postgres@db:5432/rag?sslmode=disable
-    ports:
-      - "9187:9187"
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    profiles:
-      - observability
-      - full
+  # Modo fake (dev/test sin proveedor)
+  FAKE_LLM: ${FAKE_LLM:-}
+  FAKE_EMBEDDINGS: ${FAKE_EMBEDDINGS:-}
 
-  minio:
-    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    volumes:
-      - minio_data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    profiles:
-      - storage
-      - rag
-      - full
+  # Redis (solo se usa si activás perfiles rag/worker/full)
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
 
-  minio-init:
-    image: minio/mc:RELEASE.2025-04-08T15-39-49Z
-    depends_on:
-      minio:
-        condition: service_healthy
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      S3_BUCKET: ${S3_BUCKET:-rag-documents}
-    entrypoint:
-      - sh
-      - -c
-      - >
-        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
-        mc mb --ignore-existing "local/$${S3_BUCKET}" &&
-        mc anonymous set none "local/$${S3_BUCKET}"
-    profiles:
-      - storage
-      - rag
-      - full
+  # Configs opcionales (según tu implementación)
+  API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
+  RBAC_CONFIG: ${RBAC_CONFIG:-}
+
+  # Storage S3-compatible (MinIO u otro)
+  S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+  S3_BUCKET: ${S3_BUCKET:-rag-documents}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+  S3_REGION: ${S3_REGION:-}
+
+# Logging con rotación (evita logs infinitos en json-file)
+x-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Healthcheck API (HTTP /healthz)
+x-hc-api: &hc_api
+  test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/healthz')"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+
+# Healthcheck Worker (HTTP /readyz)
+x-hc-worker: &hc_worker
+  test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8001/readyz')"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+
+networks:
+  rag_net:
+    driver: bridge
 
 volumes:
   pgdata:
@@ -257,3 +97,344 @@ volumes:
   prometheus_data:
   grafana_data:
   minio_data:
+
+services:
+  # ==========================================================
+  # DB: PostgreSQL + pgvector
+  # ==========================================================
+  db:
+    image: pgvector/pgvector:0.8.1-pg16-trixie
+    networks: [rag_net]
+    logging: *default_logging
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rag
+
+    # Exponer DB al host es útil en dev (DBeaver/psql).
+    # Si querés más “cerrado”, podés quitar ports y usar solo red docker.
+    ports:
+      - "5432:5432"
+
+    # Persistencia + init.sql (read-only)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================
+  # MIGRATIONS: job one-shot (alembic upgrade head)
+  # - Se ejecuta una vez y termina.
+  # - API/Worker arrancan solo si esto salió OK.
+  # ==========================================================
+  migrate:
+    build: *backend_build
+    networks: [rag_net]
+    logging: *default_logging
+    init: true
+
+    # Mantengo tu estilo de montar el repo para iteración rápida.
+    # Si querés imágenes inmutables más adelante, se puede cambiar.
+    volumes:
+      - ./:/repo
+    working_dir: /repo/apps/backend
+
+    environment:
+      <<: *backend_env
+
+    command: ["sh", "-c", "alembic upgrade head"]
+    restart: "no"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==========================================================
+  # API: FastAPI (HTTP)
+  # ==========================================================
+  rag-api:
+    build: *backend_build
+    networks: [rag_net]
+    logging: *default_logging
+    init: true
+
+    volumes:
+      - ./:/repo
+    working_dir: /repo/apps/backend
+
+    environment:
+      <<: *backend_env
+
+      # --------------------------
+      # Seed Admin DEV (opt-in)
+      # --------------------------
+      DEV_SEED_ADMIN: ${DEV_SEED_ADMIN:-0}
+      DEV_SEED_ADMIN_EMAIL: ${DEV_SEED_ADMIN_EMAIL:-admin@local}
+      DEV_SEED_ADMIN_PASSWORD: ${DEV_SEED_ADMIN_PASSWORD:-admin}
+      DEV_SEED_ADMIN_ROLE: ${DEV_SEED_ADMIN_ROLE:-admin}
+      DEV_SEED_ADMIN_FORCE_RESET: ${DEV_SEED_ADMIN_FORCE_RESET:-0}
+
+      # --------------------------
+      # Seeds E2E (si aplica)
+      # --------------------------
+      E2E_SEED_ADMIN: ${E2E_SEED_ADMIN:-}
+      E2E_ADMIN_EMAIL: ${E2E_ADMIN_EMAIL:-admin@local}
+      E2E_ADMIN_PASSWORD: ${E2E_ADMIN_PASSWORD:-admin}
+
+    # Importante: API NO debería migrar por su cuenta.
+    # Migrate es el gatekeeper.
+    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+    healthcheck: *hc_api
+    restart: unless-stopped
+
+  # ==========================================================
+  # Redis: cola/cache (solo perfiles rag/worker/full)
+  # ==========================================================
+  redis:
+    image: redis:7-alpine
+    networks: [rag_net]
+    logging: *default_logging
+
+    # Útil en dev si querés inspeccionar redis desde host
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+    profiles:
+      - worker
+      - rag
+      - full
+
+  # ==========================================================
+  # Worker: pipeline async (solo perfiles worker/rag/full)
+  # ==========================================================
+  worker:
+    build: *backend_build
+    networks: [rag_net]
+    logging: *default_logging
+    init: true
+
+    volumes:
+      - ./:/repo
+    working_dir: /repo/apps/backend
+
+    environment:
+      <<: *backend_env
+      WORKER_HTTP_PORT: ${WORKER_HTTP_PORT:-8001}
+
+    # El worker NO migra: migra "migrate".
+    command: ["sh", "-c", "python -m app.worker.worker"]
+
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rag-api:
+        condition: service_healthy
+
+    healthcheck: *hc_worker
+    restart: unless-stopped
+
+    profiles:
+      - worker
+      - rag
+      - full
+
+  # ==========================================================
+  # UI: Next.js en contenedor (solo perfiles ui/e2e)
+  # Nota importante (pro):
+  # - "NEXT_PUBLIC_*" suele quedar embebido en build.
+  # - Por eso lo pasamos como build arg.
+  # - Default recomendado: http://localhost:8000 (resoluble por tu browser).
+  # ==========================================================
+  web:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+
+    networks: [rag_net]
+    logging: *default_logging
+    init: true
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      rag-api:
+        condition: service_healthy
+
+    restart: unless-stopped
+    profiles:
+      - ui
+      - e2e
+
+  # ==========================================================
+  # Observability: Prometheus (perfil observability/full)
+  # ==========================================================
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    networks: [rag_net]
+    logging: *default_logging
+
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+
+    ports:
+      - "9090:9090"
+
+    restart: unless-stopped
+    profiles:
+      - observability
+      - full
+
+  # ==========================================================
+  # Observability: Grafana (perfil observability/full)
+  # ==========================================================
+  grafana:
+    image: grafana/grafana:10.2.0
+    networks: [rag_net]
+    logging: *default_logging
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./infra/grafana/provisioning-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./infra/grafana/provisioning-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+
+    ports:
+      - "3001:3000"
+
+    depends_on:
+      - prometheus
+
+    restart: unless-stopped
+    profiles:
+      - observability
+      - full
+
+  # ==========================================================
+  # Observability: Postgres exporter (perfil observability/full)
+  # ==========================================================
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    networks: [rag_net]
+    logging: *default_logging
+
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:postgres@db:5432/rag?sslmode=disable
+
+    ports:
+      - "9187:9187"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    restart: unless-stopped
+    profiles:
+      - observability
+      - full
+
+  # ==========================================================
+  # Storage: MinIO (perfil rag/full)
+  # ==========================================================
+  minio:
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    networks: [rag_net]
+    logging: *default_logging
+
+    command: ["server", "/data", "--console-address", ":9001"]
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+
+    volumes:
+      - minio_data:/data
+
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # consola
+
+    # Nota: este healthcheck depende de que la imagen tenga "curl".
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
+    profiles:
+      - rag
+      - full
+
+  # ==========================================================
+  # Init: crea bucket y aplica policy (perfil rag/full) - one-shot
+  # ==========================================================
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-08T15-39-49Z
+    networks: [rag_net]
+    logging: *default_logging
+    init: true
+
+    depends_on:
+      minio:
+        condition: service_healthy
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-rag-documents}
+
+    entrypoint:
+      - sh
+      - -c
+      - >
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
+        mc mb --ignore-existing "local/$${S3_BUCKET}" &&
+        mc anonymous set none "local/$${S3_BUCKET}"
+
+    restart: "no"
+    profiles:
+      - rag
+      - full

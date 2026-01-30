@@ -1,342 +1,168 @@
-# Docker — Guía completa (RAG Corp)
+# 🐳 Docker Cheat Sheet (RAG Corp)
 
-Esta guía es tu **manual de uso diario** para Docker en RAG Corp: qué es cada contenedor, qué perfiles existen, y qué comandos usar para **levantar / apagar / rebuild / resetear / borrar** sin romper nada.
-
-> **Fuente de verdad:** `compose.yaml` en la raíz del repo.
+> **Machete de supervivencia.** Copiá y pegá los comandos según lo que necesites hacer hoy.
 
 ---
 
-## 0) Modelo mental (simple, como vos lo pensás)
+## ✅ 0. Prerrequisitos (1 vez)
 
-Tu proyecto se divide en 3 “capas” operativas:
+- **Node + pnpm** instalados (recomendado: `corepack enable`).
+- **Docker Desktop / Docker Engine** corriendo.
+- En la raíz del repo:
+  - `cp .env.example .env` (si aplica)
+  - Configurá `NEXT_PUBLIC_API_URL=http://localhost:8000` si vas a usar el navegador.
 
-1) **Core Full‑Stack (día a día)**
-- **DB + API** (y el Front lo corrés en tu host con `pnpm dev`).
-- Sirve para: UI, auth, endpoints normales, debug rápido.
-
-2) **RAG / IA (pipeline async real)**
-- Agrega: **Redis + Worker + MinIO**.
-- Sirve para: upload real, procesamiento de documentos, embeddings, pasar de **PENDING → READY**.
-
-3) **Observability / Diagnóstico (opcional)**
-- Agrega: **Prometheus + Grafana + Exporters**.
-- Sirve para: métricas, latencias, errores, salud del sistema.
-
-Regla práctica:
-- Si tocás UI/auth/endpoints: **Core**.
-- Si querés subir docs y que se procesen: **RAG**.
-- Si estás debuggeando perf/errores: **Observability**.
+> 🧠 Regla de oro: **si el frontend corre en tu PC (browser), la API debe ser `http://localhost:8000`**.
 
 ---
 
-## 1) Qué hace cada cosa (Worker / Storage / Observability)
+## 🚀 1. Rutina diaria
 
-### 1.1 Worker (perfil `rag`) — “el que labura cuando subís un PDF”
-**Worker** es un proceso separado de la API que ejecuta tareas pesadas en segundo plano.
+### 🌟 Opción A: Todo en Uno (Recomendado)
 
-**Flujo real del sistema (upload):**
-1. Subís un archivo.
-2. La **API** guarda metadata en DB y marca el documento **PENDING**.
-3. La API encola un “job” en **Redis**.
-4. El **Worker** toma el job, descarga el archivo (MinIO), hace chunking, genera embeddings, guarda chunks/embeddings y marca **READY** (o **FAILED**).
+Levanta **Backend + Frontend** en una sola terminal.
 
-**Por qué no lo hace la API:**
-- La API queda rápida y estable (no se clava con PDFs grandes).
-- Podés escalar workers aparte.
-- El pipeline es más “production‑like”.
-
-**Cuándo lo necesitás:**
-- Cuando querés que el upload funcione “de verdad” y los docs pasen a READY.
-
----
-
-### 1.2 Redis — “la cola”
-Redis se usa como **broker/cola** para jobs.
-
-- La API manda jobs a Redis.
-- El worker consume jobs de Redis.
-
-**Cuándo lo necesitás:**
-- Siempre que uses worker/pipeline async.
-
----
-
-### 1.3 Storage (MinIO) — “S3 local”
-MinIO es un storage compatible con S3 (como AWS S3, pero local).
-
-**Qué guarda:**
-- Los archivos (PDFs, docs) que subís.
-
-**Qué NO guarda:**
-- Embeddings/chunks: eso va a Postgres (pgvector).
-
-**Por qué no se guarda en DB:**
-- DB no es ideal para archivos grandes.
-- S3/MinIO es lo estándar para objetos.
-
-**Cuándo lo necesitás:**
-- Cuando quieras subir documentos reales y procesarlos.
-
----
-
-### 1.4 Observability (Prometheus + Grafana) — “tablero y métricas”
-- **Prometheus** recolecta métricas (contadores, latencias, errores, etc.).
-- **Grafana** muestra dashboards.
-
-**Cuándo lo necesitás:**
-- Cuando algo anda lento, falla, o querés ver el estado real.
-
----
-
-## 2) Servicios del `compose.yaml` (qué es cada contenedor)
-
-> Esto es “para qué sirve cada docker” en tu repo.
-
-### Core
-- `db`: Postgres + pgvector (datos + embeddings)
-- `rag-api`: FastAPI (auth, docs, chat, RAG)
-
-### UI (opcional)
-- `web`: Next.js en contenedor (útil para E2E o si querés todo dockerizado)
-
-### RAG pipeline (IA)
-- `redis`: cola/broker de jobs
-- `worker`: procesamiento async (PENDING → READY)
-- `minio`: storage tipo S3
-- `minio-init`: inicializa bucket/alias en MinIO
-
-### Observability
-- `prometheus`: recolección de métricas
-- `grafana`: dashboards
-- `postgres-exporter`: expone métricas de Postgres a Prometheus
-
----
-
-## 3) Profiles (cómo “armás” stacks sin volverte loco)
-
-Los `profiles` de Docker Compose te dejan elegir qué conjunto levantar.
-
-### Stacks recomendados (modelo oficial de este repo)
-
-1) **Core** (sin profile)
-- Servicios: `db`, `rag-api`
-- Para: trabajo diario en back/front, debug rápido.
-
-2) **RAG** (perfil `rag`)
-- Servicios extra: `redis`, `worker`, `minio`, `minio-init`
-- Para: upload real, procesamiento y embeddings.
-
-3) **Observability** (perfil `observability`)
-- Servicios extra: `prometheus`, `grafana`, `postgres-exporter`
-- Para: métricas, diagnóstico.
-
-4) **Full** (perfil `full`)
-- Combina: `rag` + `observability`
-
-5) **UI en Docker** (perfil `ui` o `e2e`)
-- Servicio extra: `web`
-
----
-
-## 4) Comandos de uso diario (modo “4 botones”)
-
-> Recomendación: usá scripts PNPM para no memorizar flags.
-
-### 4.1 Encender (Up)
-
-**A) Core (DB + API):**
 ```bash
-pnpm stack:core
+pnpm stack:ui
 ```
 
-**B) Core + pipeline RAG (upload real):**
-```bash
-pnpm stack:rag
-```
+_(Acceder en: [http://localhost:3000](http://localhost:3000))_
 
-**C) Observability:**
-```bash
-pnpm stack:obs
-```
+---
 
-**D) Todo junto (RAG + observability):**
-```bash
-pnpm stack:full
-```
+### 🔧 Opción B: Modo Híbrido (Backend Docker + Front Local)
 
-**E) Todo + UI en Docker (raro pero existe):**
+Usá esto si querés que el frontend recargue rápido al editar código (`hot-reloading`).
+
+**Terminal 1 (Infra):**
+
+| Modo     | Comando           | Levanta               | Útil para            |
+| -------- | ----------------- | --------------------- | -------------------- |
+| **Core** | `pnpm stack:core` | DB + API              | Backend, DB (rápido) |
+| **RAG**  | `pnpm stack:rag`  | Core + Worker + MinIO | Uploads reales       |
+| **Full** | `pnpm stack:full` | Todo + Grafana        | Métricas             |
+
+**Terminal 2 (Front):**
+
 ```bash
-pnpm stack:all
+pnpm dev
 ```
 
 ---
 
-### 4.2 Apagar (Stop)
+## 🛑 2. Apagar y limpiar
 
-**Stop normal (NO borra datos):**
-```bash
-pnpm stack:stop
-```
+| Situación     | Comando            | Qué hace                                                   |
+| ------------- | ------------------ | ---------------------------------------------------------- |
+| Fin del día   | `pnpm stack:stop`  | Apaga contenedores (**no borra datos**)                    |
+| Todo roto     | `pnpm stack:reset` | Apaga y **borra volúmenes** (DB/redis/minio)               |
+| Todo MUY roto | `pnpm stack:nuke`  | Limpieza agresiva (incluye imágenes). **Usar con cuidado** |
 
 ---
 
-### 4.3 Rebuild (cuando cambiaste dependencias)
+## 🛠️ 3. Utils (lo que realmente se usa)
 
-Si tocaste `requirements.txt`, `Dockerfile`, `package.json` del front, o cambios grandes:
+### DB / Migraciones
+
+| Acción              | Comando                |
+| ------------------- | ---------------------- |
+| Entrar a SQL        | `pnpm db:psql`         |
+| Aplicar migraciones | `pnpm db:migrate`      |
+| Crear admin (dev)   | `pnpm admin:bootstrap` |
+
+### Logs / Estado
+
+| Acción              | Comando                  |
+| ------------------- | ------------------------ |
+| Estado de servicios | `pnpm stack:ps`          |
+| Logs API            | `pnpm stack:logs:api`    |
+| Logs Worker         | `pnpm stack:logs:worker` |
+| Logs todo           | `pnpm stack:logs`        |
+
+---
+
+## ❓ 4. Escenarios comunes (FAQ)
+
+### “Cambios en Python no se ven”
+
+- Si cambiaste **código**, debería reflejarse (según tu modo de ejecución).
+- Si agregaste/actualizaste dependencias (`requirements.txt`):
 
 ```bash
 pnpm stack:stop
-pnpm stack:core
+pnpm stack:core  # incluye --build
 ```
 
-(En los scripts usamos `--build`, así que recompila cuando haga falta.)
-
----
-
-### 4.4 Reset / Borrado
-
-**Reset del proyecto (borra volúmenes del proyecto = DB/Redis/MinIO):**
-```bash
-pnpm stack:reset
-```
-
-**Nuclear (borra TODO Docker en tu máquina):**
-```bash
-pnpm stack:nuke
-```
-
-⚠️ `stack:nuke` es destructivo: elimina imágenes/volúmenes globales. Usalo solo si Docker quedó hecho un nudo.
-
----
-
-## 5) Build vs Up (explicado en criollo)
-
-- **Build** = “crear la imagen” (la receta del Dockerfile → imagen).
-- **Up** = “correr” los contenedores (imagen → servicio corriendo).
-
-En este repo, para simplificar, casi siempre usamos:
-- `docker compose up -d --build ...`
-
-Así vos no pensás: *build si cambió algo, up si no*.
-
----
-
-## 6) Cómo verificar que todo está bien (estado y salud)
-
-### 6.1 Ver servicios corriendo
-```bash
-docker compose ps
-```
-
-Esperado:
-- `db` en **healthy**
-- `rag-api` en **healthy**
-
-### 6.2 Ver logs
-- DB:
-```bash
-docker compose logs -f db
-```
-- API:
-```bash
-docker compose logs -f rag-api
-```
-- Worker (si está levantado):
-```bash
-docker compose logs -f worker
-```
-
----
-
-## 7) Postgres: “no me abría la DB” (guía express)
-
-### 7.1 Entrar a Postgres (desde Docker)
-```bash
-docker compose exec db psql -U postgres -d rag
-```
-
-### 7.2 Conectar desde DBeaver/PGAdmin
-- Host: `localhost`
-- Port: `5432`
-- User: `postgres`
-- Password: `postgres`
-- Database: `rag`
-
-### 7.3 Errores típicos
-
-**A) Puerto ocupado (5432):**
-- Tenés otro Postgres local usando 5432.
-- Solución: apagar el Postgres local o cambiar el puerto del servicio `db` en compose.
-
-**B) `db` no está healthy:**
-- Mirá logs: `docker compose logs -f db`
-
----
-
-## 8) ¿Cuándo necesito Worker/Redis/MinIO? (decisión rápida)
+### “El worker no procesa / los docs no pasan a READY”
 
 Checklist:
-- ¿Subís documentos y querés que pasen de PENDING a READY? → **Sí: `pnpm stack:rag`**
-- ¿Solo estás tocando UI/auth/chat con mocks o sin upload? → **No: `pnpm stack:core`**
 
----
+1. ¿Levantaste modo RAG?
 
-## 9) Variables mínimas para “RAG completo”
-
-En tu `.env` (local), para que el pipeline async funcione:
-
-```env
-REDIS_URL=redis://redis:6379
-S3_ENDPOINT_URL=http://minio:9000
-S3_BUCKET=rag-documents
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=minioadmin
-```
-
-> Estas defaults están en `.env.example`.
-
----
-
-## 10) Troubleshooting (rápido)
-
-### 10.1 Upload se queda en PENDING
-1) `docker compose ps` → ¿`worker` y `redis` corriendo?
-2) ¿`S3_ENDPOINT_URL` y `REDIS_URL` correctos?
-3) Levantar pipeline:
 ```bash
 pnpm stack:rag
 ```
 
-### 10.2 API levanta pero falla con DB
-1) `docker compose ps` → DB healthy.
-2) Logs:
-```bash
-docker compose logs -f rag-api
-```
-3) Validar `DATABASE_URL` interno (en compose): `db:5432`.
+2. ¿Redis y worker están `Up/Healthy`?
 
-### 10.3 Quiero “empezar de cero”
-- Reset del proyecto:
 ```bash
-pnpm stack:reset
+pnpm stack:ps
+pnpm stack:logs:worker
 ```
+
+3. ¿MinIO está arriba y el bucket existe?
+
+- Consola: [http://localhost:9001](http://localhost:9001)
+
+### “No puedo loguearme como admin”
+
+Si reseteaste la DB, el usuario se borró:
+
+```bash
+pnpm admin:bootstrap
+# Crea: admin@local / admin
+```
+
+### “El frontend no conecta con el backend”
+
+1. Confirmá API viva:
+
+```bash
+pnpm stack:ps
+```
+
+2. Confirmá URL pública correcta (browser):
+
+- `NEXT_PUBLIC_API_URL=http://localhost:8000`
+
+> 🧠 Si ponés `http://rag-api:8000` funciona **solo dentro de Docker**, no desde tu navegador.
 
 ---
 
-## 11) FAQ: dev vs prod (sin meterte quilombo)
+## 🧭 5. Perfiles (modelo mental)
 
-- **Dev** = cómodo para programar (reload, volúmenes, debug, iteración rápida).
-- **Prod** = “como correría en un servidor real” (más estricto, seguro, sin mounts).
-
-**Hoy:** no necesitás separar en 2 composes. Por eso este repo usa **profiles + scripts**.
-
-Si algún día vas a desplegar en server/K8s, ahí sí conviene separar. Pero no es obligatorio ahora.
+- **Core**: DB + migraciones + API. Rápido y liviano.
+- **RAG**: agrega cola (Redis + Worker) + storage (MinIO) para uploads y procesamiento async.
+- **Observability**: agrega Prometheus/Grafana para métricas.
+- **Full**: RAG + Observability.
 
 ---
 
-## 12) Referencias
-- `compose.yaml`
-- `apps/backend/Dockerfile`
-- `apps/frontend/Dockerfile`
-- `infra/postgres/init.sql`
+## 📌 6. Puertos (referencia)
 
+| Servicio         | Puerto | URL                                                      | Credenciales                |
+| ---------------- | -----: | -------------------------------------------------------- | --------------------------- |
+| Frontend (local) |   3000 | [http://localhost:3000](http://localhost:3000)           | -                           |
+| API Docs         |   8000 | [http://localhost:8000/docs](http://localhost:8000/docs) | -                           |
+| MinIO Console    |   9001 | [http://localhost:9001](http://localhost:9001)           | `minioadmin` / `minioadmin` |
+| Grafana          |   3001 | [http://localhost:3001](http://localhost:3001)           | `admin` / `admin`           |
+| Postgres         |   5432 | localhost:5432                                           | `postgres` / `postgres`     |
+
+---
+
+## 🔎 7. Diagnóstico rápido (cuando algo “no anda”)
+
+1. **Estado**: `pnpm stack:ps`
+2. **Logs**: `pnpm stack:logs:api` / `pnpm stack:logs:worker`
+3. **Rebuild** (si cambiaste deps): `pnpm stack:stop && pnpm stack:core`
+4. **Reset total** (si DB quedó inconsistente): `pnpm stack:reset && pnpm stack:core`
