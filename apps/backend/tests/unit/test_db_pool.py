@@ -11,8 +11,9 @@ Notes:
   - Tests pool singleton behavior
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.unit
@@ -65,9 +66,9 @@ class TestPoolLifecycle:
     def test_close_pool_clears_singleton(self):
         """close_pool should clear the singleton."""
         from app.infrastructure.db.pool import (
-            init_pool,
             close_pool,
             get_pool,
+            init_pool,
             reset_pool,
         )
 
@@ -112,10 +113,10 @@ class TestEmbeddingValidation:
 
     def test_validate_embeddings_correct_dimension(self):
         """768D embeddings should pass validation."""
+        from app.domain.entities import Chunk
         from app.infrastructure.repositories.postgres_document_repo import (
             PostgresDocumentRepository,
         )
-        from app.domain.entities import Chunk
 
         repo = PostgresDocumentRepository(pool=MagicMock())
 
@@ -129,10 +130,10 @@ class TestEmbeddingValidation:
 
     def test_validate_embeddings_wrong_dimension_raises(self):
         """Non-768D embeddings should raise ValueError."""
+        from app.domain.entities import Chunk
         from app.infrastructure.repositories.postgres_document_repo import (
             PostgresDocumentRepository,
         )
-        from app.domain.entities import Chunk
 
         repo = PostgresDocumentRepository(pool=MagicMock())
 
@@ -145,10 +146,10 @@ class TestEmbeddingValidation:
 
     def test_validate_embeddings_none_embedding_raises(self):
         """Chunk without embedding should raise ValueError."""
+        from app.domain.entities import Chunk
         from app.infrastructure.repositories.postgres_document_repo import (
             PostgresDocumentRepository,
         )
-        from app.domain.entities import Chunk
 
         repo = PostgresDocumentRepository(pool=MagicMock())
 
@@ -156,7 +157,7 @@ class TestEmbeddingValidation:
             Chunk(content="test", embedding=None),
         ]
 
-        with pytest.raises(ValueError, match="no embedding"):
+        with pytest.raises(ValueError, match="embedding is required"):
             repo._validate_embeddings(chunks)
 
 
@@ -177,10 +178,10 @@ class TestRepositoryPoolUsage:
 
     def test_repository_falls_back_to_global_pool(self):
         """Repository without injected pool uses global."""
+        from app.infrastructure.db.pool import init_pool, reset_pool
         from app.infrastructure.repositories.postgres_document_repo import (
             PostgresDocumentRepository,
         )
-        from app.infrastructure.db.pool import init_pool, reset_pool
 
         reset_pool()
 

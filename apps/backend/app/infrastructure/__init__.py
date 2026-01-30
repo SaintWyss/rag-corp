@@ -1,45 +1,41 @@
-# infrastructure/repositories/__init__.py
 """
 ============================================================
-TARJETA CRC — infrastructure/repositories/__init__.py
+TARJETA CRC — infrastructure/__init__.py
 ============================================================
-Module: infrastructure.repositories (Public Export Surface)
+Module: app.infrastructure (Package Facade)
 
 Responsibilities:
-  - Exponer una API pública y estable de repositorios de infraestructura.
-  - Centralizar imports/exports para evitar paths largos en el resto del código.
-  - Mantener un orden lógico (Postgres primero, luego InMemory).
-  - Evitar “import spaghetti” y facilitar refactors futuros.
+  - Re-exportar símbolos públicos desde subpaquetes:
+      - repositories (Postgres + InMemory)
+      - db (pool de conexiones)
+      - cache, storage, text, etc. si aplica
+  - Proveer un único punto de importación limpio para capas superiores.
+  - Evitar que la capa de aplicación conozca la estructura interna de infra.
 
 Collaborators:
-  - Repositorios concretos (Postgres*, InMemory*)
-  - Capas superiores (application/use-cases) que importan desde este módulo
+  - infrastructure.repositories.* (implementaciones de repos)
+  - infrastructure.db.pool (conexión PostgreSQL)
 
 Policy:
-  - Este archivo NO contiene lógica de negocio.
-  - Solo re-exporta símbolos; no debe tener side effects.
+  - Este archivo NO contiene lógica.
+  - Solo re-exporta; no debe tener side effects al importar.
 ============================================================
 """
 
 # ------------------------------------------------------------
-# In-memory implementations (tests / local dev)
+# Re-export from subpackages
 # ------------------------------------------------------------
-from .in_memory_conversation_repo import InMemoryConversationRepository
-from .in_memory_workspace_acl_repo import InMemoryWorkspaceAclRepository
-from .in_memory_workspace_repo import InMemoryWorkspaceRepository
+from .repositories import (  # Postgres; InMemory
+    InMemoryConversationRepository,
+    InMemoryWorkspaceAclRepository,
+    InMemoryWorkspaceRepository,
+    PostgresAuditEventRepository,
+    PostgresDocumentRepository,
+    PostgresUserRepository,
+    PostgresWorkspaceAclRepository,
+    PostgresWorkspaceRepository,
+)
 
-# ------------------------------------------------------------
-# PostgreSQL implementations (infra real)
-# ------------------------------------------------------------
-from .postgres_audit_repo import PostgresAuditEventRepository
-from .postgres_document_repo import PostgresDocumentRepository
-from .postgres_user_repo import PostgresUserRepository
-from .postgres_workspace_acl_repo import PostgresWorkspaceAclRepository
-from .postgres_workspace_repo import PostgresWorkspaceRepository
-
-# ------------------------------------------------------------
-# Public API of this package
-# ------------------------------------------------------------
 __all__ = [
     # Postgres
     "PostgresAuditEventRepository",

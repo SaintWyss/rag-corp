@@ -31,17 +31,19 @@ from .in_memory_workspace_repo import InMemoryWorkspaceRepository
 # ---------------------------
 from .postgres_audit_repo import PostgresAuditEventRepository
 from .postgres_document_repo import PostgresDocumentRepository
+from .postgres_user_repo import PostgresUserRepository
 from .postgres_workspace_acl_repo import PostgresWorkspaceAclRepository
 from .postgres_workspace_repo import PostgresWorkspaceRepository
 
 __all__ = [
     # Postgres
-    "PostgresWorkspaceRepository",
-    "PostgresWorkspaceAclRepository",
-    "PostgresDocumentRepository",
     "PostgresAuditEventRepository",
+    "PostgresDocumentRepository",
+    "PostgresUserRepository",
+    "PostgresWorkspaceAclRepository",
+    "PostgresWorkspaceRepository",
     # In-memory
-    "InMemoryWorkspaceRepository",
-    "InMemoryWorkspaceAclRepository",
     "InMemoryConversationRepository",
+    "InMemoryWorkspaceAclRepository",
+    "InMemoryWorkspaceRepository",
 ]

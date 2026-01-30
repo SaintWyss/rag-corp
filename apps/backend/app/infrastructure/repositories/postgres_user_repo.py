@@ -335,3 +335,70 @@ def update_user(
         log_extra={"user_id": str(user_id), "updates": updates},
     )
     return _row_to_user(row) if row else None
+
+
+# ============================================================
+# Clase wrapper (para consistencia con otros repositorios)
+# ============================================================
+class PostgresUserRepository:
+    """
+    Wrapper OO sobre las funciones del módulo.
+
+    Por qué existe:
+    - Consistencia: los demás repos son clases (PostgresDocumentRepository, etc.)
+    - Inyección: permite pasar un pool custom en tests.
+    - Compatibilidad: el resto del código espera importar PostgresUserRepository.
+
+    Internamente delega a las funciones del módulo para evitar duplicación.
+    """
+
+    def __init__(self, pool: ConnectionPool | None = None) -> None:
+        # Pool inyectable (para tests); si es None se usa el global.
+        self._pool = pool
+
+    # --- Lectura ---
+    def get_user_by_email(self, email: str) -> Optional[User]:
+        return get_user_by_email(email)
+
+    def get_user_by_id(self, user_id: UUID) -> Optional[User]:
+        return get_user_by_id(user_id)
+
+    def list_users(self, *, limit: int = 200, offset: int = 0) -> list[User]:
+        return list_users(limit=limit, offset=offset)
+
+    # --- Escritura ---
+    def create_user(
+        self,
+        *,
+        email: str,
+        password_hash: str,
+        role: UserRole,
+        is_active: bool = True,
+    ) -> User:
+        return create_user(
+            email=email,
+            password_hash=password_hash,
+            role=role,
+            is_active=is_active,
+        )
+
+    def set_user_active(self, user_id: UUID, is_active: bool) -> Optional[User]:
+        return set_user_active(user_id, is_active)
+
+    def update_user_password(self, user_id: UUID, password_hash: str) -> Optional[User]:
+        return update_user_password(user_id, password_hash)
+
+    def update_user(
+        self,
+        user_id: UUID,
+        *,
+        password_hash: str | None = None,
+        role: UserRole | None = None,
+        is_active: bool | None = None,
+    ) -> Optional[User]:
+        return update_user(
+            user_id,
+            password_hash=password_hash,
+            role=role,
+            is_active=is_active,
+        )
