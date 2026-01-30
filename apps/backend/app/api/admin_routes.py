@@ -16,11 +16,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from ..application.usecases.create_workspace import (
+from ..application.usecases.workspace.create_workspace import (
     CreateWorkspaceInput,
     CreateWorkspaceUseCase,
 )
-from ..application.usecases.list_workspaces import ListWorkspacesUseCase
+from ..application.usecases.workspace.list_workspaces import ListWorkspacesUseCase
 from ..audit import emit_audit_event
 from ..container import (
     get_audit_repository,

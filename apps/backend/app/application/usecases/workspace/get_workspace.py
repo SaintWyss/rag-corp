@@ -12,9 +12,9 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.entities import WorkspaceVisibility
-from ...domain.repositories import WorkspaceRepository, WorkspaceAclRepository
-from ...domain.workspace_policy import WorkspaceActor, can_read_workspace
+from ....domain.entities import WorkspaceVisibility
+from ....domain.repositories import WorkspaceRepository, WorkspaceAclRepository
+from ....domain.workspace_policy import WorkspaceActor, can_read_workspace
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 

@@ -14,14 +14,14 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.repositories import (
+from ....domain.repositories import (
     DocumentRepository,
     WorkspaceRepository,
     WorkspaceAclRepository,
 )
-from ...domain.workspace_policy import WorkspaceActor
+from ....domain.workspace_policy import WorkspaceActor
 from .document_results import DocumentError, DocumentErrorCode, GetDocumentResult
-from .workspace_access import resolve_workspace_for_read
+from ..workspace.workspace_access import resolve_workspace_for_read
 
 
 class GetDocumentUseCase:

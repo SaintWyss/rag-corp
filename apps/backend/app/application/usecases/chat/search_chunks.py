@@ -11,16 +11,16 @@ Responsibilities:
 from dataclasses import dataclass
 from uuid import UUID
 
-from ...domain.repositories import (
+from ....domain.repositories import (
     DocumentRepository,
     WorkspaceRepository,
     WorkspaceAclRepository,
 )
-from ...domain.services import EmbeddingService
-from ...domain.workspace_policy import WorkspaceActor
-from .document_results import DocumentError, DocumentErrorCode, SearchChunksResult
-from ..prompt_injection_detector import apply_injection_filter
-from .workspace_access import resolve_workspace_for_read
+from ....domain.services import EmbeddingService
+from ....domain.workspace_policy import WorkspaceActor
+from ..documents.document_results import DocumentError, DocumentErrorCode, SearchChunksResult
+from ...prompt_injection_detector import apply_injection_filter
+from ..workspace.workspace_access import resolve_workspace_for_read
 
 
 @dataclass

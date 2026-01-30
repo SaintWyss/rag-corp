@@ -9,15 +9,15 @@ Responsibilities:
 from dataclasses import dataclass
 from uuid import UUID
 
-from ...domain.repositories import DocumentRepository, WorkspaceRepository
-from ...domain.services import DocumentProcessingQueue
-from ...domain.workspace_policy import WorkspaceActor
-from .document_results import (
+from ....domain.repositories import DocumentRepository, WorkspaceRepository
+from ....domain.services import DocumentProcessingQueue
+from ....domain.workspace_policy import WorkspaceActor
+from ..documents.document_results import (
     DocumentError,
     DocumentErrorCode,
     ReprocessDocumentResult,
 )
-from .workspace_access import resolve_workspace_for_write
+from ..workspace.workspace_access import resolve_workspace_for_write
 
 
 @dataclass

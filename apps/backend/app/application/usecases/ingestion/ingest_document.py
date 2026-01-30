@@ -32,16 +32,16 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
 
-from ...domain.entities import Document, Chunk
-from ...domain.repositories import DocumentRepository, WorkspaceRepository
-from ...domain.services import EmbeddingService, TextChunkerService
-from ...domain.tags import normalize_tags
-from ...domain.access import normalize_allowed_roles
-from ...domain.workspace_policy import WorkspaceActor
-from ...crosscutting.metrics import record_prompt_injection_detected
-from ..prompt_injection_detector import detect
-from .document_results import DocumentError, DocumentErrorCode, IngestDocumentResult
-from .workspace_access import resolve_workspace_for_write
+from ....domain.entities import Document, Chunk
+from ....domain.repositories import DocumentRepository, WorkspaceRepository
+from ....domain.services import EmbeddingService, TextChunkerService
+from ....domain.tags import normalize_tags
+from ....domain.access import normalize_allowed_roles
+from ....domain.workspace_policy import WorkspaceActor
+from ....crosscutting.metrics import record_prompt_injection_detected
+from ...prompt_injection_detector import detect
+from ..documents.document_results import DocumentError, DocumentErrorCode, IngestDocumentResult
+from ..workspace.workspace_access import resolve_workspace_for_write
 
 
 @dataclass

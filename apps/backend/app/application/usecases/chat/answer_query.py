@@ -32,26 +32,26 @@ from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
 
-from ...domain.entities import QueryResult
-from .document_results import DocumentError, DocumentErrorCode
-from ...domain.repositories import (
+from ....domain.entities import QueryResult
+from ..documents.document_results import DocumentError, DocumentErrorCode
+from ....domain.repositories import (
     DocumentRepository,
     WorkspaceRepository,
     WorkspaceAclRepository,
 )
-from ...domain.services import EmbeddingService, LLMService
-from ...domain.workspace_policy import WorkspaceActor
-from ...crosscutting.timing import StageTimings
-from ...crosscutting.metrics import (
+from ....domain.services import EmbeddingService, LLMService
+from ....domain.workspace_policy import WorkspaceActor
+from ....crosscutting.timing import StageTimings
+from ....crosscutting.metrics import (
     observe_sources_returned_count,
     record_answer_without_sources,
     record_policy_refusal,
 )
-from ...crosscutting.logger import logger
-from ..context_builder import ContextBuilder, get_context_builder
-from ..prompt_injection_detector import apply_injection_filter
-from .document_results import AnswerQueryResult
-from .workspace_access import resolve_workspace_for_read
+from ....crosscutting.logger import logger
+from ...context_builder import ContextBuilder, get_context_builder
+from ...prompt_injection_detector import apply_injection_filter
+from ..documents.document_results import AnswerQueryResult
+from ..workspace.workspace_access import resolve_workspace_for_read
 
 
 @dataclass
@@ -252,7 +252,7 @@ class AnswerQueryUseCase:
 
         # R: Record metrics (optional, lazy import)
         try:
-            from ...crosscutting.metrics import record_stage_metrics
+            from ....crosscutting.metrics import record_stage_metrics
 
             record_stage_metrics(
                 embed_seconds=timing_data.get("embed_ms", 0) / 1000,

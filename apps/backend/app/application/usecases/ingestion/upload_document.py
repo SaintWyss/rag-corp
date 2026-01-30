@@ -11,18 +11,18 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
-from ...domain.entities import Document
-from ...domain.repositories import DocumentRepository, WorkspaceRepository
-from ...domain.services import FileStoragePort, DocumentProcessingQueue
-from ...domain.workspace_policy import WorkspaceActor
-from ...domain.tags import normalize_tags
-from ...domain.access import normalize_allowed_roles
-from .document_results import (
+from ....domain.entities import Document
+from ....domain.repositories import DocumentRepository, WorkspaceRepository
+from ....domain.services import FileStoragePort, DocumentProcessingQueue
+from ....domain.workspace_policy import WorkspaceActor
+from ....domain.tags import normalize_tags
+from ....domain.access import normalize_allowed_roles
+from ..documents.document_results import (
     DocumentError,
     DocumentErrorCode,
     UploadDocumentResult,
 )
-from .workspace_access import resolve_workspace_for_write
+from ..workspace.workspace_access import resolve_workspace_for_write
 
 
 @dataclass

@@ -10,11 +10,10 @@ from uuid import UUID
 
 from rq import get_current_job
 
-from ..application.usecases import (
+from ..application.usecases.ingestion import (
     ProcessUploadedDocumentInput,
     ProcessUploadedDocumentUseCase,
 )
-from ..context import clear_context, request_id_var
 from ..container import (
     get_document_repository,
     get_document_text_extractor,
@@ -22,6 +21,7 @@ from ..container import (
     get_file_storage,
     get_text_chunker,
 )
+from ..context import clear_context, request_id_var
 from ..crosscutting.logger import logger
 from ..crosscutting.metrics import (
     observe_worker_duration,

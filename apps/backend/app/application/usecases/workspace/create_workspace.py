@@ -13,10 +13,10 @@ Collaborators:
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
-from ...domain.entities import Workspace, WorkspaceVisibility
-from ...domain.repositories import WorkspaceRepository
-from ...domain.workspace_policy import WorkspaceActor
-from ...identity.users import UserRole
+from ....domain.entities import Workspace, WorkspaceVisibility
+from ....domain.repositories import WorkspaceRepository
+from ....domain.workspace_policy import WorkspaceActor
+from ....identity.users import UserRole
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 

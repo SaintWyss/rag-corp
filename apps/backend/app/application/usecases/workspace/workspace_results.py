@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
-from ...domain.entities import Workspace
+from ....domain.entities import Workspace
 
 
 class WorkspaceErrorCode(str, Enum):

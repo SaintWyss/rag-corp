@@ -11,8 +11,8 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.repositories import WorkspaceRepository
-from ...domain.workspace_policy import WorkspaceActor, can_write_workspace
+from ....domain.repositories import WorkspaceRepository
+from ....domain.workspace_policy import WorkspaceActor, can_write_workspace
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 

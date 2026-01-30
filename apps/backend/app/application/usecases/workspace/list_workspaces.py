@@ -13,10 +13,10 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.entities import WorkspaceVisibility
-from ...domain.repositories import WorkspaceAclRepository, WorkspaceRepository
-from ...domain.workspace_policy import WorkspaceActor, can_read_workspace
-from ...identity.users import UserRole
+from ....domain.entities import WorkspaceVisibility
+from ....domain.repositories import WorkspaceAclRepository, WorkspaceRepository
+from ....domain.workspace_policy import WorkspaceActor, can_read_workspace
+from ....identity.users import UserRole
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceListResult
 
 

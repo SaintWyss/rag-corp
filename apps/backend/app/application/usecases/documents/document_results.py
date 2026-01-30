@@ -10,7 +10,7 @@ from enum import Enum
 from typing import List
 from uuid import UUID
 
-from ...domain.entities import Document, Chunk, QueryResult
+from ....domain.entities import Document, Chunk, QueryResult
 
 
 class DocumentErrorCode(str, Enum):

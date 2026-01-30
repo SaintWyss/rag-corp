@@ -14,15 +14,15 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.repositories import (
+from ....domain.repositories import (
     DocumentRepository,
     WorkspaceRepository,
     WorkspaceAclRepository,
 )
-from ...domain.workspace_policy import WorkspaceActor
-from ...crosscutting.pagination import decode_cursor, encode_cursor
+from ....domain.workspace_policy import WorkspaceActor
+from ....crosscutting.pagination import decode_cursor, encode_cursor
 from .document_results import ListDocumentsResult
-from .workspace_access import resolve_workspace_for_read
+from ..workspace.workspace_access import resolve_workspace_for_read
 
 
 class ListDocumentsUseCase:

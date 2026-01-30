@@ -1,86 +1,123 @@
-"""Application use cases"""
+"""
+Use Cases Layer (Business Operations)
 
-from .answer_query import AnswerQueryUseCase, AnswerQueryInput
-from .delete_document import DeleteDocumentUseCase
-from .get_document import GetDocumentUseCase
-from .get_workspace import GetWorkspaceUseCase
-from .ingest_document import (
-    IngestDocumentUseCase,
-    IngestDocumentInput,
+This package exposes entry points for business logic, organized by feature/domain.
+
+Structure
+---------
+usecases/
+├── chat/           # Q&A and semantic search
+├── ingestion/      # Document upload, parsing, embedding
+├── documents/      # Document CRUD operations
+└── workspace/      # Workspace management and access control
+
+Usage
+-----
+Import from subpackages for clarity:
+
+    from app.application.usecases.chat import AnswerQueryUseCase
+    from app.application.usecases.ingestion import IngestDocumentUseCase
+
+Or use the barrel exports from this module:
+
+    from app.application.usecases import AnswerQueryUseCase, IngestDocumentUseCase
+"""
+
+# Chat
+from .chat import (
+    AnswerQueryInput,
+    AnswerQueryUseCase,
+    SearchChunksInput,
+    SearchChunksUseCase,
 )
-from .list_documents import ListDocumentsUseCase
-from .list_workspaces import ListWorkspacesUseCase
-from .process_uploaded_document import (
-    ProcessUploadedDocumentUseCase,
-    ProcessUploadedDocumentInput,
-    ProcessUploadedDocumentOutput,
-)
-from .reprocess_document import ReprocessDocumentUseCase, ReprocessDocumentInput
-from .search_chunks import SearchChunksUseCase, SearchChunksInput
-from .upload_document import UploadDocumentUseCase, UploadDocumentInput
-from .create_workspace import CreateWorkspaceUseCase, CreateWorkspaceInput
-from .archive_workspace import ArchiveWorkspaceUseCase
-from .update_workspace import UpdateWorkspaceUseCase
-from .publish_workspace import PublishWorkspaceUseCase
-from .share_workspace import ShareWorkspaceUseCase
-from .document_results import (
+
+# Documents
+from .documents import (
     AnswerQueryResult,
+    DeleteDocumentResult,
+    DeleteDocumentUseCase,
     DocumentError,
     DocumentErrorCode,
-    DeleteDocumentResult,
     GetDocumentResult,
+    GetDocumentUseCase,
     IngestDocumentResult,
     ListDocumentsResult,
+    ListDocumentsUseCase,
     ReprocessDocumentResult,
     SearchChunksResult,
     UploadDocumentResult,
 )
-from .workspace_results import (
+
+# Ingestion
+from .ingestion import (
+    IngestDocumentInput,
+    IngestDocumentUseCase,
+    ProcessUploadedDocumentInput,
+    ProcessUploadedDocumentUseCase,
+    ReprocessDocumentInput,
+    ReprocessDocumentUseCase,
+    UploadDocumentInput,
+    UploadDocumentUseCase,
+)
+
+# Workspace
+from .workspace import (
+    ArchiveWorkspaceResult,
+    ArchiveWorkspaceUseCase,
+    CreateWorkspaceInput,
+    CreateWorkspaceUseCase,
+    GetWorkspaceUseCase,
+    ListWorkspacesUseCase,
+    PublishWorkspaceUseCase,
+    ShareWorkspaceUseCase,
+    UpdateWorkspaceUseCase,
     WorkspaceError,
     WorkspaceErrorCode,
-    WorkspaceResult,
     WorkspaceListResult,
-    ArchiveWorkspaceResult,
+    WorkspaceResult,
 )
 
 __all__ = [
-    "AnswerQueryUseCase",
+    # Chat
     "AnswerQueryInput",
-    "AnswerQueryResult",
-    "DeleteDocumentUseCase",
-    "DeleteDocumentResult",
+    "AnswerQueryUseCase",
+    "SearchChunksInput",
+    "SearchChunksUseCase",
+    # Ingestion
+    "IngestDocumentInput",
+    "IngestDocumentUseCase",
+    "UploadDocumentInput",
+    "UploadDocumentUseCase",
+    "ProcessUploadedDocumentInput",
+    "ProcessUploadedDocumentUseCase",
+    "ReprocessDocumentInput",
+    "ReprocessDocumentUseCase",
+    # Documents
     "GetDocumentUseCase",
     "GetDocumentResult",
-    "GetWorkspaceUseCase",
-    "IngestDocumentUseCase",
-    "IngestDocumentInput",
-    "IngestDocumentResult",
     "ListDocumentsUseCase",
     "ListDocumentsResult",
-    "ListWorkspacesUseCase",
-    "ProcessUploadedDocumentUseCase",
-    "ProcessUploadedDocumentInput",
-    "ProcessUploadedDocumentOutput",
-    "ReprocessDocumentUseCase",
-    "ReprocessDocumentInput",
-    "ReprocessDocumentResult",
-    "SearchChunksUseCase",
-    "SearchChunksInput",
-    "SearchChunksResult",
-    "UploadDocumentUseCase",
-    "UploadDocumentInput",
+    "DeleteDocumentUseCase",
+    "DeleteDocumentResult",
     "UploadDocumentResult",
+    "ReprocessDocumentResult",
+    "IngestDocumentResult",
+    "AnswerQueryResult",
+    "SearchChunksResult",
     "DocumentError",
     "DocumentErrorCode",
-    "CreateWorkspaceUseCase",
+    # Workspace
     "CreateWorkspaceInput",
-    "ArchiveWorkspaceUseCase",
+    "CreateWorkspaceUseCase",
+    "GetWorkspaceUseCase",
+    "ListWorkspacesUseCase",
     "UpdateWorkspaceUseCase",
+    "ArchiveWorkspaceUseCase",
     "PublishWorkspaceUseCase",
     "ShareWorkspaceUseCase",
-    "WorkspaceError",
-    "WorkspaceErrorCode",
     "WorkspaceResult",
     "WorkspaceListResult",
     "ArchiveWorkspaceResult",
+    "WorkspaceError",
+    "WorkspaceErrorCode",
 ]

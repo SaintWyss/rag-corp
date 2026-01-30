@@ -67,8 +67,8 @@ from ....application.usecases import (
     UploadDocumentResult,
     UploadDocumentUseCase,
 )
-from ....application.usecases.document_results import DocumentErrorCode
-from ....application.usecases.workspace_results import WorkspaceErrorCode
+from ....application.usecases.documents.document_results import DocumentErrorCode
+from ....application.usecases.workspace.workspace_results import WorkspaceErrorCode
 from ....audit import emit_audit_event
 from ....container import (
     get_answer_query_use_case,
@@ -112,9 +112,9 @@ from ....identity.dual_auth import (
     PrincipalType,
     require_admin,
     require_employee_or_admin,
-    require_user_employee_or_admin,
-    require_user_admin,
     require_principal,
+    require_user_admin,
+    require_user_employee_or_admin,
 )
 from ....identity.rbac import Permission
 from ....identity.users import UserRole

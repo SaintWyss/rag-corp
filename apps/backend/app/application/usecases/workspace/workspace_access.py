@@ -11,14 +11,14 @@ from __future__ import annotations
 from typing import Tuple
 from uuid import UUID
 
-from ...domain.entities import Workspace, WorkspaceVisibility
-from ...domain.repositories import WorkspaceRepository, WorkspaceAclRepository
-from ...domain.workspace_policy import (
+from ....domain.entities import Workspace, WorkspaceVisibility
+from ....domain.repositories import WorkspaceRepository, WorkspaceAclRepository
+from ....domain.workspace_policy import (
     WorkspaceActor,
     can_read_workspace,
     can_write_workspace,
 )
-from .document_results import DocumentError, DocumentErrorCode
+from ..documents.document_results import DocumentError, DocumentErrorCode
 
 
 def resolve_workspace_for_read(

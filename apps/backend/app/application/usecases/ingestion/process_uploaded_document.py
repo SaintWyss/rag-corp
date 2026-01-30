@@ -12,11 +12,11 @@ from dataclasses import dataclass
 from uuid import UUID
 import logging
 
-from ...domain.entities import Chunk
-from ...crosscutting.metrics import record_prompt_injection_detected
-from ..prompt_injection_detector import detect
-from ...domain.repositories import DocumentRepository
-from ...domain.services import (
+from ....domain.entities import Chunk
+from ....crosscutting.metrics import record_prompt_injection_detected
+from ...prompt_injection_detector import detect
+from ....domain.repositories import DocumentRepository
+from ....domain.services import (
     DocumentTextExtractor,
     EmbeddingService,
     FileStoragePort,

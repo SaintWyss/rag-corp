@@ -13,10 +13,10 @@ Collaborators:
 
 from uuid import UUID
 
-from ...domain.repositories import DocumentRepository, WorkspaceRepository
-from ...domain.workspace_policy import WorkspaceActor
+from ....domain.repositories import DocumentRepository, WorkspaceRepository
+from ....domain.workspace_policy import WorkspaceActor
 from .document_results import DocumentError, DocumentErrorCode, DeleteDocumentResult
-from .workspace_access import resolve_workspace_for_write
+from ..workspace.workspace_access import resolve_workspace_for_write
 
 
 class DeleteDocumentUseCase:
