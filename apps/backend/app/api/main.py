@@ -79,16 +79,16 @@ async def lifespan(app: FastAPI):
 
             # R: Wire concrete infrastructure repos into dev seed (DIP-friendly)
             from ..identity.auth_users import hash_password
-            from ..infrastructure.repositories.postgres_user_repo import (
+            from ..infrastructure.repositories.postgres.user import (
                 create_user as pg_create_user,
             )
-            from ..infrastructure.repositories.postgres_user_repo import (
+            from ..infrastructure.repositories.postgres.user import (
                 get_user_by_email as pg_get_user_by_email,
             )
-            from ..infrastructure.repositories.postgres_user_repo import (
+            from ..infrastructure.repositories.postgres.user import (
                 update_user as pg_update_user,
             )
-            from ..infrastructure.repositories.postgres_workspace_repo import (
+            from ..infrastructure.repositories.postgres.workspace import (
                 PostgresWorkspaceRepository,
             )
 

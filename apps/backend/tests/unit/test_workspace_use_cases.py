@@ -29,17 +29,17 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
-from app.application.usecases.archive_workspace import ArchiveWorkspaceUseCase
-from app.application.usecases.create_workspace import (
+from app.application.usecases.workspace.archive_workspace import ArchiveWorkspaceUseCase
+from app.application.usecases.workspace.create_workspace import (
     CreateWorkspaceInput,
     CreateWorkspaceUseCase,
 )
-from app.application.usecases.get_workspace import GetWorkspaceUseCase
-from app.application.usecases.list_workspaces import ListWorkspacesUseCase
-from app.application.usecases.publish_workspace import PublishWorkspaceUseCase
-from app.application.usecases.share_workspace import ShareWorkspaceUseCase
-from app.application.usecases.update_workspace import UpdateWorkspaceUseCase
-from app.application.usecases.workspace_results import WorkspaceErrorCode
+from app.application.usecases.workspace.get_workspace import GetWorkspaceUseCase
+from app.application.usecases.workspace.list_workspaces import ListWorkspacesUseCase
+from app.application.usecases.workspace.publish_workspace import PublishWorkspaceUseCase
+from app.application.usecases.workspace.share_workspace import ShareWorkspaceUseCase
+from app.application.usecases.workspace.update_workspace import UpdateWorkspaceUseCase
+from app.application.usecases.workspace.workspace_results import WorkspaceErrorCode
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole

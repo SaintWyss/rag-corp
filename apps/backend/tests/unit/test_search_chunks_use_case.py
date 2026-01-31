@@ -19,7 +19,7 @@ Notes:
 import pytest
 from uuid import uuid4
 
-from app.application.usecases.search_chunks import (
+from app.application.usecases.chat.search_chunks import (
     SearchChunksUseCase,
     SearchChunksInput,
 )

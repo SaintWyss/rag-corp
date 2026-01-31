@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.infrastructure.repositories.postgres_document_repo import (
+from app.infrastructure.repositories.postgres.document import (
     PostgresDocumentRepository,
 )
 

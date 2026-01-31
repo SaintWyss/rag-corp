@@ -36,7 +36,7 @@ from uuid import uuid4, UUID
 import psycopg
 
 from app.domain.entities import Document, Chunk
-from app.infrastructure.repositories.postgres_document_repo import (
+from app.infrastructure.repositories.postgres.document import (
     PostgresDocumentRepository,
 )
 

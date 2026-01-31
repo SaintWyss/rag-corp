@@ -20,11 +20,11 @@ import pytest
 from unittest.mock import Mock
 from uuid import UUID
 
-from app.application.usecases.ingest_document import (
+from app.application.usecases.ingestion.ingest_document import (
     IngestDocumentUseCase,
     IngestDocumentInput,
 )
-from app.application.usecases.document_results import IngestDocumentResult
+from app.application.usecases.documents.document_results import IngestDocumentResult
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.domain.services import TextChunkerService

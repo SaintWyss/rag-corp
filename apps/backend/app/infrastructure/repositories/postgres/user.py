@@ -37,9 +37,9 @@ from uuid import UUID, uuid4
 
 from psycopg_pool import ConnectionPool
 
-from ...crosscutting.exceptions import DatabaseError
-from ...crosscutting.logger import logger
-from ...identity.users import User, UserRole
+from ....crosscutting.exceptions import DatabaseError
+from ....crosscutting.logger import logger
+from ....identity.users import User, UserRole
 
 # ============================================================
 # Constantes y contratos de SQL

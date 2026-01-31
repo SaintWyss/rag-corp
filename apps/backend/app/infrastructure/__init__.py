@@ -25,8 +25,10 @@ Policy:
 # ------------------------------------------------------------
 # Re-export from subpackages
 # ------------------------------------------------------------
-from .repositories import (  # Postgres; InMemory
+from .repositories import (  # PostgreSQL (Production); In-Memory (Testing/Development)
+    InMemoryAnswerAuditRepository,
     InMemoryConversationRepository,
+    InMemoryFeedbackRepository,
     InMemoryWorkspaceAclRepository,
     InMemoryWorkspaceRepository,
     PostgresAuditEventRepository,
@@ -44,7 +46,9 @@ __all__ = [
     "PostgresWorkspaceRepository",
     "PostgresWorkspaceAclRepository",
     # InMemory
+    "InMemoryAnswerAuditRepository",
     "InMemoryConversationRepository",
+    "InMemoryFeedbackRepository",
     "InMemoryWorkspaceRepository",
     "InMemoryWorkspaceAclRepository",
 ]

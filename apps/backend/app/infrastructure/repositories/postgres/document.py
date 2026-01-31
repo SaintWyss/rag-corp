@@ -36,9 +36,9 @@ import numpy as np
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
-from ...crosscutting.exceptions import DatabaseError
-from ...crosscutting.logger import logger
-from ...domain.entities import Chunk, Document
+from ....crosscutting.exceptions import DatabaseError
+from ....crosscutting.logger import logger
+from ....domain.entities import Chunk, Document
 
 # ============================================================
 # Constantes de contrato (DB / embeddings)
@@ -101,7 +101,7 @@ class PostgresDocumentRepository:
         if workspace_id is None:
             # Métrica opcional (no rompemos si no existe).
             try:
-                from ...crosscutting.metrics import record_cross_scope_block
+                from ....crosscutting.metrics import record_cross_scope_block
 
                 record_cross_scope_block()
             except Exception:

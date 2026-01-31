@@ -12,6 +12,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field, field_validator
 
+from ..audit import emit_audit_event
+from ..container import get_audit_repository
+from ..crosscutting.error_responses import (
+    OPENAPI_ERROR_RESPONSES,
+    conflict,
+    not_found,
+    unauthorized,
+)
+from ..domain.repositories import AuditEventRepository
 from ..identity.auth_users import (
     ACCESS_TOKEN_COOKIE,
     authenticate_user,
@@ -21,24 +30,15 @@ from ..identity.auth_users import (
     require_user,
 )
 from ..identity.dual_auth import require_admin, require_principal
-from ..crosscutting.error_responses import (
-    OPENAPI_ERROR_RESPONSES,
-    conflict,
-    not_found,
-    unauthorized,
-)
 from ..identity.rbac import Permission
-from ..audit import emit_audit_event
-from ..container import get_audit_repository
-from ..domain.repositories import AuditEventRepository
-from ..infrastructure.repositories.postgres_user_repo import (
+from ..identity.users import User, UserRole
+from ..infrastructure.repositories.postgres.user import (
     create_user,
     get_user_by_email,
     list_users,
     set_user_active,
     update_user_password,
 )
-from ..identity.users import User, UserRole
 
 router = APIRouter(responses=OPENAPI_ERROR_RESPONSES)
 

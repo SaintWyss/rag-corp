@@ -37,9 +37,9 @@ from uuid import UUID
 
 from psycopg_pool import ConnectionPool
 
-from ...crosscutting.exceptions import DatabaseError
-from ...crosscutting.logger import logger
-from ...domain.entities import Workspace, WorkspaceVisibility
+from ....crosscutting.exceptions import DatabaseError
+from ....crosscutting.logger import logger
+from ....domain.entities import Workspace, WorkspaceVisibility
 
 
 class PostgresWorkspaceRepository:

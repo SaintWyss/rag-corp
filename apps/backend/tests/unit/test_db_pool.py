@@ -114,7 +114,7 @@ class TestEmbeddingValidation:
     def test_validate_embeddings_correct_dimension(self):
         """768D embeddings should pass validation."""
         from app.domain.entities import Chunk
-        from app.infrastructure.repositories.postgres_document_repo import (
+        from app.infrastructure.repositories.postgres.document import (
             PostgresDocumentRepository,
         )
 
@@ -131,7 +131,7 @@ class TestEmbeddingValidation:
     def test_validate_embeddings_wrong_dimension_raises(self):
         """Non-768D embeddings should raise ValueError."""
         from app.domain.entities import Chunk
-        from app.infrastructure.repositories.postgres_document_repo import (
+        from app.infrastructure.repositories.postgres.document import (
             PostgresDocumentRepository,
         )
 
@@ -147,7 +147,7 @@ class TestEmbeddingValidation:
     def test_validate_embeddings_none_embedding_raises(self):
         """Chunk without embedding should raise ValueError."""
         from app.domain.entities import Chunk
-        from app.infrastructure.repositories.postgres_document_repo import (
+        from app.infrastructure.repositories.postgres.document import (
             PostgresDocumentRepository,
         )
 
@@ -167,7 +167,7 @@ class TestRepositoryPoolUsage:
 
     def test_repository_uses_injected_pool(self):
         """Repository should use injected pool."""
-        from app.infrastructure.repositories.postgres_document_repo import (
+        from app.infrastructure.repositories.postgres.document import (
             PostgresDocumentRepository,
         )
 
@@ -179,7 +179,7 @@ class TestRepositoryPoolUsage:
     def test_repository_falls_back_to_global_pool(self):
         """Repository without injected pool uses global."""
         from app.infrastructure.db.pool import init_pool, reset_pool
-        from app.infrastructure.repositories.postgres_document_repo import (
+        from app.infrastructure.repositories.postgres.document import (
             PostgresDocumentRepository,
         )
 

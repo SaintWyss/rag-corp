@@ -11,12 +11,16 @@ Business Goal:
     (RAG), centralizando imports de:
       - Core RAG:
           * AnswerQueryUseCase (Q&A sincrónico con RAG)
+          * StreamAnswerQueryUseCase (Q&A con streaming de tokens)
           * SearchChunksUseCase (búsqueda semántica)
       - Conversation Management:
           * CreateConversationUseCase (iniciar sesión de chat)
           * GetConversationHistoryUseCase (recuperar historial)
           * AnswerQueryWithHistoryUseCase (RAG + persistencia)
           * ClearConversationUseCase (limpiar historial)
+      - Feedback & Audit:
+          * VoteAnswerUseCase (RLHF - feedback del usuario)
+          * RecordAnswerAuditUseCase (compliance empresarial)
 
 Why (Context / Intención):
     - Facilita descubrimiento de capacidades del subdominio Chat.
@@ -25,21 +29,7 @@ Why (Context / Intención):
     - Separa claramente:
         * Operaciones RAG puras (stateless)
         * Operaciones de conversación (stateful / con historial)
-
--------------------------------------------------------------------------------
-CRC CARD (Module-Responsibility-Collaborator)
--------------------------------------------------------------------------------
-Component:
-    chat usecases package (__init__.py)
-
-Responsibilities:
-    - Re-exportar inputs (DTOs) y use cases de todas las operaciones de Chat.
-    - Declarar explícitamente el contrato público con __all__.
-
-Collaborators:
-    - Módulos internos del paquete:
-        answer_query, search_chunks, create_conversation,
-        get_conversation_history, answer_query_with_history, clear_conversation
+        * Operaciones de feedback y auditoría (mejora continua)
 ===============================================================================
 """
 
@@ -77,7 +67,22 @@ from .get_conversation_history import (
     GetConversationHistoryResult,
     GetConversationHistoryUseCase,
 )
+from .record_answer_audit import (
+    RecordAnswerAuditInput,
+    RecordAnswerAuditResult,
+    RecordAnswerAuditUseCase,
+)
 from .search_chunks import SearchChunksInput, SearchChunksUseCase
+from .stream_answer_query import (
+    StreamAnswerQueryInput,
+    StreamAnswerQueryUseCase,
+    StreamChunk,
+)
+
+# -----------------------------------------------------------------------------
+# Feedback & Audit Use Cases (RLHF / Compliance)
+# -----------------------------------------------------------------------------
+from .vote_answer import VoteAnswerInput, VoteAnswerResult, VoteAnswerUseCase
 
 # -----------------------------------------------------------------------------
 # Public API (explicit exports)
@@ -88,6 +93,10 @@ __all__ = [
     "AnswerQueryUseCase",
     "SearchChunksInput",
     "SearchChunksUseCase",
+    # Streaming RAG
+    "StreamAnswerQueryInput",
+    "StreamAnswerQueryUseCase",
+    "StreamChunk",
     # Conversation: Create
     "CreateConversationInput",
     "CreateConversationResult",
@@ -103,6 +112,14 @@ __all__ = [
     "ClearConversationInput",
     "ClearConversationResult",
     "ClearConversationUseCase",
+    # Feedback (RLHF)
+    "VoteAnswerInput",
+    "VoteAnswerResult",
+    "VoteAnswerUseCase",
+    # Audit (Compliance)
+    "RecordAnswerAuditInput",
+    "RecordAnswerAuditResult",
+    "RecordAnswerAuditUseCase",
     # Utilities
     "format_conversation_for_prompt",
     "truncate_history",

@@ -18,14 +18,21 @@ Notes:
   - Use @pytest.fixture(scope="session") for expensive setup
 """
 
+# IMPORTANT: Suppress NumPy reload warning BEFORE any imports that load numpy
+import warnings
+
+warnings.filterwarnings(
+    "ignore", message=".*NumPy module was reloaded.*", category=UserWarning
+)
+
 import os
 import sys
 from pathlib import Path
+from typing import List
+from unittest.mock import Mock
+from uuid import UUID, uuid4
 
 import pytest
-from unittest.mock import Mock
-from uuid import uuid4, UUID
-from typing import List
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -35,7 +42,7 @@ from app.crosscutting import config as app_config  # noqa: E402
 
 app_config.Settings.model_config["env_file"] = None
 
-from app.domain.entities import Document, Chunk, QueryResult  # noqa: E402
+from app.domain.entities import Chunk, Document, QueryResult  # noqa: E402
 from app.domain.repositories import DocumentRepository  # noqa: E402
 from app.domain.services import EmbeddingService, LLMService  # noqa: E402
 

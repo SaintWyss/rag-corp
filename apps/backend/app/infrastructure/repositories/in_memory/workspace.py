@@ -33,8 +33,8 @@ from threading import Lock
 from typing import Dict, Iterable, List, Optional
 from uuid import UUID
 
-from ...domain.entities import Workspace, WorkspaceVisibility
-from ...domain.repositories import WorkspaceRepository
+from ....domain.entities import Workspace, WorkspaceVisibility
+from ....domain.repositories import WorkspaceRepository
 
 
 class InMemoryWorkspaceRepository(WorkspaceRepository):

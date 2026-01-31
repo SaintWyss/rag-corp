@@ -12,12 +12,12 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
-from app.application.usecases.create_workspace import (
+from app.application.usecases.workspace.create_workspace import (
     CreateWorkspaceInput,
     CreateWorkspaceUseCase,
 )
-from app.application.usecases.list_workspaces import ListWorkspacesUseCase
-from app.application.usecases.workspace_results import WorkspaceErrorCode
+from app.application.usecases.workspace.list_workspaces import ListWorkspacesUseCase
+from app.application.usecases.workspace.workspace_results import WorkspaceErrorCode
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole

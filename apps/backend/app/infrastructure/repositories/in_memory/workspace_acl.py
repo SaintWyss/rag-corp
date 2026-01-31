@@ -31,7 +31,7 @@ from threading import Lock
 from typing import Dict, Iterable, List
 from uuid import UUID
 
-from ...domain.repositories import WorkspaceAclRepository
+from ....domain.repositories import WorkspaceAclRepository
 
 
 class InMemoryWorkspaceAclRepository(WorkspaceAclRepository):

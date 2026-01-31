@@ -21,7 +21,7 @@ from app.application.usecases.answer_query import AnswerQueryInput, AnswerQueryU
 from app.domain.entities import Chunk, Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole
-from app.infrastructure.repositories.postgres_document_repo import (
+from app.infrastructure.repositories.postgres.document import (
     PostgresDocumentRepository,
 )
 from app.infrastructure.services.fake_embedding_service import FakeEmbeddingService

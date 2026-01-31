@@ -38,8 +38,8 @@ from threading import Lock
 from typing import Deque, Dict, List
 from uuid import uuid4
 
-from ...domain.entities import ConversationMessage
-from ...domain.repositories import ConversationRepository
+from ....domain.entities import ConversationMessage
+from ....domain.repositories import ConversationRepository
 
 
 class InMemoryConversationRepository(ConversationRepository):
@@ -106,7 +106,9 @@ class InMemoryConversationRepository(ConversationRepository):
         with self._lock:
             return conversation_id in self._conversations
 
-    def append_message(self, conversation_id: str, message: ConversationMessage) -> None:
+    def append_message(
+        self, conversation_id: str, message: ConversationMessage
+    ) -> None:
         """
         Agrega un mensaje al final del historial.
 
@@ -118,7 +120,9 @@ class InMemoryConversationRepository(ConversationRepository):
             dq = self._ensure_conversation(conversation_id)
             dq.append(message)
 
-    def get_messages(self, conversation_id: str, limit: int | None = None) -> List[ConversationMessage]:
+    def get_messages(
+        self, conversation_id: str, limit: int | None = None
+    ) -> List[ConversationMessage]:
         """
         Devuelve los mensajes de una conversación.
 

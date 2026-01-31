@@ -23,8 +23,8 @@ Notes:
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
-from typing import Optional, Dict, Any, List, Literal
 
 
 @dataclass
@@ -159,12 +159,16 @@ class QueryResult:
         chunks: Retrieved chunks used as context
         query: Original user query (optional)
         metadata: Additional response metadata (top_k, latency, etc.)
+        sources: Structured source references for citations (optional)
+        confidence: Confidence score of the answer (optional)
     """
 
     answer: str
     chunks: List[Chunk]
     query: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    sources: Optional[List[Any]] = None  # List[SourceReference] - avoid circular import
+    confidence: Optional[Any] = None  # ConfidenceScore - avoid circular import
 
 
 @dataclass

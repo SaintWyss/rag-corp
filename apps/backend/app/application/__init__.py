@@ -6,6 +6,9 @@ APPLICATION LAYER (Public API / Exports)
 Expone los puntos de entrada estables de la capa de aplicación:
   - ContextBuilder: ensamblador de contexto para RAG
   - prompt_injection_detector: política de seguridad para chunks
+  - RateLimiter: control de cuotas y rate limiting
+  - QueryRewriter: mejora de queries para RAG (reescritura contextual)
+  - ChunkReranker: reordenamiento de chunks por relevancia
 
 Nota:
   - Los casos de uso se importan desde `usecases/` subdirectories.
@@ -21,6 +24,14 @@ from .prompt_injection_detector import (
     detect,
     is_flagged,
 )
+from .query_rewriter import QueryRewriter, RewriteResult, get_query_rewriter
+from .rate_limiting import (
+    InMemoryQuotaStorage,
+    RateLimitConfig,
+    RateLimiter,
+    RateLimitResult,
+)
+from .reranker import ChunkReranker, RerankerMode, RerankResult, get_chunk_reranker
 
 __all__ = [
     # Context Builder
@@ -32,4 +43,18 @@ __all__ = [
     "apply_injection_filter",
     "detect",
     "is_flagged",
+    # Rate Limiting
+    "RateLimiter",
+    "RateLimitConfig",
+    "RateLimitResult",
+    "InMemoryQuotaStorage",
+    # Query Rewriter (RAG Enhancement)
+    "QueryRewriter",
+    "RewriteResult",
+    "get_query_rewriter",
+    # Chunk Reranker (RAG Enhancement)
+    "ChunkReranker",
+    "RerankResult",
+    "RerankerMode",
+    "get_chunk_reranker",
 ]

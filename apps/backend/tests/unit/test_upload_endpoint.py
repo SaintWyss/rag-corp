@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.identity.auth_users import create_access_token, hash_password
-from app.application.usecases.upload_document import UploadDocumentUseCase
+from app.application.usecases.ingestion.upload_document import UploadDocumentUseCase
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.api.exception_handlers import register_exception_handlers
 from app.identity.users import User, UserRole

@@ -33,9 +33,9 @@ from uuid import UUID
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
-from ...crosscutting.exceptions import DatabaseError
-from ...crosscutting.logger import logger
-from ...domain.audit import AuditEvent
+from ....crosscutting.exceptions import DatabaseError
+from ....crosscutting.logger import logger
+from ....domain.audit import AuditEvent
 
 
 class PostgresAuditEventRepository:

@@ -1,49 +1,60 @@
 """
-============================================================
-TARJETA CRC
-============================================================
-Class: app.infrastructure.repositories (Package exports)
+Repository Implementations (Infrastructure Layer).
 
-Responsibilities:
-- Exponer implementaciones concretas de repositorios (Postgres e InMemory)
-  en un único punto de importación.
-- Mantener una API estable para la capa de aplicación (use cases).
+This module provides concrete implementations of domain repository interfaces.
 
-Collaborators:
-- Repositorios Postgres (SQL crudo)
-- Repositorios InMemory (testing / fallback)
-============================================================
+Structure:
+    - postgres/     Production implementations (SQLAlchemy + PostgreSQL)
+    - in_memory/    Testing & development implementations (ephemeral)
+    - redis/        (Future) Caching and rate limiting
+
+Usage:
+    # Production
+    from app.infrastructure.repositories.postgres import PostgresDocumentRepository
+
+    # Testing
+    from app.infrastructure.repositories.in_memory import InMemoryFeedbackRepository
+
+Factory Pattern:
+    Use get_repository() for DI-friendly instantiation.
 """
 
-# ---------------------------
-# In-memory implementations
-# Usados para tests unitarios rápidos o entornos volátiles.
-# No persisten datos tras reiniciar la app.
-# ---------------------------
-from .in_memory_conversation_repo import InMemoryConversationRepository
-from .in_memory_workspace_acl_repo import InMemoryWorkspaceAclRepository
-from .in_memory_workspace_repo import InMemoryWorkspaceRepository
+# =============================================================================
+# In-Memory Implementations (Testing/Development)
+# =============================================================================
+from .in_memory import (
+    InMemoryAnswerAuditRepository,
+    InMemoryConversationRepository,
+    InMemoryFeedbackRepository,
+    InMemoryWorkspaceAclRepository,
+    InMemoryWorkspaceRepository,
+)
 
-# ---------------------------
-# Postgres implementations
-# Implementaciones de producción con persistencia real y transacciones.
-# PostgresDocumentRepository incluye lógica de vectores (pgvector).
-# ---------------------------
-from .postgres_audit_repo import PostgresAuditEventRepository
-from .postgres_document_repo import PostgresDocumentRepository
-from .postgres_user_repo import PostgresUserRepository
-from .postgres_workspace_acl_repo import PostgresWorkspaceAclRepository
-from .postgres_workspace_repo import PostgresWorkspaceRepository
+# =============================================================================
+# PostgreSQL Implementations (Production)
+# =============================================================================
+from .postgres import (
+    PostgresAuditEventRepository,
+    PostgresDocumentRepository,
+    PostgresUserRepository,
+    PostgresWorkspaceAclRepository,
+    PostgresWorkspaceRepository,
+)
 
+# =============================================================================
+# Public API
+# =============================================================================
 __all__ = [
     # Postgres
-    "PostgresAuditEventRepository",
     "PostgresDocumentRepository",
-    "PostgresUserRepository",
-    "PostgresWorkspaceAclRepository",
     "PostgresWorkspaceRepository",
-    # In-memory
+    "PostgresWorkspaceAclRepository",
+    "PostgresAuditEventRepository",
+    "PostgresUserRepository",
+    # In-Memory
+    "InMemoryFeedbackRepository",
+    "InMemoryAnswerAuditRepository",
     "InMemoryConversationRepository",
-    "InMemoryWorkspaceAclRepository",
     "InMemoryWorkspaceRepository",
+    "InMemoryWorkspaceAclRepository",
 ]

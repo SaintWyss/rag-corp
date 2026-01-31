@@ -346,9 +346,35 @@ class ConversationRepository(Protocol):
         """R: Create a new conversation and return its ID."""
         ...
 
+    def conversation_exists(self, conversation_id: str) -> bool:
+        """R: Check if a conversation exists."""
+        ...
+
+    def get_message_count(self, conversation_id: str) -> int:
+        """R: Get the total number of messages in a conversation."""
+        ...
+
+    def append_message(
+        self, conversation_id: str, message: ConversationMessage
+    ) -> None:
+        """R: Append a message to a conversation."""
+        ...
+
+    def get_messages(
+        self,
+        conversation_id: str,
+        limit: Optional[int] = None,
+    ) -> List[ConversationMessage]:
+        """R: Get messages for a conversation, optionally limited to last N."""
+        ...
+
+    def clear_messages(self, conversation_id: str) -> None:
+        """R: Delete all messages from a conversation (keep the conversation itself)."""
+        ...
+
 
 class AuditEventRepository(Protocol):
-    """R: Interface for audit event persistence."""
+    """R: Interface for audit event persistence (system events)."""
 
     def record_event(self, event: AuditEvent) -> None:
         """R: Persist an audit event."""
@@ -368,24 +394,136 @@ class AuditEventRepository(Protocol):
         """R: Fetch audit events with optional filters."""
         ...
 
-    def conversation_exists(self, conversation_id: str) -> bool:
-        """R: Check if a conversation exists."""
-        ...
 
-    def append_message(
-        self, conversation_id: str, message: ConversationMessage
-    ) -> None:
-        """R: Append a message to a conversation."""
-        ...
+class FeedbackRepository(Protocol):
+    """
+    R: Interface for user feedback persistence (RLHF).
 
-    def get_messages(
+    Implementations must provide:
+      - Save/retrieve votes on RAG answers
+      - Prevent duplicate votes (one vote per user per message)
+      - Support analytics queries
+    """
+
+    def save_vote(
         self,
+        *,
         conversation_id: str,
-        limit: Optional[int] = None,
-    ) -> List[ConversationMessage]:
-        """R: Get messages for a conversation, optionally limited to last N."""
+        message_index: int,
+        user_id: UUID,
+        vote: str,
+        comment: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        created_at: Optional[datetime] = None,
+    ) -> str:
+        """
+        R: Persist a vote and return the vote ID.
+
+        Implementations MUST:
+          - Generate a unique vote_id if not provided
+          - Prevent duplicates (user_id + conversation_id + message_index)
+        """
         ...
 
-    def clear_messages(self, conversation_id: str) -> None:
-        """R: Delete all messages from a conversation (keep the conversation itself)."""
+    def get_vote(
+        self, *, conversation_id: str, message_index: int, user_id: UUID
+    ) -> Optional[dict]:
+        """R: Get existing vote for a user on a specific message."""
+        ...
+
+    def list_votes_for_conversation(self, conversation_id: str) -> List[dict]:
+        """R: List all votes for a conversation."""
+        ...
+
+    def count_votes(
+        self,
+        *,
+        workspace_id: Optional[UUID] = None,
+        vote_type: Optional[str] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> dict:
+        """
+        R: Count votes by type for analytics.
+
+        Returns:
+            {"up": int, "down": int, "neutral": int, "total": int}
+        """
+        ...
+
+
+class AnswerAuditRepository(Protocol):
+    """
+    R: Interface for RAG answer audit trail (enterprise compliance).
+
+    Implementations must provide:
+      - Persist every RAG answer for compliance
+      - Query by user, workspace, date range
+      - Flag high-risk answers for review
+    """
+
+    def save_audit_record(
+        self,
+        *,
+        record_id: str,
+        timestamp: str,
+        user_id: UUID,
+        workspace_id: UUID,
+        query: str,
+        answer_preview: str,
+        confidence_level: str,
+        confidence_value: float,
+        requires_verification: bool,
+        sources_count: int,
+        source_documents: Optional[List[str]] = None,
+        user_email: Optional[str] = None,
+        suggested_department: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        response_time_ms: Optional[int] = None,
+        metadata: Optional[dict] = None,
+    ) -> None:
+        """R: Persist an audit record."""
+        ...
+
+    def get_audit_record(self, record_id: str) -> Optional[dict]:
+        """R: Fetch a specific audit record."""
+        ...
+
+    def list_audit_records(
+        self,
+        *,
+        workspace_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None,
+        confidence_level: Optional[str] = None,
+        requires_verification: Optional[bool] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[dict]:
+        """R: List audit records with filters."""
+        ...
+
+    def list_high_risk_records(
+        self,
+        *,
+        workspace_id: Optional[UUID] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+        limit: int = 50,
+    ) -> List[dict]:
+        """R: List high-risk audit records for review (low confidence or few sources)."""
+        ...
+
+    def update_rating(
+        self,
+        record_id: str,
+        *,
+        was_rated: bool,
+        rating: Optional[str] = None,
+    ) -> bool:
+        """R: Update the user rating for an audit record (link to feedback)."""
         ...

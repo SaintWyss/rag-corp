@@ -14,17 +14,17 @@ from uuid import UUID
 
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError
+from argon2.exceptions import VerificationError, VerifyMismatchError
 from fastapi import Header, Request
 
 from ..crosscutting.config import get_settings
 from ..crosscutting.error_responses import forbidden, unauthorized
 from ..crosscutting.logger import logger
-from .users import User, UserRole
-from ..infrastructure.repositories.postgres_user_repo import (
+from ..infrastructure.repositories.postgres.user import (
     get_user_by_email,
     get_user_by_id,
 )
+from .users import User, UserRole
 
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_COOKIE = "access_token"
