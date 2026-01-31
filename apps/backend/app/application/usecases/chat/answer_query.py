@@ -111,6 +111,7 @@ from ....domain.services import EmbeddingService, LLMService
 from ....domain.workspace_policy import WorkspaceActor
 from ...context_builder import ContextBuilder, get_context_builder
 from ...prompt_injection_detector import apply_injection_filter
+from ...reranker import ChunkReranker
 from ..documents.document_results import (
     AnswerQueryResult,
     DocumentError,
@@ -136,6 +137,16 @@ _MSG_INSUFFICIENT_EVIDENCE: Final[str] = (
 # Reglas defensivas de top_k (performance).
 _DEFAULT_TOP_K: Final[int] = 5
 _MAX_TOP_K: Final[int] = 50
+
+# Reranking (defensivo y configurable).
+_DEFAULT_RERANK_CANDIDATE_MULTIPLIER: Final[int] = 5
+_DEFAULT_RERANK_MAX_CANDIDATES: Final[int] = 200
+
+# Metadata keys (observabilidad consistente).
+_META_RERANK_APPLIED: Final[str] = "rerank_applied"
+_META_RERANK_CANDIDATES: Final[str] = "candidates_count"
+_META_RERANK_RERANKED: Final[str] = "reranked_count"
+_META_RERANK_SELECTED: Final[str] = "selected_top_k"
 
 # Stage names para StageTimings (evita typos).
 _STAGE_EMBED: Final[str] = "embed"
@@ -181,6 +192,10 @@ class AnswerQueryUseCase:
         context_builder: Optional[ContextBuilder] = None,
         injection_filter_mode: str = "off",
         injection_risk_threshold: float = 0.6,
+        reranker: ChunkReranker | None = None,
+        enable_rerank: bool = False,
+        rerank_candidate_multiplier: int = _DEFAULT_RERANK_CANDIDATE_MULTIPLIER,
+        rerank_max_candidates: int = _DEFAULT_RERANK_MAX_CANDIDATES,
     ) -> None:
         self._documents = repository
         self._workspaces = workspace_repository
@@ -192,6 +207,12 @@ class AnswerQueryUseCase:
         # Config de seguridad (filtrado de prompt injection).
         self._injection_filter_mode = injection_filter_mode
         self._injection_risk_threshold = injection_risk_threshold
+
+        # Config de reranking (feature flag + límites defensivos).
+        self._reranker = reranker
+        self._enable_rerank = enable_rerank
+        self._rerank_candidate_multiplier = max(1, rerank_candidate_multiplier)
+        self._rerank_max_candidates = max(_MAX_TOP_K, rerank_max_candidates)
 
     def execute(self, input_data: AnswerQueryInput) -> AnswerQueryResult:
         """
@@ -232,6 +253,7 @@ class AnswerQueryUseCase:
         # 4) Sanitizar top_k (regla defensiva de performance).
         # ---------------------------------------------------------------------
         top_k = self._sanitize_top_k(input_data.top_k)
+        candidate_top_k = self._compute_candidate_top_k(top_k)
 
         # Si top_k no permite retrieval, devolvemos fallback de forma explícita.
         # (No es un error de servicio/policy: es una configuración inválida.)
@@ -268,7 +290,7 @@ class AnswerQueryUseCase:
                 chunks = self._retrieve_chunks(
                     embedding=query_embedding,
                     workspace_id=input_data.workspace_id,
-                    top_k=top_k,
+                    top_k=candidate_top_k,
                     use_mmr=input_data.use_mmr,
                 )
         except Exception:
@@ -278,16 +300,32 @@ class AnswerQueryUseCase:
             )
 
         # ---------------------------------------------------------------------
-        # 7) Filtrado de seguridad (prompt injection) sobre chunks recuperados.
+        # 7) Reranking (post-retrieval) antes de aplicar política de seguridad.
         # ---------------------------------------------------------------------
-        chunks = apply_injection_filter(
+        # Motivo:
+        #   - Queremos preservar el orden de relevancia del reranker.
+        #   - Luego aplicamos la policy de inyección para mover/excluir riesgosos.
+        rerank_result = self._maybe_rerank(
+            query=input_data.query,
+            chunks=chunks,
+            top_k=top_k,
+        )
+        chunks = rerank_result["chunks"]
+
+        # ---------------------------------------------------------------------
+        # 8) Filtrado de seguridad (prompt injection) sobre chunks reordenados.
+        # ---------------------------------------------------------------------
+        filtered_chunks = apply_injection_filter(
             chunks,
             mode=self._injection_filter_mode,
             threshold=self._injection_risk_threshold,
         )
+        chunks = filtered_chunks[:top_k]
+        rerank_result["metadata"][_META_RERANK_SELECTED] = len(chunks)
+        chunks_found = len(filtered_chunks)
 
         # ---------------------------------------------------------------------
-        # 8) Si no hay chunks, devolvemos fallback (sin evidencia).
+        # 9) Si no hay chunks, devolvemos fallback (sin evidencia).
         # ---------------------------------------------------------------------
         if not chunks:
             timing_data = timings.to_dict()
@@ -297,6 +335,7 @@ class AnswerQueryUseCase:
                 extra={
                     "context_chars": 0,
                     "prompt_version": prompt_version,
+                    "chunks_found": chunks_found,
                     **timing_data,
                 },
             )
@@ -305,15 +344,16 @@ class AnswerQueryUseCase:
                     input_data=input_data,
                     prompt_version=prompt_version,
                     timing_data=timing_data,
-                    chunks_found=0,
+                    chunks_found=chunks_found,
                     chunks_used=0,
                     context_chars=0,
                     top_k=top_k,
+                    extra_metadata=rerank_result["metadata"],
                 )
             )
 
         # ---------------------------------------------------------------------
-        # 9) Construir contexto (grounding + metadata).
+        # 10) Construir contexto (grounding + metadata).
         # ---------------------------------------------------------------------
         context, chunks_used = self._context_builder.build(chunks)
         context_chars = len(context or "")
@@ -325,7 +365,7 @@ class AnswerQueryUseCase:
             logger.info(
                 "context builder produced empty context",
                 extra={
-                    "chunks_found": len(chunks),
+                    "chunks_found": chunks_found,
                     "chunks_used": chunks_used,
                     "context_chars": context_chars,
                     "prompt_version": prompt_version,
@@ -337,15 +377,16 @@ class AnswerQueryUseCase:
                     input_data=input_data,
                     prompt_version=prompt_version,
                     timing_data=timing_data,
-                    chunks_found=len(chunks),
+                    chunks_found=chunks_found,
                     chunks_used=0,
                     context_chars=context_chars,
                     top_k=top_k,
+                    extra_metadata=rerank_result["metadata"],
                 )
             )
 
         # ---------------------------------------------------------------------
-        # 10) STEP: Generar respuesta con LLM.
+        # 11) STEP: Generar respuesta con LLM.
         # ---------------------------------------------------------------------
         llm_query = input_data.llm_query or input_data.query
         try:
@@ -355,14 +396,14 @@ class AnswerQueryUseCase:
             return AnswerQueryResult(error=self._service_unavailable(_RESOURCE_LLM))
 
         # ---------------------------------------------------------------------
-        # 11) Observabilidad final (timings + log).
+        # 12) Observabilidad final (timings + log).
         # ---------------------------------------------------------------------
         timing_data = timings.to_dict()
 
         logger.info(
             "query answered",
             extra={
-                "chunks_found": len(chunks),
+                "chunks_found": chunks_found,
                 "chunks_used": chunks_used,
                 "context_chars": context_chars,
                 "prompt_version": prompt_version,
@@ -378,7 +419,7 @@ class AnswerQueryUseCase:
         self._record_answer_source_hygiene(answer=answer, chunks_used=chunks_used)
 
         # ---------------------------------------------------------------------
-        # 12) Retornar resultado estructurado.
+        # 13) Retornar resultado estructurado.
         # ---------------------------------------------------------------------
         return AnswerQueryResult(
             result=QueryResult(
@@ -388,11 +429,12 @@ class AnswerQueryUseCase:
                 query=input_data.query,
                 metadata={
                     "top_k": top_k,
-                    "chunks_found": len(chunks),
+                    "chunks_found": chunks_found,
                     "chunks_used": chunks_used,
                     "context_chars": context_chars,
                     "prompt_version": prompt_version,
                     "use_mmr": input_data.use_mmr,
+                    **rerank_result["metadata"],
                     **timing_data,
                 },
             )
@@ -459,10 +501,11 @@ class AnswerQueryUseCase:
           - lambda_mult: trade-off diversidad vs relevancia
         """
         if use_mmr:
+            fetch_k = self._compute_mmr_fetch_k(top_k)
             return self._documents.find_similar_chunks_mmr(
                 embedding=embedding,
                 top_k=top_k,
-                fetch_k=top_k * 4,
+                fetch_k=fetch_k,
                 lambda_mult=0.5,
                 workspace_id=workspace_id,
             )
@@ -472,6 +515,106 @@ class AnswerQueryUseCase:
             top_k=top_k,
             workspace_id=workspace_id,
         )
+
+    def _compute_candidate_top_k(self, top_k: int) -> int:
+        """
+        Calcula cuántos candidatos pedir al repositorio.
+
+        Regla:
+          - Si rerank está habilitado, pedir más candidatos para reordenar.
+          - Mantener límites defensivos para evitar costos explosivos.
+        """
+        if top_k <= 0:
+            return top_k
+
+        if not self._rerank_enabled():
+            return top_k
+
+        expanded = top_k * self._rerank_candidate_multiplier
+        return min(max(top_k, expanded), self._rerank_max_candidates)
+
+    def _compute_mmr_fetch_k(self, top_k: int) -> int:
+        """
+        Define fetch_k para MMR con límite defensivo.
+
+        Razón:
+          - MMR necesita más candidatos para diversidad.
+          - No debe superar el máximo configurado.
+        """
+        if top_k <= 0:
+            return top_k
+
+        fetch_k = top_k * 4
+        if not self._rerank_enabled():
+            return max(top_k, fetch_k)
+        return min(max(top_k, fetch_k), self._rerank_max_candidates)
+
+    def _rerank_enabled(self) -> bool:
+        """
+        Feature flag efectiva de reranking.
+
+        Nota:
+          - Se requiere flag habilitado y reranker inyectado.
+        """
+        return bool(self._enable_rerank and self._reranker is not None)
+
+    def _maybe_rerank(
+        self,
+        *,
+        query: str,
+        chunks: list,
+        top_k: int,
+    ) -> dict:
+        """
+        Aplica reranking si está habilitado y retorna metadata consistente.
+
+        Contrato:
+          - Si falla el reranker, retorna el orden original (fallback seguro).
+          - Siempre devuelve metadata útil para observabilidad.
+        """
+        candidates_count = len(chunks)
+        default_metadata = {
+            _META_RERANK_APPLIED: False,
+            _META_RERANK_CANDIDATES: candidates_count,
+            _META_RERANK_RERANKED: 0,
+            _META_RERANK_SELECTED: min(top_k, candidates_count),
+        }
+
+        if not self._rerank_enabled() or candidates_count <= 0:
+            return {
+                "chunks": chunks,
+                "metadata": default_metadata,
+            }
+
+        try:
+            # R: Pedimos rerank sobre todos los candidatos para luego recortar.
+            result = self._reranker.rerank(
+                query=query,
+                chunks=chunks,
+                top_k=min(candidates_count, self._rerank_max_candidates),
+            )
+            reranked_chunks = result.chunks
+            return {
+                "chunks": reranked_chunks,
+                "metadata": {
+                    _META_RERANK_APPLIED: True,
+                    _META_RERANK_CANDIDATES: candidates_count,
+                    _META_RERANK_RERANKED: result.original_count,
+                    _META_RERANK_SELECTED: len(reranked_chunks[:top_k]),
+                },
+            }
+        except Exception as exc:
+            logger.warning(
+                "Reranking failed, using original order",
+                extra={
+                    "error": str(exc),
+                    "candidates_count": candidates_count,
+                },
+            )
+            return {
+                "chunks": chunks,
+                "metadata": default_metadata,
+            }
 
     @staticmethod
     def _fallback_result(
@@ -483,22 +626,26 @@ class AnswerQueryUseCase:
         chunks_used: int,
         context_chars: int,
         top_k: int,
+        extra_metadata: dict | None = None,
     ) -> QueryResult:
         """
         Construye un QueryResult de fallback consistente (sin evidencia suficiente).
         """
+        metadata = {
+            "top_k": top_k,
+            "chunks_found": chunks_found,
+            "chunks_used": chunks_used,
+            "context_chars": context_chars,
+            "prompt_version": prompt_version,
+            **timing_data,
+        }
+        if extra_metadata:
+            metadata.update(extra_metadata)
         return QueryResult(
             answer=_MSG_INSUFFICIENT_EVIDENCE,
             chunks=[],
             query=input_data.query,
-            metadata={
-                "top_k": top_k,
-                "chunks_found": chunks_found,
-                "chunks_used": chunks_used,
-                "context_chars": context_chars,
-                "prompt_version": prompt_version,
-                **timing_data,
-            },
+            metadata=metadata,
         )
 
     @staticmethod

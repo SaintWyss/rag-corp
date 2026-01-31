@@ -19,6 +19,15 @@ Notes:
   - Uses pydantic-settings for env parsing and validation
   - Singleton via lru_cache for performance
   - All limits configurable for different environments
+
+CRC (Component Card):
+  Component: Settings
+  Responsibilities:
+    - Parsear y validar configuración de entorno
+    - Proveer defaults seguros para la app
+  Collaborators:
+    - crosscutting.config.get_settings
+    - application/container
 """
 
 from functools import lru_cache
@@ -66,6 +75,10 @@ class Settings(BaseSettings):
         legacy_workspace_id: Implicit workspace UUID for legacy endpoints
         rag_injection_filter_mode: off|downrank|exclude (default: off)
         rag_injection_risk_threshold: Risk threshold [0..1] (default: 0.6)
+        enable_query_rewrite: Enable query rewriting for chat (default: False)
+        enable_rerank: Enable chunk reranking (default: False)
+        rerank_candidate_multiplier: Fetch multiplier for rerank candidates (default: 5)
+        rerank_max_candidates: Cap for rerank candidates (default: 200)
     """
 
     # Required (no defaults)
@@ -142,6 +155,10 @@ class Settings(BaseSettings):
     max_conversation_messages: int = 12
     rag_injection_filter_mode: str = "off"
     rag_injection_risk_threshold: float = 0.6
+    enable_query_rewrite: bool = False
+    enable_rerank: bool = False
+    rerank_candidate_multiplier: int = 5
+    rerank_max_candidates: int = 200
 
     # Retry/Resilience
     retry_max_attempts: int = 3
@@ -188,6 +205,20 @@ class Settings(BaseSettings):
     def rag_injection_risk_threshold_valid(cls, v: float) -> float:
         if v < 0 or v > 1:
             raise ValueError("rag_injection_risk_threshold must be between 0 and 1")
+        return v
+
+    @field_validator("rerank_candidate_multiplier")
+    @classmethod
+    def rerank_candidate_multiplier_valid(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("rerank_candidate_multiplier must be greater than 0")
+        return v
+
+    @field_validator("rerank_max_candidates")
+    @classmethod
+    def rerank_max_candidates_valid(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("rerank_max_candidates must be greater than 0")
         return v
 
     def validate_chunk_params(self) -> None:

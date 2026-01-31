@@ -19,6 +19,7 @@ Notes:
 import pytest
 from uuid import uuid4
 
+from app.application.reranker import RerankResult, RerankerMode
 from app.application.usecases.chat.search_chunks import (
     SearchChunksUseCase,
     SearchChunksInput,
@@ -95,6 +96,61 @@ class TestSearchChunksUseCase:
             top_k=3,
             workspace_id=_WORKSPACE.id,
         )
+
+    def test_execute_applies_rerank_order_and_top_k(
+        self,
+        mock_repository,
+        mock_embedding_service,
+        sample_chunks,
+    ):
+        """R: Should rerank candidates and return top_k."""
+        query_embedding = [0.5] * 768
+        mock_embedding_service.embed_query.return_value = query_embedding
+        mock_repository.find_similar_chunks.return_value = sample_chunks
+
+        class _RerankerStub:
+            def rerank(self, query, chunks, top_k):
+                reranked = list(reversed(chunks))[:top_k]
+                return RerankResult(
+                    chunks=reranked,
+                    original_count=len(chunks),
+                    returned_count=len(reranked),
+                    mode_used=RerankerMode.HEURISTIC,
+                )
+
+        use_case = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            reranker=_RerankerStub(),
+            enable_rerank=True,
+            rerank_candidate_multiplier=2,
+            rerank_max_candidates=10,
+        )
+
+        result = use_case.execute(
+            SearchChunksInput(
+                query="test query",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=2,
+            )
+        )
+
+        assert result.error is None
+        assert [c.content for c in result.matches] == [
+            sample_chunks[2].content,
+            sample_chunks[1].content,
+        ]
+        mock_repository.find_similar_chunks.assert_called_once_with(
+            embedding=query_embedding,
+            top_k=4,
+            workspace_id=_WORKSPACE.id,
+        )
+        assert result.metadata["rerank_applied"] is True
+        assert result.metadata["candidates_count"] == len(sample_chunks)
+        assert result.metadata["selected_top_k"] == 2
 
     def test_execute_with_zero_top_k(
         self,

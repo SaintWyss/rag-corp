@@ -217,10 +217,12 @@ class SearchChunksResult:
 
     Campos:
       - matches: lista de chunks encontrados (posiblemente vacía).
+      - metadata: observabilidad de retrieval/rerank (opcional).
       - error: error tipado si falló.
     """
 
     matches: List[Chunk]
+    metadata: dict | None = None
     error: DocumentError | None = None
 
 

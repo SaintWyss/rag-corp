@@ -18,6 +18,14 @@ Notes:
   - Using typing.Protocol for structural subtyping
   - Implementations can swap between providers without changing use cases
   - Enables testing with mock services
+
+CRC (Component Card):
+  Component: Domain Service Protocols
+  Responsibilities:
+    - Definir contratos de servicios externos (LLM/embeddings)
+    - Permitir inversión de dependencias en casos de uso
+  Collaborators:
+    - infrastructure.services
 """
 
 from typing import AsyncGenerator, List, Protocol
@@ -66,6 +74,7 @@ class LLMService(Protocol):
     Implementations must provide:
       - Context-based answer generation (RAG)
       - Prompt engineering handling
+      - Plain prompt completion for auxiliary tasks (rewrites/rerank)
       - Error handling for generation failures
     """
 
@@ -79,6 +88,19 @@ class LLMService(Protocol):
 
         Returns:
             Generated answer (should be based on context only)
+        """
+        ...
+
+    def generate_text(self, prompt: str, max_tokens: int = 200) -> str:
+        """
+        R: Generate plain text from a prompt (auxiliary tasks).
+
+        Args:
+            prompt: Prompt text to complete
+            max_tokens: Max output tokens (best-effort)
+
+        Returns:
+            Generated text (no post-processing)
         """
         ...
 

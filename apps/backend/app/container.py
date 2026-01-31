@@ -23,6 +23,16 @@ Notes:
   - Use cases don't know about concrete implementations
   - Easy to swap implementations (e.g., OpenAI instead of Google)
   - Testable (can inject mocks)
+
+CRC (Component Card):
+  Component: container
+  Responsibilities:
+    - Construir dependencias y casos de uso con DI manual
+    - Centralizar configuración runtime (Settings)
+  Collaborators:
+    - application.usecases
+    - infrastructure.repositories/services
+    - crosscutting.config
 """
 
 from functools import lru_cache
@@ -65,6 +75,7 @@ from .infrastructure.parsers import SimpleDocumentTextExtractor
 from .infrastructure.queue import RQDocumentProcessingQueue
 from .infrastructure.text import SimpleTextChunker
 from .infrastructure.storage import S3FileStorageAdapter, S3Config
+from .application import get_chunk_reranker, get_query_rewriter, RerankerMode
 from .application.usecases import (
     AnswerQueryUseCase,
     DeleteDocumentUseCase,
@@ -82,6 +93,7 @@ from .application.usecases import (
     PublishWorkspaceUseCase,
     ShareWorkspaceUseCase,
 )
+from .application.usecases.chat import AnswerQueryWithHistoryUseCase
 
 
 # R: Repository factory (singleton)
@@ -168,6 +180,34 @@ def get_llm_service() -> LLMService:
     return GoogleLLMService()
 
 
+@lru_cache
+def get_query_rewriter_service():
+    """
+    R: Get QueryRewriter instance if feature flag is enabled.
+    """
+    settings = get_settings()
+    if not settings.enable_query_rewrite:
+        return None
+    return get_query_rewriter(
+        get_llm_service(),
+        enabled=settings.enable_query_rewrite,
+    )
+
+
+@lru_cache
+def get_chunk_reranker_service():
+    """
+    R: Get ChunkReranker instance if feature flag is enabled.
+    """
+    settings = get_settings()
+    if not settings.enable_rerank:
+        return None
+    return get_chunk_reranker(
+        get_llm_service(),
+        mode=RerankerMode.HEURISTIC,
+    )
+
+
 # R: Text chunker factory (singleton)
 @lru_cache
 def get_text_chunker() -> TextChunkerService:
@@ -244,6 +284,21 @@ def get_answer_query_use_case() -> AnswerQueryUseCase:
         llm_service=get_llm_service(),
         injection_filter_mode=settings.rag_injection_filter_mode,
         injection_risk_threshold=settings.rag_injection_risk_threshold,
+        reranker=get_chunk_reranker_service(),
+        enable_rerank=settings.enable_rerank,
+        rerank_candidate_multiplier=settings.rerank_candidate_multiplier,
+        rerank_max_candidates=settings.rerank_max_candidates,
+    )
+
+
+def get_answer_query_with_history_use_case() -> AnswerQueryWithHistoryUseCase:
+    """
+    R: Create AnswerQueryWithHistoryUseCase with injected dependencies.
+    """
+    return AnswerQueryWithHistoryUseCase(
+        conversation_repository=get_conversation_repository(),
+        answer_query_use_case=get_answer_query_use_case(),
+        query_rewriter=get_query_rewriter_service(),
     )
 
 
@@ -273,6 +328,10 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
         embedding_service=get_embedding_service(),
         injection_filter_mode=settings.rag_injection_filter_mode,
         injection_risk_threshold=settings.rag_injection_risk_threshold,
+        reranker=get_chunk_reranker_service(),
+        enable_rerank=settings.enable_rerank,
+        rerank_candidate_multiplier=settings.rerank_candidate_multiplier,
+        rerank_max_candidates=settings.rerank_max_candidates,
     )
 
 

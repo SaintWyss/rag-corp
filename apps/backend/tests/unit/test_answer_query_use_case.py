@@ -22,6 +22,7 @@ import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.application.reranker import RerankResult, RerankerMode
 from app.application.usecases.chat.answer_query import AnswerQueryUseCase, AnswerQueryInput
 from app.application.usecases.documents.document_results import DocumentErrorCode
 from app.domain.entities import Chunk, QueryResult, Workspace, WorkspaceVisibility
@@ -111,6 +112,72 @@ class TestAnswerQueryUseCase:
             workspace_id=_WORKSPACE.id,
         )
         mock_llm_service.generate_answer.assert_called_once()
+
+    def test_execute_applies_rerank_order_and_top_k(
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+        sample_chunks,
+    ):
+        """R: Should rerank candidates and use top_k after rerank."""
+        # Arrange
+        query = "order test"
+        query_embedding = [0.5] * 768
+        expected_answer = "ok"
+        mock_embedding_service.embed_query.return_value = query_embedding
+        mock_repository.find_similar_chunks.return_value = sample_chunks
+        mock_llm_service.generate_answer.return_value = expected_answer
+
+        class _RerankerStub:
+            def rerank(self, query, chunks, top_k):
+                reranked = list(reversed(chunks))[:top_k]
+                return RerankResult(
+                    chunks=reranked,
+                    original_count=len(chunks),
+                    returned_count=len(reranked),
+                    mode_used=RerankerMode.HEURISTIC,
+                )
+
+        use_case = AnswerQueryUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            llm_service=mock_llm_service,
+            context_builder=mock_context_builder,
+            reranker=_RerankerStub(),
+            enable_rerank=True,
+            rerank_candidate_multiplier=2,
+            rerank_max_candidates=10,
+        )
+
+        input_data = AnswerQueryInput(
+            query=query,
+            workspace_id=_WORKSPACE.id,
+            actor=_ACTOR,
+            top_k=2,
+        )
+
+        # Act
+        result = use_case.execute(input_data)
+
+        # Assert
+        assert result.error is None
+        assert result.result.answer == expected_answer
+        assert [c.content for c in result.result.chunks] == [
+            sample_chunks[2].content,
+            sample_chunks[1].content,
+        ]
+        mock_repository.find_similar_chunks.assert_called_once_with(
+            embedding=query_embedding,
+            top_k=4,
+            workspace_id=_WORKSPACE.id,
+        )
+        assert result.result.metadata["rerank_applied"] is True
+        assert result.result.metadata["candidates_count"] == len(sample_chunks)
+        assert result.result.metadata["selected_top_k"] == 2
 
     def test_execute_with_no_chunks_found(
         self,

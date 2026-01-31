@@ -224,6 +224,45 @@ class GoogleLLMService(LLMService):
             )
             raise LLMError("Failed to generate response") from exc
 
+    def generate_text(self, prompt: str, max_tokens: int = 200) -> str:
+        """
+        R: Genera texto plano a partir de un prompt (tareas auxiliares).
+
+        Nota:
+          - max_tokens es best-effort; algunos providers requieren config extra.
+        """
+        if not (prompt or "").strip():
+            raise LLMError("Prompt must not be empty")
+
+        try:
+            response = self._generate_content(model=self._model_id, contents=prompt)
+            text = (getattr(response, "text", "") or "").strip()
+
+            logger.info(
+                "GoogleLLMService: Text generated",
+                extra={
+                    "model_id": self._model_id,
+                    "prompt_version": self.prompt_version,
+                    "max_tokens": max_tokens,
+                    "text_chars": len(text),
+                },
+            )
+            return text
+
+        except LLMError:
+            raise
+        except Exception as exc:
+            logger.error(
+                "GoogleLLMService: Text generation failed",
+                exc_info=True,
+                extra={
+                    "model_id": self._model_id,
+                    "prompt_version": self.prompt_version,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            raise LLMError("Failed to generate text") from exc
+
     async def generate_stream(
         self, query: str, chunks: List[Chunk]
     ) -> AsyncGenerator[str, None]:

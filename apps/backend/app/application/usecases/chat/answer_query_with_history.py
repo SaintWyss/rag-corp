@@ -86,9 +86,10 @@ from dataclasses import dataclass
 from typing import Final
 from uuid import UUID
 
-from ....domain.entities import ConversationMessage
+from ....domain.entities import ConversationMessage, QueryResult
 from ....domain.repositories import ConversationRepository
 from ....domain.workspace_policy import WorkspaceActor
+from ...query_rewriter import QueryRewriter, RewriteResult
 from ..documents.document_results import (
     AnswerQueryResult,
     DocumentError,
@@ -107,6 +108,16 @@ _MSG_CONVERSATION_NOT_FOUND: Final[str] = "Conversation not found."
 
 _DEFAULT_TOP_K: Final[int] = 5
 _DEFAULT_HISTORY_WINDOW: Final[int] = 10
+
+# Metadata keys (observabilidad consistente).
+_META_REWRITE_ORIGINAL: Final[str] = "original_query"
+_META_REWRITE_REWRITTEN: Final[str] = "rewritten_query"
+_META_REWRITE_APPLIED: Final[str] = "rewrite_applied"
+_META_REWRITE_REASON: Final[str] = "rewrite_reason"
+
+# Reasons (evita strings mágicos).
+_REWRITE_REASON_UNAVAILABLE: Final[str] = "rewriter_not_configured"
+_REWRITE_REASON_ERROR_PREFIX: Final[str] = "error: "
 
 
 @dataclass(frozen=True)
@@ -148,7 +159,7 @@ class AnswerQueryWithHistoryUseCase:
         7) Devolver resultado (transparente).
 
     Nota:
-        - El retrieval usa el query original (mejor para búsqueda semántica).
+        - El retrieval puede usar una query reescrita para mejorar recall.
         - El LLM recibe el historial formateado para entender el contexto.
     """
 
@@ -156,9 +167,11 @@ class AnswerQueryWithHistoryUseCase:
         self,
         conversation_repository: ConversationRepository,
         answer_query_use_case: AnswerQueryUseCase,
+        query_rewriter: QueryRewriter | None = None,
     ) -> None:
         self._conversations = conversation_repository
         self._answer_query = answer_query_use_case
+        self._query_rewriter = query_rewriter
 
     def execute(self, input_data: AnswerQueryWithHistoryInput) -> AnswerQueryResult:
         """
@@ -192,7 +205,17 @@ class AnswerQueryWithHistoryUseCase:
         )
 
         # ---------------------------------------------------------------------
-        # 3) Formatear historial para el LLM.
+        # 3) Reescribir query (pre-retrieval) usando historial.
+        # ---------------------------------------------------------------------
+        # Razón:
+        #   - El retrieval vectorial es literal; el rewrite agrega contexto.
+        rewrite_result = self._maybe_rewrite(
+            query=input_data.query,
+            history=history,
+        )
+
+        # ---------------------------------------------------------------------
+        # 4) Formatear historial para el LLM.
         # ---------------------------------------------------------------------
         llm_query_enhanced = format_conversation_for_prompt(
             history=history,
@@ -200,16 +223,16 @@ class AnswerQueryWithHistoryUseCase:
         )
 
         # ---------------------------------------------------------------------
-        # 4) Persistir mensaje del usuario.
+        # 5) Persistir mensaje del usuario.
         # ---------------------------------------------------------------------
         user_message = ConversationMessage(role="user", content=input_data.query)
         self._persist_message_safe(input_data.conversation_id, user_message)
 
         # ---------------------------------------------------------------------
-        # 5) Ejecutar AnswerQueryUseCase (flujo RAG puro).
+        # 6) Ejecutar AnswerQueryUseCase (flujo RAG puro).
         # ---------------------------------------------------------------------
         rag_input = AnswerQueryInput(
-            query=input_data.query,  # Retrieval usa query original
+            query=rewrite_result.rewritten_query,  # Retrieval usa query reescrita
             workspace_id=input_data.workspace_id,
             actor=input_data.actor,
             llm_query=llm_query_enhanced,  # LLM recibe contexto conversacional
@@ -219,7 +242,7 @@ class AnswerQueryWithHistoryUseCase:
         result = self._answer_query.execute(rag_input)
 
         # ---------------------------------------------------------------------
-        # 6) Persistir mensaje del asistente (si hay respuesta exitosa).
+        # 7) Persistir mensaje del asistente (si hay respuesta exitosa).
         # ---------------------------------------------------------------------
         if result.result is not None and result.result.answer:
             assistant_message = ConversationMessage(
@@ -227,6 +250,15 @@ class AnswerQueryWithHistoryUseCase:
                 content=result.result.answer,
             )
             self._persist_message_safe(input_data.conversation_id, assistant_message)
+
+        # ---------------------------------------------------------------------
+        # 8) Metadata de rewrite + preservar query original.
+        # ---------------------------------------------------------------------
+        if result.result is not None:
+            self._merge_rewrite_metadata(
+                result=result.result,
+                rewrite_result=rewrite_result,
+            )
 
         return result
 
@@ -272,3 +304,73 @@ class AnswerQueryWithHistoryUseCase:
                 conversation_id,
                 message.role,
             )
+
+    def _maybe_rewrite(
+        self,
+        *,
+        query: str,
+        history: list[ConversationMessage],
+    ) -> RewriteResult:
+        """
+        Ejecuta reescritura si el rewriter está configurado.
+
+        Contrato:
+          - Fallback seguro a query original si falla el rewriter.
+          - Loguea original vs reescrito para observabilidad.
+        """
+        if self._query_rewriter is None:
+            return RewriteResult(
+                original_query=query,
+                rewritten_query=query,
+                was_rewritten=False,
+                reason=_REWRITE_REASON_UNAVAILABLE,
+            )
+
+        try:
+            result = self._query_rewriter.rewrite(query=query, history=history)
+        except Exception as exc:
+            logger.warning(
+                "Query rewrite failed, using original",
+                extra={
+                    "error": str(exc),
+                    "query": query[:100],
+                },
+            )
+            return RewriteResult(
+                original_query=query,
+                rewritten_query=query,
+                was_rewritten=False,
+                reason=f"{_REWRITE_REASON_ERROR_PREFIX}{str(exc)[:50]}",
+            )
+
+        logger.info(
+            "Query rewrite evaluated",
+            extra={
+                "rewrite_applied": result.was_rewritten,
+                "original": result.original_query[:100],
+                "rewritten": result.rewritten_query[:100],
+                "reason": result.reason,
+            },
+        )
+        return result
+
+    @staticmethod
+    def _merge_rewrite_metadata(
+        *,
+        result: QueryResult,
+        rewrite_result: RewriteResult,
+    ) -> None:
+        """
+        Inyecta metadata de rewrite y preserva query original en el resultado.
+        """
+        result.query = rewrite_result.original_query
+        if result.metadata is None:
+            result.metadata = {}
+        result.metadata.update(
+            {
+                _META_REWRITE_ORIGINAL: rewrite_result.original_query,
+                _META_REWRITE_REWRITTEN: rewrite_result.rewritten_query,
+                _META_REWRITE_APPLIED: rewrite_result.was_rewritten,
+                _META_REWRITE_REASON: rewrite_result.reason,
+            }
+        )

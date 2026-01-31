@@ -135,6 +135,18 @@ class FakeLLMService(LLMService):
             raise LLMError("Query must not be empty")
         return _build_answer(query, context)
 
+    def generate_text(self, prompt: str, max_tokens: int = 200) -> str:
+        """
+        R: Genera texto determinista para prompts auxiliares (rewrites/rerank).
+
+        Nota:
+          - max_tokens no se aplica en el fake; se mantiene para compatibilidad.
+        """
+        if not _normalize(prompt):
+            raise LLMError("Prompt must not be empty")
+        digest = hashlib.sha256(_normalize(prompt).encode("utf-8")).hexdigest()[:16]
+        return f"Texto simulado ({digest})"
+
     async def generate_stream(
         self, query: str, chunks: List[Chunk]
     ) -> AsyncGenerator[str, None]:

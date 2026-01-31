@@ -63,6 +63,7 @@ from dataclasses import dataclass
 from typing import Final
 from uuid import UUID
 
+from ....crosscutting.logger import logger
 from ....domain.repositories import (
     DocumentRepository,
     WorkspaceAclRepository,
@@ -71,6 +72,7 @@ from ....domain.repositories import (
 from ....domain.services import EmbeddingService
 from ....domain.workspace_policy import WorkspaceActor
 from ...prompt_injection_detector import apply_injection_filter
+from ...reranker import ChunkReranker
 from ..documents.document_results import (
     DocumentError,
     DocumentErrorCode,
@@ -89,6 +91,16 @@ _MSG_QUERY_REQUIRED: Final[str] = "query is required"
 
 _DEFAULT_TOP_K: Final[int] = 5
 _MAX_TOP_K: Final[int] = 50  # regla defensiva por performance
+
+# Reranking (defensivo y configurable).
+_DEFAULT_RERANK_CANDIDATE_MULTIPLIER: Final[int] = 5
+_DEFAULT_RERANK_MAX_CANDIDATES: Final[int] = 200
+
+# Metadata keys (observabilidad consistente).
+_META_RERANK_APPLIED: Final[str] = "rerank_applied"
+_META_RERANK_CANDIDATES: Final[str] = "candidates_count"
+_META_RERANK_RERANKED: Final[str] = "reranked_count"
+_META_RERANK_SELECTED: Final[str] = "selected_top_k"
 
 
 @dataclass(frozen=True)
@@ -125,6 +137,10 @@ class SearchChunksUseCase:
         embedding_service: EmbeddingService,
         injection_filter_mode: str = "off",
         injection_risk_threshold: float = 0.6,
+        reranker: ChunkReranker | None = None,
+        enable_rerank: bool = False,
+        rerank_candidate_multiplier: int = _DEFAULT_RERANK_CANDIDATE_MULTIPLIER,
+        rerank_max_candidates: int = _DEFAULT_RERANK_MAX_CANDIDATES,
     ) -> None:
         self._documents = repository
         self._workspaces = workspace_repository
@@ -134,6 +150,12 @@ class SearchChunksUseCase:
         # Config de seguridad para filtrado de prompt injection.
         self._injection_filter_mode = injection_filter_mode
         self._injection_risk_threshold = injection_risk_threshold
+
+        # Config de reranking (feature flag + límites defensivos).
+        self._reranker = reranker
+        self._enable_rerank = enable_rerank
+        self._rerank_candidate_multiplier = max(1, rerank_candidate_multiplier)
+        self._rerank_max_candidates = max(_MAX_TOP_K, rerank_max_candidates)
 
     def execute(self, input_data: SearchChunksInput) -> SearchChunksResult:
         """
@@ -170,7 +192,17 @@ class SearchChunksUseCase:
         # ---------------------------------------------------------------------
         top_k = self._sanitize_top_k(input_data.top_k)
         if top_k <= 0:
-            return SearchChunksResult(matches=[])
+            return SearchChunksResult(
+                matches=[],
+                metadata=self._build_rerank_metadata(
+                    candidates_count=0,
+                    reranked_count=0,
+                    selected_top_k=0,
+                    rerank_applied=False,
+                ),
+            )
+
+        candidate_top_k = self._compute_candidate_top_k(top_k)
 
         # ---------------------------------------------------------------------
         # 4) Embed query.
@@ -193,20 +225,32 @@ class SearchChunksUseCase:
         chunks = self._retrieve_chunks(
             embedding=query_embedding,
             workspace_id=input_data.workspace_id,
-            top_k=top_k,
+            top_k=candidate_top_k,
             use_mmr=input_data.use_mmr,
         )
 
         # ---------------------------------------------------------------------
-        # 6) Filtrado de seguridad (prompt injection).
+        # 6) Reranking (post-retrieval) antes de aplicar policy de seguridad.
+        # ---------------------------------------------------------------------
+        rerank_result = self._maybe_rerank(
+            query=input_data.query,
+            chunks=chunks,
+            top_k=top_k,
+        )
+        chunks = rerank_result["chunks"]
+
+        # ---------------------------------------------------------------------
+        # 7) Filtrado de seguridad (prompt injection).
         # ---------------------------------------------------------------------
         filtered = apply_injection_filter(
             chunks,
             mode=self._injection_filter_mode,
             threshold=self._injection_risk_threshold,
         )
+        filtered = filtered[:top_k]
+        rerank_result["metadata"][_META_RERANK_SELECTED] = len(filtered)
 
-        return SearchChunksResult(matches=filtered)
+        return SearchChunksResult(matches=filtered, metadata=rerank_result["metadata"])
 
     # =========================================================================
     # Helpers privados: reglas y consistencia.
@@ -266,10 +310,11 @@ class SearchChunksUseCase:
           - fetch_k = top_k * 4 para dar margen al algoritmo.
         """
         if use_mmr:
+            fetch_k = self._compute_mmr_fetch_k(top_k)
             return self._documents.find_similar_chunks_mmr(
                 embedding=embedding,
                 top_k=top_k,
-                fetch_k=top_k * 4,
+                fetch_k=fetch_k,
                 lambda_mult=0.5,
                 workspace_id=workspace_id,
             )
@@ -279,3 +324,121 @@ class SearchChunksUseCase:
             top_k=top_k,
             workspace_id=workspace_id,
         )
+
+    def _compute_candidate_top_k(self, top_k: int) -> int:
+        """
+        Calcula cuántos candidatos pedir al repositorio.
+
+        Regla:
+          - Si rerank está habilitado, pedir más candidatos para reordenar.
+          - Mantener límites defensivos para evitar costos explosivos.
+        """
+        if top_k <= 0:
+            return top_k
+
+        if not self._rerank_enabled():
+            return top_k
+
+        expanded = top_k * self._rerank_candidate_multiplier
+        return min(max(top_k, expanded), self._rerank_max_candidates)
+
+    def _compute_mmr_fetch_k(self, top_k: int) -> int:
+        """
+        Define fetch_k para MMR con límite defensivo.
+
+        Razón:
+          - MMR necesita más candidatos para diversidad.
+          - No debe superar el máximo configurado.
+        """
+        if top_k <= 0:
+            return top_k
+
+        fetch_k = top_k * 4
+        if not self._rerank_enabled():
+            return max(top_k, fetch_k)
+        return min(max(top_k, fetch_k), self._rerank_max_candidates)
+
+    def _rerank_enabled(self) -> bool:
+        """
+        Feature flag efectiva de reranking.
+
+        Nota:
+          - Se requiere flag habilitado y reranker inyectado.
+        """
+        return bool(self._enable_rerank and self._reranker is not None)
+
+    def _build_rerank_metadata(
+        self,
+        *,
+        candidates_count: int,
+        reranked_count: int,
+        selected_top_k: int,
+        rerank_applied: bool,
+    ) -> dict:
+        """
+        Estructura metadata para observabilidad de rerank.
+        """
+        return {
+            _META_RERANK_APPLIED: rerank_applied,
+            _META_RERANK_CANDIDATES: candidates_count,
+            _META_RERANK_RERANKED: reranked_count,
+            _META_RERANK_SELECTED: selected_top_k,
+        }
+
+    def _maybe_rerank(
+        self,
+        *,
+        query: str,
+        chunks: list,
+        top_k: int,
+    ) -> dict:
+        """
+        Aplica reranking si está habilitado y retorna metadata consistente.
+
+        Contrato:
+          - Si falla el reranker, retorna el orden original (fallback seguro).
+          - Siempre devuelve metadata útil para observabilidad.
+        """
+        candidates_count = len(chunks)
+        default_metadata = self._build_rerank_metadata(
+            candidates_count=candidates_count,
+            reranked_count=0,
+            selected_top_k=min(top_k, candidates_count),
+            rerank_applied=False,
+        )
+
+        if not self._rerank_enabled() or candidates_count <= 0:
+            return {
+                "chunks": chunks,
+                "metadata": default_metadata,
+            }
+
+        try:
+            # R: Pedimos rerank sobre todos los candidatos para luego recortar.
+            result = self._reranker.rerank(
+                query=query,
+                chunks=chunks,
+                top_k=min(candidates_count, self._rerank_max_candidates),
+            )
+            reranked_chunks = result.chunks
+            return {
+                "chunks": reranked_chunks,
+                "metadata": self._build_rerank_metadata(
+                    candidates_count=candidates_count,
+                    reranked_count=result.original_count,
+                    selected_top_k=len(reranked_chunks[:top_k]),
+                    rerank_applied=True,
+                ),
+            }
+        except Exception as exc:
+            logger.warning(
+                "Reranking failed, using original order",
+                extra={
+                    "error": str(exc),
+                    "candidates_count": candidates_count,
+                },
+            )
+            return {
+                "chunks": chunks,
+                "metadata": default_metadata,
+            }
