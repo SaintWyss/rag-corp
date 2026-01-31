@@ -53,6 +53,11 @@ from .answer_query_with_history import (
     AnswerQueryWithHistoryInput,
     AnswerQueryWithHistoryUseCase,
 )
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+from .chat_utils import format_conversation_for_prompt, truncate_history
 from .clear_conversation import (
     ClearConversationInput,
     ClearConversationResult,
@@ -98,4 +103,7 @@ __all__ = [
     "ClearConversationInput",
     "ClearConversationResult",
     "ClearConversationUseCase",
+    # Utilities
+    "format_conversation_for_prompt",
+    "truncate_history",
 ]

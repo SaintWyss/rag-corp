@@ -1,72 +1,85 @@
+# =============================================================================
+# FILE: application/prompt_injection_detector.py
+# =============================================================================
 """
-Name: Prompt Injection Detector (Policy / Security Utility)
+===============================================================================
+POLICY: Prompt Injection Detector (Security Utility)
+===============================================================================
 
-Qué es
-------
-Detector best-effort de señales de prompt-injection sobre texto NO confiable (chunks).
+Name:
+    Prompt Injection Detector (Policy / Security Utility)
+
+Qué es:
+    Detector best-effort de señales de prompt-injection sobre texto NO confiable
+    (por ejemplo, chunks recuperados de documentos).
+
 Devuelve:
-  - risk_score normalizado en [0, 1]
-  - flags categóricos (labels)
-  - patterns matcheados (slugs)
+    - risk_score normalizado en [0, 1]
+    - flags categóricos (labels estables)
+    - patterns matcheados (slugs de reglas)
 
-Arquitectura
-------------
-- Estilo: Clean Architecture / Hexagonal
-- Capa: Application (policy/security)
-- Rol: Aplicar política de seguridad a inputs no confiables antes de construir contexto.
+Arquitectura:
+    - Estilo: Clean Architecture / Hexagonal
+    - Capa: Application (policy/security)
+    - Rol: Aplicar política de seguridad a inputs no confiables antes del contexto/LLM.
 
-Patrones
---------
-- Policy Object (funcional): `detect()` implementa una política de clasificación.
-- Rule Engine (data-driven): reglas en `_PATTERNS` (regex + weight + flags).
-- Fail-fast en configuración: modo inválido → error explícito (evita silently-wrong).
+Patrones:
+    - Policy Object: detect() implementa una política de clasificación.
+    - Rule Engine data-driven: reglas definidas en _PATTERNS.
+    - Fail-fast: config inválida => error explícito (evita comportamiento silencioso).
 
-SOLID
------
-- SRP: solo detecta y filtra/ordena chunks; no hace retrieval ni formatting.
-- OCP: agregar una regla = sumar un _PatternRule; no se cambia la lógica.
-- DIP: opera sobre entidades del dominio (Chunk) y metadata plana; sin SDKs externos.
+SOLID:
+    - SRP: solo detecta y filtra/reordena; no hace retrieval ni formatting.
+    - OCP: agregar regla = sumar _PatternRule; la lógica no cambia.
+    - DIP: opera sobre entidades del dominio (Chunk) y metadata simple; sin SDKs externos.
 
-CRC (Component Card)
---------------------
-Component: prompt_injection_detector
-Responsibilities:
-  - Detectar señales de prompt injection en texto no confiable
-  - Proveer score normalizado y flags estables
-  - Filtrar o downrankear chunks sin almacenar texto crudo
-Collaborators:
-  - domain.entities.Chunk (entrada)
-Constraints:
-  - No guardar texto crudo (solo labels/pattern slugs)
-  - Determinismo: misma entrada → mismo resultado
+CRC (Component Card):
+    Component: prompt_injection_detector
+    Responsibilities:
+      - Detectar señales de prompt injection en texto no confiable
+      - Proveer score normalizado y flags estables
+      - Filtrar o reordenar chunks según policy, sin modificar el texto
+    Collaborators:
+      - domain.entities.Chunk (entrada)
+    Constraints:
+      - No guardar texto crudo (solo labels/pattern slugs en metadata)
+      - Determinismo: misma entrada => mismo resultado
+===============================================================================
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Literal, Mapping, Sequence, Tuple
+from typing import Final, Iterable, List, Literal, Mapping, Sequence, Tuple
 
 from ..crosscutting.logger import logger
 from ..domain.entities import Chunk
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Public types
-# ---------------------------------------------------------------------------
-
+# -----------------------------------------------------------------------------
 Mode = Literal["off", "exclude", "downrank"]
+
+# -----------------------------------------------------------------------------
+# Metadata contract (keys consistentes en todo el sistema)
+# -----------------------------------------------------------------------------
+METADATA_KEY_RISK_SCORE: Final[str] = "risk_score"
+METADATA_KEY_SECURITY_FLAGS: Final[str] = "security_flags"
+METADATA_KEY_DETECTED_PATTERNS: Final[str] = "detected_patterns"
 
 
 @dataclass(frozen=True, slots=True)
 class DetectionResult:
     """
-    R: Resultado inmutable del detector.
+    Resultado inmutable del detector.
 
     risk_score:
-      - normalizado en [0, 1]
-      - 0 = no señales, 1 = señales fuertes
+        - normalizado en [0, 1]
+        - 0 = no señales, 1 = señales fuertes
+
     flags/patterns:
-      - tuples inmutables para evitar mutaciones accidentales
+        - tuples inmutables para evitar mutaciones accidentales
     """
 
     risk_score: float
@@ -75,21 +88,22 @@ class DetectionResult:
 
     def to_metadata(self) -> dict:
         """
-        R: Serializa el resultado para guardarlo en `chunk.metadata`.
+        Serializa el resultado para guardarlo en `chunk.metadata`.
 
         Importante:
-          - No incluye texto crudo.
+            - No incluye texto crudo.
+            - Mantiene las keys alineadas con ingestion / procesamiento async.
         """
         return {
-            "risk_score": self.risk_score,
-            "security_flags": list(self.flags),
-            "security_patterns": list(self.patterns),
+            METADATA_KEY_RISK_SCORE: float(self.risk_score),
+            METADATA_KEY_SECURITY_FLAGS: list(self.flags),
+            METADATA_KEY_DETECTED_PATTERNS: list(self.patterns),
         }
 
 
 @dataclass(frozen=True, slots=True)
 class _PatternRule:
-    """R: Regla data-driven (slug + regex + flags + peso)."""
+    """Regla data-driven (slug + regex + flags + peso)."""
 
     slug: str
     regex: re.Pattern[str]
@@ -97,20 +111,17 @@ class _PatternRule:
     weight: float
 
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Scoring policy
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Normalización: total_weight / THRESHOLD -> [0,1] (cap).
+_RISK_SCORE_NORMALIZATION_THRESHOLD: Final[float] = 3.0
 
-# R: Total_weight / THRESHOLD se normaliza a [0,1]. Mantener estable en el tiempo.
-_RISK_SCORE_NORMALIZATION_THRESHOLD = 3.0
-
-# R: Reglas ordenadas → matching determinista.
+# Reglas ordenadas => matching determinista.
 _PATTERNS: Tuple[_PatternRule, ...] = (
     _PatternRule(
         slug="ignore_instructions",
-        regex=re.compile(
-            r"\b(ignore|ignora)\b.+\b(instructions|instrucciones)\b", re.I
-        ),
+        regex=re.compile(r"\b(ignore|ignora)\b.+\b(instructions|instrucciones)\b", re.I),
         flags=("instruction_override",),
         weight=1.2,
     ),
@@ -128,9 +139,7 @@ _PATTERNS: Tuple[_PatternRule, ...] = (
     ),
     _PatternRule(
         slug="reveal_secrets",
-        regex=re.compile(
-            r"\b(reveal|leak|exfiltrate|revela|filtra|confidencial)\b", re.I
-        ),
+        regex=re.compile(r"\b(reveal|leak|exfiltrate|revela|filtra|confidencial)\b", re.I),
         flags=("exfiltration_attempt",),
         weight=1.0,
     ),
@@ -164,14 +173,12 @@ _PATTERNS: Tuple[_PatternRule, ...] = (
 )
 
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Core API
-# ---------------------------------------------------------------------------
-
-
+# -----------------------------------------------------------------------------
 def detect(text: str) -> DetectionResult:
     """
-    R: Detecta señales de prompt injection en texto no confiable.
+    Detecta señales de prompt injection en texto no confiable.
 
     Returns:
         DetectionResult:
@@ -186,7 +193,7 @@ def detect(text: str) -> DetectionResult:
     flags: List[str] = []
     patterns: List[str] = []
 
-    # R: Matching determinista: recorremos reglas en orden fijo.
+    # Matching determinista: reglas en orden fijo.
     for rule in _PATTERNS:
         if rule.regex.search(text):
             patterns.append(rule.slug)
@@ -198,9 +205,7 @@ def detect(text: str) -> DetectionResult:
     if total_weight <= 0.0:
         return DetectionResult(risk_score=0.0, flags=(), patterns=())
 
-    # R: Normalización a [0,1] con cap.
     risk_score = min(1.0, total_weight / _RISK_SCORE_NORMALIZATION_THRESHOLD)
-
     return DetectionResult(
         risk_score=float(risk_score),
         flags=tuple(flags),
@@ -210,7 +215,7 @@ def detect(text: str) -> DetectionResult:
 
 def is_flagged(metadata: Mapping | None, threshold: float) -> bool:
     """
-    R: Determina si un chunk debe considerarse riesgoso según metadata ya calculada.
+    Determina si un chunk debe considerarse riesgoso según metadata ya calculada.
 
     Regla:
       - flagged si hay flags o si risk_score >= threshold
@@ -219,11 +224,11 @@ def is_flagged(metadata: Mapping | None, threshold: float) -> bool:
         return False
 
     try:
-        risk_score = float(metadata.get("risk_score", 0.0))
+        risk_score = float(metadata.get(METADATA_KEY_RISK_SCORE, 0.0))
     except (TypeError, ValueError):
         risk_score = 0.0
 
-    flags = metadata.get("security_flags") or []
+    flags = metadata.get(METADATA_KEY_SECURITY_FLAGS) or []
     return bool(flags) or risk_score >= float(threshold)
 
 
@@ -233,16 +238,16 @@ def apply_injection_filter(
     threshold: float,
 ) -> List[Chunk]:
     """
-    R: Aplica modo de filtrado a una lista de chunks.
+    Aplica política de filtrado/reordenamiento a chunks.
 
     Modes:
       - off: retorna chunks sin cambios
       - exclude: elimina chunks flaggeados
-      - downrank: mueve chunks flaggeados al final (manteniendo similitud dentro de cada grupo)
+      - downrank: mueve chunks flaggeados al final (estable, preserva orden original)
 
     Nota:
-      - No ejecuta `detect()`; usa `chunk.metadata`.
-        (Esto permite detectar en ingestion o en retrieval stage y reusar resultado.)
+      - No ejecuta detect(); usa chunk.metadata (precalculada en ingest/procesamiento).
+        Si metadata no existe, se considera "no flaggeado".
     """
     mode_value = (mode or "off").strip().lower()
     chunk_list = list(chunks)
@@ -251,12 +256,14 @@ def apply_injection_filter(
         return chunk_list
 
     if mode_value not in ("exclude", "downrank"):
-        # R: Fail-fast: config inválida debe explotar, no fallar silenciosamente.
         raise ValueError(f"Invalid injection filter mode: {mode_value}")
 
-    flagged_count = sum(
-        1 for c in chunk_list if is_flagged(getattr(c, "metadata", None), threshold)
-    )
+    # Precalcular flagged para evitar recomputar y asegurar consistencia.
+    flagged_mask = [
+        is_flagged(getattr(c, "metadata", None), threshold) for c in chunk_list
+    ]
+    flagged_count = sum(1 for v in flagged_mask if v)
+
     logger.debug(
         "Applying injection filter",
         extra={
@@ -268,19 +275,9 @@ def apply_injection_filter(
     )
 
     if mode_value == "exclude":
-        return [
-            c
-            for c in chunk_list
-            if not is_flagged(getattr(c, "metadata", None), threshold)
-        ]
+        return [c for c, flagged in zip(chunk_list, flagged_mask) if not flagged]
 
-    # mode_value == "downrank"
-    return sorted(
-        chunk_list,
-        key=lambda c: (
-            is_flagged(getattr(c, "metadata", None), threshold),  # False primero
-            -(
-                getattr(c, "similarity", None) or 0.0
-            ),  # mayor similitud primero dentro del grupo
-        ),
-    )
+    # mode_value == "downrank" => partición estable (no re-sortea por similarity)
+    safe = [c for c, flagged in zip(chunk_list, flagged_mask) if not flagged]
+    risky = [c for c, flagged in zip(chunk_list, flagged_mask) if flagged]
+    return safe + risky

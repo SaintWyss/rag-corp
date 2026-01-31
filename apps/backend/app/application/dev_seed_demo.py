@@ -1,66 +1,68 @@
+# =============================================================================
+# FILE: application/dev_seed_demo.py
+# =============================================================================
 """
-Name: Dev Seed Demo (Local-only)
+===============================================================================
+TASK: Dev Seed Demo (Local-only)
+===============================================================================
 
-Responsibilities:
-  - Provision a local demo environment (admin + employees + workspaces)
-  - Enforce safety guard: only allowed in local environment
-  - Keep operations idempotent (safe to run multiple times)
+Name:
+    Dev Seed Demo (Local-only)
 
-Architecture:
-  - Clean Architecture / Hexagonal
-  - Layer: Application task (but should be wired by Infrastructure/composition root)
-  - Depends on abstractions (repos/ports), not concrete Postgres implementations
+Qué es:
+    Provisiona un entorno demo local:
+      - usuarios (admin + empleados)
+      - un workspace privado por usuario
 
-Patterns:
-  - Use-case/task orchestration (seed task)
-  - Dependency Injection (repos + hasher injected)
-  - Fail-fast guard (safety boundary)
-  - Idempotent provisioning (ensure-* functions)
+Seguridad:
+    - Guard estricto: solo corre en app_env == "local"
+
+Patrones:
+    - Task orchestration (seed)
+    - Dependency Injection (repos + hasher)
+    - Idempotencia (safe para ejecutar múltiples veces)
 
 SOLID:
-  - SRP: orchestration only; helpers split user/workspace creation
-  - DIP: depends on repo ports, not Postgres modules
+    - SRP: orquestación de seeding demo y helpers específicos
+    - DIP: depende de puertos (protocols), no de infra concreta
 
 CRC:
-  Component: ensure_dev_demo
-  Responsibilities:
-    - Validate environment guard
-    - Ensure demo users exist
-    - Ensure each user has a default workspace
-  Collaborators:
-    - user_repo (get_by_email/create)
-    - workspace_repo (list_by_owner/create)
-    - password_hasher
-    - Settings (dev_seed_demo/app_env)
-  Constraints:
-    - Must NEVER run outside local environment
-    - Must be idempotent
+    Component: ensure_dev_demo
+    Responsibilities:
+      - Validar guard de ambiente
+      - Asegurar usuarios demo
+      - Asegurar workspace default por usuario
+    Collaborators:
+      - user_repo (get_by_email/create)
+      - workspace_repo (list_by_owner/create)
+      - password_hasher
+      - Settings
+===============================================================================
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Protocol
-from uuid import UUID
+from typing import Callable, Final, Protocol, Sequence
+from uuid import UUID, uuid4
 
 from ..crosscutting.config import Settings
 from ..crosscutting.logger import logger
 from ..domain.entities import Workspace, WorkspaceVisibility
 from ..identity.users import UserRole
 
-# -----------------------------
+
+# -----------------------------------------------------------------------------
 # Ports (duck-typed protocols)
-# -----------------------------
-
-
+# -----------------------------------------------------------------------------
 class UserRecord(Protocol):
-    """R: Minimal user shape required by this seed task."""
+    """Minimal user shape required by this seed task."""
 
     id: UUID
 
 
 class UserPort(Protocol):
-    """R: User repository port needed by the seed task."""
+    """User repository port needed by the seed task."""
 
     def get_user_by_email(self, email: str) -> UserRecord | None: ...
 
@@ -69,30 +71,33 @@ class UserPort(Protocol):
     ) -> UserRecord: ...
 
 
+class WorkspaceRecord(Protocol):
+    """Minimal workspace shape needed for idempotency checks."""
+
+    name: str
+
+
 class WorkspacePort(Protocol):
-    """R: Workspace repository port needed by the seed task."""
+    """Workspace repository port needed by the seed task."""
 
     def list_workspaces(self, *, owner_user_id: UUID): ...
 
     def create_workspace(self, workspace: Workspace) -> None: ...
 
 
-# -----------------------------
+# -----------------------------------------------------------------------------
 # Seed specs
-# -----------------------------
-
-
+# -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class _SeedUserSpec:
-    """R: Declarative user seed spec (no side effects)."""
+    """Declarative user seed spec (no side effects)."""
 
     email: str
     password: str
     role: UserRole
 
 
-# R: Canonical demo users (local only)
-_DEMO_USERS: tuple[_SeedUserSpec, ...] = (
+_DEMO_USERS: Final[tuple[_SeedUserSpec, ...]] = (
     _SeedUserSpec(email="admin@local", password="admin", role=UserRole.ADMIN),
     _SeedUserSpec(
         email="employee1@local", password="employee1", role=UserRole.EMPLOYEE
@@ -105,7 +110,7 @@ _DEMO_USERS: tuple[_SeedUserSpec, ...] = (
 
 def _assert_local_env(settings: Settings) -> None:
     """
-    R: Safety guard: DEV_SEED_DEMO must only run in local.
+    Safety guard: DEV_SEED_DEMO must only run in local.
     Fail-fast to prevent accidental seeding in real environments.
     """
     env = (settings.app_env or "").strip().lower()
@@ -117,7 +122,7 @@ def _assert_local_env(settings: Settings) -> None:
 
 
 def _default_workspace_name(email: str) -> str:
-    """R: Stable naming convention for demo workspaces (idempotency)."""
+    """Stable naming convention for demo workspaces (idempotency)."""
     owner_label = (email.split("@", 1)[0] or "User").strip()
     return f"{owner_label.capitalize()} Workspace"
 
@@ -129,33 +134,31 @@ def _ensure_user(
     password_hasher: Callable[[str], str],
 ) -> UserRecord:
     """
-    R: Ensure a user exists (idempotent).
+    Ensure a user exists (idempotent).
 
     Returns:
         User entity shape with `.id`
     """
-    email = spec.email
-    role = spec.role
-
-    user = user_repo.get_user_by_email(email)
+    user = user_repo.get_user_by_email(spec.email)
     if user:
         logger.info(
             "Dev seed demo: user already exists",
-            extra={"email": email, "role": str(role)},
+            extra={"email": spec.email, "role": str(spec.role)},
         )
         return user
 
     password_hash = password_hasher(spec.password)
-    user = user_repo.create_user(
-        email=email,
+    created = user_repo.create_user(
+        email=spec.email,
         password_hash=password_hash,
-        role=role,
+        role=spec.role,
         is_active=True,
     )
     logger.info(
-        "Dev seed demo: user created", extra={"email": email, "role": str(role)}
+        "Dev seed demo: user created",
+        extra={"email": spec.email, "role": str(spec.role)},
     )
-    return user
+    return created
 
 
 def _ensure_workspace(
@@ -166,11 +169,11 @@ def _ensure_workspace(
     visibility: WorkspaceVisibility = WorkspaceVisibility.PRIVATE,
 ) -> None:
     """
-    R: Ensure the default workspace exists for the given owner (idempotent).
+    Ensure the default workspace exists for the given owner (idempotent).
 
     Nota:
-      - Hoy usamos list_workspaces + scan in-memory por simplicidad (seed local).
-      - Senior upgrade futuro: repo.get_by_owner_and_name(owner_id, name).
+        - Para seed local, hacemos list + scan por nombre.
+        - No se asume existencia de un método repo específico.
     """
     ws_name = _default_workspace_name(owner_email)
 
@@ -182,8 +185,10 @@ def _ensure_workspace(
         )
         return
 
+    # Nota: Workspace suele requerir id en el dominio; lo generamos aquí.
     workspace_repo.create_workspace(
         Workspace(
+            id=uuid4(),
             name=ws_name,
             owner_user_id=owner_user_id,
             visibility=visibility,
@@ -207,7 +212,7 @@ def ensure_dev_demo(
     password_hasher: Callable[[str], str],
 ) -> None:
     """
-    R: Ensure demo environment exists if configured.
+    Ensure demo environment exists if configured.
 
     Creates (local only):
       - Admin user (admin@local / admin)

@@ -1,16 +1,35 @@
 """
-Application layer exports.
+===============================================================================
+APPLICATION LAYER (Public API / Exports)
+===============================================================================
 
-Exposes stable entry points for orchestrators/use-cases.
-Avoid exporting infrastructure adapters from here.
+Expone los puntos de entrada estables de la capa de aplicación:
+  - ContextBuilder: ensamblador de contexto para RAG
+  - prompt_injection_detector: política de seguridad para chunks
+
+Nota:
+  - Los casos de uso se importan desde `usecases/` subdirectories.
+  - Este archivo define el contrato público de servicios de aplicación compartidos.
+===============================================================================
 """
 
 from .context_builder import ContextBuilder, get_context_builder
-from .rag_retrieval import RagRetrievalResult, run_rag_retrieval
+from .prompt_injection_detector import (
+    DetectionResult,
+    Mode,
+    apply_injection_filter,
+    detect,
+    is_flagged,
+)
 
 __all__ = [
-    "RagRetrievalResult",
-    "run_rag_retrieval",
+    # Context Builder
     "ContextBuilder",
     "get_context_builder",
+    # Prompt Injection Detector
+    "DetectionResult",
+    "Mode",
+    "apply_injection_filter",
+    "detect",
+    "is_flagged",
 ]

@@ -1,63 +1,67 @@
+# =============================================================================
+# FILE: application/dev_seed_admin.py
+# =============================================================================
 """
-Name: Dev Seed Admin (Local-only + E2E override)
+===============================================================================
+TASK: Dev Seed Admin (Local-only + E2E override)
+===============================================================================
 
-Responsibilities:
-  - Ensure a dev admin user exists when configured
-  - Enforce safety guard: only allowed in local environment (unless E2E override)
-  - Optionally force reset password/role/active flag for deterministic demos/tests
+Name:
+    Dev Seed Admin (Local-only + E2E override)
 
-Architecture:
-  - Clean Architecture / Hexagonal
-  - Layer: Application task (wired by Infrastructure/composition root)
-  - Depends on abstractions (UserPort), not concrete Postgres repos
+Qué es:
+    Asegura que exista un usuario admin para desarrollo cuando está configurado.
+    Soporta override en E2E para CI (sin depender de app_env == "local").
 
-Patterns:
-  - Use-case/task orchestration (seed task)
-  - Dependency Injection (repo + hasher + env provider injected)
-  - Fail-fast guard (safety boundary)
-  - Idempotent provisioning (ensure-* behavior)
+Seguridad:
+    - Guard estricto: si NO es E2E => solo corre en app_env == "local".
+    - Si es E2E => permite otros envs porque CI puede setear app_env distinto.
+
+Patrones:
+    - Task orchestration (seed)
+    - Dependency Injection (repo + hasher + env mapping)
+    - Fail-fast guard (safety boundary)
+    - Idempotencia (ensure-create / optional reset)
 
 SOLID:
-  - SRP: only admin seeding logic
-  - DIP: does not import infrastructure repositories
+    - SRP: solo lógica de seeding de admin
+    - DIP: depende de puertos (protocols), no de repos concretos
 
 CRC:
-  Component: ensure_dev_admin
-  Responsibilities:
-    - Validate environment guard (local-only unless E2E)
-    - Resolve seed config (settings vs E2E env)
-    - Ensure user exists (create or update if force_reset)
-  Collaborators:
-    - user_repo (get/create/update)
-    - password_hasher
-    - Settings + env provider
-  Constraints:
-    - Must NEVER run in non-local env unless E2E override is enabled
+    Component: ensure_dev_admin
+    Responsibilities:
+      - Validar guard de ambiente
+      - Resolver spec (settings vs E2E env)
+      - Asegurar usuario (create o update si force_reset)
+    Collaborators:
+      - user_repo
+      - password_hasher
+      - Settings + env mapping
+===============================================================================
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Mapping, Protocol
+from typing import Callable, Final, Mapping, Protocol
 from uuid import UUID
 
 from ..crosscutting.config import Settings
 from ..crosscutting.logger import logger
 from ..identity.users import UserRole
 
-# -----------------------------
+
+# -----------------------------------------------------------------------------
 # Ports (duck-typed protocols)
-# -----------------------------
-
-
+# -----------------------------------------------------------------------------
 class UserRecord(Protocol):
-    """R: Minimal shape required by this seed task."""
+    """Minimal user shape required by this seed task."""
 
     id: UUID
 
 
 class UserPort(Protocol):
-    """R: User repository port needed by the seed task."""
+    """User repository port needed by the seed task."""
 
     def get_user_by_email(self, email: str) -> UserRecord | None: ...
 
@@ -75,14 +79,20 @@ class UserPort(Protocol):
     ) -> None: ...
 
 
-# -----------------------------
-# Seed configuration
-# -----------------------------
+# -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+_ENV_FLAG_E2E_SEED_ADMIN: Final[str] = "E2E_SEED_ADMIN"
+_ENV_E2E_ADMIN_EMAIL: Final[str] = "E2E_ADMIN_EMAIL"
+_ENV_E2E_ADMIN_PASSWORD: Final[str] = "E2E_ADMIN_PASSWORD"
+
+_DEFAULT_E2E_EMAIL: Final[str] = "admin@local"
+_DEFAULT_E2E_PASSWORD: Final[str] = "admin"
 
 
 @dataclass(frozen=True, slots=True)
 class _AdminSeedSpec:
-    """R: Resolved seed configuration (no I/O)."""
+    """Resolved seed configuration (no I/O)."""
 
     enabled: bool
     is_e2e: bool
@@ -93,13 +103,13 @@ class _AdminSeedSpec:
 
 
 def _parse_bool(value: str | None) -> bool:
-    """R: Parse common boolean env representations."""
+    """Parse common boolean env representations."""
     v = (value or "").strip().lower()
     return v in {"1", "true", "yes", "on"}
 
 
 def _resolve_role(role_str: str) -> UserRole:
-    """R: Resolve UserRole with safe fallback."""
+    """Resolve UserRole with safe fallback."""
     try:
         return UserRole((role_str or "").strip().lower())
     except Exception:
@@ -112,13 +122,13 @@ def _resolve_role(role_str: str) -> UserRole:
 
 def _resolve_seed_spec(settings: Settings, env: Mapping[str, str]) -> _AdminSeedSpec:
     """
-    R: Resolve seed inputs from (settings) or (E2E env override).
+    Resolve seed inputs from:
+      - settings (dev_seed_admin*)
+      - OR E2E env override (E2E_SEED_ADMIN=true)
     """
-    is_e2e = _parse_bool(env.get("E2E_SEED_ADMIN"))
+    is_e2e = _parse_bool(env.get(_ENV_FLAG_E2E_SEED_ADMIN))
 
-    # R: Enabled if settings flag OR E2E flag
     enabled = bool(settings.dev_seed_admin) or is_e2e
-
     if not enabled:
         return _AdminSeedSpec(
             enabled=False,
@@ -130,13 +140,13 @@ def _resolve_seed_spec(settings: Settings, env: Mapping[str, str]) -> _AdminSeed
         )
 
     if is_e2e:
-        email = env.get("E2E_ADMIN_EMAIL", "admin@local")
-        password = env.get("E2E_ADMIN_PASSWORD", "admin")
-        role = UserRole.ADMIN  # R: keep E2E deterministic
+        email = env.get(_ENV_E2E_ADMIN_EMAIL, _DEFAULT_E2E_EMAIL)
+        password = env.get(_ENV_E2E_ADMIN_PASSWORD, _DEFAULT_E2E_PASSWORD)
+        role = UserRole.ADMIN  # determinismo en CI
         force_reset = False
     else:
-        email = settings.dev_seed_admin_email
-        password = settings.dev_seed_admin_password
+        email = (settings.dev_seed_admin_email or "").strip()
+        password = settings.dev_seed_admin_password or ""
         role = _resolve_role(settings.dev_seed_admin_role)
         force_reset = bool(settings.dev_seed_admin_force_reset)
 
@@ -152,7 +162,7 @@ def _resolve_seed_spec(settings: Settings, env: Mapping[str, str]) -> _AdminSeed
 
 def _assert_allowed_environment(settings: Settings, *, is_e2e: bool) -> None:
     """
-    R: Safety guard:
+    Safety guard:
       - If NOT E2E: only allow local environment.
       - If E2E: allow other envs because CI might run with different app_env.
     """
@@ -175,7 +185,7 @@ def ensure_dev_admin(
     env: Mapping[str, str],
 ) -> None:
     """
-    R: Ensure a development admin user exists if configured.
+    Ensure a development admin user exists if configured.
 
     Behavior:
       - If disabled: no-op
@@ -192,6 +202,9 @@ def ensure_dev_admin(
         return
 
     _assert_allowed_environment(settings, is_e2e=spec.is_e2e)
+
+    if not spec.email or not spec.password:
+        raise ValueError("Dev seed admin is enabled but email/password are empty")
 
     logger.info(
         "Dev seed admin: ensuring admin user",
