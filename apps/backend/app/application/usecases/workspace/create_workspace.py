@@ -1,14 +1,82 @@
 """
-Name: Create Workspace Use Case
+===============================================================================
+USE CASE: Create Workspace
+===============================================================================
+
+Name:
+    Create Workspace Use Case
+
+Business Goal:
+    Crear un nuevo workspace garantizando:
+      - unicidad del nombre para el owner
+      - asignación correcta de owner
+      - visibilidad inicial controlada (siempre PRIVATE)
+
+Why (Context / Intención):
+    - Un workspace es el “contenedor” de documentos y chat/RAG.
+    - La creación debe ser segura y predecible (invariantes fuertes):
+        * nombre válido (no vacío)
+        * no duplicado para el mismo owner
+        * visibilidad inicial inmutable a PRIVATE (evita exposición accidental)
+        * creación restringida (provisionamiento controlado)
+
+-------------------------------------------------------------------------------
+CRC CARD (Class-Responsibility-Collaborator)
+-------------------------------------------------------------------------------
+Class:
+    CreateWorkspaceUseCase
 
 Responsibilities:
-  - Create a new workspace with uniqueness checks
-  - Enforce default visibility and owner assignment
+    - Validar actor (existencia, identidad y rol).
+    - Normalizar el nombre del workspace.
+    - Validar invariantes de creación (visibilidad inicial = PRIVATE).
+    - Resolver owner efectivo (por defecto actor, con override admin).
+    - Verificar unicidad (owner + name).
+    - Construir entidad Workspace y persistirla en repositorio.
+    - Devolver un resultado tipado (WorkspaceResult) con error estable.
 
 Collaborators:
-  - domain.repositories.WorkspaceRepository
-  - domain.workspace_policy.WorkspaceActor
+    - WorkspaceRepository:
+        get_workspace_by_owner_and_name(owner_id, name)
+        create_workspace(workspace) -> Workspace
+    - WorkspaceActor:
+        user_id, role
+    - Domain entities:
+        Workspace, WorkspaceVisibility
+    - Identity:
+        UserRole (para reglas de autorización)
+    - workspace_results:
+        WorkspaceResult / WorkspaceError / WorkspaceErrorCode
+
+-------------------------------------------------------------------------------
+INPUTS / OUTPUTS (Contrato del caso de uso)
+-------------------------------------------------------------------------------
+Inputs:
+    - CreateWorkspaceInput:
+        name: str
+        description: Optional[str]
+        actor: Optional[WorkspaceActor]
+        visibility: Optional[WorkspaceVisibility]   (solo se acepta PRIVATE o None)
+        owner_user_id: Optional[UUID]              (override admin)
+
+Outputs:
+    - WorkspaceResult:
+        - workspace: Workspace | None
+        - error: WorkspaceError | None
+
+Error Mapping:
+    - FORBIDDEN:
+        - actor ausente/inválido
+        - actor no autorizado (rol incorrecto)
+    - VALIDATION_ERROR:
+        - name vacío / inválido
+        - visibility diferente a PRIVATE
+    - CONFLICT:
+        - ya existe workspace con mismo nombre para el mismo owner
+===============================================================================
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from uuid import UUID, uuid4
@@ -20,84 +88,162 @@ from ....identity.users import UserRole
 from .workspace_results import WorkspaceError, WorkspaceErrorCode, WorkspaceResult
 
 
-@dataclass
+@dataclass(frozen=True)
 class CreateWorkspaceInput:
+    """
+    DTO de entrada del caso de uso.
+
+    Notas:
+      - actor: representa al usuario que ejecuta la acción (autenticación/autorización).
+      - visibility: se permite pasarlo, pero en creación SOLO se acepta PRIVATE o None.
+      - owner_user_id: override de ownership (solo aplica si actor es admin; acá
+        se valida porque el provisioning está restringido).
+    """
+
     name: str
     description: str | None = None
     actor: WorkspaceActor | None = None
     visibility: WorkspaceVisibility | None = None
-    owner_user_id: UUID | None = None  # R: Admin-only override
+    owner_user_id: UUID | None = (
+        None  # Override permitido para provisioning controlado.
+    )
 
 
 class CreateWorkspaceUseCase:
-    """R: Create workspace."""
+    """
+    Use Case (Application Service / Command):
+        Orquesta la creación de un workspace aplicando reglas de negocio y
+        delegando persistencia al repositorio.
+    """
 
-    def __init__(self, repository: WorkspaceRepository):
-        self.repository = repository
+    def __init__(self, repository: WorkspaceRepository) -> None:
+        # Naming explícito: evita ambigüedad y mejora legibilidad.
+        self._workspaces = repository
 
     def execute(self, input_data: CreateWorkspaceInput) -> WorkspaceResult:
-        if (
-            not input_data.actor
-            or not input_data.actor.user_id
-            or not input_data.actor.role
-        ):
-            return WorkspaceResult(
-                error=WorkspaceError(
-                    code=WorkspaceErrorCode.FORBIDDEN,
-                    message="Actor is required to create workspace.",
-                )
-            )
+        """
+        Crea un workspace nuevo.
 
-        normalized_name = input_data.name.strip()
+        Precondiciones:
+          - input_data.actor debe existir y tener user_id y role.
+          - input_data.name debe ser no vacío luego de normalizar.
+
+        Poscondiciones (si SUCCESS):
+          - Se persiste un Workspace con:
+              * id nuevo
+              * name normalizado
+              * visibility = PRIVATE
+              * owner_user_id = owner efectivo
+        """
+
+        # ---------------------------------------------------------------------
+        # 1) Validar actor (autorización base + rol).
+        # ---------------------------------------------------------------------
+        actor = input_data.actor
+        if actor is None or actor.user_id is None or actor.role is None:
+            # Se trata como FORBIDDEN porque no hay identidad/rol para evaluar permisos.
+            return self._forbidden("Actor is required to create workspace.")
+
+        # Regla de autorización: creación restringida.
+        # Si mañana cambia (ej: permitir self-service), este bloque es el punto único.
+        if actor.role != UserRole.ADMIN:
+            return self._forbidden("Only admins can create workspaces.")
+
+        # ---------------------------------------------------------------------
+        # 2) Normalizar y validar nombre (invariante).
+        # ---------------------------------------------------------------------
+        normalized_name = self._normalize_name(input_data.name)
         if not normalized_name:
-            return WorkspaceResult(
-                error=WorkspaceError(
-                    code=WorkspaceErrorCode.VALIDATION_ERROR,
-                    message="Workspace name is required.",
-                )
-            )
+            return self._validation_error("Workspace name is required.")
 
+        # ---------------------------------------------------------------------
+        # 3) Validar visibilidad inicial (invariante).
+        # ---------------------------------------------------------------------
+        # En creación siempre queda PRIVATE para evitar exposición accidental.
         if (
-            input_data.visibility
+            input_data.visibility is not None
             and input_data.visibility != WorkspaceVisibility.PRIVATE
         ):
-            return WorkspaceResult(
-                error=WorkspaceError(
-                    code=WorkspaceErrorCode.VALIDATION_ERROR,
-                    message="Workspace visibility must be PRIVATE on creation.",
-                )
+            return self._validation_error(
+                "Workspace visibility must be PRIVATE on creation."
             )
 
-        # R: ADR-009: Workspace provisioning is admin-only.
-        if input_data.actor.role != UserRole.ADMIN:
-            return WorkspaceResult(
-                error=WorkspaceError(
-                    code=WorkspaceErrorCode.FORBIDDEN,
-                    message="Only admins can create workspaces.",
-                )
-            )
+        # ---------------------------------------------------------------------
+        # 4) Resolver owner efectivo.
+        # ---------------------------------------------------------------------
+        # Admin puede provisionar el workspace para otro usuario, si owner_user_id viene.
+        effective_owner_id = input_data.owner_user_id or actor.user_id
 
-        # R: Admins can optionally assign ownership via owner_user_id.
-        effective_owner = input_data.owner_user_id or input_data.actor.user_id
-
-        existing = self.repository.get_workspace_by_owner_and_name(
-            effective_owner,
+        # ---------------------------------------------------------------------
+        # 5) Verificar unicidad (owner + name).
+        # ---------------------------------------------------------------------
+        # Previene duplicados dentro del mismo "espacio" del owner.
+        existing = self._workspaces.get_workspace_by_owner_and_name(
+            effective_owner_id,
             normalized_name,
         )
-        if existing:
-            return WorkspaceResult(
-                error=WorkspaceError(
-                    code=WorkspaceErrorCode.CONFLICT,
-                    message="Workspace name already exists for owner.",
-                )
-            )
+        if existing is not None:
+            return self._conflict("Workspace name already exists for owner.")
 
+        # ---------------------------------------------------------------------
+        # 6) Construir entidad y persistirla.
+        # ---------------------------------------------------------------------
+        # La entidad se crea con invariantes firmes (visibility forzada a PRIVATE).
         workspace = Workspace(
             id=uuid4(),
             name=normalized_name,
             description=input_data.description,
             visibility=WorkspaceVisibility.PRIVATE,
-            owner_user_id=effective_owner,
+            owner_user_id=effective_owner_id,
         )
-        created = self.repository.create_workspace(workspace)
+
+        created = self._workspaces.create_workspace(workspace)
+
+        # ---------------------------------------------------------------------
+        # 7) Devolver resultado tipado.
+        # ---------------------------------------------------------------------
         return WorkspaceResult(workspace=created)
+
+    # =========================================================================
+    # Helpers privados: evitan duplicación y hacen execute() más “escaneable”.
+    # =========================================================================
+
+    @staticmethod
+    def _normalize_name(raw_name: str) -> str:
+        """
+        Normaliza el nombre para consistencia y validación.
+
+        - strip(): evita nombres con espacios “fantasma”
+        - (Opcional futuro) colapsar espacios internos, limitar longitud, etc.
+        """
+        return (raw_name or "").strip()
+
+    @staticmethod
+    def _forbidden(message: str) -> WorkspaceResult:
+        """Crea un WorkspaceResult consistente para FORBIDDEN."""
+        return WorkspaceResult(
+            error=WorkspaceError(
+                code=WorkspaceErrorCode.FORBIDDEN,
+                message=message,
+            )
+        )
+
+    @staticmethod
+    def _validation_error(message: str) -> WorkspaceResult:
+        """Crea un WorkspaceResult consistente para VALIDATION_ERROR."""
+        return WorkspaceResult(
+            error=WorkspaceError(
+                code=WorkspaceErrorCode.VALIDATION_ERROR,
+                message=message,
+            )
+        )
+
+    @staticmethod
+    def _conflict(message: str) -> WorkspaceResult:
+        """Crea un WorkspaceResult consistente para CONFLICT."""
+        return WorkspaceResult(
+            error=WorkspaceError(
+                code=WorkspaceErrorCode.CONFLICT,
+                message=message,
+            )
+        )

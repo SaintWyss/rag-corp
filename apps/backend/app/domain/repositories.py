@@ -385,3 +385,7 @@ class AuditEventRepository(Protocol):
     ) -> List[ConversationMessage]:
         """R: Get messages for a conversation, optionally limited to last N."""
         ...
+
+    def clear_messages(self, conversation_id: str) -> None:
+        """R: Delete all messages from a conversation (keep the conversation itself)."""
+        ...

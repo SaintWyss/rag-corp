@@ -20,7 +20,7 @@ Notes:
   - Enables testing with mock services
 """
 
-from typing import Protocol, List, AsyncGenerator
+from typing import AsyncGenerator, List, Protocol
 from uuid import UUID
 
 
@@ -142,6 +142,26 @@ class FileStoragePort(Protocol):
 
     def delete_file(self, key: str) -> None:
         """R: Delete file content from storage."""
+        ...
+
+    def generate_presigned_url(
+        self,
+        key: str,
+        *,
+        expires_in_seconds: int = 3600,
+        filename: str | None = None,
+    ) -> str:
+        """
+        R: Generate a presigned URL for secure, temporary download.
+
+        Args:
+            key: Object key in storage
+            expires_in_seconds: URL validity duration (default 1 hour)
+            filename: Optional filename hint for Content-Disposition header
+
+        Returns:
+            Presigned URL string
+        """
         ...
 
 
