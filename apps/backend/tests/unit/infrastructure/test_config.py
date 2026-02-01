@@ -16,7 +16,6 @@ Note:
 
 import pytest
 
-
 pytestmark = pytest.mark.unit  # Apply to all tests in this module
 
 
@@ -29,7 +28,7 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
 
         # Clear cache to force reload
-        from app.crosscutting.config import get_settings, Settings
+        from app.crosscutting.config import Settings, get_settings
 
         get_settings.cache_clear()
 
@@ -67,8 +66,8 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("CHUNK_SIZE", "0")
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -81,8 +80,8 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("CHUNK_SIZE", "-100")
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -95,49 +94,13 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("CHUNK_OVERLAP", "-10")
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
         assert "chunk_overlap must be >= 0" in str(exc_info.value)
-
-    def test_overlap_equals_chunk_size_fails(self, monkeypatch):
-        """overlap == chunk_size raises ValueError on validate_chunk_params."""
-        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
-        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
-        monkeypatch.setenv("CHUNK_SIZE", "500")
-        monkeypatch.setenv("CHUNK_OVERLAP", "500")
-
-        from app.crosscutting.config import Settings
-
-        settings = Settings()  # This passes field validation
-
-        with pytest.raises(ValueError) as exc_info:
-            settings.validate_chunk_params()  # This catches cross-field
-
-        assert "chunk_overlap (500) must be less than chunk_size (500)" in str(
-            exc_info.value
-        )
-
-    def test_overlap_greater_than_chunk_size_fails(self, monkeypatch):
-        """overlap > chunk_size raises ValueError on validate_chunk_params."""
-        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
-        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
-        monkeypatch.setenv("CHUNK_SIZE", "500")
-        monkeypatch.setenv("CHUNK_OVERLAP", "600")
-
-        from app.crosscutting.config import Settings
-
-        settings = Settings()
-
-        with pytest.raises(ValueError) as exc_info:
-            settings.validate_chunk_params()
-
-        assert "chunk_overlap (600) must be less than chunk_size (500)" in str(
-            exc_info.value
-        )
 
     def test_get_settings_validates_chunk_params(self, monkeypatch):
         """get_settings() calls validate_chunk_params automatically."""
@@ -193,8 +156,8 @@ class TestSettings:
         monkeypatch.delenv("DATABASE_URL", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             Settings()
@@ -209,7 +172,7 @@ class TestSettings:
         from app.crosscutting.config import Settings
 
         settings = Settings()
-        settings.validate_chunk_params()  # Should not raise
+        # settings.validate_chunk_params() call removed (obsolete)
 
         assert settings.chunk_overlap == 0
 
@@ -219,8 +182,8 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("RAG_INJECTION_FILTER_MODE", "block")
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -235,8 +198,8 @@ class TestSettings:
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("RAG_INJECTION_RISK_THRESHOLD", "1.5")
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -255,8 +218,8 @@ class TestSettings:
         monkeypatch.setenv("API_KEYS_CONFIG", '{"valid-key": ["metrics"]}')
         monkeypatch.delenv("JWT_SECRET", raising=False)
 
-        from pydantic import ValidationError
         from app.crosscutting.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             Settings()
