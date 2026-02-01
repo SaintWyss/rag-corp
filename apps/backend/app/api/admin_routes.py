@@ -1,15 +1,29 @@
 """
-Name: Admin Routes (Workspace Provisioning)
+===============================================================================
+TARJETA CRC — app/api/admin_routes.py (Provisionamiento Admin)
+===============================================================================
 
-Responsibilities:
-  - Allow ADMIN to create workspaces for specific users
-  - Allow ADMIN to list workspaces by owner_user_id
-  - ADR-008: Admin-only provisioning endpoints
+Responsabilidades:
+  - Exponer endpoints administrativos para provisionamiento de workspaces.
+  - Reutilizar casos de uso existentes (sin lógica de negocio en la capa HTTP).
+  - Aplicar autorización estricta (permiso ADMIN_CONFIG + rol admin).
+  - Emitir auditoría best-effort para acciones administrativas.
 
-Collaborators:
-  - CreateWorkspaceUseCase (reused with admin override)
-  - ListWorkspacesUseCase
+Patrones aplicados:
+  - Thin Controller: orquesta dependencias, no contiene reglas de negocio.
+  - Dependency Injection (FastAPI Depends): inyección explícita de use cases.
+  - Error Mapping: traduce errores tipados de casos de uso a HTTP (RFC7807).
+
+Colaboradores:
+  - application.usecases.workspace.create_workspace.CreateWorkspaceUseCase
+  - application.usecases.workspace.list_workspaces.ListWorkspacesUseCase
+  - application.usecases.workspace.workspace_results.WorkspaceErrorCode
+  - identity.dual_auth: require_principal, require_admin
+  - audit.emit_audit_event
+===============================================================================
 """
+
+from __future__ import annotations
 
 from uuid import UUID
 
@@ -21,13 +35,20 @@ from ..application.usecases.workspace.create_workspace import (
     CreateWorkspaceUseCase,
 )
 from ..application.usecases.workspace.list_workspaces import ListWorkspacesUseCase
+from ..application.usecases.workspace.workspace_results import WorkspaceErrorCode
 from ..audit import emit_audit_event
 from ..container import (
     get_audit_repository,
     get_create_workspace_use_case,
     get_list_workspaces_use_case,
 )
-from ..crosscutting.error_responses import OPENAPI_ERROR_RESPONSES, forbidden
+from ..crosscutting.error_responses import (
+    OPENAPI_ERROR_RESPONSES,
+    bad_request,
+    conflict,
+    forbidden,
+    not_found,
+)
 from ..domain.entities import WorkspaceVisibility
 from ..domain.repositories import AuditEventRepository
 from ..domain.workspace_policy import WorkspaceActor
@@ -37,23 +58,25 @@ from ..identity.rbac import Permission
 router = APIRouter(prefix="/admin", tags=["admin"], responses=OPENAPI_ERROR_RESPONSES)
 
 
-# =============================================================================
-# REQUEST/RESPONSE MODELS
-# =============================================================================
+# -----------------------------------------------------------------------------
+# DTOs
+# -----------------------------------------------------------------------------
 
 
 class AdminCreateWorkspaceReq(BaseModel):
-    """Request to create a workspace for a specific user."""
+    """Request: crear workspace asignándolo a un usuario específico."""
 
-    owner_user_id: UUID = Field(..., description="User ID who will own the workspace")
-    name: str = Field(..., min_length=1, max_length=255, description="Workspace name")
+    owner_user_id: UUID = Field(..., description="ID del usuario owner del workspace")
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="Nombre del workspace"
+    )
     description: str | None = Field(
-        None, max_length=1024, description="Workspace description"
+        None, max_length=1024, description="Descripción (opcional)"
     )
 
 
 class WorkspaceRes(BaseModel):
-    """Workspace response for admin endpoints."""
+    """Respuesta: workspace (vista admin)."""
 
     id: UUID
     name: str
@@ -66,18 +89,16 @@ class WorkspaceRes(BaseModel):
 
 
 class WorkspacesListRes(BaseModel):
-    """List of workspaces response."""
-
     workspaces: list[WorkspaceRes]
 
 
-# =============================================================================
-# HELPERS
-# =============================================================================
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 
 
 def _to_workspace_res(workspace) -> WorkspaceRes:
-    """Convert domain workspace to response model."""
+    """Convierte entidad de dominio a DTO."""
     return WorkspaceRes(
         id=workspace.id,
         name=workspace.name,
@@ -93,26 +114,41 @@ def _to_workspace_res(workspace) -> WorkspaceRes:
 
 
 def _to_workspace_actor(principal: Principal | None) -> WorkspaceActor | None:
-    """Convert Principal to WorkspaceActor for use case calls."""
+    """Convierte Principal a WorkspaceActor para políticas de workspace."""
     if not principal or not principal.user:
         return None
-    return WorkspaceActor(
-        user_id=principal.user.user_id,
-        role=principal.user.role,
-    )
+    return WorkspaceActor(user_id=principal.user.user_id, role=principal.user.role)
 
 
-# =============================================================================
-# ENDPOINTS
-# =============================================================================
+def _raise_for_workspace_error(error) -> None:
+    """
+    Traduce WorkspaceError (caso de uso) a HTTP.
+
+    Mantiene el contrato RFC7807 usando factories de error_responses.
+    """
+    if error.code == WorkspaceErrorCode.VALIDATION_ERROR:
+        raise bad_request(error.message)
+    if error.code == WorkspaceErrorCode.CONFLICT:
+        raise conflict(error.message)
+    if error.code == WorkspaceErrorCode.NOT_FOUND:
+        raise not_found("Workspace", error.message)
+    if error.code == WorkspaceErrorCode.FORBIDDEN:
+        raise forbidden(error.message)
+
+    # Fallback defensivo.
+    raise bad_request(error.message)
+
+
+# -----------------------------------------------------------------------------
+# Endpoints
+# -----------------------------------------------------------------------------
 
 
 @router.post(
     "/workspaces",
     response_model=WorkspaceRes,
     status_code=201,
-    summary="Create workspace for user (admin-only)",
-    description="ADR-008: Admin can create a workspace and assign it to a specific user.",
+    summary="Crear workspace para usuario (admin)",
 )
 def admin_create_workspace(
     req: AdminCreateWorkspaceReq,
@@ -122,15 +158,15 @@ def admin_create_workspace(
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     """
-    Create a workspace for a specific user.
+    Crea un workspace asignando owner_user_id explícito.
 
-    - Only admin can use this endpoint.
-    - The workspace is created with owner_user_id set to the specified user.
-    - Visibility defaults to PRIVATE.
+    Reglas:
+      - Solo admin.
+      - Visibilidad inicial: PRIVATE (evita exposición accidental).
     """
     actor = _to_workspace_actor(principal)
     if not actor:
-        raise forbidden("Admin authentication required.")
+        raise forbidden("Autenticación admin requerida.")
 
     result = use_case.execute(
         CreateWorkspaceInput(
@@ -138,16 +174,12 @@ def admin_create_workspace(
             description=req.description,
             actor=actor,
             visibility=WorkspaceVisibility.PRIVATE,
-            owner_user_id=req.owner_user_id,  # R: Admin assigns owner
+            owner_user_id=req.owner_user_id,
         )
     )
 
     if result.error:
-        from ..crosscutting.error_responses import bad_request, conflict
-
-        if result.error.code.value == "conflict":
-            raise conflict(result.error.message)
-        raise bad_request(result.error.message)
+        _raise_for_workspace_error(result.error)
 
     workspace = result.workspace
 
@@ -157,10 +189,7 @@ def admin_create_workspace(
         principal=principal,
         target_id=workspace.id,
         workspace_id=workspace.id,
-        metadata={
-            "assigned_owner": str(req.owner_user_id),
-            "name": req.name,
-        },
+        metadata={"assigned_owner": str(req.owner_user_id), "name": req.name},
     )
 
     return _to_workspace_res(workspace)
@@ -169,8 +198,7 @@ def admin_create_workspace(
 @router.get(
     "/users/{user_id}/workspaces",
     response_model=WorkspacesListRes,
-    summary="List workspaces for user (admin-only)",
-    description="ADR-008: Admin can view all workspaces owned by a specific user.",
+    summary="Listar workspaces por usuario (admin)",
 )
 def admin_list_user_workspaces(
     user_id: UUID,
@@ -179,25 +207,23 @@ def admin_list_user_workspaces(
     principal: Principal | None = Depends(require_principal(Permission.ADMIN_CONFIG)),
     _role: None = Depends(require_admin()),
 ):
-    """
-    List all workspaces owned by a specific user.
-
-    - Only admin can use this endpoint.
-    - Returns workspaces where owner_user_id matches the specified user_id.
-    """
+    """Lista workspaces cuyo owner_user_id coincide con user_id."""
     actor = _to_workspace_actor(principal)
     if not actor:
-        raise forbidden("Admin authentication required.")
+        raise forbidden("Autenticación admin requerida.")
 
     result = use_case.execute(
         actor=actor,
-        owner_user_id=user_id,  # R: Filter by specific owner
+        owner_user_id=user_id,
         include_archived=include_archived,
     )
 
     if result.error:
-        raise forbidden(result.error.message)
+        _raise_for_workspace_error(result.error)
 
     return WorkspacesListRes(
         workspaces=[_to_workspace_res(ws) for ws in result.workspaces]
     )
+
+
+__all__ = ["router"]

@@ -1,28 +1,41 @@
 """
-Name: API Versioning
+===============================================================================
+TARJETA CRC — app/api/versioning.py (Alias de Rutas)
+===============================================================================
 
-Responsibilities:
-  - Provide versioned API routes
-  - Support multiple API versions concurrently
-  - Enable gradual migration
+Responsabilidades:
+  - Exponer alias de rutas para compatibilidad operativa (sin duplicar lógica).
+  - Evitar acoplar routers de negocio a múltiples prefijos.
 
-Notes:
-  - v1: Current stable API
-  - v2: Future enhancements (placeholder)
+Patrones aplicados:
+  - Router Composition: reutiliza el mismo router bajo diferentes prefijos.
+  - Backward-compatible alias: permite migraciones de clientes sin roturas.
+
+Colaboradores:
+  - interfaces.api.http.routes.router (router de negocio)
+===============================================================================
 """
 
-from app.interfaces.api.http.routes import router as v1_router
-from fastapi import APIRouter
+from __future__ import annotations
 
-# Version 1 - Current stable
-api_v1 = APIRouter(prefix="/api/v1", tags=["v1"])
-api_v1.include_router(v1_router)
+from fastapi import APIRouter, FastAPI
 
-# Version 2 - Future (placeholder)
-api_v2 = APIRouter(prefix="/api/v2", tags=["v2"])
+from ..interfaces.api.http.routes import router as business_router
 
 
-def include_versioned_routes(app):
-    """Register all versioned routes with the app."""
-    app.include_router(api_v1)
-    app.include_router(api_v2)
+def include_versioned_routes(app: FastAPI) -> None:
+    """
+    Incluye alias de rutas.
+
+    Actualmente:
+      - /api/v1 -> apunta al mismo router que /v1
+    """
+    api_router = APIRouter(prefix="/api")
+
+    # Alias /api/v1/...
+    api_router.include_router(business_router, prefix="/v1")
+
+    app.include_router(api_router)
+
+
+__all__ = ["include_versioned_routes"]

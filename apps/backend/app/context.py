@@ -1,68 +1,114 @@
 """
-Name: Request Context (ContextVars)
+===============================================================================
+TARJETA CRC — app/context.py (Contexto por request / job)
+===============================================================================
 
-Responsibilities:
-  - Store request-scoped data (request_id, trace_id, span_id)
-  - Provide async-safe context without parameter passing
-  - Enable structured logging with request correlation
+Responsabilidades:
+  - Mantener contexto “request-scoped” usando ContextVars (async-safe).
+  - Permitir correlación de logs/métricas/trazas sin pasar parámetros por todo el stack.
+  - Proveer helpers mínimos: set_*(), get_context_dict(), clear_context().
 
-Collaborators:
-  - middleware.py: Sets context at request start
-  - logger.py: Reads context for log enrichment
-  - tracing.py: Sets trace_id/span_id when OTel is enabled
+Colaboradores:
+  - app.crosscutting.middleware: setea request_id/method/path al inicio del request.
+  - app.crosscutting.logger: enriquece logs leyendo get_context_dict().
+  - app.crosscutting.tracing: setea trace_id/span_id si OTel está habilitado.
+  - app.worker.jobs: setea request_id por job y limpia contexto al finalizar.
 
-Constraints:
-  - Only primitive types (str) for safety
-  - Default empty string (never None) for JSON serialization
+Patrones aplicados:
+  - Ambient Context (controlado y explícito).
+  - Async-safe “thread-local” (ContextVar).
 
-Notes:
-  - contextvars are async-safe (isolated per request)
-  - Similar to thread-local but works with async/await
+Restricciones:
+  - Solo tipos primitivos (str) para serialización segura.
+  - Defaults vacíos ("") para evitar None y simplificar JSON.
+===============================================================================
 """
 
-from contextvars import ContextVar
+from __future__ import annotations
 
-# R: Request identifier (UUID) - set by middleware
+from contextvars import ContextVar
+from typing import Final
+
+# =============================================================================
+# ContextVars: cada variable representa un dato correlacionable del request/job
+# =============================================================================
+
+# Identificador de request o job (idealmente UUID o ID estable).
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 
-# R: OpenTelemetry trace ID (hex) - set by tracing module
+# Identificadores de traza (hex) si está habilitado tracing (OpenTelemetry).
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="")
-
-# R: OpenTelemetry span ID (hex) - set by tracing module
 span_id_var: ContextVar[str] = ContextVar("span_id", default="")
 
-# R: HTTP method - set by middleware
+# Metadatos HTTP básicos para logs (método y path).
 http_method_var: ContextVar[str] = ContextVar("http_method", default="")
-
-# R: Request path - set by middleware
 http_path_var: ContextVar[str] = ContextVar("http_path", default="")
 
+# Claves estándar (para consistencia al construir dicts).
+_CTX_REQUEST_ID: Final[str] = "request_id"
+_CTX_TRACE_ID: Final[str] = "trace_id"
+_CTX_SPAN_ID: Final[str] = "span_id"
+_CTX_METHOD: Final[str] = "method"
+_CTX_PATH: Final[str] = "path"
 
-def get_context_dict() -> dict:
-    """
-    R: Get current context as dict for log enrichment.
 
-    Returns:
-        Dict with non-empty context values only
+# =============================================================================
+# API pública (usada por logger/middleware/worker)
+# =============================================================================
+
+
+def set_request_context(
+    *, request_id: str = "", method: str = "", path: str = ""
+) -> None:
     """
-    ctx = {}
+    Setea el contexto mínimo del request.
+
+    Regla:
+      - Strings vacíos significan “no disponible”.
+    """
+    request_id_var.set(request_id or "")
+    http_method_var.set(method or "")
+    http_path_var.set(path or "")
+
+
+def set_trace_context(*, trace_id: str = "", span_id: str = "") -> None:
+    """
+    Setea el contexto de tracing (si aplica).
+    """
+    trace_id_var.set(trace_id or "")
+    span_id_var.set(span_id or "")
+
+
+def get_context_dict() -> dict[str, str]:
+    """
+    Devuelve el contexto actual como dict, omitiendo claves vacías.
+
+    Uso típico:
+      - Enriquecimiento de logs estructurados.
+    """
+    ctx: dict[str, str] = {}
 
     if val := request_id_var.get():
-        ctx["request_id"] = val
+        ctx[_CTX_REQUEST_ID] = val
     if val := trace_id_var.get():
-        ctx["trace_id"] = val
+        ctx[_CTX_TRACE_ID] = val
     if val := span_id_var.get():
-        ctx["span_id"] = val
+        ctx[_CTX_SPAN_ID] = val
     if val := http_method_var.get():
-        ctx["method"] = val
+        ctx[_CTX_METHOD] = val
     if val := http_path_var.get():
-        ctx["path"] = val
+        ctx[_CTX_PATH] = val
 
     return ctx
 
 
 def clear_context() -> None:
-    """R: Reset all context vars (called at request end)."""
+    """
+    Limpia el contexto al final del request/job.
+
+    Importante:
+      - Esto evita “filtración de contexto” entre requests cuando hay workers async.
+    """
     request_id_var.set("")
     trace_id_var.set("")
     span_id_var.set("")

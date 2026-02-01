@@ -1,34 +1,33 @@
 """
-Name: FastAPI Application Entry Point
+===============================================================================
+TARJETA CRC — app/api/main.py (Composición FastAPI / EntryPoint)
+===============================================================================
 
-Responsibilities:
-  - Initialize FastAPI application with metadata (title, version)
-  - Configure middleware (CORS, request context)
-  - Mount router with RAG endpoints under /v1 prefix
-  - Expose health check and metrics endpoints
+Responsabilidades:
+  - Crear y configurar la aplicación FastAPI (composición).
+  - Registrar middlewares transversales (contexto, límites, CORS, headers).
+  - Incluir routers HTTP (negocio, auth, admin) y alias de rutas.
+  - Exponer endpoints operativos (/healthz, /readyz, /metrics).
+  - Inicializar y cerrar recursos del proceso (pool de BD) vía lifespan.
+  - Publicar el ASGI app final envuelto con rate limiting (si aplica).
 
-Collaborators:
-  - FastAPI: ASGI web framework
-  - CORSMiddleware: Cross-Origin Resource Sharing handler
-  - RequestContextMiddleware: Request ID and logging context
-  - routes.router: Business logic endpoints (ingest, query, ask)
+Patrones aplicados:
+  - Composition Root: este módulo arma el grafo de dependencias web.
+  - Middleware Chain (ASGI/Starlette): concerns transversales fuera del dominio.
+  - Fail-fast en startup: validación de settings + init de pool.
+  - Best-effort en observabilidad: logs con request_id, sin romper el flujo.
 
-Constraints:
-  - CORS configurable via ALLOWED_ORIGINS env var (comma-separated)
-  - No rate limiting or authentication
-  - Health check validates DB only (doesn't verify Google API connectivity)
-
-Notes:
-  - Middleware order matters: RequestContext → CORS → routes
-  - /v1 prefix allows API versioning
-  - /healthz follows Kubernetes health check convention
-  - /metrics exposes Prometheus metrics
-
-Production Readiness:
-  - Env validation enforced at startup (via lifespan, not import time)
-  - Request tracing with X-Request-Id header
-  - Structured JSON logging with request correlation
+Colaboradores:
+  - crosscutting.config.get_settings
+  - infrastructure.db.pool.init_pool / close_pool
+  - interfaces.api.http.routes.router (router de negocio)
+  - api.auth_routes / api.admin_routes (rutas auxiliares)
+  - api.exception_handlers.register_exception_handlers
+  - api.versioning.include_versioned_routes (alias de rutas)
+===============================================================================
 """
+
+from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
@@ -36,6 +35,7 @@ from typing import Callable
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from ..application.dev_seed_admin import ensure_dev_admin
 from ..application.dev_seed_demo import ensure_dev_demo
@@ -48,21 +48,31 @@ from ..crosscutting.security import SecurityHeadersMiddleware
 from ..identity.auth import is_auth_enabled
 from ..identity.rbac import require_metrics_permission
 from ..infrastructure.db.pool import close_pool, init_pool
-from ..interfaces.api.http.router import router
+from ..interfaces.api.http.routes import router as business_router
 from .auth_routes import router as auth_router
 from .exception_handlers import register_exception_handlers
 from .versioning import include_versioned_routes
 
+# -----------------------------------------------------------------------------
+# Lifespan (startup/shutdown)
+# -----------------------------------------------------------------------------
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown lifecycle. Validates settings and initializes pool."""
+    """
+    Ciclo de vida del proceso.
+
+    - Valida settings (seguridad en producción).
+    - Inicializa el pool de BD antes de que se use cualquier repositorio.
+    - Ejecuta seed de desarrollo si está habilitado.
+    - Cierra el pool al apagar el proceso.
+    """
     settings = get_settings()
 
     if settings.is_production():
         settings.validate_security_requirements()
 
-    # Initialize DB pool (must happen before any repository usage)
     init_pool(
         database_url=settings.database_url,
         min_size=settings.db_pool_min_size,
@@ -70,221 +80,193 @@ async def lifespan(app: FastAPI):
     )
 
     try:
-        # ------------------------------------------------------------------
-        # DEV SEED (Composition Root wiring)
-        # ------------------------------------------------------------------
-        # R: Seed admin/demo only when enabled in settings.
-        #     Seed must run AFTER init_pool() because repositories need DB access.
-        try:
-
-            # R: Wire concrete infrastructure repos into dev seed (DIP-friendly)
-            from ..identity.auth_users import hash_password
-            from ..infrastructure.repositories.postgres.user import (
-                create_user as pg_create_user,
-            )
-            from ..infrastructure.repositories.postgres.user import (
-                get_user_by_email as pg_get_user_by_email,
-            )
-            from ..infrastructure.repositories.postgres.user import (
-                update_user as pg_update_user,
-            )
-            from ..infrastructure.repositories.postgres.workspace import (
-                PostgresWorkspaceRepository,
-            )
-
-            class _PostgresUserRepoAdapter:
-                """
-                R: Minimal adapter to satisfy the UserPort expected by ensure_dev_admin/demo.
-                Keeps dev_seed modules decoupled from concrete Postgres modules.
-                """
-
-                def get_user_by_email(self, email: str):
-                    return pg_get_user_by_email(email)
-
-                def create_user(
-                    self,
-                    *,
-                    email: str,
-                    password_hash: str,
-                    role,
-                    is_active: bool,
-                ):
-                    return pg_create_user(
-                        email=email,
-                        password_hash=password_hash,
-                        role=role,
-                        is_active=is_active,
-                    )
-
-                def update_user(
-                    self,
-                    user_id,
-                    *,
-                    password_hash=None,
-                    role=None,
-                    is_active=None,
-                ):
-                    return pg_update_user(
-                        user_id,
-                        password_hash=password_hash,
-                        role=role,
-                        is_active=is_active,
-                    )
-
-            user_repo = _PostgresUserRepoAdapter()
-            workspace_repo = PostgresWorkspaceRepository()
-            password_hasher: Callable[[str], str] = hash_password
-
-            ensure_dev_admin(
-                settings,
-                user_repo=user_repo,
-                password_hasher=password_hasher,
-                env=os.environ,
-            )
-
-            ensure_dev_demo(
-                settings,
-                user_repo=user_repo,
-                workspace_repo=workspace_repo,
-                password_hasher=password_hasher,
-            )
-
-        except Exception as e:
-            logger.error(
-                "Startup failed during dev seed", exc_info=True, extra={"error": str(e)}
-            )
-            raise
-
+        _run_dev_seed_if_enabled(settings)
         logger.info(
-            "RAG Corp API starting up",
+            "Backend iniciado",
             extra={
-                "chunk_size": settings.chunk_size,
-                "chunk_overlap": settings.chunk_overlap,
-                "otel_enabled": os.getenv("OTEL_ENABLED", "0") == "1",
                 "auth_enabled": is_auth_enabled(),
                 "rate_limit_rps": settings.rate_limit_rps,
                 "db_pool_min": settings.db_pool_min_size,
                 "db_pool_max": settings.db_pool_max_size,
             },
         )
-
         yield
-
     finally:
         close_pool()
-        logger.info("RAG Corp API shutting down")
+        logger.info("Backend detenido")
 
 
-# R: Get settings for CORS configuration (safe at module level after env is loaded)
-def _get_allowed_origins() -> list[str]:
-    """Get CORS origins from settings, with fallback for import-time errors."""
+def _run_dev_seed_if_enabled(settings) -> None:
+    """
+    Ejecuta el seed (admin/demo) cuando está habilitado.
+
+    Nota de diseño:
+      - Se hace aquí (startup) para evitar "side-effects" en import-time.
+      - Se usan adaptadores mínimos para no acoplar los módulos de seed a Postgres.
+    """
     try:
-        return get_settings().get_allowed_origins_list()
-    except Exception:
-        # Fallback for tests that don't set env vars
-        return ["http://localhost:3000"]
+        # R: Importes tardíos para reducir acoplamiento y tiempos de importación.
+        from ..identity.auth_users import hash_password
+        from ..infrastructure.repositories.postgres.user import (
+            create_user as pg_create_user,
+        )
+        from ..infrastructure.repositories.postgres.user import (
+            get_user_by_email as pg_get_user_by_email,
+        )
+        from ..infrastructure.repositories.postgres.user import (
+            update_user as pg_update_user,
+        )
+        from ..infrastructure.repositories.postgres.workspace import (
+            PostgresWorkspaceRepository,
+        )
+
+        class _PostgresUserRepoAdapter:
+            """Adaptador mínimo (puerto requerido por dev_seed_*)."""
+
+            def get_user_by_email(self, email: str):
+                return pg_get_user_by_email(email)
+
+            def create_user(
+                self,
+                *,
+                email: str,
+                password_hash: str,
+                role,
+                is_active: bool,
+            ):
+                return pg_create_user(
+                    email=email,
+                    password_hash=password_hash,
+                    role=role,
+                    is_active=is_active,
+                )
+
+            def update_user(
+                self,
+                user_id,
+                *,
+                password_hash=None,
+                role=None,
+                is_active=None,
+            ):
+                return pg_update_user(
+                    user_id,
+                    password_hash=password_hash,
+                    role=role,
+                    is_active=is_active,
+                )
+
+        user_repo = _PostgresUserRepoAdapter()
+        workspace_repo = PostgresWorkspaceRepository()
+        password_hasher: Callable[[str], str] = hash_password
+
+        ensure_dev_admin(
+            settings,
+            user_repo=user_repo,
+            password_hasher=password_hasher,
+            env=os.environ,
+        )
+        ensure_dev_demo(
+            settings,
+            user_repo=user_repo,
+            workspace_repo=workspace_repo,
+            password_hasher=password_hasher,
+        )
+
+    except Exception as e:
+        # R: En startup preferimos fallar rápido si el seed está habilitado
+        #     y algo salió mal, para no dejar el sistema en un estado inconsistente.
+        logger.error(
+            "Fallo en seed de desarrollo",
+            exc_info=True,
+            extra={"error": str(e)},
+        )
+        raise
 
 
-# R: Create FastAPI application instance with API metadata
-app = FastAPI(
-    title="RAG Corp API",
-    version="0.1.0",
-    lifespan=lifespan,
-    # R: OpenAPI security scheme for API key authentication
-    openapi_tags=[
+# -----------------------------------------------------------------------------
+# OpenAPI: seguridad dual + ajustes de parámetros
+# -----------------------------------------------------------------------------
+
+
+def _custom_openapi(app: FastAPI) -> dict:
+    """
+    Genera un OpenAPI enriquecido con esquemas de seguridad (API Key + JWT).
+
+    Nota:
+      - No cambia la seguridad real (eso lo hacen las dependencias),
+        solo mejora la documentación.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+
+    components = schema.setdefault("components", {})
+    security_schemes = components.setdefault("securitySchemes", {})
+    security_schemes.update(
         {
-            "name": "ingest",
-            "description": "Document ingestion (requires 'ingest' scope)",
-        },
-        {
-            "name": "query",
-            "description": "Semantic search and RAG (requires 'ask' scope)",
-        },
-        {
-            "name": "documents",
-            "description": "Document management (requires document permissions)",
-        },
-        {
-            "name": "auth",
-            "description": "User authentication (JWT)",
-        },
-    ],
-)
-
-# R: Add security scheme to OpenAPI
-app.openapi_schema = None  # Force regeneration
-
-
-def custom_openapi():
-    fastapi_app = globals().get("_fastapi_app") or app
-    if fastapi_app.openapi_schema:
-        return fastapi_app.openapi_schema
-    from fastapi.openapi.utils import get_openapi
-
-    openapi_schema = get_openapi(
-        title=fastapi_app.title,
-        version=fastapi_app.version,
-        routes=fastapi_app.routes,
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key",
+                "description": "API key con los permisos adecuados.",
+            },
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT via Authorization: Bearer <token> o cookie httpOnly.",
+            },
+        }
     )
-    openapi_schema["components"] = openapi_schema.get("components", {})
-    openapi_schema["components"]["securitySchemes"] = {
-        "ApiKeyAuth": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "X-API-Key",
-            "description": "API key with appropriate scope (ingest, ask, metrics)",
-        },
-        "BearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": (
-                "JWT access token via Authorization: Bearer <token> or httpOnly cookie."
-            ),
-        },
-    }
-    # R: Apply dual-mode security globally (endpoints can override)
-    openapi_schema["security"] = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
 
+    # R: Por defecto documentamos que ambas formas son aceptables.
     dual_security = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
-    bearer_security = [{"BearerAuth": []}]
-    api_key_security = [{"ApiKeyAuth": []}]
+    schema["security"] = dual_security
+
+    settings = get_settings()
     public_paths = {"/healthz", "/readyz", "/auth/login", "/auth/logout"}
     jwt_only_paths = {"/auth/me"}
 
-    for path, methods in openapi_schema.get("paths", {}).items():
+    for path, methods in schema.get("paths", {}).items():
         for operation in methods.values():
             if not isinstance(operation, dict):
                 continue
+
             if path in public_paths:
                 operation["security"] = []
                 continue
+
             if path in jwt_only_paths:
-                operation["security"] = bearer_security
+                operation["security"] = [{"BearerAuth": []}]
                 continue
-            if path.startswith("/auth/users"):
+
+            if path == "/metrics":
+                operation["security"] = (
+                    [{"ApiKeyAuth": []}] if settings.metrics_require_auth else []
+                )
+                continue
+
+            # R: Rutas de auth/admin y rutas del negocio aceptan autenticación dual.
+            if path.startswith("/auth/") or path.startswith("/admin/"):
                 operation["security"] = dual_security
                 continue
-            if path == "/metrics":
-                operation["security"] = api_key_security
-                note = "Requires X-API-Key when METRICS_REQUIRE_AUTH=true."
-                description = operation.get("description", "")
-                if note not in description:
-                    operation["description"] = f"{description}\n\n{note}".strip()
-                continue
+
             if path.startswith("/v1/") or path.startswith("/api/v1/"):
                 operation["security"] = dual_security
+                continue
 
-    legacy_exclusions = {
+    # R: Ajuste de documentación: algunos endpoints usan workspace_id como query param
+    #     pero internamente es obligatorio (validación en use case).
+    workspace_id_required_exclusions = {
         "/v1/workspaces",
         "/api/v1/workspaces",
-        "/v1/admin/audit",
-        "/api/v1/admin/audit",
     }
-    for path, methods in openapi_schema.get("paths", {}).items():
+    for path, methods in schema.get("paths", {}).items():
         if not (path.startswith("/v1/") or path.startswith("/api/v1/")):
             continue
-        if "/workspaces/" in path or path in legacy_exclusions:
+        if "/workspaces/" in path or path in workspace_id_required_exclusions:
             continue
         for operation in methods.values():
             if not isinstance(operation, dict):
@@ -292,143 +274,166 @@ def custom_openapi():
             for param in operation.get("parameters", []):
                 if param.get("name") == "workspace_id" and param.get("in") == "query":
                     param["required"] = True
-    fastapi_app.openapi_schema = openapi_schema
-    return fastapi_app.openapi_schema
+
+    app.openapi_schema = schema
+    return schema
 
 
-app.openapi = custom_openapi
+# -----------------------------------------------------------------------------
+# Endpoints operativos
+# -----------------------------------------------------------------------------
 
 
-# R: Middleware order (bottom = first to execute):
-# 1. RateLimitMiddleware (ASGI) - checks rate before anything
-# 2. BodyLimitMiddleware - rejects oversized bodies early
-# 3. CORSMiddleware - handles preflight
-# 4. RequestContextMiddleware - sets request_id
-
-# R: Add body limit middleware
-app.add_middleware(BodyLimitMiddleware)
-
-# R: Add security headers middleware (X-Content-Type-Options, X-Frame-Options, HSTS, CSP)
-app.add_middleware(SecurityHeadersMiddleware)
-
-# R: Add request context middleware
-app.add_middleware(RequestContextMiddleware)
-
-# R: Configure CORS with secure defaults
-# R: Read CORS allow_credentials with safe fallback (avoid import-time env failures)
-try:
-    _cors_allow_credentials = get_settings().cors_allow_credentials
-except Exception:
-    _cors_allow_credentials = False
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_get_allowed_origins(),
-    allow_credentials=_cors_allow_credentials,  # R: Secure default: False
-    allow_methods=["GET", "POST", "OPTIONS"],  # R: Only needed methods
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "X-API-Key",
-        "X-Request-Id",
-    ],  # R: Explicit headers
-)
-
-# R: Register API routes under /v1 prefix for versioning
-app.include_router(router, prefix="/v1")
-
-# R: Register auth routes (no version prefix)
-app.include_router(auth_router)
-
-# R: Register admin routes (ADR-008: admin provisioning)
-from .admin_routes import router as admin_router  # noqa: E402
-
-app.include_router(admin_router)
-
-# R: Register versioned routes (v1, v2)
-include_versioned_routes(app)
-
-# R: Register exception handlers for structured error responses
-register_exception_handlers(app)
-
-
-# R: Health check endpoint for monitoring/orchestration (Kubernetes, Docker)
-@app.get("/healthz")
-def healthz(request: Request, full: bool = False):
-    """
-    R: Enhanced health check that verifies system dependencies.
-
-    Args:
-        full: If True, also check Google API connectivity (slower)
-              Respects HEALTHCHECK_GOOGLE_ENABLED setting
-
-    Returns:
-        ok: True if all checked systems operational
-        db: "connected" or "disconnected"
-        google: "available", "unavailable", "disabled", or "skipped" (only with full=true)
-        request_id: Correlation ID for this request
-    """
-    settings = get_settings()
-    db_status = "disconnected"
+def _get_allowed_origins() -> list[str]:
+    """Lee orígenes permitidos para CORS con fallback seguro (tests/import-time)."""
     try:
-        repo = get_document_repository()
-        if repo.ping():
-            db_status = "connected"
-    except Exception as e:
-        logger.warning("Health check: DB unavailable", extra={"error": str(e)})
-
-    result = {
-        "ok": db_status == "connected",
-        "db": db_status,
-        "request_id": getattr(request.state, "request_id", None),
-    }
-
-    # R: Full mode: also verify Google API connectivity (if enabled)
-    if full:
-        if settings.healthcheck_google_enabled:
-            google_status = _check_google_api()
-            result["google"] = google_status
-            # R: Overall health requires all checked services to be OK
-            if google_status == "unavailable":
-                result["ok"] = False
-        else:
-            result["google"] = "skipped"
-
-    return result
+        return get_settings().get_allowed_origins_list()
+    except Exception:
+        return ["http://localhost:3000"]
 
 
-@app.get("/readyz")
-def readyz(request: Request):
+def create_fastapi_app() -> FastAPI:
     """
-    R: Minimal readiness check for core dependencies only.
+    Crea la instancia FastAPI (sin wrapper ASGI de rate limiting).
 
-    Returns:
-        ok: True if core dependencies are operational
-        db: "connected" or "disconnected"
-        request_id: Correlation ID for this request
+    Separamos esto para:
+      - Facilitar tests (importar fastapi_app directo).
+      - Mantener el wrapper ASGI como capa externa.
     """
-    db_status = "disconnected"
+    app = FastAPI(
+        title="RAG Corp API",
+        version="0.1.0",
+        lifespan=lifespan,
+        openapi_tags=[
+            {"name": "workspaces", "description": "Gestión de workspaces."},
+            {"name": "documents", "description": "Ingesta y manejo de documentos."},
+            {"name": "query", "description": "Búsqueda semántica y respuestas RAG."},
+            {"name": "admin", "description": "Operaciones administrativas."},
+            {
+                "name": "auth",
+                "description": "Autenticación de usuarios (JWT) y administración.",
+            },
+        ],
+    )
+
+    # R: OpenAPI enriquecido con seguridad dual.
+    app.openapi = lambda: _custom_openapi(app)
+
+    # R: Middlewares (se ejecutan en orden inverso al registro).
+    app.add_middleware(BodyLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestContextMiddleware)
+
+    # R: CORS configurable por settings.
     try:
-        repo = get_document_repository()
-        if repo.ping():
-            db_status = "connected"
-    except Exception as e:
-        logger.warning("Ready check: DB unavailable", extra={"error": str(e)})
+        allow_credentials = bool(get_settings().cors_allow_credentials)
+    except Exception:
+        allow_credentials = False
 
-    return {
-        "ok": db_status == "connected",
-        "db": db_status,
-        "request_id": getattr(request.state, "request_id", None),
-    }
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_get_allowed_origins(),
+        allow_credentials=allow_credentials,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Request-Id"],
+    )
+
+    # R: Router de negocio bajo prefijo /v1 (convención estable del backend).
+    app.include_router(business_router, prefix="/v1")
+
+    # R: Rutas auxiliares fuera del prefijo (operaciones puntuales).
+    app.include_router(auth_router)
+
+    from .admin_routes import router as admin_router  # import tardío para evitar ciclos
+
+    app.include_router(admin_router)
+
+    # R: Alias de rutas (ej.: /api/v1) sin tocar los routers de negocio.
+    include_versioned_routes(app)
+
+    # R: Handlers centralizados de excepciones (RFC7807).
+    register_exception_handlers(app)
+
+    # -------------------------------------------------------------------------
+    # Health / Readiness
+    # -------------------------------------------------------------------------
+
+    @app.get("/healthz", tags=["admin"])
+    def healthz(request: Request, full: bool = False):
+        """
+        Health check ampliado.
+
+        - Siempre chequea BD.
+        - Si full=true, chequea conectividad Google API (si está habilitado).
+        """
+        settings = get_settings()
+        db_status = "disconnected"
+        try:
+            repo = get_document_repository()
+            if repo.ping():
+                db_status = "connected"
+        except Exception as e:
+            logger.warning("Health check: BD no disponible", extra={"error": str(e)})
+
+        google_status = "skipped"
+        if full:
+            if settings.healthcheck_google_enabled:
+                google_status = _check_google_api()
+            else:
+                google_status = "disabled"
+
+        return {
+            "ok": db_status == "connected"
+            and (google_status in {"available", "skipped", "disabled"}),
+            "db": db_status,
+            "google": google_status,
+            "request_id": getattr(request.state, "request_id", None),
+        }
+
+    @app.get("/readyz", tags=["admin"])
+    def readyz(request: Request):
+        """Readiness mínimo: dependencias core (BD)."""
+        db_status = "disconnected"
+        try:
+            repo = get_document_repository()
+            if repo.ping():
+                db_status = "connected"
+        except Exception as e:
+            logger.warning("Ready check: BD no disponible", extra={"error": str(e)})
+
+        return {
+            "ok": db_status == "connected",
+            "db": db_status,
+            "request_id": getattr(request.state, "request_id", None),
+        }
+
+    # -------------------------------------------------------------------------
+    # Metrics
+    # -------------------------------------------------------------------------
+
+    @app.get("/metrics", tags=["admin"])
+    def metrics(_auth: None = Depends(require_metrics_permission())):
+        """Expone métricas Prometheus (si está instalado)."""
+        from ..crosscutting.metrics import get_metrics_response, is_prometheus_available
+
+        if not is_prometheus_available():
+            return Response(
+                content="# prometheus_client no instalado\n",
+                media_type="text/plain",
+            )
+
+        body, content_type = get_metrics_response()
+        return Response(content=body, media_type=content_type)
+
+    return app
 
 
 def _check_google_api() -> str:
     """
-    R: Check Google API connectivity with a simple embedding call.
+    Verifica conectividad con Google API mediante una llamada mínima de embeddings.
 
-    Returns:
-        "available": API is responding
-        "unavailable": API is not responding or erroring
-        "disabled": No API key configured
+    Retorna:
+      - "available" | "unavailable" | "disabled"
     """
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -438,46 +443,29 @@ def _check_google_api() -> str:
         from google import genai
 
         client = genai.Client(api_key=api_key)
-
-        # R: Minimal API call to verify connectivity (cheap operation)
         resp = client.models.embed_content(
             model="text-embedding-004",
             contents=["health check"],
             config={"task_type": "retrieval_query"},
         )
-
-        # R: Verify we got a valid response
         embeddings = resp.embeddings or []
         if embeddings and embeddings[0].values:
             return "available"
         return "unavailable"
     except Exception as e:
-        logger.warning("Health check: Google API unavailable", extra={"error": str(e)})
+        logger.warning(
+            "Health check: Google API no disponible", extra={"error": str(e)}
+        )
         return "unavailable"
 
 
-# R: Prometheus metrics endpoint
-@app.get("/metrics")
-def metrics(_auth: None = Depends(require_metrics_permission())):
-    """
-    R: Expose Prometheus metrics.
+# -----------------------------------------------------------------------------
+# Export público: `app` (ASGI) + `fastapi_app` (FastAPI para tests)
+# -----------------------------------------------------------------------------
 
-    Returns:
-        Prometheus text format metrics
-    """
-    from ..crosscutting.metrics import get_metrics_response, is_prometheus_available
+fastapi_app = create_fastapi_app()
 
-    if not is_prometheus_available():
-        return Response(
-            content="# prometheus_client not installed\n",
-            media_type="text/plain",
-        )
+# R: Wrapper ASGI para rate limiting. Si está deshabilitado en settings, pasa-through.
+app = RateLimitMiddleware(fastapi_app)
 
-    body, content_type = get_metrics_response()
-    return Response(content=body, media_type=content_type)
-
-
-# R: Wrap app with rate limit middleware (ASGI-style)
-# This MUST be at the very end, after all FastAPI setup
-_fastapi_app = app
-app = RateLimitMiddleware(_fastapi_app)
+__all__ = ["app", "fastapi_app"]

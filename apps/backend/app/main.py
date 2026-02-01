@@ -1,24 +1,22 @@
 """
-Name: Backend ASGI Entrypoint (app.main)
+===============================================================================
+TARJETA CRC — app/main.py (Entrypoint ASGI)
+===============================================================================
 
-Responsibilities:
-  - Re-export the FastAPI app for ASGI servers and tooling
-  - Preserve the import path used by uvicorn/gunicorn and tests
-  - Keep this module side-effect free beyond importing app.api.main
-  - Define a narrow public surface using __all__
-  - Act as the stable handoff from runtime to application wiring
+Responsabilidades:
+  - Exponer el objeto FastAPI `app` para servidores ASGI (uvicorn/gunicorn).
+  - Mantener un punto de importación estable y mínimo: "app.main:app".
+  - Evitar side-effects: este módulo NO valida env, NO hace IO, NO configura nada.
 
-Collaborators:
-  - app.api.main: module that constructs and exposes the FastAPI app
-  - FastAPI app instance (ASGI callable) consumed by the server
-  - ASGI servers (uvicorn, gunicorn) configured to import app.main:app
-  - Python import system and module loader
+Colaboradores:
+  - app.api.main: compone y expone la instancia de FastAPI.
 
-Notes/Constraints:
-  - No configuration or IO should live here; keep it thin and predictable
-  - Importing this module must not change runtime behavior or env validation
-  - Changing this path is a deployment-breaking change for infra scripts
-  - Use this module only as an entrypoint, not for business logic
+Patrones aplicados:
+  - Facade / Re-export: módulo fino que re-exporta el entrypoint real.
+
+Notas:
+  - Cambiar este path rompe despliegues/scripts que importan "app.main:app".
+===============================================================================
 """
 
 from app.api.main import app

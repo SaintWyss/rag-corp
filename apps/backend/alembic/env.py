@@ -64,24 +64,11 @@ def get_url() -> str:
 
 def get_target_metadata() -> Optional[MetaData]:
     """
-    Si hay ORM, devolvemos Base.metadata para autogenerate.
-    Si no hay ORM o el import falla, devolvemos None:
-    - migraciones manuales funcionan
-    - autogenerate queda deshabilitado
+    Nota: Esta app usa Raw SQL (psycopg), no ORM.
+    Por lo tanto, no hay metadatos de SQLAlchemy para autogenerate.
+    Las migraciones deben escribirse manualmente.
     """
-    try:
-        # ⚠️ Ajustar a tu proyecto si cambia la ubicación de Base
-        from app.db.base import Base  # type: ignore
-
-        Base.metadata.naming_convention = NAMING_CONVENTION
-        return Base.metadata
-
-    except Exception as exc:
-        # Log warning (print es seguro; Alembic context aún no existe aquí)
-        print(
-            f"[alembic] WARNING: target_metadata no disponible (autogenerate deshabilitado). Motivo: {exc}"
-        )
-        return None
+    return None
 
 
 target_metadata: Optional[MetaData] = get_target_metadata()
