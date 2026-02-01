@@ -35,16 +35,37 @@ CRC (Component Card):
     - crosscutting.config
 """
 
-from functools import lru_cache
 import os
+from functools import lru_cache
 
+from redis import Redis
+
+from .application import RerankerMode, get_chunk_reranker, get_query_rewriter
+from .application.usecases import (
+    AnswerQueryUseCase,
+    ArchiveWorkspaceUseCase,
+    CreateWorkspaceUseCase,
+    DeleteDocumentUseCase,
+    GetDocumentUseCase,
+    GetWorkspaceUseCase,
+    IngestDocumentUseCase,
+    ListDocumentsUseCase,
+    ListWorkspacesUseCase,
+    PublishWorkspaceUseCase,
+    ReprocessDocumentUseCase,
+    SearchChunksUseCase,
+    ShareWorkspaceUseCase,
+    UpdateWorkspaceUseCase,
+    UploadDocumentUseCase,
+)
+from .application.usecases.chat import AnswerQueryWithHistoryUseCase
 from .crosscutting.config import get_settings
 from .domain.repositories import (
-    DocumentRepository,
-    ConversationRepository,
     AuditEventRepository,
-    WorkspaceRepository,
+    ConversationRepository,
+    DocumentRepository,
     WorkspaceAclRepository,
+    WorkspaceRepository,
 )
 from .domain.services import (
     DocumentProcessingQueue,
@@ -55,14 +76,16 @@ from .domain.services import (
     TextChunkerService,
 )
 from .infrastructure.cache import get_embedding_cache
+from .infrastructure.parsers import SimpleDocumentTextExtractor
+from .infrastructure.queue import RQDocumentProcessingQueue, RQQueueConfig
 from .infrastructure.repositories import (
-    PostgresDocumentRepository,
-    PostgresAuditEventRepository,
-    PostgresWorkspaceRepository,
-    PostgresWorkspaceAclRepository,
     InMemoryConversationRepository,
-    InMemoryWorkspaceRepository,
     InMemoryWorkspaceAclRepository,
+    InMemoryWorkspaceRepository,
+    PostgresAuditEventRepository,
+    PostgresDocumentRepository,
+    PostgresWorkspaceAclRepository,
+    PostgresWorkspaceRepository,
 )
 from .infrastructure.services import (
     CachingEmbeddingService,
@@ -71,29 +94,8 @@ from .infrastructure.services import (
     GoogleEmbeddingService,
     GoogleLLMService,
 )
-from .infrastructure.parsers import SimpleDocumentTextExtractor
-from .infrastructure.queue import RQDocumentProcessingQueue
+from .infrastructure.storage import S3Config, S3FileStorageAdapter
 from .infrastructure.text import SimpleTextChunker
-from .infrastructure.storage import S3FileStorageAdapter, S3Config
-from .application import get_chunk_reranker, get_query_rewriter, RerankerMode
-from .application.usecases import (
-    AnswerQueryUseCase,
-    DeleteDocumentUseCase,
-    GetDocumentUseCase,
-    GetWorkspaceUseCase,
-    IngestDocumentUseCase,
-    ListDocumentsUseCase,
-    ListWorkspacesUseCase,
-    ReprocessDocumentUseCase,
-    SearchChunksUseCase,
-    UploadDocumentUseCase,
-    CreateWorkspaceUseCase,
-    ArchiveWorkspaceUseCase,
-    UpdateWorkspaceUseCase,
-    PublishWorkspaceUseCase,
-    ShareWorkspaceUseCase,
-)
-from .application.usecases.chat import AnswerQueryWithHistoryUseCase
 
 
 # R: Repository factory (singleton)
@@ -214,12 +216,29 @@ def get_text_chunker() -> TextChunkerService:
     """
     R: Get singleton instance of text chunker.
 
-    Reads chunk_size and chunk_overlap from Settings.
+    Mode selection via env TEXT_CHUNKER_MODE:
+      - 'simple' (default): Recursive character splitting
+      - 'structured': Markdown/Structure aware splitting
 
     Returns:
-        SimpleTextChunker implementation with configured params
+        TextChunkerService implementation
     """
+    import os
+
+    from .crosscutting.config import get_settings
+    from .infrastructure.text import SimpleTextChunker, StructuredTextChunker
+
     settings = get_settings()
+    mode = os.getenv("TEXT_CHUNKER_MODE", "simple").strip().lower()
+
+    if mode == "structured":
+        # R: Structured chunker preserves markdown headers and code blocks
+        return StructuredTextChunker(
+            max_chunk_size=settings.chunk_size,
+            overlap=settings.chunk_overlap,
+        )
+
+    # Default fallback
     return SimpleTextChunker(
         chunk_size=settings.chunk_size,
         overlap=settings.chunk_overlap,
@@ -257,17 +276,39 @@ def get_document_text_extractor() -> DocumentTextExtractor:
     return SimpleDocumentTextExtractor()
 
 
+# R: Redis client factory (singleton)
+@lru_cache
+def get_redis_client() -> Redis | None:
+    """R: Get singleton Redis client for infrastructure adapters.
+
+    Nota:
+      - Evita múltiples pools de conexiones en el proceso del API.
+      - Si no hay redis_url configurado, retorna None.
+    """
+    settings = get_settings()
+    redis_url = (settings.redis_url or os.getenv("REDIS_URL", "")).strip()
+    if not redis_url:
+        return None
+    return Redis.from_url(redis_url)
+
+
 # R: Document processing queue factory (singleton)
 @lru_cache
 def get_document_queue() -> DocumentProcessingQueue | None:
     """R: Get queue for background document processing if configured."""
     settings = get_settings()
-    if not settings.redis_url:
+    redis = get_redis_client()
+    if redis is None:
         return None
-    return RQDocumentProcessingQueue(
-        redis_url=settings.redis_url,
+
+    # Fuente única de nombre de cola: el worker también usa DOCUMENT_QUEUE_NAME.
+    queue_name = os.getenv("DOCUMENT_QUEUE_NAME", "documents").strip() or "documents"
+
+    config = RQQueueConfig(
+        queue_name=queue_name,
         retry_max_attempts=settings.retry_max_attempts,
     )
+    return RQDocumentProcessingQueue(redis=redis, config=config)
 
 
 # R: AnswerQuery use case factory (creates new instance per request)

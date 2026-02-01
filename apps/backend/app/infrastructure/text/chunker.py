@@ -1,157 +1,213 @@
 """
-Name: Text Chunking Utility
+===============================================================================
+CRC CARD — infrastructure/text/chunker.py
+===============================================================================
 
-Responsibilities:
-  - Split long documents into fixed-size fragments with overlap
-  - Prefer natural boundaries (paragraphs, newlines, sentences)
-  - Preserve context between chunks through overlapping
-  - Clean whitespace and filter empty chunks
+Componente:
+  Chunking de texto (Strategy-friendly)
 
-Collaborators:
-  - None (pure function, no external dependencies)
+Responsabilidades:
+  - Proveer chunking determinístico y robusto para ingesta.
+  - Preferir cortes naturales (párrafos, saltos, oraciones) con overlap.
+  - Exponer:
+      * chunk_text(...) -> list[str] (compatibilidad)
+      * chunk_fragments(...) -> list[ChunkFragment] (salida rica)
+      * SimpleTextChunker (servicio)
 
-Constraints:
-  - Prefers natural boundaries but falls back to character split
-  - Fixed default overlap of 120 characters
-  - No semantic analysis
+Colaboradores:
+  - infrastructure/text/models.py (ChunkFragment)
 
-Notes:
-  - chunk_size=900 chosen empirically for context/specificity balance
-  - overlap=120 (~13% of chunk) prevents context loss at edges
-  - Priority: paragraph > newline > sentence > character
-
-Algorithm:
-  - Find best split point near chunk_size boundary
-  - Prefer \n\n (paragraph), then \n, then ". "
-  - Fall back to exact character position if no separator found
-
-Performance:
-  - O(n) where n = len(text)
-  - Typical processing: ~1ms per 10K characters
+Decisiones senior:
+  - Guard clauses + validación de parámetros (fail-fast).
+  - Límite de chunks para evitar bombas de memoria.
+  - Post-proceso: merge de “micro-chunks” finales cuando conviene.
+===============================================================================
 """
 
-# R: Separators in priority order (best to worst)
-SEPARATORS = ["\n\n", "\n", ". ", ", ", " "]
+from __future__ import annotations
+
+from typing import Final
+
+from .models import ChunkFragment
+
+# Separadores en orden de prioridad (mejor a peor).
+_SEPARATORS: Final[list[str]] = ["\n\n", "\n", ". ", "; ", ", ", " "]
+
+# Guardrail: evita generar miles de chunks por inputs patológicos.
+_DEFAULT_MAX_CHUNKS: Final[int] = 2000
 
 
-def _find_best_split(text: str, target: int, window: int = 100) -> int:
+def _find_best_split(text: str, target: int, window: int = 120) -> int:
     """
-    R: Find best split point near target position.
+    Encuentra el mejor punto de corte cerca de `target`.
 
-    Searches for natural boundaries within window of target.
-    Returns target if no separator found.
+    Estrategia:
+      - Buscar hacia atrás dentro de una ventana y elegir el último separador.
+      - Si no encuentra nada, cortar exacto en `target`.
 
-    Args:
-        text: Text to search
-        target: Ideal split position
-        window: How far to search from target (chars)
-
-    Returns:
-        Best split position (after separator)
+    Devuelve:
+      - índice (posición) donde se debe cortar (después del separador).
     """
-    # R: Don't split beyond text
     if target >= len(text):
         return len(text)
 
-    # R: Search window around target
-    search_start = max(0, target - window)
-    search_end = min(len(text), target + window)
-    search_region = text[search_start:search_end]
+    start = max(0, target - window)
+    end = min(len(text), target + window)
+    region = text[start:end]
 
-    # R: Try each separator in priority order
-    for sep in SEPARATORS:
-        # R: Find last occurrence of separator before target (within window)
-        rel_target = target - search_start
-        last_sep = search_region.rfind(sep, 0, rel_target + len(sep))
+    rel_target = target - start
 
-        if last_sep != -1:
-            # R: Return position after separator
-            return search_start + last_sep + len(sep)
+    for sep in _SEPARATORS:
+        pos = region.rfind(sep, 0, rel_target + len(sep))
+        if pos != -1:
+            return start + pos + len(sep)
 
-    # R: No separator found, use target as-is
     return target
+
+
+def _merge_small_tail(chunks: list[str], *, min_tail_chars: int) -> list[str]:
+    """
+    Si el último chunk es demasiado chico, lo mergea con el anterior (si existe).
+
+    Esto reduce fragmentación y mejora contexto para embeddings.
+    """
+    if len(chunks) < 2:
+        return chunks
+
+    last = chunks[-1]
+    if len(last) >= min_tail_chars:
+        return chunks
+
+    merged = chunks[:-2] + [(chunks[-2].rstrip() + "\n\n" + last.lstrip()).strip()]
+    return merged
+
+
+def chunk_fragments(
+    text: str,
+    *,
+    chunk_size: int = 900,
+    overlap: int = 120,
+    context_window: int = 80,
+    max_chunks: int = _DEFAULT_MAX_CHUNKS,
+) -> list[ChunkFragment]:
+    """
+    Parte el texto en fragmentos con overlap y metadata.
+
+    Importante:
+      - Este es el “motor” real. `chunk_text` es solo un wrapper.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return []
+
+    if chunk_size <= 0:
+        raise ValueError(f"chunk_size debe ser > 0. got={chunk_size}")
+    if overlap < 0:
+        raise ValueError(f"overlap debe ser >= 0. got={overlap}")
+    if overlap >= chunk_size:
+        raise ValueError("overlap debe ser menor a chunk_size.")
+    if max_chunks <= 0:
+        raise ValueError("max_chunks debe ser > 0.")
+
+    # Caso corto: un fragmento único.
+    if len(raw) <= chunk_size:
+        return [
+            ChunkFragment(
+                content=raw,
+                index=0,
+                start=0,
+                end=len(raw),
+            )
+        ]
+
+    fragments: list[ChunkFragment] = []
+    start = 0
+    idx = 0
+
+    while start < len(raw):
+        if idx >= max_chunks:
+            # Guardrail duro: mejor truncar que caer por memoria.
+            # (Si querés, acá se puede levantar excepción tipada.)
+            break
+
+        end_target = start + chunk_size
+        if end_target >= len(raw):
+            piece = raw[start:].strip()
+            if piece:
+                fragments.append(
+                    ChunkFragment(content=piece, index=idx, start=start, end=len(raw))
+                )
+            break
+
+        split_at = _find_best_split(raw, end_target)
+        piece = raw[start:split_at].strip()
+
+        if piece:
+            fragments.append(
+                ChunkFragment(content=piece, index=idx, start=start, end=split_at)
+            )
+            idx += 1
+
+        # Avanza con overlap, evitando loops por split muy chico.
+        start = max(start + 1, split_at - overlap)
+
+    # Enriquecer vecindad (prev/next context) para quien lo necesite.
+    for i, frag in enumerate(fragments):
+        prev_ctx = ""
+        next_ctx = ""
+
+        if i > 0:
+            prev_ctx = fragments[i - 1].content[-context_window:]
+
+        if i + 1 < len(fragments):
+            next_ctx = fragments[i + 1].content[:context_window]
+
+        fragments[i] = ChunkFragment(
+            content=frag.content,
+            index=frag.index,
+            start=frag.start,
+            end=frag.end,
+            prev_context=prev_ctx,
+            next_context=next_ctx,
+            section=frag.section,
+            kind=frag.kind,
+        )
+
+    return fragments
 
 
 def chunk_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str]:
     """
-    R: Split text into overlapping fragments preferring natural boundaries.
+    Wrapper de compatibilidad: devuelve list[str].
 
-    Args:
-        text: Document to split
-        chunk_size: Maximum size of each fragment in characters
-        overlap: Number of characters to overlap between consecutive chunks
-
-    Returns:
-        List of strings (chunks), without leading/trailing spaces
-
-    Examples:
-        >>> chunk_text("Para 1.\\n\\nPara 2.\\n\\nPara 3.", chunk_size=15, overlap=5)
-        # Prefers splitting at paragraph boundaries
+    Mantiene contrato actual, pero internamente usa fragmentos ricos.
     """
-    # R: Clean input text
-    text = text.strip()
+    fragments = chunk_fragments(text, chunk_size=chunk_size, overlap=overlap)
+    chunks = [f.content for f in fragments]
 
-    # R: Return empty list for empty input
-    if not text:
-        return []
-
-    # R: Short text: return as single chunk
-    if len(text) <= chunk_size:
-        return [text]
-
-    chunks = []
-    start = 0
-
-    # R: Iterate through text finding best split points
-    while start < len(text):
-        # R: Calculate target end position
-        end = start + chunk_size
-
-        if end >= len(text):
-            # R: Last chunk - take everything remaining
-            chunks.append(text[start:].strip())
-            break
-
-        # R: Find best split point near target
-        split_at = _find_best_split(text, end)
-
-        # R: Extract chunk
-        chunk = text[start:split_at].strip()
-        if chunk:
-            chunks.append(chunk)
-
-        # R: Move start with overlap (go back from split point)
-        start = max(start + 1, split_at - overlap)
+    # Mejora: si el último chunk es muy chico, mergearlo.
+    # Heurística: “muy chico” = menos del 25% de chunk_size
+    chunks = _merge_small_tail(chunks, min_tail_chars=max(80, int(chunk_size * 0.25)))
 
     return chunks
 
 
 class SimpleTextChunker:
     """
-    R: Default chunker implementation using chunk_text.
+    Servicio de chunking simple (baseline).
 
-    Validates parameters on initialization to fail fast.
+    Diseño:
+      - Valida parámetros al construir.
+      - `chunk()` delega a `chunk_text`.
     """
 
     def __init__(self, chunk_size: int = 900, overlap: int = 120):
-        """
-        Initialize chunker with validated parameters.
-
-        Args:
-            chunk_size: Maximum size of each chunk (must be > 0)
-            overlap: Characters to overlap between chunks (must be >= 0 and < chunk_size)
-
-        Raises:
-            ValueError: If parameters are invalid
-        """
         if chunk_size <= 0:
-            raise ValueError(f"chunk_size must be > 0, got {chunk_size}")
+            raise ValueError(f"chunk_size debe ser > 0, got {chunk_size}")
         if overlap < 0:
-            raise ValueError(f"overlap must be >= 0, got {overlap}")
+            raise ValueError(f"overlap debe ser >= 0, got {overlap}")
         if overlap >= chunk_size:
-            raise ValueError(
-                f"overlap ({overlap}) must be less than chunk_size ({chunk_size})"
-            )
+            raise ValueError("overlap debe ser menor a chunk_size")
 
         self.chunk_size = chunk_size
         self.overlap = overlap

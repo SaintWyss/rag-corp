@@ -1,87 +1,81 @@
 """
-Name: PostgreSQL Connection Pool
+===============================================================================
+CRC CARD — infrastructure/db/pool.py
+===============================================================================
 
-Responsibilities:
-  - Manage connection pool lifecycle (init, get, close)
-  - Configure connections with pgvector and statement_timeout
-  - Provide singleton pool instance
+Componente:
+  Pool de conexiones PostgreSQL (singleton)
 
-Collaborators:
-  - psycopg_pool: Connection pooling
-  - pgvector: Vector type registration
-  - config: Pool settings
+Responsabilidades:
+  - Inicializar, exponer y cerrar el pool de conexiones.
+  - Configurar conexiones: pgvector + statement_timeout.
+  - Devolver un pool instrumentado (observabilidad sin tocar repos).
 
-Constraints:
-  - Singleton pattern (one pool per process)
-  - Must init before use, close on shutdown
-  - register_vector must be called per connection
+Colaboradores:
+  - psycopg_pool.ConnectionPool
+  - pgvector.psycopg.register_vector
+  - infrastructure/db/instrumentation.InstrumentedConnectionPool
 
-Notes:
-  - Uses psycopg_pool.ConnectionPool
-  - Configure callback sets up each connection
-  - Thread-safe
+Principios:
+  - Fail-fast (config incorrecta, doble init, uso sin init)
+  - Encapsulación (pool global único)
+===============================================================================
 """
 
-from typing import Optional
-import threading
+from __future__ import annotations
 
-from psycopg_pool import ConnectionPool
+import threading
+from typing import Optional
+
 from pgvector.psycopg import register_vector
 
 from ...crosscutting.logger import logger
+from .errors import PoolAlreadyInitializedError, PoolNotInitializedError
+from .instrumentation import InstrumentedConnectionPool
 
-
-# R: Singleton pool instance
-_pool: Optional[ConnectionPool] = None
+_pool: Optional[InstrumentedConnectionPool] = None
 _pool_lock = threading.Lock()
 
 
 def _configure_connection(conn) -> None:
     """
-    R: Configure a connection from the pool.
+    Configura una conexión del pool.
 
-    Called for each connection when acquired from pool.
-    Registers pgvector type and sets statement_timeout.
+    Se ejecuta cuando el pool crea/adquiere conexiones (según implementación del pool).
     """
-    # R: Register vector type for this connection
+    # Registrar tipo vectorial (pgvector)
     register_vector(conn)
 
-    # R: Set statement timeout if configured
+    # Aplicar statement_timeout (guardrail contra queries colgadas)
     from ...crosscutting.config import get_settings
 
-    timeout_ms = get_settings().db_statement_timeout_ms
+    timeout_ms = int(get_settings().db_statement_timeout_ms)
     if timeout_ms > 0:
         conn.execute(f"SET statement_timeout = {timeout_ms}")
         conn.commit()
 
 
-def init_pool(database_url: str, min_size: int, max_size: int) -> ConnectionPool:
+def init_pool(database_url: str, min_size: int, max_size: int):
     """
-    R: Initialize the connection pool.
+    Inicializa el pool (una vez por proceso).
 
-    Args:
-        database_url: PostgreSQL connection string
-        min_size: Minimum connections to maintain
-        max_size: Maximum connections allowed
-
-    Returns:
-        Initialized ConnectionPool
-
-    Raises:
-        RuntimeError: If pool already initialized
+    Devuelve un pool instrumentado para mejorar observabilidad.
     """
     global _pool
 
     with _pool_lock:
         if _pool is not None:
-            raise RuntimeError("Connection pool already initialized")
+            raise PoolAlreadyInitializedError("El pool ya fue inicializado.")
+
+        # Lazy import: el server puede importar módulos sin DB en ciertos escenarios.
+        from psycopg_pool import ConnectionPool
 
         logger.info(
-            "Initializing connection pool",
+            "Inicializando pool DB",
             extra={"min_size": min_size, "max_size": max_size},
         )
 
-        _pool = ConnectionPool(
+        real_pool = ConnectionPool(
             conninfo=database_url,
             min_size=min_size,
             max_size=max_size,
@@ -89,54 +83,56 @@ def init_pool(database_url: str, min_size: int, max_size: int) -> ConnectionPool
             open=True,
         )
 
+        _pool = InstrumentedConnectionPool(real_pool)
+
         logger.info(
-            "Connection pool initialized",
+            "Pool DB inicializado",
             extra={"min_size": min_size, "max_size": max_size},
         )
 
         return _pool
 
 
-def get_pool() -> ConnectionPool:
+def get_pool():
     """
-    R: Get the connection pool singleton.
-
-    Returns:
-        ConnectionPool instance
-
-    Raises:
-        RuntimeError: If pool not initialized
+    Retorna el pool instrumentado singleton.
     """
     if _pool is None:
-        raise RuntimeError("Connection pool not initialized. Call init_pool() first.")
+        raise PoolNotInitializedError(
+            "Pool no inicializado. Llamar init_pool() primero."
+        )
     return _pool
 
 
 def close_pool() -> None:
     """
-    R: Close the connection pool.
-
-    Safe to call even if pool not initialized.
+    Cierra el pool (idempotente).
     """
     global _pool
 
     with _pool_lock:
         if _pool is not None:
-            logger.info("Closing connection pool")
-            _pool.close()
-            _pool = None
-            logger.info("Connection pool closed")
+            logger.info("Cerrando pool DB")
+            try:
+                _pool.close()
+            finally:
+                _pool = None
+            logger.info("Pool DB cerrado")
 
 
 def reset_pool() -> None:
     """
-    R: Reset pool for testing.
+    Reset para tests.
 
-    Closes existing pool if any, allowing re-initialization.
+    Nota:
+      - Mantengo esta función porque tu repo la usa en testing.
     """
     global _pool
 
     with _pool_lock:
         if _pool is not None:
-            _pool.close()
+            try:
+                _pool.close()
+            except Exception:
+                pass
         _pool = None

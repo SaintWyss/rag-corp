@@ -1,5 +1,20 @@
-"""Infrastructure storage adapters."""
+"""Adapters de infraestructura: Storage."""
 
-from .s3_file_storage import S3FileStorageAdapter, S3Config
+from .errors import (
+    StorageConfigurationError,
+    StorageError,
+    StorageNotFoundError,
+    StoragePermissionError,
+    StorageUnavailableError,
+)
+from .s3_file_storage import S3Config, S3FileStorageAdapter
 
-__all__ = ["S3FileStorageAdapter", "S3Config"]
+__all__ = [
+    "S3Config",
+    "S3FileStorageAdapter",
+    "StorageError",
+    "StorageConfigurationError",
+    "StorageNotFoundError",
+    "StoragePermissionError",
+    "StorageUnavailableError",
+]
