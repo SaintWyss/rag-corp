@@ -1,200 +1,77 @@
-# Domain Layer (Core Business Logic)
+# Domain Layer
 
-Esta capa contiene la **lógica de negocio pura** de la aplicación. Es independiente de frameworks, bases de datos y tecnologías externas.
+## 🎯 Propósito y Filosofía
 
-## Estructura
+Esta capa (`app/domain`) es el **núcleo** del sistema RAG. Contiene la lógica de negocio pura, las reglas empresariales y los contratos abstractos.
 
-```
-domain/
-├── entities.py           # Entidades del dominio
-├── repositories.py       # Interfaces de persistencia (Ports)
-├── services.py           # Interfaces de servicios (Ports)
-├── value_objects.py      # Objetos de valor inmutables 🆕
-├── workspace_policy.py   # Políticas de acceso a workspaces
-├── audit.py              # Entidades de auditoría
-└── __init__.py           # Exports públicos
-```
+**Regla de Oro:**
 
-## Componentes
+> El Dominio NO depende de nadie. El resto depende del Dominio.
 
-### 1. Entities (`entities.py`)
+🚫 **Prohibido:**
 
-Entidades con identidad que representan conceptos de negocio.
+- Importar FastAPI, Pydantic, SQLAlchemy, Boto3, Redis.
+- Acceder a bases de datos o sistemas de archivos directamente.
+- Depender de `config` o variables de entorno.
 
-| Entidad               | Descripción                                                   |
-| --------------------- | ------------------------------------------------------------- |
-| `Document`            | Documento subido al sistema                                   |
-| `Chunk`               | Fragmento de documento con embedding                          |
-| `QueryResult`         | Resultado de una consulta RAG (answer + sources + confidence) |
-| `ConversationMessage` | Mensaje en una conversación                                   |
-| `Workspace`           | Espacio de trabajo aislado                                    |
+✅ **Permitido:**
 
-### 2. Value Objects (`value_objects.py`) 🆕
-
-Objetos inmutables sin identidad propia, iguales si sus atributos son iguales.
-
-#### SourceReference (Citas Estructuradas)
-
-```python
-source = SourceReference(
-    index=1,
-    document_title="Manual de RRHH",
-    snippet="La política de vacaciones establece...",
-    relevance_score=0.85,
-    page_number=12,
-)
-# Para renderizar "chips" clickeables en el frontend
-```
-
-#### ConfidenceScore (Confianza Empresarial) 🆕
-
-```python
-confidence = calculate_confidence(
-    chunks_used=3,
-    chunks_available=5,
-    response_length=250,
-    topic_category="finance",  # Sugiere "Finanzas" para verificación
-)
-
-# confidence.level = "high"
-# confidence.display_message = "Respuesta basada en múltiples fuentes verificadas."
-# confidence.requires_verification = False
-# confidence.suggested_department = "Finanzas"
-```
-
-**Niveles de Confianza:**
-
-| Nivel    | Score    | Mensaje para Usuario                                                |
-| -------- | -------- | ------------------------------------------------------------------- |
-| `high`   | ≥0.8     | "Respuesta basada en múltiples fuentes verificadas."                |
-| `medium` | 0.5-0.79 | "Respuesta parcial. Se recomienda verificar."                       |
-| `low`    | <0.5     | "Información limitada. Consultar directamente con un especialista." |
-
-**Factores del Score:**
-
-- `chunk_coverage`: Proporción de chunks usados
-- `response_completeness`: Longitud de la respuesta
-- `keyword_match`: Si hubo match exacto
-- `source_freshness`: Antigüedad de las fuentes
-
-#### MetadataFilter (Filtros de Retrieval)
-
-```python
-filter = MetadataFilter(
-    field="department",
-    operator="eq",  # eq, ne, gt, lt, gte, lte, in, contains
-    value="legal",
-)
-```
-
-#### UsageQuota (Rate Limiting)
-
-```python
-quota = UsageQuota(limit=100, used=45, resource="messages")
-# quota.remaining = 55
-# quota.is_exceeded = False
-# quota.usage_percentage = 45.0
-```
-
-#### FeedbackVote (RLHF)
-
-```python
-vote = FeedbackVote(
-    vote="up",  # "up", "down", "neutral"
-    comment="Excelente respuesta!",
-    tags=("accurate", "helpful"),
-)
-```
-
-#### AnswerAuditRecord (Compliance Empresarial) 🆕
-
-```python
-audit = AnswerAuditRecord(
-    record_id="audit-001",
-    timestamp="2026-01-31T12:00:00Z",
-    user_id=user_id,
-    workspace_id=workspace_id,
-    query="¿Cuál es la política de vacaciones?",
-    answer_preview="La política establece...",
-    confidence_level="high",
-    confidence_value=0.85,
-    requires_verification=False,
-    sources_count=3,
-    suggested_department="RRHH",
-)
-
-# audit.is_high_risk = False  # True si confianza baja o pocas fuentes
-# audit.audit_summary = "[timestamp] User=email Query='...' Confidence=high Sources=3"
-```
-
-### 3. Repository Interfaces (`repositories.py`)
-
-Puertos (Ports) para inyección de dependencias. Las implementaciones están en `infrastructure/`.
-
-| Interface                  | Responsabilidad                                 |
-| -------------------------- | ----------------------------------------------- |
-| `DocumentRepository`       | CRUD de documentos y chunks, búsqueda vectorial |
-| `WorkspaceRepository`      | CRUD de workspaces                              |
-| `WorkspaceAclRepository`   | ACL para workspaces compartidos                 |
-| `ConversationRepository`   | Historial de conversaciones                     |
-| `AuditEventRepository`     | Eventos de auditoría del sistema                |
-| `FeedbackRepository` 🆕    | Votos de feedback (RLHF)                        |
-| `AnswerAuditRepository` 🆕 | Registros de auditoría de respuestas            |
-
-### 4. Service Interfaces (`services.py`)
-
-Puertos para servicios externos (LLM, Embeddings, etc.)
-
-| Interface            | Responsabilidad              |
-| -------------------- | ---------------------------- |
-| `EmbeddingService`   | Generar embeddings de texto  |
-| `LLMService`         | Generar respuestas con LLM   |
-| `TextChunkerService` | Dividir documentos en chunks |
-
-## Principios
-
-1. **Sin Dependencias Externas:** Esta capa NO importa nada de `infrastructure/`.
-2. **Inmutabilidad:** Los Value Objects son `frozen=True`.
-3. **Validación en Constructor:** Los value objects validan en `__post_init__`.
-4. **Serialización Explícita:** Cada value object tiene `to_dict()`.
-5. **Equality por Valor:** Dos value objects son iguales si sus atributos son iguales.
-
-## Exports Públicos (`__init__.py`)
-
-```python
-from app.domain import (
-    # Entities
-    Document, Chunk, QueryResult, ConversationMessage,
-
-    # Repository Interfaces
-    DocumentRepository, WorkspaceRepository, WorkspaceAclRepository,
-    ConversationRepository, AuditEventRepository,
-    FeedbackRepository, AnswerAuditRepository,
-
-    # Service Interfaces
-    EmbeddingService, LLMService, TextChunkerService,
-
-    # Value Objects
-    SourceReference, ConfidenceScore, calculate_confidence,
-    MetadataFilter, UsageQuota, FeedbackVote, AnswerAuditRecord,
-)
-```
-
-## Cómo extender
-
-### Agregar un nuevo Value Object:
-
-1. Añadir en `value_objects.py` con `@dataclass(frozen=True, slots=True)`
-2. Implementar `to_dict()` para serialización
-3. Exportar en `__init__.py`
-
-### Agregar un nuevo Repository Interface:
-
-1. Añadir en `repositories.py` como `Protocol`
-2. Documentar cada método
-3. Exportar en `__init__.py`
-4. Implementar en `infrastructure/repositories/`
+- Definir `dataclasses` puros (Entidades, Value Objects).
+- Definir `Protocols` (Interfaces) para repositorios y servicios.
+- Lógica de negocio pura (validaciones de estado, cálculos).
 
 ---
 
-**Nota:** La capa Domain es el corazón de la aplicación. Cambios aquí impactan a toda la capa de Application. Proceder con cuidado y tests.
+## 🧩 Estructura
+
+| Módulo                | Contenido                                                                                                      |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------- |
+| `entities.py`         | **Entidades**: Objetos con identidad (ID). Ej: `Document`, `Workspace`, `User`.                                |
+| `value_objects.py`    | **Value Objects**: Conceptos inmutables definidos por sus atributos. Ej: `ConfidenceScore`, `SourceReference`. |
+| `repositories.py`     | **Puertos (Data)**: Contracts para persistencia. Ej: `DocumentRepository` (Protocol).                          |
+| `cache.py`            | **Puertos (Cache)**: Contract para caché key-value (Embeddings). Ej: `EmbeddingCachePort` (Protocol).          |
+| `services.py`         | **Puertos (Servicios)**: Contracts para sistemas externos. Ej: `LLMService`, `EmbeddingService`.               |
+| `workspace_policy.py` | **Políticas**: Reglas complejas de decisión aisladas. Ej: ¿Quién puede ver este workspace?                     |
+| `audit.py`            | **Auditoría**: Definición de eventos de compliance.                                                            |
+
+---
+
+## 💡 Conceptos Clave
+
+### Entidades Ricas (pero no pesadas)
+
+Las entidades no son solo datos ("anemia"). Tienen métodos que protegen sus invariantes de negocio básicas.
+
+- _Ejemplo_: `workspace.archive()` gestiona la fecha de archivado y valida el estado.
+
+### Inmutabilidad donde es posible
+
+Usamos `frozen=True` y `slots=True` extensivamente para `value_objects` y dondesea posible en `entities` para garantizar seguridad y performance.
+
+### Inversión de Dependencias (DIP)
+
+El dominio define **qué** necesita (ej: `save_document`), pero no **cómo** se hace.
+La capa de Infraestructura implementa estos Protocolos (ej: `PostgresDocumentRepository`).
+La capa de Aplicación (Use Cases) inyecta la implementación concreta en tiempo de ejecución.
+
+---
+
+## 🔍 Ejemplos
+
+### Value Object (Confidence Score)
+
+```python
+score = calculate_confidence(...)  # Retorna ConfidenceScore
+if score.level == "low":
+    # Lógica de negocio basada en el VO
+    return "Consulte con un experto."
+```
+
+### Protocol (Repository)
+
+```python
+class DocumentRepository(Protocol):
+    def get_document(self, id: UUID) -> Document | None: ...
+```
+
+_(No hay SQL aquí. Solo el contrato)._

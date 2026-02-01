@@ -1,119 +1,118 @@
+# apps/backend/app/crosscutting/tracing.py
 """
-Name: OpenTelemetry Tracing (Optional)
+===============================================================================
+MÓDULO: Tracing OpenTelemetry (opcional) + correlación con logs
+===============================================================================
 
-Responsibilities:
-  - Initialize OpenTelemetry tracing when OTEL_ENABLED=1
-  - Provide span creation helpers
-  - Correlate trace_id/span_id with logs
+Objetivo
+--------
+- Activar spans cuando OTEL está habilitado
+- Setear trace_id/span_id en contextvars para logs
 
-Collaborators:
-  - context.py: Sets trace_id/span_id for log enrichment
-  - config.py: Reads OTEL_ENABLED setting
+Diseño
+------
+- Best-effort: si no hay libs de OTel, no rompe.
+- No-op cuando está deshabilitado.
 
-Constraints:
-  - Completely optional (no-op when disabled)
-  - Lazy initialization (don't fail if otel not installed)
-  - Zero overhead when disabled
+-------------------------------------------------------------------------------
+CRC (Component Card)
+-------------------------------------------------------------------------------
+Componente:
+  span() context manager
 
-Notes:
-  - Requires: opentelemetry-api, opentelemetry-sdk, opentelemetry-instrumentation-fastapi
-  - Configure exporter via OTEL_EXPORTER_* env vars
-  - Default: console exporter for development
+Responsabilidades:
+  - Crear spans con atributos
+  - Enriquecer contexto de logging con trace/span ids
+
+Colaboradores:
+  - app/context.py (trace_id_var, span_id_var)
+  - crosscutting/config.py (otel_enabled)
+===============================================================================
 """
 
-import os
-from typing import Optional, Any, Generator
+from __future__ import annotations
+
 from contextlib import contextmanager
+from typing import Any, Generator, Optional
 
-# R: Check if tracing is enabled
-OTEL_ENABLED = os.getenv("OTEL_ENABLED", "0") == "1"
-
-# R: Lazy imports to make opentelemetry optional
 _tracer: Optional[Any] = None
-_trace_module: Optional[Any] = None
+_enabled: bool = False
 
 
 def _init_tracing() -> None:
-    """R: Initialize OpenTelemetry tracing."""
-    global _tracer, _trace_module
+    global _tracer, _enabled
 
-    if not OTEL_ENABLED:
+    # Config: preferimos Settings si está disponible
+    enabled = False
+    try:
+        from .config import get_settings
+
+        enabled = bool(get_settings().otel_enabled)
+    except Exception:
+        enabled = False
+
+    if not enabled:
+        _enabled = False
+        _tracer = None
         return
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import (
             BatchSpanProcessor,
             ConsoleSpanExporter,
         )
-        from opentelemetry.sdk.resources import Resource
 
-        _trace_module = trace
-
-        # R: Create resource with service name
         resource = Resource.create({"service.name": "rag-corp-api"})
-
-        # R: Create tracer provider
         provider = TracerProvider(resource=resource)
-
-        # R: Add console exporter (for development)
-        # In production, use OTLP exporter via env vars
-        exporter = ConsoleSpanExporter()
-        provider.add_span_processor(BatchSpanProcessor(exporter))
-
-        # R: Set as global tracer provider
+        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
         trace.set_tracer_provider(provider)
 
-        # R: Get tracer for this module
         _tracer = trace.get_tracer("rag-corp")
+        _enabled = True
+    except Exception:
+        _enabled = False
+        _tracer = None
 
-    except ImportError:
-        pass  # OpenTelemetry not installed
 
-
-# R: Initialize on module load
 _init_tracing()
 
 
 @contextmanager
 def span(name: str, attributes: Optional[dict] = None) -> Generator[Any, None, None]:
     """
-    R: Create a tracing span (no-op if tracing disabled).
+    Uso:
+      with span("embed_query", {"len": len(query)}):
+          ...
 
-    Usage:
-        with span("embed_query", {"query_length": len(query)}):
-            result = embed(query)
-
-    Args:
-        name: Span name (e.g., "embed_query", "search_similar")
-        attributes: Optional span attributes
-
-    Yields:
-        Span object (or None if disabled)
+    Si tracing no está habilitado, es no-op.
     """
-    if not OTEL_ENABLED or _tracer is None:
+    if not _enabled or _tracer is None:
         yield None
         return
 
     with _tracer.start_as_current_span(name) as s:
         if attributes:
-            for key, value in attributes.items():
-                s.set_attribute(key, value)
+            for k, v in attributes.items():
+                try:
+                    s.set_attribute(k, v)
+                except Exception:
+                    pass
 
-        # R: Set trace/span IDs in context for log correlation
+        # Correlación con logs
         try:
-            from .context import trace_id_var, span_id_var
+            from ..context import span_id_var, trace_id_var
 
-            span_context = s.get_span_context()
-            trace_id_var.set(format(span_context.trace_id, "032x"))
-            span_id_var.set(format(span_context.span_id, "016x"))
-        except ImportError:
+            ctx = s.get_span_context()
+            trace_id_var.set(format(ctx.trace_id, "032x"))
+            span_id_var.set(format(ctx.span_id, "016x"))
+        except Exception:
             pass
 
         yield s
 
 
 def is_tracing_enabled() -> bool:
-    """R: Check if tracing is enabled and initialized."""
-    return OTEL_ENABLED and _tracer is not None
+    return bool(_enabled and _tracer is not None)

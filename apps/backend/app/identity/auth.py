@@ -1,33 +1,38 @@
 """
-Name: API Key Authentication
+===============================================================================
+TARJETA CRC — identity/auth.py
+===============================================================================
 
-Responsibilities:
-  - Validate API keys from X-API-Key header
-  - Check scopes (ingest, ask, metrics)
-  - Constant-time comparison to prevent timing attacks
-  - Return 401 for missing key, 403 for invalid/insufficient scope
+Módulo:
+    Autenticación por API Key (X-API-Key)
 
-Collaborators:
-  - config.py: API_KEYS_CONFIG setting
-  - routes.py: Depends(require_scope) on endpoints
-  - logger.py: Log auth failures (with key hash, not raw key)
+Responsabilidades:
+    - Cargar/parsear la configuración de API keys desde Settings (env).
+    - Validar API keys con comparación en tiempo constante (mitiga timing attacks).
+    - Validar scopes (ej: ingest, ask, metrics) para endpoints.
+    - Exponer dependencias FastAPI (require_scope, require_metrics_auth).
+    - Nunca loguear la key en claro; solo hash recortado.
 
-Constraints:
-  - No business logic - pure authentication/authorization
-  - Keys stored in env var, not database (stateless)
-  - Never log raw API keys
+Colaboradores:
+    - crosscutting.config.get_settings: obtiene API_KEYS_CONFIG + settings de métricas.
+    - crosscutting.error_responses: unauthorized/forbidden estándar.
+    - crosscutting.logger: logging estructurado.
+    - identity.rbac: puede usar request.state.api_key_hash y/o permisos.
 
-Notes:
-  - Scopes: "ingest" (POST /v1/ingest/*), "ask" (POST /v1/query, /v1/ask)
-  - Special scope "metrics" for /metrics endpoint (optional)
-  - Keys config format: {"key1": ["scope1", "scope2"], ...}
+Decisiones de diseño (Senior):
+    - "Config" se cachea: parse + validación de tipos una sola vez.
+    - "Validator" es puro y testeable (sin dependencias de FastAPI).
+    - El Adapter FastAPI es mínimo: extrae header, valida, setea request.state.
+===============================================================================
 """
+
+from __future__ import annotations
 
 import hashlib
 import hmac
 import json
-from typing import Callable
 from functools import lru_cache
+from typing import Callable
 
 from fastapi import Header, Request
 from fastapi.security import APIKeyHeader
@@ -35,78 +40,123 @@ from fastapi.security import APIKeyHeader
 from ..crosscutting.error_responses import forbidden, unauthorized
 from ..crosscutting.logger import logger
 
+# ---------------------------------------------------------------------------
+# Constantes de seguridad
+# ---------------------------------------------------------------------------
+
+# R: Longitud del hash recortado para logs. Mantener pequeño pero útil.
+_KEY_HASH_LEN: int = 12
+
+# R: Security scheme (para OpenAPI). auto_error=False: controlamos el error nosotros.
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+# ---------------------------------------------------------------------------
+# Helpers internos (NO exportados)
+# ---------------------------------------------------------------------------
+
 
 def _hash_key(key: str) -> str:
-    """R: Hash API key for safe logging (never log raw keys)."""
-    return hashlib.sha256(key.encode()).hexdigest()[:12]
+    """Hashea la API key para logging seguro (nunca loguear en claro)."""
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    return digest[:_KEY_HASH_LEN]
 
 
 def _constant_time_compare(a: str, b: str) -> bool:
-    """R: Constant-time string comparison to prevent timing attacks."""
-    return hmac.compare_digest(a.encode(), b.encode())
+    """Comparación en tiempo constante (mitiga timing attacks)."""
+    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+def _normalize_key(key: str | None) -> str | None:
+    """Normaliza inputs triviales (espacios)."""
+    if key is None:
+        return None
+    key = key.strip()
+    return key or None
+
+
+def _validate_config_shape(raw: object) -> dict[str, list[str]]:
+    """Valida/normaliza el shape del JSON de API keys.
+
+    Formato esperado:
+        {
+          "mi-key": ["ingest", "ask"],
+          "otra-key": ["*"]   # wildcard
+        }
+    """
+    if not isinstance(raw, dict):
+        return {}
+
+    cfg: dict[str, list[str]] = {}
+    for k, v in raw.items():
+        if not isinstance(k, str) or not k.strip():
+            continue
+        if not isinstance(v, list) or not all(isinstance(s, str) for s in v):
+            continue
+        scopes = [s.strip() for s in v if s.strip()]
+        if scopes:
+            cfg[k.strip()] = scopes
+    return cfg
 
 
 @lru_cache(maxsize=1)
 def _parse_keys_config() -> dict[str, list[str]]:
-    """
-    R: Parse API_KEYS_CONFIG from environment.
+    """Parsea API_KEYS_CONFIG desde Settings y lo valida.
 
-    Format: JSON object {"key": ["scope1", "scope2"], ...}
-    Example: {"secret-key-1": ["ingest", "ask"], "read-only": ["ask"]}
-
-    Returns empty dict if not configured (auth disabled).
+    Retorna dict vacío si no está configurado o es inválido.
     """
     from ..crosscutting.config import get_settings
 
-    config_str = get_settings().api_keys_config
+    config_str = (get_settings().api_keys_config or "").strip()
     if not config_str:
         return {}
 
     try:
-        config = json.loads(config_str)
-        if not isinstance(config, dict):
-            logger.warning("API_KEYS_CONFIG must be a JSON object, auth disabled")
-            return {}
-        return config
-    except json.JSONDecodeError as e:
-        logger.warning(f"Invalid API_KEYS_CONFIG JSON: {e}, auth disabled")
+        raw = json.loads(config_str)
+    except json.JSONDecodeError as exc:
+        logger.warning("API_KEYS_CONFIG inválido (JSON)", extra={"error": str(exc)})
         return {}
+
+    cfg = _validate_config_shape(raw)
+    if not cfg:
+        logger.warning("API_KEYS_CONFIG inválido (shape)")
+        return {}
+
+    return cfg
+
+
+# ---------------------------------------------------------------------------
+# API pública del módulo (para otras capas)
+# ---------------------------------------------------------------------------
 
 
 def get_keys_config() -> dict[str, list[str]]:
-    """R: Get parsed keys config (allows cache clearing in tests)."""
+    """Devuelve el config de keys (cacheado)."""
     return _parse_keys_config()
 
 
 def clear_keys_cache() -> None:
-    """R: Clear keys config cache (for testing)."""
+    """Limpia el cache (tests / hot-reload local)."""
     _parse_keys_config.cache_clear()
 
 
 def is_auth_enabled() -> bool:
-    """R: Check if authentication is configured."""
+    """Indica si hay API keys configuradas."""
     return bool(get_keys_config())
 
 
 class APIKeyValidator:
-    """
-    R: Validates API keys and scopes.
-
-    Methods:
-        validate_key: Check if key exists (constant-time)
-        validate_scope: Check if key has required scope
-        get_scopes: Get scopes for a valid key
-    """
+    """Validador puro para API keys y scopes."""
 
     def __init__(self, keys_config: dict[str, list[str]]):
         self._keys = keys_config
 
     def validate_key(self, key: str) -> bool:
-        """R: Check if key is valid using constant-time comparison."""
+        """True si la key existe en el config (comparación constante)."""
         if not key:
             return False
 
-        # R: Compare against all keys to maintain constant time
+        # R: Comparamos contra todas las keys para no filtrar timing por early-return.
         found = False
         for valid_key in self._keys.keys():
             if _constant_time_compare(key, valid_key):
@@ -114,96 +164,85 @@ class APIKeyValidator:
         return found
 
     def get_scopes(self, key: str) -> list[str]:
-        """R: Get scopes for a key (empty if invalid)."""
+        """Scopes de la key (lista vacía si no existe)."""
         for valid_key, scopes in self._keys.items():
             if _constant_time_compare(key, valid_key):
                 return scopes
         return []
 
     def validate_scope(self, key: str, required_scope: str) -> bool:
-        """R: Check if key has required scope."""
+        """True si la key tiene el scope requerido o wildcard '*'."""
         scopes = self.get_scopes(key)
         return required_scope in scopes or "*" in scopes
 
 
-# R: FastAPI security scheme for OpenAPI docs
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+@lru_cache(maxsize=1)
+def _get_validator() -> APIKeyValidator | None:
+    """Construye el validador una sola vez (performance + limpieza)."""
+    cfg = get_keys_config()
+    return APIKeyValidator(cfg) if cfg else None
 
 
 def require_scope(scope: str) -> Callable:
-    """
-    R: FastAPI dependency that requires a valid API key with scope.
+    """Dependency FastAPI: requiere API key válida + scope.
 
-    Usage:
-        @router.post("/ingest/text")
-        def ingest(req: Request, _: None = Depends(require_scope("ingest"))):
-            ...
-
-    Raises:
-        HTTPException 401: Missing API key
-        HTTPException 403: Invalid key or insufficient scope
-
-    Returns None if auth is disabled (no keys configured).
+    - Si auth está deshabilitada (sin keys configuradas), es NO-OP.
+    - Si falta la key: 401.
+    - Si la key es inválida o no tiene scope: 403.
     """
 
     async def dependency(
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
-        keys_config = get_keys_config()
+        keys_cfg = get_keys_config()
 
-        # R: If no keys configured, auth is disabled
-        if not keys_config:
+        # R: Si no hay keys, consideramos auth deshabilitada.
+        if not keys_cfg:
             return None
 
-        # R: Missing key -> 401 Unauthorized
-        if not api_key:
+        api_key_norm = _normalize_key(api_key)
+
+        if not api_key_norm:
             logger.warning(
-                "Auth failed: missing API key",
+                "Auth falló: falta X-API-Key",
                 extra={"path": request.url.path, "scope": scope},
             )
-            raise unauthorized("Missing API key. Provide X-API-Key header.")
+            raise unauthorized("Falta API key. Enviá el header X-API-Key.")
 
-        validator = APIKeyValidator(keys_config)
+        validator = _get_validator()
+        if not validator:
+            # R: No debería pasar si keys_cfg no está vacío, pero lo dejamos defensivo.
+            raise unauthorized("Autenticación no disponible.")
 
-        # R: Invalid key -> 403 Forbidden
-        if not validator.validate_key(api_key):
+        if not validator.validate_key(api_key_norm):
             logger.warning(
-                "Auth failed: invalid API key",
-                extra={
-                    "key_hash": _hash_key(api_key),
-                    "path": request.url.path,
-                    "scope": scope,
-                },
+                "Auth falló: API key inválida",
+                extra={"key_hash": _hash_key(api_key_norm), "path": request.url.path},
             )
-            raise forbidden("Invalid API key.")
+            raise forbidden("API key inválida.")
 
-        # R: Key without required scope -> 403 Forbidden
-        if not validator.validate_scope(api_key, scope):
+        if not validator.validate_scope(api_key_norm, scope):
             logger.warning(
-                "Auth failed: insufficient scope",
+                "Auth falló: scope insuficiente",
                 extra={
-                    "key_hash": _hash_key(api_key),
+                    "key_hash": _hash_key(api_key_norm),
                     "path": request.url.path,
                     "required_scope": scope,
-                    "available_scopes": validator.get_scopes(api_key),
+                    "available_scopes": validator.get_scopes(api_key_norm),
                 },
             )
-            raise forbidden(f"API key does not have required scope: {scope}")
+            raise forbidden(f"La API key no tiene el scope requerido: {scope}")
 
-        # R: Store key hash in request state for rate limiting
-        request.state.api_key_hash = _hash_key(api_key)
+        # R: Dejamos hash en request.state para RBAC / rate limiting.
+        request.state.api_key_hash = _hash_key(api_key_norm)
         return None
 
     return dependency
 
 
 def require_metrics_auth() -> Callable:
-    """
-    R: Optional auth for /metrics endpoint.
-
-    Only enforced if METRICS_REQUIRE_AUTH=true.
-    """
+    """Dependency FastAPI: auth opcional para /metrics (controlado por settings)."""
 
     async def dependency(
         request: Request,
@@ -214,7 +253,7 @@ def require_metrics_auth() -> Callable:
         if not get_settings().metrics_require_auth:
             return None
 
-        # R: Reuse require_scope logic
+        # R: reutilizamos lógica de scopes.
         await require_scope("metrics")(request, api_key)
         return None
 

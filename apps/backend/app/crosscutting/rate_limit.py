@@ -1,30 +1,49 @@
+# apps/backend/app/crosscutting/rate_limit.py
 """
-Name: Token Bucket Rate Limiter
+===============================================================================
+MÓDULO: Rate limiting (Token Bucket) - in-memory
+===============================================================================
 
-Responsibilities:
-  - Limit requests per API key (or IP as fallback)
-  - Token bucket algorithm for smooth rate limiting
-  - Return 429 with Retry-After header when rate exceeded
-  - Log rate limit events (with key hash, not raw key)
+Objetivo
+--------
+Limitar abuso por:
+- API key (si existe)
+- IP (fallback)
 
-Collaborators:
-  - config.py: RATE_LIMIT_RPS, RATE_LIMIT_BURST settings
-  - middleware.py: Applied as middleware
-  - auth.py: Uses key hash from request.state
+Incluye:
+- Token bucket (suaviza bursts)
+- Headers x-ratelimit-remaining / x-ratelimit-limit
+- Respuesta RFC7807 con Retry-After
 
-Constraints:
-  - In-memory storage (resets on restart, no persistence)
-  - Thread-safe (using locks)
-  - No external dependencies
+Mejoras senior incluidas
+------------------------
+- Limpieza por TTL para evitar leak de memoria
+- Límite de buckets con eviction simple (protección adicional)
 
-Notes:
-  - Token bucket allows controlled bursts while maintaining average rate
-  - Tokens refill at RPS rate up to BURST maximum
-  - Each request consumes 1 token
+-------------------------------------------------------------------------------
+CRC (Component Card)
+-------------------------------------------------------------------------------
+Componentes:
+  - TokenBucket
+  - RateLimitMiddleware
+
+Responsabilidades:
+  - Decidir allow/deny
+  - Emitir 429 con Retry-After
+  - Mantener estado thread-safe
+
+Colaboradores:
+  - crosscutting.config
+  - crosscutting.error_responses
+  - crosscutting.logger
+===============================================================================
 """
 
-import time
+from __future__ import annotations
+
 import threading
+import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Optional
 
@@ -34,153 +53,171 @@ from .logger import logger
 
 @dataclass
 class Bucket:
-    """R: Token bucket state for a single key/IP."""
-
     tokens: float
     last_refill: float
+    last_seen: float
 
 
 class TokenBucket:
     """
-    R: Token bucket rate limiter.
+    ----------------------------------------------------------------------------
+    CRC (Class Card)
+    ----------------------------------------------------------------------------
+    Clase:
+      TokenBucket
 
-    Algorithm:
-      1. Each key has a bucket with up to `burst` tokens
-      2. Tokens refill at `rps` tokens/second
-      3. Request consumes 1 token
-      4. If no tokens, request is rejected
+    Responsabilidades:
+      - Implementar algoritmo token-bucket por key
+      - Refill por tiempo
+      - TTL cleanup
+      - Eviction por máximo de buckets
 
-    Attributes:
-        rps: Refill rate (tokens per second)
-        burst: Maximum tokens (bucket capacity)
+    Colaboradores:
+      - RateLimitMiddleware
+    ----------------------------------------------------------------------------
     """
 
-    def __init__(self, rps: float, burst: int):
+    def __init__(
+        self,
+        rps: float,
+        burst: int,
+        *,
+        ttl_seconds: int = 3600,
+        max_buckets: int = 10_000,
+    ):
         if rps <= 0:
-            raise ValueError("rps must be positive")
+            raise ValueError("rps debe ser > 0")
         if burst <= 0:
-            raise ValueError("burst must be positive")
+            raise ValueError("burst debe ser > 0")
+        self.rps = float(rps)
+        self.burst = int(burst)
 
-        self.rps = rps
-        self.burst = burst
-        self._buckets: dict[str, Bucket] = {}
+        self.ttl_seconds = int(ttl_seconds)
+        self.max_buckets = int(max_buckets)
+
+        self._buckets: "OrderedDict[str, Bucket]" = OrderedDict()
         self._lock = threading.Lock()
-
-    def _get_or_create_bucket(self, key: str) -> Bucket:
-        """R: Get bucket for key, creating if needed."""
-        if key not in self._buckets:
-            self._buckets[key] = Bucket(
-                tokens=float(self.burst),
-                last_refill=time.monotonic(),
-            )
-        return self._buckets[key]
-
-    def _refill(self, bucket: Bucket, now: float) -> None:
-        """R: Refill tokens based on elapsed time."""
-        elapsed = now - bucket.last_refill
-        refill_amount = elapsed * self.rps
-        bucket.tokens = min(self.burst, bucket.tokens + refill_amount)
-        bucket.last_refill = now
+        self._ops = 0
 
     def consume(self, key: str) -> tuple[bool, float]:
-        """
-        R: Try to consume one token from the bucket.
-
-        Args:
-            key: Identifier (API key hash or IP address)
-
-        Returns:
-            (allowed, retry_after_seconds)
-            - allowed: True if request should proceed
-            - retry_after: Seconds until a token is available (0 if allowed)
-        """
         with self._lock:
             now = time.monotonic()
-            bucket = self._get_or_create_bucket(key)
+            self._ops += 1
+
+            self._cleanup_if_needed(now)
+
+            bucket = self._get_or_create_bucket(key, now)
             self._refill(bucket, now)
+            bucket.last_seen = now
 
             if bucket.tokens >= 1:
                 bucket.tokens -= 1
-                return (True, 0.0)
-            else:
-                # R: Calculate time until next token
-                tokens_needed = 1 - bucket.tokens
-                retry_after = tokens_needed / self.rps
-                return (False, retry_after)
+                # LRU touch
+                self._buckets.move_to_end(key, last=True)
+                return True, 0.0
+
+            tokens_needed = 1 - bucket.tokens
+            retry_after = tokens_needed / self.rps
+            self._buckets.move_to_end(key, last=True)
+            return False, retry_after
 
     def get_remaining(self, key: str) -> int:
-        """R: Get remaining tokens for a key (for headers)."""
         with self._lock:
-            if key not in self._buckets:
-                return self.burst
-            bucket = self._buckets[key]
             now = time.monotonic()
-            self._refill(bucket, now)
-            return int(bucket.tokens)
+            b = self._buckets.get(key)
+            if not b:
+                return self.burst
+            self._refill(b, now)
+            return int(b.tokens)
 
     def clear(self) -> None:
-        """R: Clear all buckets (for testing)."""
         with self._lock:
             self._buckets.clear()
 
+    # --------------------------- internos ---------------------------
 
-# R: Global rate limiter instance (lazy initialization)
+    def _get_or_create_bucket(self, key: str, now: float) -> Bucket:
+        b = self._buckets.get(key)
+        if b:
+            return b
+
+        # Eviction si excede máximo
+        if len(self._buckets) >= self.max_buckets:
+            self._buckets.popitem(last=False)
+
+        b = Bucket(tokens=float(self.burst), last_refill=now, last_seen=now)
+        self._buckets[key] = b
+        return b
+
+    def _refill(self, bucket: Bucket, now: float) -> None:
+        elapsed = now - bucket.last_refill
+        if elapsed <= 0:
+            return
+        bucket.tokens = min(self.burst, bucket.tokens + elapsed * self.rps)
+        bucket.last_refill = now
+
+    def _cleanup_if_needed(self, now: float) -> None:
+        # Cada ~256 operaciones hacemos cleanup para amortizar costo
+        if (self._ops & 0xFF) != 0:
+            return
+
+        ttl = self.ttl_seconds
+        if ttl <= 0:
+            return
+
+        # Remover buckets viejos por last_seen
+        to_delete = []
+        for k, b in self._buckets.items():
+            if now - b.last_seen > ttl:
+                to_delete.append(k)
+            else:
+                # Como es OrderedDict LRU-ish, podemos cortar temprano si están frescos
+                break
+
+        for k in to_delete:
+            self._buckets.pop(k, None)
+
+
 _rate_limiter: Optional[TokenBucket] = None
 _limiter_lock = threading.Lock()
 
 
 def get_rate_limiter() -> TokenBucket:
-    """R: Get or create global rate limiter."""
     global _rate_limiter
-
     with _limiter_lock:
         if _rate_limiter is None:
             from .config import get_settings
 
-            settings = get_settings()
-            _rate_limiter = TokenBucket(
-                rps=settings.rate_limit_rps,
-                burst=settings.rate_limit_burst,
-            )
+            s = get_settings()
+            _rate_limiter = TokenBucket(rps=s.rate_limit_rps, burst=s.rate_limit_burst)
         return _rate_limiter
 
 
 def reset_rate_limiter() -> None:
-    """R: Reset rate limiter (for testing)."""
     global _rate_limiter
     with _limiter_lock:
         _rate_limiter = None
 
 
 def is_rate_limiting_enabled() -> bool:
-    """R: Check if rate limiting is configured."""
     from .config import get_settings
 
-    settings = get_settings()
-    return settings.rate_limit_rps > 0 and settings.rate_limit_burst > 0
+    s = get_settings()
+    return s.rate_limit_rps > 0 and s.rate_limit_burst > 0
 
 
 def get_client_identifier(request) -> str:
-    """
-    R: Get identifier for rate limiting.
-
-    Priority:
-      1. API key hash (if authenticated)
-      2. X-Forwarded-For header (if behind proxy)
-      3. Client IP address
-    """
-    # R: Prefer API key hash (set by auth middleware)
+    # 1) API key hash (si auth la setea)
     if hasattr(request.state, "api_key_hash"):
         return f"key:{request.state.api_key_hash}"
 
-    # R: Try X-Forwarded-For (for proxies)
+    # 2) Proxy header
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        # R: Take first IP (original client)
         ip = forwarded_for.split(",")[0].strip()
         return f"ip:{ip}"
 
-    # R: Fall back to direct client IP
+    # 3) IP directa
     client = request.client
     if client:
         return f"ip:{client.host}"
@@ -190,13 +227,12 @@ def get_client_identifier(request) -> str:
 
 class RateLimitMiddleware:
     """
-    R: ASGI middleware for rate limiting.
+    ASGI middleware de rate limit.
 
-    Applies token bucket rate limiting per client.
-    Skips rate limiting for healthz endpoint.
+    - Excluye endpoints típicos de infraestructura.
+    - Evita overhead cuando está deshabilitado.
     """
 
-    # R: Paths excluded from rate limiting
     EXCLUDED_PATHS = {"/healthz", "/metrics", "/openapi.json", "/docs", "/redoc"}
 
     def __init__(self, app):
@@ -207,39 +243,39 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # R: Skip rate limiting if disabled
         if not is_rate_limiting_enabled():
             await self.app(scope, receive, send)
             return
 
-        # R: Skip excluded paths
         path = scope.get("path", "")
         if path in self.EXCLUDED_PATHS:
             await self.app(scope, receive, send)
             return
 
-        # R: Build minimal request-like object for identifier
+        if scope.get("method", "").upper() == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+
         from starlette.requests import Request
 
-        request = Request(scope, receive, send)
-
+        request = Request(scope, receive)
         client_id = get_client_identifier(request)
+
         limiter = get_rate_limiter()
         allowed, retry_after = limiter.consume(client_id)
 
         if not allowed:
-            # R: Log rate limit event
+            retry_after_int = max(1, int(retry_after) + 1)
+
             logger.warning(
-                "Rate limit exceeded",
+                "rate limit excedido",
                 extra={
                     "client_id": client_id,
                     "path": path,
-                    "retry_after": round(retry_after, 2),
+                    "retry_after": retry_after_int,
                 },
             )
 
-            # R: Send 429 response (RFC 7807)
-            retry_after_int = max(1, int(retry_after) + 1)
             exc = rate_limited(retry_after_int)
             headers = getattr(exc, "headers", None) or {}
             headers.update(
@@ -249,19 +285,19 @@ class RateLimitMiddleware:
                 }
             )
             exc.headers = headers
+
             response = await app_exception_handler(request, exc)
             await response(scope, receive, send)
             return
 
-        # R: Add rate limit headers to response
         remaining = limiter.get_remaining(client_id)
 
         async def send_with_headers(message):
             if message["type"] == "http.response.start":
-                headers = list(message.get("headers", []))
-                headers.append((b"x-ratelimit-remaining", str(remaining).encode()))
-                headers.append((b"x-ratelimit-limit", str(limiter.burst).encode()))
-                message = {**message, "headers": headers}
+                hdrs = list(message.get("headers", []))
+                hdrs.append((b"x-ratelimit-remaining", str(remaining).encode()))
+                hdrs.append((b"x-ratelimit-limit", str(limiter.burst).encode()))
+                message["headers"] = hdrs
             await send(message)
 
         await self.app(scope, receive, send_with_headers)

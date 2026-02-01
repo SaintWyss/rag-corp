@@ -1,9 +1,27 @@
 """
-Name: Audit Domain Models
+===============================================================================
+TARJETA CRC — domain/audit.py
+===============================================================================
 
-Responsibilities:
-  - Define audit event data structures
+Módulo:
+    Modelos de Auditoría (Dominio)
+
+Responsabilidades:
+    - Definir estructuras de datos para auditoría (AuditEvent).
+    - Mantener el contrato de auditoría independiente de infraestructura.
+
+Colaboradores:
+    - domain.repositories.AuditEventRepository: persiste y lista eventos.
+    - app/audit.py: emite eventos (orquestación).
+    - infra repos: mapean hacia/desde DB.
+
+Notas:
+    - Auditoría suele ser append-only (no se edita ni se borra).
+    - metadata es flexible (dict).
+===============================================================================
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -11,8 +29,10 @@ from typing import Any
 from uuid import UUID
 
 
-@dataclass
+@dataclass(slots=True)
 class AuditEvent:
+    """Evento de auditoría del sistema."""
+
     id: UUID
     actor: str
     action: str

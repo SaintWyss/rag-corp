@@ -3,28 +3,28 @@
 # =============================================================================
 """
 ===============================================================================
-DOMAIN: Value Objects (Immutable Domain Primitives)
+TARJETA CRC — domain/value_objects.py
 ===============================================================================
 
-Name:
-    Domain Value Objects
+Módulo:
+    Objetos de Valor del Dominio (inmutables)
 
-Qué es:
-    Objetos de valor inmutables que representan conceptos del dominio
-    sin identidad propia. Son iguales si sus atributos son iguales.
+Responsabilidades:
+    - Representar conceptos sin identidad propia (igualdad por valor).
+    - Validar invariantes en constructor (__post_init__).
+    - Facilitar serialización (to_dict) para capa de interfaces.
 
-Contenido:
-    - SourceReference: Referencia estructurada a una fuente/chunk
-    - ConfidenceScore: Score de confianza de una respuesta
-    - MetadataFilter: Filtro de metadatos para retrieval
-    - UsageQuota: Cuota de uso para rate limiting
+Objetos incluidos:
+    - SourceReference
+    - ConfidenceScore + calculate_confidence
+    - MetadataFilter
+    - UsageQuota
+    - FeedbackVote
+    - AnswerAuditRecord
 
-Principios:
-    - Inmutabilidad (frozen dataclasses)
-    - Validación en constructor
-    - Sin side effects
-    - Equality por valor
-
+Colaboradores:
+    - domain.entities.QueryResult: puede incluir sources/confidence.
+    - repositorios/auditoría: persisten AnswerAuditRecord.
 ===============================================================================
 """
 
@@ -35,33 +35,21 @@ from typing import Any, Dict, Final, List, Optional
 from uuid import UUID
 
 # -----------------------------------------------------------------------------
-# Constants
+# Constantes
 # -----------------------------------------------------------------------------
 _MIN_CONFIDENCE: Final[float] = 0.0
 _MAX_CONFIDENCE: Final[float] = 1.0
 
 
 # -----------------------------------------------------------------------------
-# Source Reference (Structured Citation)
+# SourceReference (cita estructurada)
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class SourceReference:
     """
-    Referencia estructurada a una fuente usada en una respuesta RAG.
+    Referencia estructurada a una fuente usada en una respuesta.
 
-    Permite al frontend renderizar "chips" o tarjetas clickeables con la info
-    de cada fuente, sin tener que parsear texto.
-
-    Attributes:
-        index: Índice de la fuente en la respuesta ([S1], [S2], etc.)
-        document_id: ID del documento original
-        document_title: Título del documento (si existe)
-        chunk_id: ID del chunk específico
-        chunk_index: Índice del chunk dentro del documento (0-based)
-        page_number: Número de página (si aplica, ej: PDFs)
-        source_url: URL o path del documento original
-        relevance_score: Score de similitud/relevancia (0-1)
-        snippet: Extracto corto del contenido (para preview)
+    Permite a UI mostrar fuentes sin parsear texto.
     """
 
     index: int
@@ -75,7 +63,6 @@ class SourceReference:
     snippet: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializa a diccionario para JSON responses."""
         return {
             "index": self.index,
             "document_id": str(self.document_id) if self.document_id else None,
@@ -90,32 +77,11 @@ class SourceReference:
 
 
 # -----------------------------------------------------------------------------
-# Confidence Score (Answer Quality Indicator - Enterprise Focus)
+# ConfidenceScore
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class ConfidenceScore:
-    """
-    Score de confianza para una respuesta RAG - Enfoque Empresarial.
-
-    Propósito:
-        - Indicar al usuario si debe verificar la respuesta con un experto.
-        - Documentar para compliance que el sistema advirtió sobre incertidumbre.
-        - Permitir métricas de calidad del knowledge base.
-
-    Niveles (para UI):
-        - "high" (≥0.8): "Respuesta basada en múltiples fuentes verificadas."
-        - "medium" (0.5-0.79): "Respuesta parcial. Verificar con el área correspondiente."
-        - "low" (<0.5): "Información limitada. Consultar directamente con un especialista."
-
-    Attributes:
-        value: Score normalizado [0, 1]
-        level: Nivel categórico ("high", "medium", "low")
-        user_message: Mensaje legible para mostrar al usuario
-        internal_reasoning: Explicación técnica (para logs/debugging)
-        factors: Factores que contribuyeron al score
-        requires_verification: True si se recomienda verificación humana
-        suggested_department: Departamento sugerido para verificar (si aplica)
-    """
+    """Score de confianza normalizado [0,1] + metadata para UI y auditoría."""
 
     value: float
     user_message: str = ""
@@ -125,16 +91,11 @@ class ConfidenceScore:
     suggested_department: Optional[str] = None
 
     def __post_init__(self) -> None:
-        """Valida que el score esté en rango válido."""
         if not (_MIN_CONFIDENCE <= self.value <= _MAX_CONFIDENCE):
-            raise ValueError(
-                f"Confidence score must be between {_MIN_CONFIDENCE} and {_MAX_CONFIDENCE}, "
-                f"got {self.value}"
-            )
+            raise ValueError(f"ConfidenceScore fuera de rango: {self.value}")
 
     @property
     def level(self) -> str:
-        """Nivel categórico del score para UI."""
         if self.value >= 0.8:
             return "high"
         if self.value >= 0.5:
@@ -143,7 +104,6 @@ class ConfidenceScore:
 
     @property
     def display_message(self) -> str:
-        """Mensaje para mostrar al usuario basado en el nivel."""
         if self.user_message:
             return self.user_message
 
@@ -157,7 +117,6 @@ class ConfidenceScore:
         return "Información limitada. Consultar directamente con un especialista."
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializa a diccionario para JSON responses."""
         return {
             "value": round(self.value, 2),
             "level": self.level,
@@ -177,49 +136,30 @@ def calculate_confidence(
     source_recency_days: Optional[int] = None,
     topic_category: Optional[str] = None,
 ) -> ConfidenceScore:
-    """
-    Calcula un ConfidenceScore basado en factores objetivos.
-
-    Factores considerados:
-        - chunk_coverage: Proporción de chunks usados vs disponibles
-        - response_completeness: Si la respuesta tiene longitud adecuada
-        - source_freshness: Antigüedad de las fuentes (si aplica)
-        - exact_match_bonus: Bonus si hubo match exacto de keywords
-
-    Args:
-        chunks_used: Cantidad de chunks incluidos en el contexto
-        chunks_available: Cantidad total de chunks recuperados
-        response_length: Longitud de la respuesta en caracteres
-        has_exact_match: True si algún chunk tiene match exacto con el query
-        source_recency_days: Días desde la última actualización de las fuentes
-        topic_category: Categoría del tema (para sugerir departamento)
-
-    Returns:
-        ConfidenceScore con todos los factores calculados.
-    """
+    """Calcula un ConfidenceScore basado en factores observables."""
     factors: Dict[str, float] = {}
 
-    # Factor 1: Cobertura de chunks (más chunks = más evidencia)
+    # 1) Cobertura de evidencia (chunks)
     if chunks_available > 0:
         chunk_factor = min(1.0, chunks_used / max(3, chunks_available * 0.5))
     else:
         chunk_factor = 0.0
     factors["chunk_coverage"] = round(chunk_factor, 2)
 
-    # Factor 2: Completitud de respuesta
+    # 2) Longitud como proxy de completitud
     if response_length < 50:
-        length_factor = 0.3  # Muy corta, posiblemente evasiva
+        length_factor = 0.3
     elif response_length < 200:
-        length_factor = 0.7  # Aceptable
+        length_factor = 0.7
     else:
-        length_factor = 1.0  # Completa
+        length_factor = 1.0
     factors["response_completeness"] = round(length_factor, 2)
 
-    # Factor 3: Match exacto (bonus si el query matchea directamente)
+    # 3) Match exacto
     match_factor = 1.0 if has_exact_match else 0.7
     factors["keyword_match"] = round(match_factor, 2)
 
-    # Factor 4: Frescura de fuentes (opcional)
+    # 4) Frescura de fuentes (si hay dato)
     if source_recency_days is not None:
         if source_recency_days <= 30:
             freshness_factor = 1.0
@@ -231,9 +171,9 @@ def calculate_confidence(
             freshness_factor = 0.4
         factors["source_freshness"] = round(freshness_factor, 2)
     else:
-        freshness_factor = 0.8  # Neutral si no hay data
+        freshness_factor = 0.8
 
-    # Score final (promedio ponderado)
+    # Score final ponderado
     score = (
         chunk_factor * 0.35
         + length_factor * 0.25
@@ -241,10 +181,8 @@ def calculate_confidence(
         + freshness_factor * 0.20
     )
 
-    # Determinar si requiere verificación
     requires_verification = score < 0.7 or chunks_used < 2
 
-    # Mapear categoría a departamento
     department_map = {
         "legal": "Legales",
         "finance": "Finanzas",
@@ -255,8 +193,7 @@ def calculate_confidence(
     }
     suggested_dept = department_map.get(topic_category or "")
 
-    # Generar razón interna (para logs)
-    reasoning_parts = []
+    reasoning_parts: list[str] = []
     if chunk_factor < 0.5:
         reasoning_parts.append("pocas fuentes disponibles")
     if length_factor < 0.7:
@@ -280,60 +217,31 @@ def calculate_confidence(
 
 
 # -----------------------------------------------------------------------------
-# Metadata Filter (Retrieval Filtering)
+# MetadataFilter
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class MetadataFilter:
-    """
-    Filtro de metadatos para retrieval.
-
-    Permite filtrar chunks por atributos como departamento, año, tipo de doc, etc.
-
-    Attributes:
-        field: Nombre del campo de metadata a filtrar
-        operator: Operador de comparación
-        value: Valor a comparar
-    """
+    """Filtro de metadatos para retrieval."""
 
     field: str
     operator: str  # "eq", "ne", "gt", "lt", "gte", "lte", "in", "contains"
     value: Any
 
     def __post_init__(self) -> None:
-        """Valida el operador."""
-        valid_operators = {"eq", "ne", "gt", "lt", "gte", "lte", "in", "contains"}
-        if self.operator not in valid_operators:
-            raise ValueError(
-                f"Invalid operator '{self.operator}'. Valid: {valid_operators}"
-            )
+        valid = {"eq", "ne", "gt", "lt", "gte", "lte", "in", "contains"}
+        if self.operator not in valid:
+            raise ValueError(f"Operador inválido '{self.operator}'. Válidos: {valid}")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializa a diccionario."""
-        return {
-            "field": self.field,
-            "operator": self.operator,
-            "value": self.value,
-        }
+        return {"field": self.field, "operator": self.operator, "value": self.value}
 
 
 # -----------------------------------------------------------------------------
-# Usage Quota (Rate Limiting)
+# UsageQuota
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class UsageQuota:
-    """
-    Cuota de uso para rate limiting.
-
-    Representa el estado de consumo de un recurso (mensajes, tokens, etc.)
-    para un scope determinado (usuario, workspace, etc.).
-
-    Attributes:
-        limit: Límite máximo del período
-        used: Cantidad consumida en el período actual
-        remaining: Cantidad restante (calculada)
-        reset_at: Timestamp de reset del período (ISO 8601)
-        resource: Nombre del recurso ("messages", "tokens", etc.)
-    """
+    """Cuota de uso para rate limiting."""
 
     limit: int
     used: int
@@ -342,23 +250,19 @@ class UsageQuota:
 
     @property
     def remaining(self) -> int:
-        """Cantidad restante disponible."""
         return max(0, self.limit - self.used)
 
     @property
     def is_exceeded(self) -> bool:
-        """True si se excedió la cuota."""
         return self.used >= self.limit
 
     @property
     def usage_percentage(self) -> float:
-        """Porcentaje de uso (0-100)."""
         if self.limit <= 0:
             return 100.0
         return min(100.0, (self.used / self.limit) * 100)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializa a diccionario para headers/responses."""
         return {
             "limit": self.limit,
             "used": self.used,
@@ -370,89 +274,39 @@ class UsageQuota:
 
 
 # -----------------------------------------------------------------------------
-# Feedback Vote (RLHF)
+# FeedbackVote
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class FeedbackVote:
-    """
-    Voto de feedback del usuario sobre una respuesta.
-
-    Attributes:
-        vote: Tipo de voto ("up", "down", "neutral")
-        comment: Comentario opcional del usuario
-        tags: Tags de categorización (ej: ["incorrect", "incomplete"])
-    """
+    """Voto de feedback sobre una respuesta."""
 
     vote: str  # "up", "down", "neutral"
     comment: Optional[str] = None
     tags: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        """Valida el tipo de voto."""
-        valid_votes = {"up", "down", "neutral"}
-        if self.vote not in valid_votes:
-            raise ValueError(f"Invalid vote '{self.vote}'. Valid: {valid_votes}")
+        valid = {"up", "down", "neutral"}
+        if self.vote not in valid:
+            raise ValueError(f"Voto inválido '{self.vote}'. Válidos: {valid}")
 
     @property
     def is_positive(self) -> bool:
-        """True si es voto positivo."""
         return self.vote == "up"
 
     @property
     def is_negative(self) -> bool:
-        """True si es voto negativo."""
         return self.vote == "down"
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializa a diccionario."""
-        return {
-            "vote": self.vote,
-            "comment": self.comment,
-            "tags": list(self.tags),
-        }
+        return {"vote": self.vote, "comment": self.comment, "tags": list(self.tags)}
 
 
 # -----------------------------------------------------------------------------
-# Answer Audit Record (Enterprise Compliance / Traceability)
+# AnswerAuditRecord
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class AnswerAuditRecord:
-    """
-    Registro de auditoría para cada respuesta generada por el RAG.
-
-    Propósito Empresarial:
-        - Trazabilidad: Quién preguntó qué, cuándo, y qué fuentes se usaron.
-        - Compliance: Documentar que el sistema advirtió sobre incertidumbre.
-        - Investigación: Si un usuario tomó una mala decisión, poder revisar qué le dijo el sistema.
-        - Métricas: Analizar patrones de uso, preguntas frecuentes, áreas problemáticas.
-
-    Retención:
-        - Este registro debe persistirse para auditoría.
-        - Política de retención típica: 1-7 años según regulación.
-
-    Attributes:
-        record_id: ID único del registro
-        timestamp: Momento de la consulta (ISO 8601 UTC)
-        user_id: ID del usuario que hizo la consulta
-        user_email: Email del usuario (para búsqueda rápida)
-        workspace_id: Workspace donde se ejecutó la consulta
-        query: Pregunta original del usuario
-        answer_preview: Primeros N caracteres de la respuesta (para búsqueda)
-        confidence_level: Nivel de confianza ("high", "medium", "low")
-        confidence_value: Score numérico de confianza
-        requires_verification: Si el sistema recomendó verificar
-        suggested_department: Departamento sugerido para verificación
-        sources_count: Cantidad de fuentes usadas
-        source_documents: Lista de IDs de documentos fuente
-        conversation_id: ID de la conversación (si aplica)
-        session_id: ID de sesión del usuario
-        ip_address: IP del usuario (para seguridad)
-        user_agent: User-Agent del cliente
-        response_time_ms: Tiempo de respuesta en milisegundos
-        was_rated: Si el usuario dio feedback
-        rating: Rating del usuario (si dio feedback)
-        metadata: Metadata adicional flexible
-    """
+    """Registro de auditoría de respuestas para trazabilidad/cumplimiento."""
 
     record_id: str
     timestamp: str
@@ -478,28 +332,18 @@ class AnswerAuditRecord:
 
     @property
     def is_high_risk(self) -> bool:
-        """
-        Indica si esta consulta es de alto riesgo para auditoría.
-
-        Alto riesgo si:
-          - Confianza baja
-          - Requiere verificación
-          - Pocas fuentes
-        """
         return self.confidence_level == "low" or self.sources_count < 2
 
     @property
     def audit_summary(self) -> str:
-        """Resumen legible para logs de auditoría."""
-        risk_flag = " [ALTO RIESGO]" if self.is_high_risk else ""
+        risk = " [ALTO RIESGO]" if self.is_high_risk else ""
         return (
             f"[{self.timestamp}] User={self.user_email or self.user_id} "
             f"Query='{self.query[:50]}...' Confidence={self.confidence_level} "
-            f"Sources={self.sources_count}{risk_flag}"
+            f"Sources={self.sources_count}{risk}"
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializa a diccionario para persistencia."""
         return {
             "record_id": self.record_id,
             "timestamp": self.timestamp,

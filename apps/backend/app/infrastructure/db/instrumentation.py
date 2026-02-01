@@ -25,6 +25,7 @@ import time
 from typing import Any, ContextManager
 
 from ...crosscutting.logger import logger
+from ...crosscutting.metrics import observe_db_query_duration
 from .errors import DatabaseConnectionError
 
 
@@ -58,10 +59,11 @@ class TimedConnection:
             return self._conn.execute(sql, *args, **kwargs)
         finally:
             elapsed = time.perf_counter() - start
+            kind = _statement_kind(sql)
+            observe_db_query_duration(kind, elapsed)
             if elapsed >= self._slow:
-                kind = _statement_kind(sql)
                 logger.warning(
-                    "DB slow query",
+                    "DB query lenta",
                     extra={"kind": kind, "seconds": round(elapsed, 4)},
                 )
 

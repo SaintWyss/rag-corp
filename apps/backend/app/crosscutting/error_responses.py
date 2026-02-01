@@ -1,6 +1,32 @@
+# apps/backend/app/crosscutting/error_responses.py
 """
-Standardized error response catalog for API consistency.
-All HTTP error responses follow the RFC 7807 Problem Details format.
+===============================================================================
+MÓDULO: Respuestas de error estándar (RFC 7807 / Problem Details)
+===============================================================================
+
+Objetivo
+--------
+Uniformar TODOS los errores HTTP para que:
+- El frontend pueda manejar por "code"
+- El backend pueda correlacionar por request_id / error_id
+- La API sea consistente y auditable
+
+-------------------------------------------------------------------------------
+CRC (Component Card)
+-------------------------------------------------------------------------------
+Componente:
+  AppHTTPException + handlers
+
+Responsabilidades:
+  - Definir catálogo de códigos de error (ErrorCode)
+  - Construir payload RFC7807 (ErrorDetail)
+  - Proveer factories de errores frecuentes
+  - Proveer handlers (FastAPI) para devolver JSON problem+json
+
+Colaboradores:
+  - crosscutting/middleware.py (request_id)
+  - api/exception_handlers.py (mapea errores internos)
+===============================================================================
 """
 
 from __future__ import annotations
@@ -14,9 +40,7 @@ from pydantic import BaseModel
 
 
 class ErrorCode(str, Enum):
-    """Application error codes for client-side handling."""
-
-    # 4xx Client Errors
+    # 4xx
     VALIDATION_ERROR = "VALIDATION_ERROR"
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
@@ -26,7 +50,7 @@ class ErrorCode(str, Enum):
     RATE_LIMITED = "RATE_LIMITED"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
 
-    # 5xx Server Errors
+    # 5xx
     INTERNAL_ERROR = "INTERNAL_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
     LLM_ERROR = "LLM_ERROR"
@@ -35,7 +59,13 @@ class ErrorCode(str, Enum):
 
 
 class ErrorDetail(BaseModel):
-    """RFC 7807 Problem Details response."""
+    """
+    Modelo RFC 7807 (Problem Details).
+
+    Campos extra:
+    - code: error code estable para clientes
+    - errors: lista opcional de detalles (ej: [{"field":"x","msg":"..."}])
+    """
 
     type: str = "about:blank"
     title: str
@@ -48,47 +78,52 @@ class ErrorDetail(BaseModel):
 
 PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
 
-# R: Reusable OpenAPI response entry for RFC 7807 errors
 _OPENAPI_ERROR_SCHEMA = {"$ref": "#/components/schemas/ErrorDetail"}
-_OPENAPI_ERROR_CONTENT = {
-    PROBLEM_JSON_MEDIA_TYPE: {
-        "schema": _OPENAPI_ERROR_SCHEMA,
-    }
-}
+_OPENAPI_ERROR_CONTENT = {PROBLEM_JSON_MEDIA_TYPE: {"schema": _OPENAPI_ERROR_SCHEMA}}
 
 OPENAPI_ERROR_RESPONSES = {
     "400": {
-        "description": "Bad Request (RFC 7807 Problem Details)",
+        "description": "Bad Request (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
     "401": {
-        "description": "Unauthorized (RFC 7807 Problem Details)",
+        "description": "Unauthorized (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
     "403": {
-        "description": "Forbidden (RFC 7807 Problem Details)",
+        "description": "Forbidden (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
     "404": {
-        "description": "Not Found (RFC 7807 Problem Details)",
+        "description": "Not Found (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
     "409": {
-        "description": "Conflict (RFC 7807 Problem Details)",
+        "description": "Conflict (RFC7807)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "413": {
+        "description": "Payload Too Large (RFC7807)",
+        "model": ErrorDetail,
+        "content": _OPENAPI_ERROR_CONTENT,
+    },
+    "415": {
+        "description": "Unsupported Media (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
     "422": {
-        "description": "Validation Error (RFC 7807 Problem Details)",
+        "description": "Validation Error (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
     "default": {
-        "description": "Error response (RFC 7807 Problem Details)",
+        "description": "Error (RFC7807)",
         "model": ErrorDetail,
         "content": _OPENAPI_ERROR_CONTENT,
     },
@@ -96,7 +131,22 @@ OPENAPI_ERROR_RESPONSES = {
 
 
 class AppHTTPException(HTTPException):
-    """Application-specific HTTP exception with error code."""
+    """
+    ----------------------------------------------------------------------------
+    CRC (Class Card)
+    ----------------------------------------------------------------------------
+    Clase:
+      AppHTTPException
+
+    Responsabilidades:
+      - Adjuntar un ErrorCode estable
+      - Transportar errores de validación (errors[])
+      - Permitir headers custom (Retry-After, RateLimit, etc.)
+
+    Colaboradores:
+      - app_exception_handler()
+    ----------------------------------------------------------------------------
+    """
 
     def __init__(
         self,
@@ -110,7 +160,9 @@ class AppHTTPException(HTTPException):
         self.errors = errors
 
 
-# Pre-defined error factories
+# ---------------------------------------------------------------------------
+# Factories de error (helpers)
+# ---------------------------------------------------------------------------
 def validation_error(
     detail: str, errors: list[dict[str, Any]] | None = None
 ) -> AppHTTPException:
@@ -119,7 +171,7 @@ def validation_error(
 
 def not_found(resource: str, identifier: str) -> AppHTTPException:
     return AppHTTPException(
-        404, ErrorCode.NOT_FOUND, f"{resource} '{identifier}' not found"
+        404, ErrorCode.NOT_FOUND, f"{resource} '{identifier}' no encontrado"
     )
 
 
@@ -127,17 +179,19 @@ def conflict(detail: str) -> AppHTTPException:
     return AppHTTPException(409, ErrorCode.CONFLICT, detail)
 
 
-def unauthorized(detail: str = "Authentication required") -> AppHTTPException:
+def unauthorized(detail: str = "Autenticación requerida") -> AppHTTPException:
     return AppHTTPException(401, ErrorCode.UNAUTHORIZED, detail)
 
 
-def forbidden(detail: str = "Access denied") -> AppHTTPException:
+def forbidden(detail: str = "Acceso denegado") -> AppHTTPException:
     return AppHTTPException(403, ErrorCode.FORBIDDEN, detail)
 
 
 def rate_limited(retry_after: int = 60) -> AppHTTPException:
     exc = AppHTTPException(
-        429, ErrorCode.RATE_LIMITED, f"Too many requests. Retry after {retry_after}s"
+        429,
+        ErrorCode.RATE_LIMITED,
+        f"Demasiadas solicitudes. Reintentá en {retry_after}s",
     )
     exc.headers = {"Retry-After": str(retry_after)}
     return exc
@@ -145,7 +199,9 @@ def rate_limited(retry_after: int = 60) -> AppHTTPException:
 
 def payload_too_large(max_size: str) -> AppHTTPException:
     return AppHTTPException(
-        413, ErrorCode.PAYLOAD_TOO_LARGE, f"Payload exceeds maximum size of {max_size}"
+        413,
+        ErrorCode.PAYLOAD_TOO_LARGE,
+        f"El payload excede el máximo permitido ({max_size})",
     )
 
 
@@ -153,13 +209,15 @@ def unsupported_media(detail: str) -> AppHTTPException:
     return AppHTTPException(415, ErrorCode.UNSUPPORTED_MEDIA, detail)
 
 
-def internal_error(detail: str = "An unexpected error occurred") -> AppHTTPException:
+def internal_error(detail: str = "Ocurrió un error inesperado") -> AppHTTPException:
     return AppHTTPException(500, ErrorCode.INTERNAL_ERROR, detail)
 
 
 def service_unavailable(service: str) -> AppHTTPException:
     return AppHTTPException(
-        503, ErrorCode.SERVICE_UNAVAILABLE, f"{service} is temporarily unavailable"
+        503,
+        ErrorCode.SERVICE_UNAVAILABLE,
+        f"Servicio no disponible temporalmente: {service}",
     )
 
 
@@ -171,23 +229,38 @@ def embedding_error(detail: str) -> AppHTTPException:
     return AppHTTPException(502, ErrorCode.EMBEDDING_ERROR, detail)
 
 
-def database_error(detail: str = "Database operation failed") -> AppHTTPException:
+def database_error(
+    detail: str = "Falla en operación de base de datos",
+) -> AppHTTPException:
     return AppHTTPException(503, ErrorCode.DATABASE_ERROR, detail)
 
 
-# Exception handlers for FastAPI
+# ---------------------------------------------------------------------------
+# Handlers FastAPI
+# ---------------------------------------------------------------------------
 async def app_exception_handler(
     request: Request, exc: AppHTTPException
 ) -> JSONResponse:
-    """Handler for AppHTTPException."""
+    """
+    Handler para AppHTTPException.
+
+    Incluye instance (URL) y propaga headers opcionales (Retry-After, etc.).
+    """
+    # Correlación: request_id si existe
+    request_id = getattr(getattr(request, "state", None), "request_id", None)
+
+    errors = exc.errors or []
+    if request_id:
+        errors = [*errors, {"request_id": request_id}]
+
     error = ErrorDetail(
-        type=f"https://api.ragcorp.local/errors/{exc.code.value.lower()}",
+        type=f"about:blank/{exc.code.value.lower()}",
         title=exc.code.value.replace("_", " ").title(),
         status=exc.status_code,
-        detail=exc.detail,
+        detail=str(exc.detail),
         code=exc.code,
         instance=str(request.url),
-        errors=exc.errors,
+        errors=errors or None,
     )
     headers = getattr(exc, "headers", None)
     return JSONResponse(
@@ -199,14 +272,21 @@ async def app_exception_handler(
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Fallback handler for unhandled exceptions."""
+    """
+    Handler de fallback para excepciones no manejadas.
+    (No expone detalles internos al cliente.)
+    """
+    request_id = getattr(getattr(request, "state", None), "request_id", None)
+    errors = [{"request_id": request_id}] if request_id else None
+
     error = ErrorDetail(
-        type="https://api.ragcorp.local/errors/internal_error",
+        type="about:blank/internal_error",
         title="Internal Server Error",
         status=500,
-        detail="An unexpected error occurred",
+        detail="Ocurrió un error inesperado",
         code=ErrorCode.INTERNAL_ERROR,
         instance=str(request.url),
+        errors=errors,
     )
     return JSONResponse(
         status_code=500,

@@ -1,54 +1,68 @@
 """
-Name: Role-Based Access Control (RBAC)
+===============================================================================
+TARJETA CRC — identity/rbac.py
+===============================================================================
 
-Responsibilities:
-  - Define roles with hierarchical permissions
-  - Map API keys to roles
-  - Provide role-based authorization checks
-  - Support custom resource-level permissions
+Módulo:
+    RBAC (Role-Based Access Control) para API Keys
 
-Collaborators:
-  - auth.py: API key validation
-  - config.py: RBAC_CONFIG setting
-  - routes.py: Depends(require_role) on endpoints
+Responsabilidades:
+    - Definir el catálogo de permisos (Permission).
+    - Definir roles (Role) con permisos e herencia.
+    - Cargar RBAC_CONFIG desde env (JSON) y construir un RBACConfig cacheado.
+    - Resolver permisos para una API key (por hash).
+    - Exponer dependencias FastAPI:
+        - require_permissions / require_permission
+        - require_metrics_permission
+        - require_role (si se usa modelo por roles)
 
-Constraints:
-  - Roles are hierarchical (admin > user > readonly)
-  - Resource permissions follow CRUD model
-  - Configuration via environment variable (JSON)
+Colaboradores:
+    - identity.auth: validación de API key y cálculo de hash para request.state.
+    - crosscutting.logger: logs estructurados.
+    - crosscutting.error_responses: unauthorized/forbidden estándar.
+    - crosscutting.config: valida en producción que exista RBAC_CONFIG o API_KEYS_CONFIG.
 
-Notes:
-  - Complements API key scopes with fine-grained control
-  - Wildcard (*) grants all permissions
-  - Supports resource-level access (e.g., "documents:read")
+Notas de diseño:
+    - Si RBAC_CONFIG está presente, es la fuente principal de autorización para API keys.
+    - Si RBAC_CONFIG no está presente pero API_KEYS_CONFIG sí, usamos un mapeo
+      “scope -> permisos” para mantener compatibilidad.
+    - El dominio NO debe conocer RBAC: esto vive en la frontera (identity).
+===============================================================================
 """
 
+from __future__ import annotations
+
 import json
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
 from typing import Callable, Optional, Set
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, Request
 
-from ..crosscutting.logger import logger
 from ..crosscutting.error_responses import forbidden, unauthorized
+from ..crosscutting.logger import logger
+
+# ---------------------------------------------------------------------------
+# Permisos (lenguaje ubicuo para autorización)
+# ---------------------------------------------------------------------------
 
 
-class Permission(Enum):
-    """Available permissions in the system."""
+class Permission(str, Enum):
+    """Permisos disponibles en el sistema."""
 
-    # Document operations
+    # Documentos
     DOCUMENTS_CREATE = "documents:create"
     DOCUMENTS_READ = "documents:read"
     DOCUMENTS_DELETE = "documents:delete"
 
-    # Query operations
+    # Query / RAG
     QUERY_SEARCH = "query:search"
     QUERY_ASK = "query:ask"
     QUERY_STREAM = "query:stream"
 
-    # Admin operations
+    # Admin
     ADMIN_METRICS = "admin:metrics"
     ADMIN_HEALTH = "admin:health"
     ADMIN_CONFIG = "admin:config"
@@ -57,8 +71,10 @@ class Permission(Enum):
     ALL = "*"
 
 
-# R: Backward-compatible mapping from legacy scopes to permissions.
-#     This keeps existing API key scopes working without RBAC_CONFIG.
+# ---------------------------------------------------------------------------
+# Mapeo scope -> permisos (fallback cuando NO hay RBAC_CONFIG)
+# ---------------------------------------------------------------------------
+
 SCOPE_PERMISSIONS: dict[str, Set[Permission]] = {
     "ingest": {
         Permission.DOCUMENTS_CREATE,
@@ -74,45 +90,47 @@ SCOPE_PERMISSIONS: dict[str, Set[Permission]] = {
     "metrics": {Permission.ADMIN_METRICS},
 }
 
+# R: Invertimos para saber qué scopes habilitan un permiso (si se necesita).
 _PERMISSION_SCOPES: dict[Permission, Set[str]] = {}
 for scope, permissions in SCOPE_PERMISSIONS.items():
-    for permission in permissions:
-        _PERMISSION_SCOPES.setdefault(permission, set()).add(scope)
+    for perm in permissions:
+        _PERMISSION_SCOPES.setdefault(perm, set()).add(scope)
 
 
-@dataclass
+# ---------------------------------------------------------------------------
+# Modelo RBAC (roles + herencia)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
 class Role:
-    """Role definition with associated permissions."""
+    """Definición de rol: permisos + herencia opcional."""
 
     name: str
     permissions: Set[Permission] = field(default_factory=set)
     inherits_from: Optional[str] = None
     description: str = ""
 
-    def has_permission(self, permission: Permission, roles_registry: dict) -> bool:
-        """Check if role has permission (including inherited)."""
-        # Wildcard grants all
+    def has_permission(
+        self, permission: Permission, roles_registry: dict[str, "Role"]
+    ) -> bool:
+        """Verifica permiso directo o heredado."""
         if Permission.ALL in self.permissions:
             return True
-
-        # Direct permission
         if permission in self.permissions:
             return True
 
-        # Check inherited role
-        if self.inherits_from and self.inherits_from in roles_registry:
-            parent_role = roles_registry[self.inherits_from]
-            return parent_role.has_permission(permission, roles_registry)
+        parent = self.inherits_from
+        if parent and parent in roles_registry:
+            return roles_registry[parent].has_permission(permission, roles_registry)
 
         return False
 
 
-# Default role definitions
+# R: roles por defecto para acelerar adopción.
 DEFAULT_ROLES: dict[str, Role] = {
     "admin": Role(
-        name="admin",
-        permissions={Permission.ALL},
-        description="Full system access",
+        name="admin", permissions={Permission.ALL}, description="Acceso total"
     ),
     "user": Role(
         name="user",
@@ -123,7 +141,7 @@ DEFAULT_ROLES: dict[str, Role] = {
             Permission.QUERY_ASK,
             Permission.QUERY_STREAM,
         },
-        description="Standard user with read/write access",
+        description="Usuario estándar",
     ),
     "readonly": Role(
         name="readonly",
@@ -132,185 +150,205 @@ DEFAULT_ROLES: dict[str, Role] = {
             Permission.QUERY_SEARCH,
             Permission.QUERY_ASK,
         },
-        description="Read-only access to documents and queries",
+        description="Solo lectura",
     ),
     "ingest-only": Role(
         name="ingest-only",
-        permissions={
-            Permission.DOCUMENTS_CREATE,
-        },
-        description="Can only ingest documents (for automation)",
+        permissions={Permission.DOCUMENTS_CREATE},
+        description="Solo ingesta",
     ),
 }
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RBACConfig:
-    """RBAC configuration with roles and key-role mappings."""
+    """Configuración RBAC: roles + asignación hash(API key) -> rol."""
 
     roles: dict[str, Role]
-    key_roles: dict[str, str]  # api_key_hash -> role_name
+    key_roles: dict[str, str]  # key_hash -> role_name
 
     def get_role_for_key(self, key_hash: str) -> Optional[Role]:
-        """Get role assigned to an API key."""
         role_name = self.key_roles.get(key_hash)
-        if role_name:
-            return self.roles.get(role_name)
-        return None
+        return self.roles.get(role_name) if role_name else None
 
     def check_permission(self, key_hash: str, permission: Permission) -> bool:
-        """Check if API key has a specific permission."""
         role = self.get_role_for_key(key_hash)
-        if not role:
-            return False
-        return role.has_permission(permission, self.roles)
+        return bool(role and role.has_permission(permission, self.roles))
+
+
+# ---------------------------------------------------------------------------
+# Parsing de configuración (cacheado)
+# ---------------------------------------------------------------------------
+
+
+def _parse_permissions(values: object) -> Set[Permission]:
+    """Parsea lista de strings a Set[Permission] de manera defensiva."""
+    if not isinstance(values, list):
+        return set()
+
+    parsed: Set[Permission] = set()
+    for v in values:
+        if not isinstance(v, str) or not v.strip():
+            continue
+        try:
+            parsed.add(Permission(v.strip()))
+        except ValueError:
+            logger.warning("Permiso RBAC desconocido", extra={"permission": v})
+    return parsed
 
 
 @lru_cache(maxsize=1)
 def _parse_rbac_config() -> Optional[RBACConfig]:
-    """
-    Parse RBAC_CONFIG from environment.
-
-    Format:
-    {
-        "roles": {
-            "custom-role": {
-                "permissions": ["documents:read", "query:search"],
-                "inherits_from": "readonly"
-            }
-        },
-        "key_roles": {
-            "abc123...": "admin",
-            "def456...": "user"
-        }
-    }
-    """
-    import os
-
-    config_str = os.getenv("RBAC_CONFIG")
-    if not config_str:
+    """Parsea RBAC_CONFIG desde env y construye RBACConfig."""
+    raw = (os.getenv("RBAC_CONFIG") or "").strip()
+    if not raw:
         return None
 
     try:
-        data = json.loads(config_str)
-
-        # Start with default roles
-        roles = DEFAULT_ROLES.copy()
-
-        # Add/override custom roles
-        if "roles" in data:
-            for role_name, role_data in data["roles"].items():
-                permissions = {Permission(p) for p in role_data.get("permissions", [])}
-                roles[role_name] = Role(
-                    name=role_name,
-                    permissions=permissions,
-                    inherits_from=role_data.get("inherits_from"),
-                    description=role_data.get("description", ""),
-                )
-
-        # Parse key-role mappings
-        key_roles = data.get("key_roles", {})
-
-        return RBACConfig(roles=roles, key_roles=key_roles)
-
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.warning(f"Invalid RBAC_CONFIG: {e}")
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.warning("RBAC_CONFIG inválido (JSON)", extra={"error": str(exc)})
         return None
+
+    if not isinstance(data, dict):
+        logger.warning("RBAC_CONFIG inválido (shape)")
+        return None
+
+    # 1) Roles: default + overrides.
+    roles: dict[str, Role] = dict(DEFAULT_ROLES)
+
+    custom_roles = data.get("roles", {})
+    if isinstance(custom_roles, dict):
+        for role_name, role_data in custom_roles.items():
+            if not isinstance(role_name, str) or not role_name.strip():
+                continue
+            if not isinstance(role_data, dict):
+                continue
+
+            permissions = _parse_permissions(role_data.get("permissions", []))
+            inherits_from = role_data.get("inherits_from")
+            inherits_from = (
+                inherits_from.strip()
+                if isinstance(inherits_from, str) and inherits_from.strip()
+                else None
+            )
+            description = role_data.get("description", "")
+            description = description.strip() if isinstance(description, str) else ""
+
+            roles[role_name.strip()] = Role(
+                name=role_name.strip(),
+                permissions=permissions,
+                inherits_from=inherits_from,
+                description=description,
+            )
+
+    # 2) Mapeo key_hash -> rol.
+    key_roles_raw = data.get("key_roles", {})
+    key_roles: dict[str, str] = {}
+    if isinstance(key_roles_raw, dict):
+        for k, v in key_roles_raw.items():
+            if isinstance(k, str) and isinstance(v, str) and k.strip() and v.strip():
+                key_roles[k.strip()] = v.strip()
+
+    return RBACConfig(roles=roles, key_roles=key_roles)
 
 
 def get_rbac_config() -> Optional[RBACConfig]:
-    """Get RBAC configuration (cached)."""
+    """Devuelve RBACConfig cacheado (o None)."""
     return _parse_rbac_config()
 
 
 def clear_rbac_cache() -> None:
-    """Clear RBAC config cache (for testing)."""
+    """Limpia cache (tests / hot-reload local)."""
     _parse_rbac_config.cache_clear()
 
 
 def is_rbac_enabled() -> bool:
-    """Check if RBAC is configured."""
     return get_rbac_config() is not None
 
 
-def _scopes_for_permissions(permissions: Set[Permission]) -> Set[str]:
-    """R: Resolve required scopes for a set of permissions."""
+# ---------------------------------------------------------------------------
+# FastAPI dependencies
+# ---------------------------------------------------------------------------
+
+
+def _required_scopes_for_permissions(perms: Set[Permission]) -> Set[str]:
     scopes: Set[str] = set()
-    for permission in permissions:
-        scopes |= _PERMISSION_SCOPES.get(permission, set())
+    for p in perms:
+        scopes |= _PERMISSION_SCOPES.get(p, set())
     return scopes
 
 
 def require_permissions(*permissions: Permission) -> Callable:
-    """
-    FastAPI dependency that requires at least one of the permissions.
+    """Dependency FastAPI: requiere permisos para API key.
 
-    RBAC path:
-      - Uses RBAC_CONFIG key-role mappings when configured.
-    Scope fallback:
-      - Maps legacy scopes to permissions for backward compatibility.
+    Semántica:
+        - Si pasás varios permisos, se permite si cumple **al menos uno** (OR).
+
+    Resolución:
+        - Si existe RBAC_CONFIG: se evalúa contra rol asignado al hash de la key.
+        - Si no existe RBAC_CONFIG pero sí API_KEYS_CONFIG: se evalúa por scopes.
+
+    Si no hay configuración de auth (ni RBAC ni API_KEYS): es NO-OP.
     """
-    required = set(permissions)
+    required: Set[Permission] = set(permissions)
 
     async def dependency(
         request: Request,
         api_key: str | None = Header(None, alias="X-API-Key"),
     ) -> None:
-        from .auth import APIKeyValidator, get_keys_config, _hash_key
+        from .auth import APIKeyValidator, _hash_key, get_keys_config
 
-        keys_config = get_keys_config()
-        rbac_config = get_rbac_config()
+        keys_cfg = get_keys_config()
+        rbac_cfg = get_rbac_config()
 
-        # R: If neither API keys nor RBAC are configured, auth is disabled.
-        if not keys_config and not rbac_config:
+        # R: sin configuración => auth deshabilitada.
+        if not keys_cfg and not rbac_cfg:
             return None
 
         if not api_key:
             logger.warning(
-                "Auth failed: missing API key",
-                extra={"path": request.url.path},
+                "Auth falló: falta X-API-Key", extra={"path": request.url.path}
             )
-            raise unauthorized("Missing API key. Provide X-API-Key header.")
+            raise unauthorized("Falta API key. Enviá el header X-API-Key.")
 
-        validator = APIKeyValidator(keys_config) if keys_config else None
+        # R: si hay API_KEYS_CONFIG, validamos key (const-time).
+        validator = APIKeyValidator(keys_cfg) if keys_cfg else None
         if validator and not validator.validate_key(api_key):
             logger.warning(
-                "Auth failed: invalid API key",
-                extra={
-                    "key_hash": _hash_key(api_key),
-                    "path": request.url.path,
-                },
+                "Auth falló: API key inválida",
+                extra={"key_hash": _hash_key(api_key), "path": request.url.path},
             )
-            raise forbidden("Invalid API key.")
+            raise forbidden("API key inválida.")
 
         key_hash = _hash_key(api_key)
-        request.state.api_key_hash = key_hash
+        request.state.api_key_hash = key_hash  # para dual_auth y/o logs.
 
+        # R: Si no se requieren permisos específicos, solo autenticación.
         if not required:
             return None
 
-        # R: RBAC path (roles/permissions).
-        if rbac_config:
+        # 1) RBAC (roles/permisos).
+        if rbac_cfg:
             allowed = any(
-                rbac_config.check_permission(key_hash, permission)
-                for permission in required
+                rbac_cfg.check_permission(key_hash, perm) for perm in required
             )
             if not allowed:
                 logger.warning(
-                    "RBAC denied",
+                    "RBAC denegó",
                     extra={
                         "key_hash": key_hash[:8] + "...",
-                        "permissions": [perm.value for perm in required],
+                        "permissions": [p.value for p in required],
                         "path": request.url.path,
                     },
                 )
                 raise forbidden(
-                    "Insufficient permissions. Required: "
-                    + ", ".join(sorted(perm.value for perm in required))
+                    "Permisos insuficientes. Requerido: "
+                    + ", ".join(sorted(p.value for p in required))
                 )
             return None
 
-        # R: Legacy scope path (scopes -> permissions).
+        # 2) Fallback por scopes (si no hay RBAC).
         if not validator:
             return None
 
@@ -318,44 +356,30 @@ def require_permissions(*permissions: Permission) -> Callable:
         if "*" in scopes:
             return None
 
-        required_scopes = _scopes_for_permissions(required)
+        required_scopes = _required_scopes_for_permissions(required)
         if not required_scopes:
-            raise forbidden("No scope mapping for required permissions.")
+            raise forbidden("No hay mapeo de scopes para los permisos requeridos.")
 
         if not scopes.intersection(required_scopes):
             raise forbidden(
-                "API key does not have required scope: "
+                "La API key no tiene el scope requerido: "
                 + ", ".join(sorted(required_scopes))
             )
+
         return None
 
-    # R: Annotate for tests/introspection.
-    dependency._required_permissions = tuple(perm.value for perm in required)
+    # R: anotación útil para tests/introspección.
+    dependency._required_permissions = tuple(p.value for p in required)
     return dependency
 
 
 def require_permission(permission: Permission) -> Callable:
-    """
-    FastAPI dependency that requires a specific permission.
-
-    Usage:
-        @router.post("/ingest/text")
-        def ingest(
-            req: Request,
-            _: None = Depends(require_permission(Permission.DOCUMENTS_CREATE))
-        ):
-            ...
-
-    Raises:
-        HTTPException 403: Insufficient permissions
-
-    Note: Falls back to scope-based auth if RBAC is not configured.
-    """
+    """Atajo: requiere un permiso."""
     return require_permissions(permission)
 
 
 def require_metrics_permission() -> Callable:
-    """R: Optional auth for /metrics endpoint based on settings."""
+    """Auth opcional para /metrics según settings (metrics_require_auth)."""
 
     async def dependency(
         request: Request,
@@ -373,71 +397,44 @@ def require_metrics_permission() -> Callable:
 
 
 def require_role(role_name: str) -> Callable:
-    """
-    FastAPI dependency that requires a specific role.
-
-    Usage:
-        @router.delete("/admin/cache")
-        def clear_cache(_: None = Depends(require_role("admin"))):
-            ...
-    """
+    """Dependency FastAPI: requiere un rol específico (solo si RBAC está habilitado)."""
 
     async def dependency(request: Request) -> None:
-        rbac_config = get_rbac_config()
-
-        if not rbac_config:
+        rbac_cfg = get_rbac_config()
+        if not rbac_cfg:
             return None
 
         key_hash = getattr(request.state, "api_key_hash", None)
-
         if not key_hash:
-            from .auth import is_auth_enabled
+            raise forbidden("RBAC requiere request autenticado (API key).")
 
-            if is_auth_enabled():
-                raise HTTPException(
-                    status_code=403,
-                    detail="RBAC requires authenticated request",
-                )
-            return None
-
-        # Get user's role
-        user_role = rbac_config.get_role_for_key(key_hash)
-
+        user_role = rbac_cfg.get_role_for_key(key_hash)
         if not user_role:
-            raise HTTPException(
-                status_code=403,
-                detail="No role assigned to this API key",
-            )
+            raise forbidden("No hay rol asignado a esta API key.")
 
-        # Check if user has required role (or inherits from it)
-        required_role = rbac_config.roles.get(role_name)
+        required_role = rbac_cfg.roles.get(role_name)
         if not required_role:
-            logger.warning(f"Unknown role requested: {role_name}")
-            raise HTTPException(
-                status_code=500,
-                detail="Invalid role configuration",
-            )
+            logger.error("Rol requerido desconocido", extra={"role_name": role_name})
+            raise forbidden("Configuración RBAC inválida.")
 
-        # Admin role has access to everything
+        # R: admin (* ) pasa siempre.
         if Permission.ALL in user_role.permissions:
             return None
 
-        # Check exact role match
+        # Exacto o herencia
         if user_role.name == role_name:
             return None
 
-        # Check inheritance chain
         current = user_role
         while current.inherits_from:
             if current.inherits_from == role_name:
                 return None
-            current = rbac_config.roles.get(current.inherits_from)
+            current = rbac_cfg.roles.get(
+                current.inherits_from
+            )  # puede volverse None si config está mal
             if not current:
                 break
 
-        raise HTTPException(
-            status_code=403,
-            detail=f"Required role: {role_name}. Your role: {user_role.name}",
-        )
+        raise forbidden(f"Rol requerido: {role_name}. Tu rol: {user_role.name}")
 
     return dependency

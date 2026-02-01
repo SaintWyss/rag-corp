@@ -1,49 +1,64 @@
+# apps/backend/app/crosscutting/pagination.py
 """
-Name: Pagination Utilities
+===============================================================================
+MÓDULO: Utilidades de paginación (cursor base64)
+===============================================================================
 
-Responsibilities:
-  - Provide cursor-based pagination for list endpoints
-  - Standardized page response model
+Objetivo
+--------
+Paginación simple y consistente para endpoints listados:
+- cursor basado en offset codificado
+- response genérico Page[T]
+
+-------------------------------------------------------------------------------
+CRC (Component Card)
+-------------------------------------------------------------------------------
+Componente:
+  paginate + encode/decode_cursor
+
+Responsabilidades:
+  - Codificar/decodificar cursor
+  - Armar metadata has_next/has_prev y cursors
+===============================================================================
 """
 
 from __future__ import annotations
 
-from typing import Generic, TypeVar, List, Optional
-from pydantic import BaseModel, Field
 import base64
+from typing import Generic, List, Optional, TypeVar
 
+from pydantic import BaseModel, Field
 
 T = TypeVar("T")
 
 
 class PageInfo(BaseModel):
-    """Pagination metadata."""
-
-    has_next: bool = Field(description="Whether there are more items after this page")
-    has_prev: bool = Field(description="Whether there are items before this page")
-    next_cursor: Optional[str] = Field(None, description="Cursor for next page")
-    prev_cursor: Optional[str] = Field(None, description="Cursor for previous page")
-    total: Optional[int] = Field(None, description="Total count (if available)")
+    has_next: bool = Field(description="Hay más items después de esta página")
+    has_prev: bool = Field(description="Hay items antes de esta página")
+    next_cursor: Optional[str] = Field(
+        None, description="Cursor para la próxima página"
+    )
+    prev_cursor: Optional[str] = Field(
+        None, description="Cursor para la página anterior"
+    )
+    total: Optional[int] = Field(None, description="Total (si está disponible)")
 
 
 class Page(BaseModel, Generic[T]):
-    """Generic paginated response."""
-
-    items: List[T] = Field(description="Items in current page")
-    page_info: PageInfo = Field(description="Pagination metadata")
+    items: List[T] = Field(description="Items de la página actual")
+    page_info: PageInfo = Field(description="Metadatos de paginación")
 
 
 def encode_cursor(offset: int) -> str:
-    """Encode offset as base64 cursor."""
-    return base64.urlsafe_b64encode(f"offset:{offset}".encode()).decode()
+    raw = f"offset:{max(0, int(offset))}".encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
 
 
 def decode_cursor(cursor: str) -> int:
-    """Decode cursor to offset."""
     try:
-        decoded = base64.urlsafe_b64decode(cursor.encode()).decode()
+        decoded = base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8")
         if decoded.startswith("offset:"):
-            return int(decoded[7:])
+            return max(0, int(decoded.split(":", 1)[1]))
     except Exception:
         pass
     return 0
@@ -56,17 +71,9 @@ def paginate(
     total: Optional[int] = None,
 ) -> Page[T]:
     """
-    Create paginated response from items list.
-
-    Args:
-        items: Full or page-sized list of items
-        limit: Page size
-        cursor: Current cursor (if any)
-        total: Total count (optional)
-
-    Returns:
-        Page with items and pagination metadata
+    Si `items` viene con “limit+1”, entonces has_next se calcula solo.
     """
+    limit = max(1, int(limit))
     offset = decode_cursor(cursor) if cursor else 0
 
     has_next = len(items) > limit

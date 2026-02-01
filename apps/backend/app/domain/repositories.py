@@ -1,32 +1,31 @@
 """
-CRC — domain/repositories.py
+===============================================================================
+TARJETA CRC — domain/repositories.py
+===============================================================================
 
-Name
-- Domain Repository Interfaces (Protocols)
+Módulo:
+    Puertos de Persistencia (Repository Protocols)
 
-Responsibilities
-- Define persistence contracts for the domain layer (ports).
-- Keep the application/domain independent from infrastructure (PostgreSQL, in-memory, etc.).
-- Enable dependency inversion and straightforward unit testing (mock/stub repositories).
+Responsabilidades:
+    - Definir contratos estables para persistencia y queries del dominio.
+    - Asegurar inversión de dependencias: application usa interfaces, no DB.
+    - Facilitar tests (mocks/stubs) sin infraestructura.
 
-Collaborators
-- domain.entities: Document, Chunk, ConversationMessage, Workspace, WorkspaceVisibility
-- domain.audit: AuditEvent
-- infrastructure.repositories: postgres_*, in_memory_* implementations
+Colaboradores:
+    - domain.entities: Document, Chunk, ConversationMessage, Workspace
+    - domain.audit: AuditEvent
+    - infraestructura: implementaciones concretas (Postgres, in-memory, etc.)
 
-Constraints
-- Pure interfaces only: no side effects, no infrastructure imports, no SQL.
-- Implementations MUST match method signatures exactly.
-- Keep contracts stable; add methods intentionally to support v6 capabilities.
-
-Notes
-- We use typing.Protocol for structural subtyping ("duck typing").
-- Outputs are concrete lists for predictable iteration/serialization.
-- Inputs can be lists; implementations should handle empty lists gracefully.
+Reglas:
+    - SOLO interfaces: nada de SQL, nada de side effects extra.
+    - Mantener firmas estables: si agregás métodos, hacelo intencionalmente.
+===============================================================================
 """
 
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Optional, Protocol
+from typing import Protocol
 from uuid import UUID
 
 from .audit import AuditEvent
@@ -40,60 +39,48 @@ from .entities import (
 
 
 class DocumentRepository(Protocol):
-    """
-    R: Interface for document and chunk persistence.
-
-    Implementations must provide:
-      - Document metadata storage
-      - Chunk storage with embeddings
-      - Vector similarity search
-      - Soft-delete lifecycle
-    """
+    """Contrato de persistencia para documentos y chunks."""
 
     def save_document(self, document: Document) -> None:
-        """R: Persist document metadata."""
+        """Persiste metadata del documento."""
         ...
 
     def save_chunks(
         self,
         document_id: UUID,
-        chunks: List[Chunk],
+        chunks: list[Chunk],
         *,
         workspace_id: UUID | None = None,
     ) -> None:
-        """
-        R: Persist chunks with embeddings for a document.
-
-        Args:
-            document_id: Parent document UUID
-            chunks: Chunk entities with embeddings
-            workspace_id: Optional workspace scope
-        """
+        """Persiste chunks asociados a un documento."""
         ...
 
     def save_document_with_chunks(
-        self, document: Document, chunks: List[Chunk]
+        self, document: Document, chunks: list[Chunk]
     ) -> None:
-        """
-        R: Atomically save document and its chunks.
-
-        Preferred ingestion method to avoid partial writes.
-        """
+        """Persiste documento + chunks de forma atómica."""
         ...
 
     def find_similar_chunks(
         self,
-        embedding: List[float],
+        embedding: list[float],
         top_k: int,
         *,
         workspace_id: UUID | None = None,
-    ) -> List[Chunk]:
-        """
-        R: Vector similarity search (top-k).
+    ) -> list[Chunk]:
+        """Búsqueda por similitud (top-k)."""
+        ...
 
-        Returns:
-            List of Chunk entities ordered by similarity (descending).
-        """
+    def find_similar_chunks_mmr(
+        self,
+        embedding: list[float],
+        top_k: int,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Chunk]:
+        """Búsqueda por similitud con MMR (diversidad)."""
         ...
 
     def list_documents(
@@ -106,51 +93,24 @@ class DocumentRepository(Protocol):
         status: str | None = None,
         tag: str | None = None,
         sort: str | None = None,
-    ) -> List[Document]:
-        """
-        R: List document metadata (excluding deleted documents by default).
-
-        Returns:
-            List of Document entities ordered by creation time (descending) unless overridden.
-        """
+    ) -> list[Document]:
+        """Lista documentos con filtros opcionales."""
         ...
 
     def get_document(
-        self,
-        document_id: UUID,
-        *,
-        workspace_id: UUID | None = None,
-    ) -> Optional[Document]:
-        """R: Fetch a single document by ID (optionally scoped by workspace)."""
-        ...
-
-    def find_similar_chunks_mmr(
-        self,
-        embedding: List[float],
-        top_k: int,
-        fetch_k: int = 20,
-        lambda_mult: float = 0.5,
-        *,
-        workspace_id: UUID | None = None,
-    ) -> List[Chunk]:
-        """
-        R: Similarity search with Maximal Marginal Relevance (MMR).
-
-        MMR balances relevance with diversity (reduces redundant chunks).
-        """
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> Document | None:
+        """Obtiene un documento por ID (opcionalmente scopiado)."""
         ...
 
     def soft_delete_document(
-        self,
-        document_id: UUID,
-        *,
-        workspace_id: UUID | None = None,
+        self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> bool:
-        """R: Soft delete a document (sets deleted_at)."""
+        """Soft delete: setea deleted_at."""
         ...
 
     def soft_delete_documents_by_workspace(self, workspace_id: UUID) -> int:
-        """R: Soft delete all documents in a workspace."""
+        """Soft delete masivo por workspace."""
         ...
 
     def update_document_file_metadata(
@@ -165,7 +125,7 @@ class DocumentRepository(Protocol):
         status: str | None = None,
         error_message: str | None = None,
     ) -> bool:
-        """R: Update file/storage metadata and status for a document."""
+        """Actualiza metadata de archivo/storage y estado."""
         ...
 
     def transition_document_status(
@@ -177,54 +137,36 @@ class DocumentRepository(Protocol):
         to_status: str,
         error_message: str | None = None,
     ) -> bool:
-        """R: Transition document status if current status is allowed."""
+        """Transición de estado (compare-and-set)."""
         ...
 
     def delete_chunks_for_document(
-        self,
-        document_id: UUID,
-        *,
-        workspace_id: UUID | None = None,
+        self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> int:
-        """R: Delete all chunks for a document."""
+        """Elimina chunks de un documento."""
         ...
 
     def restore_document(
-        self,
-        document_id: UUID,
-        *,
-        workspace_id: UUID | None = None,
+        self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> bool:
-        """R: Restore a soft-deleted document."""
+        """Restaura un documento soft-deleted."""
         ...
 
     def ping(self) -> bool:
-        """R: Check repository connectivity/availability."""
+        """Chequeo de conectividad del repositorio."""
         ...
 
 
 class WorkspaceRepository(Protocol):
-    """
-    R: Interface for workspace persistence.
-
-    Implementations must provide:
-      - Workspace CRUD operations
-      - Archive semantics via archived_at (soft delete)
-      - v6 listing helpers to support ORG_READ + SHARED(ACL) visibility
-    """
+    """Contrato de persistencia para workspaces."""
 
     def list_workspaces(
         self,
         *,
         owner_user_id: UUID | None = None,
         include_archived: bool = False,
-    ) -> List[Workspace]:
-        """
-        R: List workspaces, optionally filtered by owner.
-
-        Notes:
-            - This method alone is not enough to implement v6 employee visibility rules.
-        """
+    ) -> list[Workspace]:
+        """Lista workspaces (opcionalmente por owner)."""
         ...
 
     def list_workspaces_by_visibility(
@@ -232,30 +174,17 @@ class WorkspaceRepository(Protocol):
         visibility: WorkspaceVisibility,
         *,
         include_archived: bool = False,
-    ) -> List[Workspace]:
-        """
-        R: List workspaces filtered by visibility (e.g., ORG_READ).
-
-        Implementations MUST:
-            - Respect include_archived flag
-            - Return deterministic ordering (ideally created_at desc, name asc)
-        """
+    ) -> list[Workspace]:
+        """Lista workspaces por visibilidad."""
         ...
 
     def list_workspaces_by_ids(
         self,
-        workspace_ids: List[UUID],
+        workspace_ids: list[UUID],
         *,
         include_archived: bool = False,
-    ) -> List[Workspace]:
-        """
-        R: List workspaces by a set of IDs.
-
-        Implementations MUST:
-            - Return [] if workspace_ids is empty
-            - Respect include_archived flag
-            - Not raise for missing IDs (simply skip)
-        """
+    ) -> list[Workspace]:
+        """Lista workspaces por IDs (si falta alguno, se omite)."""
         ...
 
     def list_workspaces_visible_to_user(
@@ -263,33 +192,22 @@ class WorkspaceRepository(Protocol):
         user_id: UUID,
         *,
         include_archived: bool = False,
-    ) -> List[Workspace]:
-        """
-        R: List workspaces visible to an employee in a single query.
-
-        Implementations MUST:
-            - Include owner_user_id = user_id
-            - Include visibility = ORG_READ
-            - Include visibility = SHARED when user_id is in workspace_acl
-            - Respect include_archived flag
-            - Return deterministic ordering (created_at desc, name asc)
-        """
+    ) -> list[Workspace]:
+        """Lista workspaces visibles para un usuario (optimizado)."""
         ...
 
-    def get_workspace(self, workspace_id: UUID) -> Optional[Workspace]:
-        """R: Fetch a workspace by ID."""
+    def get_workspace(self, workspace_id: UUID) -> Workspace | None:
+        """Obtiene un workspace por ID."""
         ...
 
     def get_workspace_by_owner_and_name(
-        self,
-        owner_user_id: UUID | None,
-        name: str,
-    ) -> Optional[Workspace]:
-        """R: Fetch a workspace by owner + name (uniqueness check)."""
+        self, owner_user_id: UUID | None, name: str
+    ) -> Workspace | None:
+        """Obtiene workspace por owner + name (para unicidad)."""
         ...
 
     def create_workspace(self, workspace: Workspace) -> Workspace:
-        """R: Persist a new workspace."""
+        """Crea un workspace."""
         ...
 
     def update_workspace(
@@ -300,85 +218,55 @@ class WorkspaceRepository(Protocol):
         description: str | None = None,
         visibility: WorkspaceVisibility | None = None,
         allowed_roles: list[str] | None = None,
-    ) -> Optional[Workspace]:
-        """R: Update workspace attributes."""
+    ) -> Workspace | None:
+        """Actualiza atributos de un workspace."""
         ...
 
     def archive_workspace(self, workspace_id: UUID) -> bool:
-        """R: Archive (soft-delete) a workspace."""
+        """Archiva un workspace."""
         ...
 
 
 class WorkspaceAclRepository(Protocol):
-    """
-    R: Interface for workspace ACL persistence.
+    """Contrato para ACL de workspaces (modo SHARED)."""
 
-    Implementations must provide:
-      - Read access lists for SHARED workspaces
-      - Replace ACL entries for share operations
-      - Reverse lookup: workspaces shared to a given user (v6 requirement)
-    """
-
-    def list_workspace_acl(self, workspace_id: UUID) -> List[UUID]:
-        """R: List user IDs with access to a SHARED workspace."""
+    def list_workspace_acl(self, workspace_id: UUID) -> list[UUID]:
+        """Lista user_ids con acceso."""
         ...
 
-    def replace_workspace_acl(self, workspace_id: UUID, user_ids: List[UUID]) -> None:
-        """R: Replace ACL entries (share operation)."""
+    def replace_workspace_acl(self, workspace_id: UUID, user_ids: list[UUID]) -> None:
+        """Reemplaza entradas ACL."""
         ...
 
-    def list_workspaces_for_user(self, user_id: UUID) -> List[UUID]:
-        """
-        R: Reverse lookup for SHARED access.
-
-        Returns:
-            Workspace IDs where user_id is present in workspace_acl.
-        """
+    def list_workspaces_for_user(self, user_id: UUID) -> list[UUID]:
+        """Reverse lookup: workspaces compartidos a un usuario."""
         ...
 
 
 class ConversationRepository(Protocol):
-    """
-    R: Interface for storing and retrieving conversation history.
-    """
+    """Contrato para persistencia de historial de conversación."""
 
-    def create_conversation(self) -> str:
-        """R: Create a new conversation and return its ID."""
-        ...
+    def create_conversation(self) -> str: ...
 
-    def conversation_exists(self, conversation_id: str) -> bool:
-        """R: Check if a conversation exists."""
-        ...
+    def conversation_exists(self, conversation_id: str) -> bool: ...
 
-    def get_message_count(self, conversation_id: str) -> int:
-        """R: Get the total number of messages in a conversation."""
-        ...
+    def get_message_count(self, conversation_id: str) -> int: ...
 
     def append_message(
         self, conversation_id: str, message: ConversationMessage
-    ) -> None:
-        """R: Append a message to a conversation."""
-        ...
+    ) -> None: ...
 
     def get_messages(
-        self,
-        conversation_id: str,
-        limit: Optional[int] = None,
-    ) -> List[ConversationMessage]:
-        """R: Get messages for a conversation, optionally limited to last N."""
-        ...
+        self, conversation_id: str, limit: int | None = None
+    ) -> list[ConversationMessage]: ...
 
-    def clear_messages(self, conversation_id: str) -> None:
-        """R: Delete all messages from a conversation (keep the conversation itself)."""
-        ...
+    def clear_messages(self, conversation_id: str) -> None: ...
 
 
 class AuditEventRepository(Protocol):
-    """R: Interface for audit event persistence (system events)."""
+    """Contrato para auditoría de eventos del sistema."""
 
-    def record_event(self, event: AuditEvent) -> None:
-        """R: Persist an audit event."""
-        ...
+    def record_event(self, event: AuditEvent) -> None: ...
 
     def list_events(
         self,
@@ -390,20 +278,11 @@ class AuditEventRepository(Protocol):
         end_at: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[AuditEvent]:
-        """R: Fetch audit events with optional filters."""
-        ...
+    ) -> list[AuditEvent]: ...
 
 
 class FeedbackRepository(Protocol):
-    """
-    R: Interface for user feedback persistence (RLHF).
-
-    Implementations must provide:
-      - Save/retrieve votes on RAG answers
-      - Prevent duplicate votes (one vote per user per message)
-      - Support analytics queries
-    """
+    """Contrato para feedback de usuario (votos)."""
 
     def save_vote(
         self,
@@ -412,55 +291,29 @@ class FeedbackRepository(Protocol):
         message_index: int,
         user_id: UUID,
         vote: str,
-        comment: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        created_at: Optional[datetime] = None,
-    ) -> str:
-        """
-        R: Persist a vote and return the vote ID.
-
-        Implementations MUST:
-          - Generate a unique vote_id if not provided
-          - Prevent duplicates (user_id + conversation_id + message_index)
-        """
-        ...
+        comment: str | None = None,
+        tags: list[str] | None = None,
+        created_at: datetime | None = None,
+    ) -> str: ...
 
     def get_vote(
         self, *, conversation_id: str, message_index: int, user_id: UUID
-    ) -> Optional[dict]:
-        """R: Get existing vote for a user on a specific message."""
-        ...
+    ) -> dict | None: ...
 
-    def list_votes_for_conversation(self, conversation_id: str) -> List[dict]:
-        """R: List all votes for a conversation."""
-        ...
+    def list_votes_for_conversation(self, conversation_id: str) -> list[dict]: ...
 
     def count_votes(
         self,
         *,
-        workspace_id: Optional[UUID] = None,
-        vote_type: Optional[str] = None,
-        start_at: Optional[datetime] = None,
-        end_at: Optional[datetime] = None,
-    ) -> dict:
-        """
-        R: Count votes by type for analytics.
-
-        Returns:
-            {"up": int, "down": int, "neutral": int, "total": int}
-        """
-        ...
+        workspace_id: UUID | None = None,
+        vote_type: str | None = None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
+    ) -> dict: ...
 
 
 class AnswerAuditRepository(Protocol):
-    """
-    R: Interface for RAG answer audit trail (enterprise compliance).
-
-    Implementations must provide:
-      - Persist every RAG answer for compliance
-      - Query by user, workspace, date range
-      - Flag high-risk answers for review
-    """
+    """Contrato para auditoría de respuestas (cumplimiento / trazabilidad)."""
 
     def save_audit_record(
         self,
@@ -475,55 +328,37 @@ class AnswerAuditRepository(Protocol):
         confidence_value: float,
         requires_verification: bool,
         sources_count: int,
-        source_documents: Optional[List[str]] = None,
-        user_email: Optional[str] = None,
-        suggested_department: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        response_time_ms: Optional[int] = None,
-        metadata: Optional[dict] = None,
-    ) -> None:
-        """R: Persist an audit record."""
-        ...
+        source_documents: list[str] | None = None,
+        user_email: str | None = None,
+        suggested_department: str | None = None,
+        conversation_id: str | None = None,
+        session_id: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        response_time_ms: int | None = None,
+        metadata: dict | None = None,
+    ) -> None: ...
 
-    def get_audit_record(self, record_id: str) -> Optional[dict]:
-        """R: Fetch a specific audit record."""
-        ...
+    def get_audit_record(self, record_id: str) -> dict | None: ...
 
     def list_audit_records(
         self,
         *,
-        workspace_id: Optional[UUID] = None,
-        user_id: Optional[UUID] = None,
-        confidence_level: Optional[str] = None,
-        requires_verification: Optional[bool] = None,
-        start_at: Optional[datetime] = None,
-        end_at: Optional[datetime] = None,
+        workspace_id: UUID | None = None,
+        user_id: UUID | None = None,
+        confidence_level: str | None = None,
+        requires_verification: bool | None = None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[dict]:
-        """R: List audit records with filters."""
-        ...
+    ) -> list[dict]: ...
 
     def list_high_risk_records(
         self,
         *,
-        workspace_id: Optional[UUID] = None,
-        start_at: Optional[datetime] = None,
-        end_at: Optional[datetime] = None,
+        workspace_id: UUID | None = None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
         limit: int = 50,
-    ) -> List[dict]:
-        """R: List high-risk audit records for review (low confidence or few sources)."""
-        ...
-
-    def update_rating(
-        self,
-        record_id: str,
-        *,
-        was_rated: bool,
-        rating: Optional[str] = None,
-    ) -> bool:
-        """R: Update the user rating for an audit record (link to feedback)."""
-        ...
+    ) -> list[dict]: ...

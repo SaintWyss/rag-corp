@@ -1,188 +1,240 @@
 """
-Name: Prometheus Metrics
+===============================================================================
+ARCHIVO: crosscutting/metrics.py
+===============================================================================
 
-Responsibilities:
-  - Define and expose Prometheus metrics
-  - Provide /metrics endpoint handler
-  - Record request latency, count, and stage timings
+CRC CARD (Módulo)
+-------------------------------------------------------------------------------
+Nombre:
+    Métricas (Prometheus) — Observabilidad de bajo acoplamiento
 
-Collaborators:
-  - middleware.py: Records request metrics
-  - application/use_cases: Records stage timings (embed, retrieve, llm)
+Responsabilidades:
+    - Definir métricas Prometheus (si la dependencia existe) sin romper el runtime.
+    - Proveer funciones pequeñas y estables para registrar eventos/duraciones.
+    - Cuidar cardinalidad (NO user_id, NO SQL completo, NO IDs dinámicos).
+    - Exponer helpers para generar la respuesta /metrics.
 
-Constraints:
-  - Low cardinality labels only (endpoint, method, status - NOT user_id)
-  - Lazy initialization (don't fail if prometheus_client not installed)
+Colaboradores:
+    - crosscutting.middleware: registra latencia y conteo HTTP.
+    - application/usecases: registra timings de etapas RAG.
+    - infrastructure/db/instrumentation: observa duración de queries.
+    - worker/jobs: registra métricas de procesamiento asíncrono.
 
-Notes:
-  - Metrics are global singletons (Prometheus requirement)
-  - Histogram buckets chosen for typical latencies
-  - prometheus_client is optional dependency
+Decisiones de diseño (Senior):
+    - "Dependencia opcional": si `prometheus_client` no está instalado,
+      TODO funciona igual (no-op). Esto mantiene el backend portable.
+    - Registro único global: Prometheus requiere singletons.
+    - Normalización de paths: evita explosión de cardinalidad.
+===============================================================================
 """
+
+from __future__ import annotations
 
 import re
 from typing import Optional
 
-# R: Lazy import to make prometheus_client optional
+# -----------------------------------------------------------------------------
+# Dependencia opcional (prometheus_client)
+# -----------------------------------------------------------------------------
+
 _prometheus_available = False
 _registry = None
 
 try:
-    from prometheus_client import (
+    from prometheus_client import (  # type: ignore
+        CONTENT_TYPE_LATEST,
+        CollectorRegistry,
         Counter,
         Histogram,
-        CollectorRegistry,
         generate_latest,
-        CONTENT_TYPE_LATEST,
     )
 
     _prometheus_available = True
     _registry = CollectorRegistry()
 except ImportError:
+    # Si no está instalado, el módulo queda en modo no-op.
     pass
 
 
-# R: Request metrics (populated if prometheus available)
+# -----------------------------------------------------------------------------
+# Métricas (variables globales)
+# -----------------------------------------------------------------------------
+
 _requests_total: Optional["Counter"] = None
 _request_latency: Optional["Histogram"] = None
+
 _embed_latency: Optional["Histogram"] = None
 _retrieve_latency: Optional["Histogram"] = None
 _llm_latency: Optional["Histogram"] = None
+
 _embedding_cache_hits: Optional["Counter"] = None
 _embedding_cache_misses: Optional["Counter"] = None
+
 _worker_processed_total: Optional["Counter"] = None
 _worker_failed_total: Optional["Counter"] = None
 _worker_duration: Optional["Histogram"] = None
+
 _policy_refusal_total: Optional["Counter"] = None
 _prompt_injection_detected_total: Optional["Counter"] = None
 _cross_scope_block_total: Optional["Counter"] = None
 _answer_without_sources_total: Optional["Counter"] = None
+
 _sources_returned_count: Optional["Histogram"] = None
+
+# DB (baja cardinalidad)
+_db_query_duration: Optional["Histogram"] = None
 
 
 def _init_metrics() -> None:
-    """R: Initialize Prometheus metrics (called once)."""
+    """Inicializa métricas (una sola vez)."""
     global _requests_total, _request_latency
     global _embed_latency, _retrieve_latency, _llm_latency
     global _embedding_cache_hits, _embedding_cache_misses
     global _worker_processed_total, _worker_failed_total, _worker_duration
     global _policy_refusal_total, _prompt_injection_detected_total
     global _cross_scope_block_total, _answer_without_sources_total
-    global _sources_returned_count
+    global _sources_returned_count, _db_query_duration
 
     if not _prometheus_available or _requests_total is not None:
         return
 
-    # R: Request counter with endpoint and status labels
+    # ------------------------
+    # HTTP
+    # ------------------------
     _requests_total = Counter(
         "rag_requests_total",
-        "Total HTTP requests",
+        "Total de requests HTTP",
         ["endpoint", "method", "status"],
         registry=_registry,
     )
 
-    # R: Request latency histogram (seconds)
-    # Buckets: 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s
     _request_latency = Histogram(
         "rag_request_latency_seconds",
-        "HTTP request latency in seconds",
+        "Latencia de requests HTTP (segundos)",
         ["endpoint", "method"],
         buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
         registry=_registry,
     )
 
-    # R: Stage latency histograms (for RAG pipeline)
+    # ------------------------
+    # Etapas RAG
+    # ------------------------
     _embed_latency = Histogram(
         "rag_embed_latency_seconds",
-        "Embedding generation latency in seconds",
+        "Latencia de generación de embeddings (segundos)",
         buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
         registry=_registry,
     )
 
     _retrieve_latency = Histogram(
         "rag_retrieve_latency_seconds",
-        "Chunk retrieval latency in seconds",
+        "Latencia de retrieval de chunks (segundos)",
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5),
         registry=_registry,
     )
 
     _llm_latency = Histogram(
         "rag_llm_latency_seconds",
-        "LLM generation latency in seconds",
+        "Latencia de generación del LLM (segundos)",
         buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
         registry=_registry,
     )
 
+    # ------------------------
+    # Cache embeddings
+    # ------------------------
     _embedding_cache_hits = Counter(
         "rag_embedding_cache_hit_total",
-        "Embedding cache hits",
+        "Hits del cache de embeddings",
         ["kind"],
         registry=_registry,
     )
 
     _embedding_cache_misses = Counter(
         "rag_embedding_cache_miss_total",
-        "Embedding cache misses",
+        "Misses del cache de embeddings",
         ["kind"],
         registry=_registry,
     )
 
+    # ------------------------
+    # Worker
+    # ------------------------
     _worker_processed_total = Counter(
         "rag_worker_processed_total",
-        "Total documents processed by worker",
+        "Total de documentos procesados por el worker",
         ["status"],
         registry=_registry,
     )
 
     _worker_failed_total = Counter(
         "rag_worker_failed_total",
-        "Total documents failed in worker",
+        "Total de fallos del worker",
         registry=_registry,
     )
 
     _worker_duration = Histogram(
         "rag_worker_duration_seconds",
-        "Worker document processing duration in seconds",
+        "Duración del procesamiento del worker (segundos)",
         buckets=(0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
         registry=_registry,
     )
 
+    # ------------------------
+    # Seguridad / calidad
+    # ------------------------
     _policy_refusal_total = Counter(
         "rag_policy_refusal_total",
-        "Total policy refusals",
+        "Total de rechazos por política",
         ["reason"],
         registry=_registry,
     )
 
     _prompt_injection_detected_total = Counter(
         "rag_prompt_injection_detected_total",
-        "Prompt injection detections by pattern",
+        "Detecciones de prompt injection por patrón",
         ["pattern"],
         registry=_registry,
     )
 
     _cross_scope_block_total = Counter(
         "rag_cross_scope_block_total",
-        "Cross-scope or missing scope blocks",
+        "Bloqueos por cross-scope o scope faltante",
         registry=_registry,
     )
 
     _answer_without_sources_total = Counter(
         "rag_answer_without_sources_total",
-        "Answers returned without sources section",
+        "Respuestas devueltas sin sección de fuentes",
         registry=_registry,
     )
 
     _sources_returned_count = Histogram(
         "rag_sources_returned_count",
-        "Number of sources returned in RAG responses",
+        "Cantidad de fuentes devueltas",
         buckets=(0, 1, 2, 3, 5, 8, 13, 21),
         registry=_registry,
     )
 
+    # ------------------------
+    # DB
+    # ------------------------
+    _db_query_duration = Histogram(
+        "rag_db_query_duration_seconds",
+        "Duración de queries DB (segundos)",
+        ["kind"],
+        buckets=(0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+        registry=_registry,
+    )
 
-# R: Initialize on module load
+
+# Inicialización al importar el módulo
 _init_metrics()
+
+
+# -----------------------------------------------------------------------------
+# API pública (helpers de registro)
+# -----------------------------------------------------------------------------
 
 
 def record_request_metrics(
@@ -191,20 +243,14 @@ def record_request_metrics(
     status_code: int,
     latency_seconds: float,
 ) -> None:
-    """
-    R: Record HTTP request metrics.
+    """Registra métricas HTTP.
 
-    Args:
-        endpoint: Request path (e.g., "/v1/ask")
-        method: HTTP method (e.g., "POST")
-        status_code: Response status code
-        latency_seconds: Request duration in seconds
+    - endpoint se normaliza para no explotar cardinalidad.
+    - status se agrupa por 2xx/4xx/5xx.
     """
     if not _prometheus_available:
         return
 
-    # R: Normalize endpoint to avoid high cardinality
-    # /v1/documents/123 -> /v1/documents/{id}
     normalized = _normalize_endpoint(endpoint)
     status_bucket = _status_bucket(status_code)
 
@@ -216,10 +262,9 @@ def record_request_metrics(
         ).inc()
 
     if _request_latency:
-        _request_latency.labels(
-            endpoint=normalized,
-            method=method,
-        ).observe(latency_seconds)
+        _request_latency.labels(endpoint=normalized, method=method).observe(
+            latency_seconds
+        )
 
 
 def record_stage_metrics(
@@ -227,14 +272,7 @@ def record_stage_metrics(
     retrieve_seconds: Optional[float] = None,
     llm_seconds: Optional[float] = None,
 ) -> None:
-    """
-    R: Record RAG pipeline stage metrics.
-
-    Args:
-        embed_seconds: Time spent generating embeddings
-        retrieve_seconds: Time spent retrieving chunks
-        llm_seconds: Time spent on LLM generation
-    """
+    """Registra timings del pipeline RAG."""
     if not _prometheus_available:
         return
 
@@ -249,7 +287,7 @@ def record_stage_metrics(
 
 
 def record_embedding_cache_hit(count: int = 1, kind: str = "query") -> None:
-    """R: Record embedding cache hit count."""
+    """Incrementa hits del cache de embeddings."""
     if not _prometheus_available:
         return
     if _embedding_cache_hits:
@@ -257,15 +295,28 @@ def record_embedding_cache_hit(count: int = 1, kind: str = "query") -> None:
 
 
 def record_embedding_cache_miss(count: int = 1, kind: str = "query") -> None:
-    """R: Record embedding cache miss count."""
+    """Incrementa misses del cache de embeddings."""
     if not _prometheus_available:
         return
     if _embedding_cache_misses:
         _embedding_cache_misses.labels(kind=kind).inc(count)
 
 
+def observe_db_query_duration(kind: str, seconds: float) -> None:
+    """Observa duración de una query DB.
+
+    Reglas:
+      - `kind` debe ser baja cardinalidad (SELECT/INSERT/UPDATE/...).
+      - NO incluir SQL completo.
+    """
+    if not _prometheus_available:
+        return
+    if _db_query_duration:
+        _db_query_duration.labels(kind=(kind or "UNKNOWN").upper()).observe(seconds)
+
+
 def record_worker_processed(status: str) -> None:
-    """R: Record worker processed document status."""
+    """Cuenta documentos procesados por status."""
     if not _prometheus_available:
         return
     if _worker_processed_total:
@@ -273,7 +324,7 @@ def record_worker_processed(status: str) -> None:
 
 
 def record_worker_failed(count: int = 1) -> None:
-    """R: Record worker failed document count."""
+    """Cuenta fallos del worker."""
     if not _prometheus_available:
         return
     if _worker_failed_total:
@@ -281,7 +332,7 @@ def record_worker_failed(count: int = 1) -> None:
 
 
 def observe_worker_duration(duration_seconds: float) -> None:
-    """R: Record worker document processing duration."""
+    """Observa duración del worker."""
     if not _prometheus_available:
         return
     if _worker_duration:
@@ -289,7 +340,7 @@ def observe_worker_duration(duration_seconds: float) -> None:
 
 
 def record_policy_refusal(reason: str) -> None:
-    """R: Record policy refusal with reason label."""
+    """Cuenta rechazos por política."""
     if not _prometheus_available:
         return
     if _policy_refusal_total:
@@ -297,7 +348,7 @@ def record_policy_refusal(reason: str) -> None:
 
 
 def record_prompt_injection_detected(pattern: str) -> None:
-    """R: Record prompt injection detection by pattern slug."""
+    """Cuenta detecciones de prompt injection por patrón."""
     if not _prometheus_available:
         return
     if _prompt_injection_detected_total:
@@ -305,7 +356,7 @@ def record_prompt_injection_detected(pattern: str) -> None:
 
 
 def record_cross_scope_block(count: int = 1) -> None:
-    """R: Record cross-scope block count."""
+    """Cuenta bloqueos por scope."""
     if not _prometheus_available:
         return
     if _cross_scope_block_total:
@@ -313,7 +364,7 @@ def record_cross_scope_block(count: int = 1) -> None:
 
 
 def record_answer_without_sources(count: int = 1) -> None:
-    """R: Record answers without sources section."""
+    """Cuenta respuestas sin fuentes."""
     if not _prometheus_available:
         return
     if _answer_without_sources_total:
@@ -321,55 +372,58 @@ def record_answer_without_sources(count: int = 1) -> None:
 
 
 def observe_sources_returned_count(count: int) -> None:
-    """R: Observe number of sources returned."""
+    """Observa cuántas fuentes se devolvieron."""
     if not _prometheus_available:
         return
     if _sources_returned_count:
         _sources_returned_count.observe(count)
 
 
-def _normalize_endpoint(path: str) -> str:
-    """
-    R: Normalize endpoint path to prevent high cardinality.
+# -----------------------------------------------------------------------------
+# Helpers internos
+# -----------------------------------------------------------------------------
 
-    Replaces UUIDs and numeric IDs with placeholders.
+
+def _normalize_endpoint(path: str) -> str:
+    """Normaliza paths para evitar cardinalidad alta.
+
+    Reemplaza UUIDs e IDs numéricos por `{id}`.
     """
-    # Replace UUIDs
+    # UUIDs
     path = re.sub(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
         "{id}",
         path,
         flags=re.IGNORECASE,
     )
-    # Replace numeric IDs
+    # IDs numéricos
     path = re.sub(r"/\d+", "/{id}", path)
     return path
 
 
 def _status_bucket(code: int) -> str:
-    """R: Bucket status code (2xx, 4xx, 5xx)."""
+    """Agrupa status code para baja cardinalidad."""
     if 200 <= code < 300:
         return "2xx"
-    elif 400 <= code < 500:
+    if 400 <= code < 500:
         return "4xx"
-    elif 500 <= code < 600:
+    if 500 <= code < 600:
         return "5xx"
     return "other"
 
 
+# -----------------------------------------------------------------------------
+# Exposición del endpoint /metrics
+# -----------------------------------------------------------------------------
+
+
 def get_metrics_response() -> tuple[bytes, str]:
-    """
-    R: Generate Prometheus metrics response.
-
-    Returns:
-        Tuple of (body_bytes, content_type)
-    """
+    """Genera el body y content-type para /metrics."""
     if not _prometheus_available:
-        return b"# prometheus_client not installed\n", "text/plain"
-
+        return b"# prometheus_client no instalado\n", "text/plain"
     return generate_latest(_registry), CONTENT_TYPE_LATEST
 
 
 def is_prometheus_available() -> bool:
-    """R: Check if prometheus_client is installed."""
+    """Indica si prometheus_client está instalado."""
     return _prometheus_available

@@ -1,170 +1,81 @@
 """
-Name: Domain Service Interfaces
+===============================================================================
+TARJETA CRC — domain/services.py
+===============================================================================
 
-Responsibilities:
-  - Define contracts for external services (embeddings, LLM)
-  - Provide abstraction over AI providers
-  - Enable dependency inversion (business logic doesn't depend on any provider)
+Módulo:
+    Puertos de Servicios Externos (Protocols)
 
-Collaborators:
-  - Implementations in infrastructure.services
+Responsabilidades:
+    - Definir contratos para servicios externos (Embeddings / LLM / Chunking).
+    - Proteger a application de detalles del proveedor.
+    - Mantener el dominio independiente de SDKs.
 
-Constraints:
-  - Pure interfaces (Protocol), no implementation
-  - Provider-agnostic (could be cloud or local models)
-  - Must not leak provider-specific details
+Colaboradores:
+    - infrastructure/services/*: implementaciones concretas.
+    - application/usecases: consumen estos puertos.
 
-Notes:
-  - Using typing.Protocol for structural subtyping
-  - Implementations can swap between providers without changing use cases
-  - Enables testing with mock services
-
-CRC (Component Card):
-  Component: Domain Service Protocols
-  Responsibilities:
-    - Definir contratos de servicios externos (LLM/embeddings)
-    - Permitir inversión de dependencias en casos de uso
-  Collaborators:
-    - infrastructure.services
+Reglas:
+    - SOLO interfaces: nada de implementación.
+    - Firmas estables y provider-agnostic.
+===============================================================================
 """
 
-from typing import AsyncGenerator, List, Protocol
+from __future__ import annotations
+
+from typing import AsyncGenerator, Protocol
 from uuid import UUID
 
 
 class EmbeddingService(Protocol):
-    """
-    R: Interface for text embedding generation.
+    """Contrato para generar embeddings."""
 
-    Implementations must provide:
-      - Batch embedding for documents
-      - Single embedding for queries
-      - Consistent dimensionality across embed_batch and embed_query
-    """
-
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        R: Generate embeddings for multiple texts (optimized for document ingestion).
-
-        Args:
-            texts: List of strings to embed (e.g., document chunks)
-
-        Returns:
-            List of embedding vectors (fixed dimensionality)
-        """
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Embeddings batch (ideal para ingesta)."""
         ...
 
-    def embed_query(self, query: str) -> List[float]:
-        """
-        R: Generate embedding for a single query (optimized for search).
-
-        Args:
-            query: User's search query
-
-        Returns:
-            Embedding vector (same dimensionality as embed_batch)
-        """
+    def embed_query(self, query: str) -> list[float]:
+        """Embedding individual (ideal para búsqueda)."""
         ...
 
 
 class LLMService(Protocol):
-    """
-    R: Interface for language model generation.
-
-    Implementations must provide:
-      - Context-based answer generation (RAG)
-      - Prompt engineering handling
-      - Plain prompt completion for auxiliary tasks (rewrites/rerank)
-      - Error handling for generation failures
-    """
+    """Contrato para generación con modelo de lenguaje."""
 
     def generate_answer(self, query: str, context: str) -> str:
-        """
-        R: Generate answer based on query and retrieved context.
-
-        Args:
-            query: User's question
-            context: Retrieved text fragments (concatenated)
-
-        Returns:
-            Generated answer (should be based on context only)
-        """
+        """Genera respuesta usando contexto (RAG)."""
         ...
 
     def generate_text(self, prompt: str, max_tokens: int = 200) -> str:
-        """
-        R: Generate plain text from a prompt (auxiliary tasks).
-
-        Args:
-            prompt: Prompt text to complete
-            max_tokens: Max output tokens (best-effort)
-
-        Returns:
-            Generated text (no post-processing)
-        """
+        """Generación auxiliar (resúmenes, reescrituras, etc.)."""
         ...
 
     async def generate_stream(
-        self, query: str, chunks: List["Chunk"]
+        self, query: str, chunks: list["Chunk"]
     ) -> AsyncGenerator[str, None]:
-        """
-        R: Stream answer token by token.
-
-        Args:
-            query: User's question
-            chunks: Retrieved context chunks
-
-        Yields:
-            Individual tokens as they are generated
-        """
+        """Stream de salida (token a token / chunk a chunk)."""
         ...
 
 
-from .entities import Chunk  # noqa: E402 - avoid circular import
+from .entities import Chunk  # noqa: E402
 
 
 class TextChunkerService(Protocol):
-    """
-    R: Interface for text chunking.
+    """Contrato para partir texto en chunks de forma determinística."""
 
-    Implementations must provide:
-      - Consistent chunking strategy
-      - Deterministic output for same input
-    """
-
-    def chunk(self, text: str) -> List[str]:
-        """
-        R: Split text into chunks.
-
-        Args:
-            text: Document text
-
-        Returns:
-            List of chunk strings
-        """
-        ...
+    def chunk(self, text: str) -> list[str]: ...
 
 
 class FileStoragePort(Protocol):
-    """
-    R: Interface for file storage (S3/MinIO).
+    """Contrato de storage de archivos (S3/MinIO/etc.)."""
 
-    Implementations must provide:
-      - Upload binary content to storage
-      - Delete stored content by key
-    """
+    def upload_file(
+        self, key: str, content: bytes, content_type: str | None
+    ) -> None: ...
 
-    def upload_file(self, key: str, content: bytes, content_type: str | None) -> None:
-        """R: Upload file content to storage."""
-        ...
+    def download_file(self, key: str) -> bytes: ...
 
-    def download_file(self, key: str) -> bytes:
-        """R: Download file content from storage."""
-        ...
-
-    def delete_file(self, key: str) -> None:
-        """R: Delete file content from storage."""
-        ...
+    def delete_file(self, key: str) -> None: ...
 
     def generate_presigned_url(
         self,
@@ -172,34 +83,18 @@ class FileStoragePort(Protocol):
         *,
         expires_in_seconds: int = 3600,
         filename: str | None = None,
-    ) -> str:
-        """
-        R: Generate a presigned URL for secure, temporary download.
-
-        Args:
-            key: Object key in storage
-            expires_in_seconds: URL validity duration (default 1 hour)
-            filename: Optional filename hint for Content-Disposition header
-
-        Returns:
-            Presigned URL string
-        """
-        ...
+    ) -> str: ...
 
 
 class DocumentTextExtractor(Protocol):
-    """R: Interface for extracting text from binary documents."""
+    """Contrato para extraer texto desde documentos binarios."""
 
-    def extract_text(self, mime_type: str, content: bytes) -> str:
-        """R: Extract text from a document payload."""
-        ...
+    def extract_text(self, mime_type: str, content: bytes) -> str: ...
 
 
 class DocumentProcessingQueue(Protocol):
-    """R: Interface for enqueuing document processing jobs."""
+    """Contrato para encolar procesamiento de documentos."""
 
     def enqueue_document_processing(
         self, document_id: UUID, *, workspace_id: UUID
-    ) -> str:
-        """R: Enqueue processing job for a document."""
-        ...
+    ) -> str: ...

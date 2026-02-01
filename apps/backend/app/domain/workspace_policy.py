@@ -1,9 +1,27 @@
 """
-Name: Workspace Access Policy
+===============================================================================
+TARJETA CRC — domain/workspace_policy.py
+===============================================================================
 
-Responsibilities:
-  - Define read/write/ACL access rules for workspaces
-  - Keep policy logic inside the domain layer
+Módulo:
+    Política de Acceso a Workspaces (Lectura/Escritura/ACL)
+
+Responsabilidades:
+    - Definir reglas puras de acceso a workspaces (sin DB, sin FastAPI).
+    - Separar "policy" de "repos" (repos solo traen datos, policy decide).
+    - Ser 100% testeable: funciones puras, inputs explícitos.
+
+Colaboradores:
+    - domain.entities.Workspace, WorkspaceVisibility
+    - identity.users.UserRole (catálogo de roles)
+    - application: resolve_workspace_for_read/write usa esta policy.
+
+Reglas (intención):
+    - Admin puede todo.
+    - Owner puede leer/escribir/gestionar ACL.
+    - Employee puede leer ORG_READ.
+    - SHARED requiere pertenecer al ACL (shared_user_ids).
+===============================================================================
 """
 
 from __future__ import annotations
@@ -16,9 +34,9 @@ from ..identity.users import UserRole
 from .entities import Workspace, WorkspaceVisibility
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class WorkspaceActor:
-    """R: Actor context for workspace access decisions."""
+    """Actor para decisiones de acceso a workspace."""
 
     user_id: UUID | None
     role: UserRole | None
@@ -44,7 +62,7 @@ def can_read_workspace(
     *,
     shared_user_ids: Iterable[UUID] | None = None,
 ) -> bool:
-    """R: Evaluate read access for a workspace."""
+    """Evalúa permiso de lectura."""
     if actor is None or actor.role is None:
         return False
 
@@ -68,7 +86,7 @@ def can_read_workspace(
 
 
 def can_write_workspace(workspace: Workspace, actor: WorkspaceActor | None) -> bool:
-    """R: Evaluate write access for a workspace."""
+    """Evalúa permiso de escritura."""
     if actor is None or actor.role is None:
         return False
 
@@ -79,5 +97,5 @@ def can_write_workspace(workspace: Workspace, actor: WorkspaceActor | None) -> b
 
 
 def can_manage_acl(workspace: Workspace, actor: WorkspaceActor | None) -> bool:
-    """R: Evaluate ACL management access for a workspace."""
+    """Evalúa permiso para gestionar ACL."""
     return can_write_workspace(workspace, actor)
