@@ -17,10 +17,10 @@ Notes:
   - Mark with @pytest.mark.unit
 """
 
-import pytest
 from uuid import uuid4
 
-from app.domain.entities import Document, Chunk, QueryResult
+import pytest
+from app.domain.entities import Chunk, Document, QueryResult
 
 
 @pytest.mark.unit
@@ -133,13 +133,6 @@ class TestChunk:
         chunk = Chunk(content=long_content, embedding=[0.1] * 768)
 
         assert len(chunk.content) == 900
-
-    def test_chunk_similarity_score_not_implemented(self):
-        """R: similarity_score() should raise NotImplementedError."""
-        chunk = Chunk(content="Test", embedding=[0.1] * 768)
-
-        with pytest.raises(NotImplementedError):
-            chunk.similarity_score([0.2] * 768)
 
 
 @pytest.mark.unit

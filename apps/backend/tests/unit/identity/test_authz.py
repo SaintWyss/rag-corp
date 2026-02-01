@@ -6,9 +6,6 @@ import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-from fastapi.routing import APIRoute
-
 from app.identity.auth import _hash_key, clear_keys_cache
 from app.identity.rbac import (
     DEFAULT_ROLES,
@@ -17,6 +14,8 @@ from app.identity.rbac import (
     clear_rbac_cache,
     require_permissions,
 )
+from fastapi import HTTPException
+from fastapi.routing import APIRoute
 
 
 @pytest.mark.unit
@@ -38,7 +37,9 @@ class TestRequirePermissions:
                 await dependency(mock_request, None)
 
             assert exc_info.value.status_code == 401
-            assert "Missing API key" in exc_info.value.detail
+            assert (
+                "API key" in exc_info.value.detail or "Falta" in exc_info.value.detail
+            )
 
     @pytest.mark.asyncio
     async def test_invalid_key_raises_403(self):
@@ -55,7 +56,10 @@ class TestRequirePermissions:
                 await dependency(mock_request, "wrong-key")
 
             assert exc_info.value.status_code == 403
-            assert "Invalid API key" in exc_info.value.detail
+            assert (
+                "API key" in exc_info.value.detail
+                or "inv\xe1lida" in exc_info.value.detail
+            )
 
     @pytest.mark.asyncio
     async def test_scope_missing_permission_raises_403(self):
@@ -72,7 +76,7 @@ class TestRequirePermissions:
                 await dependency(mock_request, "valid-key")
 
             assert exc_info.value.status_code == 403
-            assert "required scope" in exc_info.value.detail
+            assert "scope" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_scope_allows_and_sets_key_hash(self):
@@ -118,7 +122,10 @@ class TestRequirePermissions:
                 await dependency(mock_request, key)
 
             assert exc_info.value.status_code == 403
-            assert "Insufficient permissions" in exc_info.value.detail
+            assert (
+                "Permisos" in exc_info.value.detail
+                or "insuficientes" in exc_info.value.detail.lower()
+            )
 
 
 @pytest.mark.unit

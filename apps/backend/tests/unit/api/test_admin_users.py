@@ -12,14 +12,12 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from app.api.auth_routes import router as auth_router
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.auth_users import create_access_token, hash_password
+from app.identity.users import User, UserRole
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from app.api.auth_routes import router as auth_router
-from app.identity.auth_users import create_access_token, hash_password
-from app.api.exception_handlers import register_exception_handlers
-from app.identity.users import User, UserRole
-
 
 pytestmark = pytest.mark.unit
 
@@ -76,7 +74,7 @@ def test_list_users_admin_ok():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["users"][0]["email"] == admin.email
+    assert body[0]["email"] == admin.email
 
 
 def test_list_users_employee_forbidden():

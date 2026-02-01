@@ -42,7 +42,7 @@ def resolve_conversation_id(
     if conversation_id:
         # Validate that the conversation exists
         try:
-            messages = repository.get_messages(conversation_id, limit=1)
+            repository.get_messages(conversation_id, limit=1)
             # If we can get messages (even empty list), the ID is valid
             return conversation_id
         except Exception:

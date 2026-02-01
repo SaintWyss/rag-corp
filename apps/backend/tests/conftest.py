@@ -25,14 +25,14 @@ warnings.filterwarnings(
     "ignore", message=".*NumPy module was reloaded.*", category=UserWarning
 )
 
-import os
-import sys
-from pathlib import Path
-from typing import List
-from unittest.mock import Mock
-from uuid import UUID, uuid4
+import os  # noqa: E402
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import List  # noqa: E402
+from unittest.mock import Mock  # noqa: E402
+from uuid import UUID, uuid4  # noqa: E402
 
-import pytest
+import pytest  # noqa: E402
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -47,6 +47,9 @@ from app.domain.repositories import DocumentRepository  # noqa: E402
 from app.domain.services import EmbeddingService, LLMService  # noqa: E402
 
 os.environ.setdefault("APP_ENV", "test")
+os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test_db")
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-unit-tests-only")
+os.environ.setdefault("GOOGLE_API_KEY", "fake-test-api-key")
 
 
 def pytest_configure(config) -> None:

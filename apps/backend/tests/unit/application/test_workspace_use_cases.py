@@ -454,7 +454,9 @@ def test_list_workspaces_filters_by_policy():
     )
 
     acl_map = {ws_shared.id: [shared_member]}
-    repo = FakeWorkspaceRepository([ws_private, ws_org, ws_shared, ws_other], acl=acl_map)
+    repo = FakeWorkspaceRepository(
+        [ws_private, ws_org, ws_shared, ws_other], acl=acl_map
+    )
     acl_repo = FakeWorkspaceAclRepository(acl_map)
     use_case = ListWorkspacesUseCase(repo, acl_repo)
 
@@ -488,7 +490,7 @@ def test_update_workspace_validates_and_checks_conflict():
         visibility=WorkspaceVisibility.PRIVATE,
     )
     repo = FakeWorkspaceRepository([existing, conflict])
-    use_case = UpdateWorkspaceUseCase(repository=repo)
+    use_case = UpdateWorkspaceUseCase(workspace_repository=repo)
 
     invalid = use_case.execute(existing.id, _actor(owner_id, UserRole.EMPLOYEE))
     assert invalid.error.code == WorkspaceErrorCode.VALIDATION_ERROR
@@ -546,7 +548,7 @@ def test_publish_share_and_archive_use_cases():
     repo = FakeWorkspaceRepository([workspace])
     acl_repo = FakeWorkspaceAclRepository()
 
-    publish = PublishWorkspaceUseCase(repository=repo)
+    publish = PublishWorkspaceUseCase(workspace_repository=repo)
     published = publish.execute(workspace.id, _actor(owner_id, UserRole.EMPLOYEE))
     assert published.error is None
     assert published.workspace.visibility == WorkspaceVisibility.ORG_READ

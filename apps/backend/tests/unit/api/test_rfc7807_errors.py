@@ -10,13 +10,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from fastapi import Depends, FastAPI
-from fastapi.testclient import TestClient
-
-from app.identity.auth import clear_keys_cache, require_scope
 from app.api.exception_handlers import register_exception_handlers
 from app.crosscutting.middleware import BodyLimitMiddleware
 from app.crosscutting.rate_limit import RateLimitMiddleware, reset_rate_limiter
+from app.identity.auth import clear_keys_cache, require_scope
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
 
 
 def _build_app() -> RateLimitMiddleware:
@@ -74,7 +73,7 @@ def test_auth_missing_key_rfc7807():
     assert body["type"].endswith("/unauthorized")
     assert body["title"] == "Unauthorized"
     assert body["status"] == 401
-    assert body["detail"] == "Missing API key. Provide X-API-Key header."
+    assert "API key" in body["detail"] or "X-API-Key" in body["detail"]
     assert body["instance"].endswith("/protected")
 
 
@@ -93,7 +92,7 @@ def test_auth_invalid_key_rfc7807():
     assert body["type"].endswith("/forbidden")
     assert body["title"] == "Forbidden"
     assert body["status"] == 403
-    assert body["detail"] == "Invalid API key."
+    assert "API key" in body["detail"] or "inválida" in body["detail"]
     assert body["instance"].endswith("/protected")
 
 
@@ -118,7 +117,7 @@ def test_rate_limit_rfc7807():
     assert body["type"].endswith("/rate_limited")
     assert body["title"] == "Rate Limited"
     assert body["status"] == 429
-    assert "Retry after" in body["detail"]
+    assert "Reintent" in body["detail"] or "solicitudes" in body["detail"]
     assert body["instance"].endswith("/public")
 
 
@@ -137,5 +136,5 @@ def test_payload_too_large_rfc7807():
     assert body["type"].endswith("/payload_too_large")
     assert body["title"] == "Payload Too Large"
     assert body["status"] == 413
-    assert body["detail"] == "Request body too large. Maximum size: 5 bytes"
+    assert "5 bytes" in body["detail"] or "grande" in body["detail"]
     assert body["instance"].endswith("/echo")

@@ -169,6 +169,11 @@ def validation_error(
     return AppHTTPException(422, ErrorCode.VALIDATION_ERROR, detail, errors)
 
 
+def bad_request(detail: str) -> AppHTTPException:
+    """Factory para 400 Bad Request."""
+    return AppHTTPException(400, ErrorCode.VALIDATION_ERROR, detail)
+
+
 def not_found(resource: str, identifier: str) -> AppHTTPException:
     return AppHTTPException(
         404, ErrorCode.NOT_FOUND, f"{resource} '{identifier}' no encontrado"

@@ -1,4 +1,3 @@
-import pytest
 from app.infrastructure.parsers.normalize import normalize_text, truncate_text
 
 

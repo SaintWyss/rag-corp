@@ -12,9 +12,10 @@ Notes:
   - Uses mocking for time
 """
 
-import pytest
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 @pytest.mark.unit
@@ -154,17 +155,17 @@ class TestTokenBucket:
         """RPS must be positive."""
         from app.crosscutting.rate_limit import TokenBucket
 
-        with pytest.raises(ValueError, match="rps must be positive"):
+        with pytest.raises(ValueError, match="rps debe ser > 0"):
             TokenBucket(rps=0, burst=10)
 
-        with pytest.raises(ValueError, match="rps must be positive"):
+        with pytest.raises(ValueError, match="rps debe ser > 0"):
             TokenBucket(rps=-1, burst=10)
 
     def test_invalid_burst_raises_error(self):
         """Burst must be positive."""
         from app.crosscutting.rate_limit import TokenBucket
 
-        with pytest.raises(ValueError, match="burst must be positive"):
+        with pytest.raises(ValueError, match="burst debe ser > 0"):
             TokenBucket(rps=10, burst=0)
 
 

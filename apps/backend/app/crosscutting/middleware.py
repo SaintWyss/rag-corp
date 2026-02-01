@@ -45,7 +45,6 @@ from starlette.responses import Response
 from ..context import clear_context, http_method_var, http_path_var, request_id_var
 from .error_responses import (
     PROBLEM_JSON_MEDIA_TYPE,
-    AppHTTPException,
     ErrorCode,
     ErrorDetail,
 )

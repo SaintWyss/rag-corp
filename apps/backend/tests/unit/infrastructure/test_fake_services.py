@@ -7,10 +7,9 @@ Responsibilities:
 """
 
 import pytest
-
 from app.domain.entities import Chunk
 from app.infrastructure.services.fake_embedding_service import (
-    EMBEDDING_DIMENSION,
+    DEFAULT_EMBEDDING_DIMENSION,
     FakeEmbeddingService,
 )
 from app.infrastructure.services.llm.fake_llm import FakeLLMService
@@ -23,12 +22,12 @@ def test_fake_embeddings_deterministic():
     second = service.embed_query("hola")
 
     assert first == second
-    assert len(first) == EMBEDDING_DIMENSION
+    assert len(first) == DEFAULT_EMBEDDING_DIMENSION
 
     batch = service.embed_batch(["hola", "chau"])
     assert batch[0] == first
     assert batch[1] != first
-    assert len(batch[1]) == EMBEDDING_DIMENSION
+    assert len(batch[1]) == DEFAULT_EMBEDDING_DIMENSION
 
 
 @pytest.mark.unit

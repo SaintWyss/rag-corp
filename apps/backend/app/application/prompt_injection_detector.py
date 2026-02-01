@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Final, Iterable, List, Literal, Mapping, Sequence, Tuple
+from typing import Final, Iterable, List, Literal, Mapping, Tuple
 
 from ..crosscutting.logger import logger
 from ..domain.entities import Chunk

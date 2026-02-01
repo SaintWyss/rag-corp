@@ -25,7 +25,6 @@ Colaboradores:
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from redis import Redis
 from rq import Queue, Worker

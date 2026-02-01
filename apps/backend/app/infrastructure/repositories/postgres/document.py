@@ -28,7 +28,6 @@ Constraints / Notes (Clean / KISS):
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Iterable
 from uuid import UUID, uuid4
 

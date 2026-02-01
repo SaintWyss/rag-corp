@@ -13,7 +13,6 @@ Notes:
 """
 
 import pytest
-
 from app.infrastructure.prompts.loader import PromptLoader
 
 
@@ -72,11 +71,9 @@ class TestPromptLoader:
         assert "Policy Contract" in formatted
 
     def test_loader_file_not_found_raises(self):
-        """R: Should raise FileNotFoundError for missing version."""
-        loader = PromptLoader(version="nonexistent_version")
-
-        with pytest.raises(FileNotFoundError) as exc_info:
-            loader.get_template()
+        """R: Should raise ValueError for invalid version format."""
+        with pytest.raises(ValueError) as exc_info:
+            PromptLoader(version="nonexistent_version")
 
         assert "nonexistent_version" in str(exc_info.value)
 

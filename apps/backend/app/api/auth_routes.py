@@ -39,8 +39,8 @@ from ..crosscutting.error_responses import (
     unauthorized,
 )
 from ..domain.repositories import AuditEventRepository
+from ..identity.auth_users import DEFAULT_ACCESS_TOKEN_COOKIE as ACCESS_TOKEN_COOKIE
 from ..identity.auth_users import (
-    ACCESS_TOKEN_COOKIE,
     authenticate_user,
     create_access_token,
     get_auth_settings,
@@ -94,7 +94,7 @@ class LoginResponse(BaseModel):
 class CreateUserRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     password: str = Field(..., min_length=8, max_length=512)
-    role: UserRole = Field(default=UserRole.USER)
+    role: UserRole = Field(default=UserRole.EMPLOYEE)
     is_active: bool = Field(default=True)
 
     @field_validator("email")

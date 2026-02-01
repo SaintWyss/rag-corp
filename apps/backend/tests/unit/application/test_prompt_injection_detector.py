@@ -3,7 +3,6 @@ Unit tests for prompt_injection_detector.
 """
 
 import pytest
-
 from app.application.prompt_injection_detector import apply_injection_filter, detect
 from app.domain.entities import Chunk
 
@@ -12,7 +11,9 @@ def _chunk(content: str, score: float, flagged: bool) -> Chunk:
     metadata = {}
     if flagged:
         metadata = {"security_flags": ["instruction_override"], "risk_score": 0.9}
-    return Chunk(content=content, embedding=[0.1] * 768, similarity=score, metadata=metadata)
+    return Chunk(
+        content=content, embedding=[0.1] * 768, similarity=score, metadata=metadata
+    )
 
 
 pytestmark = pytest.mark.unit
@@ -41,7 +42,7 @@ def test_prompt_reference_is_low_risk():
     result = detect("Este texto habla de prompt engineering y modelos.")
 
     assert "prompt_reference" in result.patterns
-    assert result.flags == []
+    assert len(result.flags) == 0  # flags is a tuple, not a list
     assert result.risk_score < 0.5
 
 
@@ -49,8 +50,8 @@ def test_empty_text_has_no_risk():
     result = detect("")
 
     assert result.risk_score == 0.0
-    assert result.flags == []
-    assert result.patterns == []
+    assert len(result.flags) == 0
+    assert len(result.patterns) == 0
 
 
 def test_filter_exclude_drops_flagged_chunks():

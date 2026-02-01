@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from ...domain.services import DocumentTextExtractor
 from .contracts import ParserOptions
-from .mime_types import SUPPORTED_MIME_TYPES
 from .normalize import normalize_text, truncate_text
 from .registry import ParserRegistry
 

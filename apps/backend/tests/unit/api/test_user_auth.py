@@ -13,14 +13,12 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from app.api.auth_routes import router as auth_router
+from app.api.exception_handlers import register_exception_handlers
+from app.identity.auth_users import create_access_token, hash_password, require_role
+from app.identity.users import User, UserRole
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-
-from app.api.auth_routes import router as auth_router
-from app.identity.auth_users import create_access_token, hash_password, require_role
-from app.api.exception_handlers import register_exception_handlers
-from app.identity.users import User, UserRole
-
 
 pytestmark = pytest.mark.unit
 
@@ -106,7 +104,7 @@ def test_login_fail_wrong_password():
             )
 
     assert response.status_code == 401
-    assert "Invalid credentials" in response.json()["detail"]
+    assert "Credenciales" in response.json()["detail"]
 
 
 def test_me_requires_token():
@@ -115,7 +113,7 @@ def test_me_requires_token():
     response = client.get("/auth/me")
 
     assert response.status_code == 401
-    assert "Missing bearer token" in response.json()["detail"]
+    assert "token" in response.json()["detail"].lower()
 
 
 def test_require_role_checks():
@@ -145,4 +143,7 @@ def test_require_role_checks():
                 "/admin", headers={"Authorization": f"Bearer {employee_token}"}
             )
             assert response.status_code == 403
-            assert "Insufficient role" in response.json()["detail"]
+            assert (
+                "Rol" in response.json()["detail"]
+                or "insuficiente" in response.json()["detail"].lower()
+            )

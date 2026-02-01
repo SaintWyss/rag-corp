@@ -26,7 +26,7 @@ Constraints / Notes (Clean / KISS):
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Optional
 from uuid import UUID
 
 from psycopg_pool import ConnectionPool

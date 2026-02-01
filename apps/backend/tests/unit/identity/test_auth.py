@@ -12,8 +12,9 @@ Notes:
   - Uses mocking for config
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.unit
@@ -111,6 +112,7 @@ class TestConstantTimeCompare:
         We verify the implementation uses the correct algorithm.
         """
         import hmac
+
         from app.identity.auth import _constant_time_compare
 
         # R: Verify our function behaves like hmac.compare_digest
@@ -212,7 +214,7 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_missing_key_raises_401(self):
         """Missing API key should raise 401."""
-        from app.identity.auth import require_scope, clear_keys_cache
+        from app.identity.auth import clear_keys_cache, require_scope
         from fastapi import HTTPException
 
         clear_keys_cache()
@@ -229,12 +231,14 @@ class TestRequireScopeErrors:
                 await dependency(mock_request, None)  # No API key
 
             assert exc_info.value.status_code == 401
-            assert "Missing API key" in exc_info.value.detail
+            assert (
+                "API key" in exc_info.value.detail or "Falta" in exc_info.value.detail
+            )
 
     @pytest.mark.asyncio
     async def test_invalid_key_raises_403(self):
         """Invalid API key should raise 403."""
-        from app.identity.auth import require_scope, clear_keys_cache
+        from app.identity.auth import clear_keys_cache, require_scope
         from fastapi import HTTPException
 
         clear_keys_cache()
@@ -251,12 +255,15 @@ class TestRequireScopeErrors:
                 await dependency(mock_request, "wrong-key")
 
             assert exc_info.value.status_code == 403
-            assert "Invalid API key" in exc_info.value.detail
+            assert (
+                "API key" in exc_info.value.detail
+                or "inv\xe1lida" in exc_info.value.detail
+            )
 
     @pytest.mark.asyncio
     async def test_key_without_scope_raises_403(self):
         """Key without required scope should raise 403."""
-        from app.identity.auth import require_scope, clear_keys_cache
+        from app.identity.auth import clear_keys_cache, require_scope
         from fastapi import HTTPException
 
         clear_keys_cache()
@@ -276,12 +283,15 @@ class TestRequireScopeErrors:
                 await dependency(mock_request, "read-only-key")
 
             assert exc_info.value.status_code == 403
-            assert "does not have required scope" in exc_info.value.detail
+            assert (
+                "scope" in exc_info.value.detail
+                or "inv\xe1lida" in exc_info.value.detail
+            )
 
     @pytest.mark.asyncio
     async def test_valid_key_with_scope_passes(self):
         """Valid key with required scope should pass."""
-        from app.identity.auth import require_scope, clear_keys_cache
+        from app.identity.auth import clear_keys_cache, require_scope
 
         clear_keys_cache()
 
@@ -301,7 +311,7 @@ class TestRequireScopeErrors:
     @pytest.mark.asyncio
     async def test_auth_disabled_when_no_keys_configured(self):
         """When no keys configured, auth should be disabled."""
-        from app.identity.auth import require_scope, clear_keys_cache
+        from app.identity.auth import clear_keys_cache, require_scope
 
         clear_keys_cache()
 

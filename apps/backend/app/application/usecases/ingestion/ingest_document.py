@@ -93,7 +93,7 @@ Error Mapping:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Final, List, Optional
+from typing import Any, Dict, Final, Optional
 from uuid import UUID, uuid4
 
 from ....crosscutting.metrics import record_prompt_injection_detected

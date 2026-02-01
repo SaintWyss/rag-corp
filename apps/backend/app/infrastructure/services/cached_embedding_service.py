@@ -48,7 +48,7 @@ Constraints:
 from __future__ import annotations
 
 import re
-from typing import List, Sequence, cast
+from typing import List, cast
 
 from ...crosscutting.exceptions import EmbeddingError
 from ...crosscutting.logger import logger

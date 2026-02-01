@@ -43,7 +43,7 @@ CRC:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Final, Protocol, Sequence
+from typing import Callable, Final, Protocol
 from uuid import UUID, uuid4
 
 from ..crosscutting.config import Settings
