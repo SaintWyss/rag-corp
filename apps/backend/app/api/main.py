@@ -48,7 +48,7 @@ from ..crosscutting.security import SecurityHeadersMiddleware
 from ..identity.auth import is_auth_enabled
 from ..identity.rbac import require_metrics_permission
 from ..infrastructure.db.pool import close_pool, init_pool
-from ..interfaces.api.http.routes import router
+from ..interfaces.api.http.router import router
 from .auth_routes import router as auth_router
 from .exception_handlers import register_exception_handlers
 from .versioning import include_versioned_routes
