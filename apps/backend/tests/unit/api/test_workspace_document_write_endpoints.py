@@ -120,7 +120,7 @@ def _override_delete_use_case(
     mock_repo: MagicMock,
 ):
     use_case = DeleteDocumentUseCase(
-        repository=mock_repo,
+        document_repository=mock_repo,
         workspace_repository=workspace_repo,
     )
     app.dependency_overrides[routes_module.get_delete_document_use_case] = (

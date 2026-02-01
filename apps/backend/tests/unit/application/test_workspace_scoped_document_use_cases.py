@@ -61,7 +61,7 @@ def test_list_documents_forbidden_without_workspace_read_access():
     )
     actor = WorkspaceActor(user_id=uuid4(), role=UserRole.EMPLOYEE)
     use_case = ListDocumentsUseCase(
-        repository=_DocumentRepo(),
+        document_repository=_DocumentRepo(),
         workspace_repository=_WorkspaceRepo(workspace),
         acl_repository=_AclRepo(),
     )
@@ -95,7 +95,7 @@ def test_get_document_denies_cross_workspace_access():
     actor = WorkspaceActor(user_id=uuid4(), role=UserRole.ADMIN)
 
     use_case = GetDocumentUseCase(
-        repository=_DocumentRepo(document),
+        document_repository=_DocumentRepo(document),
         workspace_repository=_WorkspaceRepo(workspace_b),
         acl_repository=_AclRepo(),
     )

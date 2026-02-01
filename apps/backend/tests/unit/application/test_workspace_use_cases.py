@@ -574,7 +574,10 @@ def test_publish_share_and_archive_use_cases():
     assert acl_repo.list_workspace_acl(workspace.id) == [shared_user]
 
     doc_repo = FakeDocumentRepository()
-    archive = ArchiveWorkspaceUseCase(repository=repo, document_repository=doc_repo)
+    archive = ArchiveWorkspaceUseCase(
+        workspace_repository=repo,
+        document_repository=doc_repo,
+    )
     forbidden_archive = archive.execute(
         workspace.id, _actor(outsider_id, UserRole.EMPLOYEE)
     )

@@ -100,7 +100,7 @@ def _to_workspace_actor(principal: Principal | None) -> WorkspaceActor | None:
     if principal and principal.user:
         return WorkspaceActor(
             user_id=principal.user.user_id,
-            roles=[principal.user.role.value],
+            role=principal.user.role,
         )
     return None
 

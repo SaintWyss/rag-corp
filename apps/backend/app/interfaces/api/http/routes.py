@@ -14,6 +14,19 @@ Colaboradores:
 ===============================================================================
 """
 
+from app.container import (
+    get_delete_document_use_case,
+    get_get_workspace_use_case,
+    get_reprocess_document_use_case,
+    get_upload_document_use_case,
+)
+
 from .router import router
 
-__all__ = ["router"]
+__all__ = [
+    "router",
+    "get_delete_document_use_case",
+    "get_get_workspace_use_case",
+    "get_reprocess_document_use_case",
+    "get_upload_document_use_case",
+]

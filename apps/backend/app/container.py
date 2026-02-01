@@ -324,7 +324,7 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
 def get_list_documents_use_case() -> ListDocumentsUseCase:
     """Caso de uso: listar documentos."""
     return ListDocumentsUseCase(
-        repository=get_document_repository(),
+        document_repository=get_document_repository(),
         workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
     )
@@ -341,7 +341,7 @@ def get_list_workspaces_use_case() -> ListWorkspacesUseCase:
 def get_get_document_use_case() -> GetDocumentUseCase:
     """Caso de uso: obtener documento."""
     return GetDocumentUseCase(
-        repository=get_document_repository(),
+        document_repository=get_document_repository(),
         workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
     )
@@ -350,7 +350,7 @@ def get_get_document_use_case() -> GetDocumentUseCase:
 def get_get_workspace_use_case() -> GetWorkspaceUseCase:
     """Caso de uso: obtener workspace."""
     return GetWorkspaceUseCase(
-        repository=get_workspace_repository(),
+        workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
     )
 
@@ -358,7 +358,7 @@ def get_get_workspace_use_case() -> GetWorkspaceUseCase:
 def get_delete_document_use_case() -> DeleteDocumentUseCase:
     """Caso de uso: borrado lógico de documento."""
     return DeleteDocumentUseCase(
-        repository=get_document_repository(),
+        document_repository=get_document_repository(),
         workspace_repository=get_workspace_repository(),
     )
 

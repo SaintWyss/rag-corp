@@ -72,7 +72,7 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "chunk_size debe ser mayor a 0" in str(exc_info.value)
+        assert "chunk_size debe ser > 0" in str(exc_info.value)
 
     def test_chunk_size_negative_fails(self, monkeypatch):
         """Negative chunk_size raises ValidationError."""
@@ -86,7 +86,7 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "chunk_size debe ser mayor a 0" in str(exc_info.value)
+        assert "chunk_size debe ser > 0" in str(exc_info.value)
 
     def test_chunk_overlap_negative_fails(self, monkeypatch):
         """Negative chunk_overlap raises ValidationError."""

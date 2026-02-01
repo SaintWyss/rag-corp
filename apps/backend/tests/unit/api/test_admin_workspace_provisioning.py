@@ -286,7 +286,7 @@ class TestAdminEndpointGuards:
         from pathlib import Path
 
         routes_path = (
-            Path(__file__).parent.parent.parent / "app" / "api" / "admin_routes.py"
+            Path(__file__).resolve().parents[3] / "app" / "api" / "admin_routes.py"
         )
 
         if not routes_path.exists():
@@ -304,7 +304,7 @@ class TestAdminEndpointGuards:
         """Verify admin routes are registered in main.py."""
         from pathlib import Path
 
-        main_path = Path(__file__).parent.parent.parent / "app" / "api" / "main.py"
+        main_path = Path(__file__).resolve().parents[3] / "app" / "api" / "main.py"
         content = main_path.read_text()
 
         assert "admin_routes" in content or "admin_router" in content, (

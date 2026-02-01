@@ -109,7 +109,7 @@ def _to_workspace_actor(principal: Principal | None) -> WorkspaceActor | None:
     if principal and principal.user:
         return WorkspaceActor(
             user_id=principal.user.user_id,
-            roles=[principal.user.role.value],
+            role=principal.user.role,
         )
     return None
 
@@ -271,12 +271,20 @@ def list_documents(
 )
 def get_document(
     document_id: UUID,
+    workspace_id: UUID,
     use_case: GetDocumentUseCase = Depends(get_get_document_use_case),
     principal: Principal | None = Depends(require_principal(Permission.DOCUMENTS_READ)),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    result = use_case.execute(document_id, actor=None)
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
     if result.error is not None:
+        if isinstance(result.error, WorkspaceError):
+            _raise_workspace_error(result.error, workspace_id=workspace_id)
         _raise_document_error(result.error, document_id=document_id)
     if result.document is None:
         raise not_found("Document", str(document_id))
@@ -295,6 +303,7 @@ def get_document(
 )
 def delete_document(
     document_id: UUID,
+    workspace_id: UUID,
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
@@ -302,8 +311,15 @@ def delete_document(
     _role: None = Depends(require_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
-    result = use_case.execute(document_id)
+    actor = _to_workspace_actor(principal)
+    result = use_case.execute(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
     if result.error is not None:
+        if isinstance(result.error, WorkspaceError):
+            _raise_workspace_error(result.error, workspace_id=workspace_id)
         _raise_document_error(result.error, document_id=document_id)
 
     emit_audit_event(
@@ -385,12 +401,13 @@ async def upload_document(
 
 
 @router.post(
-    "/documents/{document_id}/reprocess",
+    "/workspaces/{workspace_id}/documents/{document_id}/reprocess",
     response_model=ReprocessDocumentRes,
-    deprecated=True,
+    status_code=202,
     tags=["documents"],
 )
-def reprocess_document(
+def reprocess_workspace_document(
+    workspace_id: UUID,
     document_id: UUID,
     use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
     principal: Principal | None = Depends(
@@ -398,10 +415,53 @@ def reprocess_document(
     ),
     _role: None = Depends(require_employee_or_admin()),
 ):
-    input_data = ReprocessDocumentInput(document_id=document_id)
+    actor = _to_workspace_actor(principal)
+    input_data = ReprocessDocumentInput(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
     result = use_case.execute(input_data)
 
     if result.error is not None:
+        if isinstance(result.error, WorkspaceError):
+            _raise_workspace_error(result.error, workspace_id=workspace_id)
+        _raise_document_error(result.error, document_id=document_id)
+
+    return ReprocessDocumentRes(
+        document_id=document_id,
+        status=result.status,
+        enqueued=result.enqueued,
+    )
+
+
+@router.post(
+    "/documents/{document_id}/reprocess",
+    response_model=ReprocessDocumentRes,
+    status_code=202,
+    deprecated=True,
+    tags=["documents"],
+)
+def reprocess_document(
+    document_id: UUID,
+    workspace_id: UUID,
+    use_case: ReprocessDocumentUseCase = Depends(get_reprocess_document_use_case),
+    principal: Principal | None = Depends(
+        require_principal(Permission.DOCUMENTS_CREATE)
+    ),
+    _role: None = Depends(require_employee_or_admin()),
+):
+    actor = _to_workspace_actor(principal)
+    input_data = ReprocessDocumentInput(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
+    result = use_case.execute(input_data)
+
+    if result.error is not None:
+        if isinstance(result.error, WorkspaceError):
+            _raise_workspace_error(result.error, workspace_id=workspace_id)
         _raise_document_error(result.error, document_id=document_id)
 
     return ReprocessDocumentRes(
@@ -545,13 +605,16 @@ def get_workspace_document(
     actor = _to_workspace_actor(principal)
     _require_active_workspace(workspace_id, workspace_use_case, actor)
 
-    result = use_case.execute(document_id, actor=actor)
+    result = use_case.execute(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
     if result.error is not None:
+        if isinstance(result.error, WorkspaceError):
+            _raise_workspace_error(result.error, workspace_id=workspace_id)
         _raise_document_error(result.error, document_id=document_id)
     if result.document is None:
-        raise not_found("Document", str(document_id))
-
-    if result.document.workspace_id != workspace_id:
         raise not_found("Document", str(document_id))
 
     if not can_access_document(result.document, principal):
@@ -569,23 +632,24 @@ def delete_workspace_document(
     workspace_id: UUID,
     document_id: UUID,
     use_case: DeleteDocumentUseCase = Depends(get_delete_document_use_case),
-    get_doc_use_case: GetDocumentUseCase = Depends(get_get_document_use_case),
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     principal: Principal | None = Depends(
         require_principal(Permission.DOCUMENTS_DELETE)
     ),
-    _role: None = Depends(require_admin()),
+    _role: None = Depends(require_employee_or_admin()),
     audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
 ):
     actor = _to_workspace_actor(principal)
     _require_active_workspace(workspace_id, workspace_use_case, actor)
 
-    doc = get_doc_use_case.execute(document_id, actor=actor)
-    if doc.document is not None and doc.document.workspace_id != workspace_id:
-        raise not_found("Document", str(document_id))
-
-    result = use_case.execute(document_id)
+    result = use_case.execute(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        actor=actor,
+    )
     if result.error is not None:
+        if isinstance(result.error, WorkspaceError):
+            _raise_workspace_error(result.error, workspace_id=workspace_id)
         _raise_document_error(result.error, document_id=document_id)
 
     emit_audit_event(
@@ -602,6 +666,7 @@ def delete_workspace_document(
 @router.post(
     "/workspaces/{workspace_id}/documents/upload",
     response_model=UploadDocumentRes,
+    status_code=202,
     tags=["documents"],
 )
 async def upload_workspace_document(

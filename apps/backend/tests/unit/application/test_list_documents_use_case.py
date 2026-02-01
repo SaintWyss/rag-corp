@@ -49,7 +49,7 @@ def test_list_documents_paginates_with_cursor(mock_repository):
     mock_repository.list_documents.return_value = docs
 
     use_case = ListDocumentsUseCase(
-        repository=mock_repository,
+        document_repository=mock_repository,
         workspace_repository=_WorkspaceRepo(workspace),
         acl_repository=_AclRepo(),
     )
@@ -91,7 +91,7 @@ def test_list_documents_no_next_cursor(mock_repository):
     mock_repository.list_documents.return_value = docs
 
     use_case = ListDocumentsUseCase(
-        repository=mock_repository,
+        document_repository=mock_repository,
         workspace_repository=_WorkspaceRepo(workspace),
         acl_repository=_AclRepo(),
     )
