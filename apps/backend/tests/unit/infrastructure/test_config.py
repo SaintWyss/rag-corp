@@ -72,7 +72,7 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "chunk_size must be greater than 0" in str(exc_info.value)
+        assert "chunk_size debe ser mayor a 0" in str(exc_info.value)
 
     def test_chunk_size_negative_fails(self, monkeypatch):
         """Negative chunk_size raises ValidationError."""
@@ -86,7 +86,7 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "chunk_size must be greater than 0" in str(exc_info.value)
+        assert "chunk_size debe ser mayor a 0" in str(exc_info.value)
 
     def test_chunk_overlap_negative_fails(self, monkeypatch):
         """Negative chunk_overlap raises ValidationError."""
@@ -100,23 +100,24 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "chunk_overlap must be >= 0" in str(exc_info.value)
+        assert "chunk_overlap debe ser >= 0" in str(exc_info.value)
 
     def test_get_settings_validates_chunk_params(self, monkeypatch):
-        """get_settings() calls validate_chunk_params automatically."""
+        """get_settings() calls validate_chunk_params automatically via Pydantic model validator."""
         monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
         monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
         monkeypatch.setenv("CHUNK_SIZE", "100")
         monkeypatch.setenv("CHUNK_OVERLAP", "100")  # Invalid: equals chunk_size
 
         from app.crosscutting.config import get_settings
+        from pydantic import ValidationError
 
         get_settings.cache_clear()
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
             get_settings()
 
-        assert "must be less than chunk_size" in str(exc_info.value)
+        assert "chunk_overlap (100) debe ser < chunk_size (100)" in str(exc_info.value)
 
     def test_get_allowed_origins_list_single(self, monkeypatch):
         """Single origin is parsed correctly."""
@@ -188,7 +189,7 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "rag_injection_filter_mode must be off, downrank, or exclude" in str(
+        assert "rag_injection_filter_mode debe ser: off|downrank|exclude" in str(
             exc_info.value
         )
 
@@ -204,7 +205,7 @@ class TestSettings:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "rag_injection_risk_threshold must be between 0 and 1" in str(
+        assert "rag_injection_risk_threshold debe estar entre 0 y 1" in str(
             exc_info.value
         )
 
@@ -248,7 +249,7 @@ class TestChunkerValidation:
         with pytest.raises(ValueError) as exc_info:
             SimpleTextChunker(chunk_size=0, overlap=0)
 
-        assert "chunk_size must be > 0" in str(exc_info.value)
+        assert "chunk_size debe ser > 0" in str(exc_info.value)
 
     def test_chunker_rejects_negative_chunk_size(self):
         """Negative chunk_size raises ValueError."""
@@ -257,7 +258,7 @@ class TestChunkerValidation:
         with pytest.raises(ValueError) as exc_info:
             SimpleTextChunker(chunk_size=-100, overlap=0)
 
-        assert "chunk_size must be > 0" in str(exc_info.value)
+        assert "chunk_size debe ser > 0" in str(exc_info.value)
 
     def test_chunker_rejects_negative_overlap(self):
         """Negative overlap raises ValueError."""
@@ -266,7 +267,7 @@ class TestChunkerValidation:
         with pytest.raises(ValueError) as exc_info:
             SimpleTextChunker(chunk_size=500, overlap=-10)
 
-        assert "overlap must be >= 0" in str(exc_info.value)
+        assert "overlap debe ser >= 0" in str(exc_info.value)
 
     def test_chunker_rejects_overlap_equals_chunk_size(self):
         """overlap == chunk_size raises ValueError."""
@@ -275,7 +276,7 @@ class TestChunkerValidation:
         with pytest.raises(ValueError) as exc_info:
             SimpleTextChunker(chunk_size=500, overlap=500)
 
-        assert "overlap (500) must be less than chunk_size (500)" in str(exc_info.value)
+        assert "overlap debe ser menor a chunk_size" in str(exc_info.value)
 
     def test_chunker_rejects_overlap_greater_than_chunk_size(self):
         """overlap > chunk_size raises ValueError."""
@@ -284,7 +285,7 @@ class TestChunkerValidation:
         with pytest.raises(ValueError) as exc_info:
             SimpleTextChunker(chunk_size=500, overlap=600)
 
-        assert "overlap (600) must be less than chunk_size (500)" in str(exc_info.value)
+        assert "overlap debe ser menor a chunk_size" in str(exc_info.value)
 
     def test_chunker_accepts_valid_params(self):
         """Valid parameters create chunker successfully."""

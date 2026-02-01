@@ -16,9 +16,11 @@ from uuid import UUID, uuid4
 import pytest
 from app.api.exception_handlers import register_exception_handlers
 from app.application.usecases.documents.delete_document import DeleteDocumentUseCase
-from app.application.usecases.workspace.get_workspace import GetWorkspaceUseCase
-from app.application.usecases.ingestion.reprocess_document import ReprocessDocumentUseCase
+from app.application.usecases.ingestion.reprocess_document import (
+    ReprocessDocumentUseCase,
+)
 from app.application.usecases.ingestion.upload_document import UploadDocumentUseCase
+from app.application.usecases.workspace.get_workspace import GetWorkspaceUseCase
 from app.domain.entities import Document, Workspace, WorkspaceVisibility
 from app.identity.auth_users import create_access_token, hash_password
 from app.identity.users import User, UserRole
@@ -83,7 +85,7 @@ def _override_workspace_use_case(app: FastAPI, routes_module, workspace: Workspa
     workspace_repo = _WorkspaceRepo(workspace)
     acl_repo = _WorkspaceAclRepo()
     use_case = GetWorkspaceUseCase(
-        repository=workspace_repo,
+        workspace_repository=workspace_repo,
         acl_repository=acl_repo,
     )
     app.dependency_overrides[routes_module.get_get_workspace_use_case] = (
