@@ -70,9 +70,6 @@ async def lifespan(app: FastAPI):
     """
     settings = get_settings()
 
-    if settings.is_production():
-        settings.validate_security_requirements()
-
     init_pool(
         database_url=settings.database_url,
         min_size=settings.db_pool_min_size,
