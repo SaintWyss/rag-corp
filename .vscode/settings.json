@@ -1,5 +1,12 @@
 {
     "css.lint.unknownAtRules": "ignore",
+    "files.associations": {
+        "*.css": "tailwindcss"
+    },
+    "editor.quickSuggestions": {
+        "strings": "on"
+    },
+    "tailwindCSS.experimental.configFile": "apps/frontend/app/globals.css",
     "markdown-mermaid.lightModeTheme": "default",
     "markdown-mermaid.darkModeTheme": "dark",
     "markdown-mermaid.languages": [
@@ -9,5 +16,23 @@
     "gitlens.currentLine.enabled": true,
     "gitlens.hovers.currentLine.over": "line",
     "gitlens.statusBar.enabled": true,
-    "thunder-client.saveToWorkspace": true
+    "thunder-client.saveToWorkspace": true,
+    "filetree-pro.maxDepth": 5,
+    "filetree-pro.exclude": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/.git/**",
+        "**/temp/**",
+        "**/*.test.js",
+        "**/__pycache__/**",
+        "**/.pytest_cache/**",
+        "**/.ruff_cache/**",
+        "**/.mypy_cache/**",
+        "**/.next/**",
+        "**/.turbo/**",
+        "**/htmlcov/**",
+        "**/coverage/**",
+        "**/.coverage",
+        "**/coverage.xml"
+    ]
 }
