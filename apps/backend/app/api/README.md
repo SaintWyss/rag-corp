@@ -209,33 +209,6 @@ Estos endpoints existen para operación real (monitoreo, readiness, scraping):
 
 ---
 
-### 7) Diagrama de composición (vista rápida)
-
-```mermaid
-flowchart TD
-  A[Servidor ASGI (uvicorn/gunicorn)] --> B[app = RateLimitMiddleware(fastapi_app)]
-  B --> C[fastapi_app (FastAPI)]
-
-  subgraph MW[Middlewares (orden lógico)]
-    C --> M1[RequestContextMiddleware\nrequest_id + contextvars]
-    M1 --> M2[SecurityHeadersMiddleware\nCSP/HSTS/etc]
-    M2 --> M3[BodyLimitMiddleware\nanti-OOM]
-    M3 --> M4[CORSMiddleware\nallowed_origins]
-  end
-
-  M4 --> R[Routers]
-  R --> V1[/v1 (business_router)]
-  R --> AUTH[/auth/*]
-  R --> ADM[/admin/*]
-  R --> OPS[/healthz / readyz / metrics]
-
-  V1 --> UC[Use cases (application)]
-  AUTH --> ID[identity/* + repos]
-  ADM --> UC
-```
-
----
-
 ## 🔗 Conexiones y roles
 
 * **Rol arquitectónico:** composición y borde HTTP (Interface Layer) + operación.
