@@ -207,27 +207,6 @@ Puntos importantes:
   * frontmatter YAML para metadatos/inputs,
   * composición “policy + template”.
 
-### 7) Diagrama rápido (dos carriles: HTTP y Worker)
-
-```mermaid
-flowchart LR
-  subgraph HTTP[API HTTP]
-    A[Cliente] --> B[FastAPI Routers / DTOs]
-    B --> C[Use case (Application)]
-    C --> D[Puertos (Domain)]
-    D --> E[Adapters (Infrastructure)]
-    E --> F[(Postgres/Redis/S3/LLM)]
-    C --> G[Respuesta + RFC7807]
-  end
-
-  subgraph W[Worker RQ]
-    R[(Redis Queue)] --> J[Job entrypoint]
-    J --> UC[Use case (Application)]
-    UC --> AD[Adapters (Infrastructure)]
-    AD --> S[(Postgres/S3/Embeddings)]
-  end
-```
-
 ---
 
 ## 🔗 Conexiones y roles
