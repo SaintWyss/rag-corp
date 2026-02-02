@@ -1,74 +1,62 @@
-# Infrastructure Queue Layer
+# Infra: Task Queue (Async Jobs)
 
-## 🎯 Propósito y Rol
+## 🎯 Misión
 
-Este paquete (`infrastructure/queue`) implementa el adaptador para **procesamiento asíncrono** usando **Redis Queue (RQ)**. Su responsabilidad es desacoplar la recepción de documentos (rápida) de su procesamiento pesado (Embeddings, Chunking).
+Permite encolar tareas para ser procesadas en background por los Workers.
+Desacopla la recepción de la tarea de su ejecución inmediata.
 
----
+**Qué SÍ hace:**
 
-## 🧩 Componentes Principales
+- Encola jobs en Redis Queue (RQ).
+- Define helpers para importar funciones de jobs dinámicamente.
 
-### 1. El Adaptador (Queue)
+**Qué NO hace:**
 
-| Archivo        | Rol         | Descripción                                                                               |
-| :------------- | :---------- | :---------------------------------------------------------------------------------------- |
-| `rq_queue.py`  | **Adapter** | Implementa la interfaz `DocumentProcessingQueue` del dominio. Encola mensajes en Redis.   |
-| `job_paths.py` | **Config**  | Centraliza las rutas de los jobs ("dotted paths") para evitar errores de typo en runtime. |
+- No ejecuta los jobs (eso lo hace el `app.worker`).
 
-### 2. Seguridad y Validación
+## 🗺️ Mapa del territorio
 
-| Archivo           | Rol            | Descripción                                                                        |
-| :---------------- | :------------- | :--------------------------------------------------------------------------------- |
-| `import_utils.py` | **Validator**  | Verifica que los jobs sean importables antes de encolar. Fail-Fast.                |
-| `errors.py`       | **Exceptions** | Excepciones tipadas (`QueueConfigurationError`) para problemas de infraestructura. |
+| Recurso           | Tipo       | Responsabilidad (en humano)                                      |
+| :---------------- | :--------- | :--------------------------------------------------------------- |
+| `errors.py`       | 🐍 Archivo | Errores de encolado.                                             |
+| `import_utils.py` | 🐍 Archivo | Helpers para cargar módulos por path string (necesario para RQ). |
+| `job_paths.py`    | 🐍 Archivo | Constantes con los strings de importación de los jobs.           |
+| `rq_queue.py`     | 🐍 Archivo | Implementación concreta usando `rq`.                             |
 
----
+## ⚙️ ¿Cómo funciona por dentro?
 
-## 🛠️ Arquitectura y Patrones
+Usa `redis` y `rq`.
+Cuando la aplicación llama a `enqueue`, serializa los argumentos con `pickle` y los guarda en una lista de Redis.
 
-### Dependency Injection (DI) Real
+## 🔗 Conexiones y roles
 
-A diferencia de implementaciones naive, aquí **no creamos clientes Redis** dentro de la cola.
+- **Rol Arquitectónico:** Infrastructure Adapter.
+- **Llama a:** Redis.
 
-- El `Redis` client se inyecta desde fuera (`container.py`).
-- **Beneficio:** Permite compartir la conexión (Pool) con otros componentes (Caché, Rate Limiter) y facilita el mocking en tests.
+## 👩‍💻 Guía de uso (Snippets)
 
-### Fail-Fast Configuration
-
-El sistema valida que:
-
-1.  La URL de Redis exista.
-2.  El path del job (`app.worker.jobs...`) sea importable.
-
-Si algo está mal, la aplicación falla al arrancar (o al primer uso), en lugar de dejar trabajos "zombies" en la cola que nunca se procesan.
-
----
-
-## 🚀 Guía de Uso
-
-### Configuración (Environment)
-
-| Variable              | Default     | Descripción                                      |
-| :-------------------- | :---------- | :----------------------------------------------- |
-| `REDIS_URL`           | _Requerido_ | URL de conexión (ej: `redis://localhost:6379/0`) |
-| `DOCUMENT_QUEUE_NAME` | `documents` | Nombre de la lista en Redis                      |
-| `RETRY_MAX_ATTEMPTS`  | `3`         | Reintentos automáticos si el worker falla        |
-
-### Flujo de Datos
-
-1.  **API**: Recibe Upload -> Llama a `queue.enqueue_document_processing(doc_id)`.
-2.  **Redis**: Guarda el mensaje `{"job": "app.worker.jobs...", "args": [doc_id]}`.
-3.  **Worker**: Proceso separado (`app/worker/main.py`) lee de Redis y ejecuta el código.
-
-### Estructura del Job
-
-El job debe ser puro e importar sus dependencias dentro de la función (Lazy Import) para evitar ciclos con el contenedor.
+### Encolar un trabajo
 
 ```python
-# app/worker/jobs.py
-def process_document_job(doc_id: str, ...):
-    # Lazy imports para evitar ciclos
-    from ..container import get_use_case
-    use_case = get_use_case()
-    use_case.execute(doc_id)
+from app.infrastructure.queue.rq_queue import RQQueue
+from app.infrastructure.queue.job_paths import INGEST_DOC_JOB
+
+queue = RQQueue(redis_conn)
+job_id = queue.enqueue(
+    job_name=INGEST_DOC_JOB,
+    params={"doc_id": "123"}
+)
 ```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Nuevos Jobs:** Si creas un nuevo job en `app.worker.jobs`, registra su path en `job_paths.py` para evitar hardcoding de strings.
+
+## 🆘 Troubleshooting
+
+- **Síntoma:** `job not found`.
+  - **Causa:** El worker no tiene el código actualizado o el path del job cambió.
+
+## 🔎 Ver también
+
+- [Worker Entrypoint (Consumidor)](../../worker/README.md)

@@ -1,34 +1,53 @@
-# Routers (Controllers)
+# HTTP Routers (Controllers)
 
-Este directorio contiene los controladores HTTP agrupados por **Bounded Context** (Dominio/Funcionalidad).
+## 🎯 Misión
 
-## 🗂 Organización
+Contiene los "Controladores" de la API.
+Cada archivo agrupa endpoints relacionados con un recurso o feature (`/chat`, `/workspaces`).
 
-Cada archivo representa un bloque funcional cohesivo:
+**Qué SÍ hace:**
 
-- `workspaces.py`: Gestión de espacios de trabajo, permisos y auditoría.
-- `documents.py`: Ciclo de vida de documentos (upload, ingest, delete).
-- `query.py`: Motor de búsqueda y RAG (Retrieve & Generate).
-- `admin.py`: Endpoints de sistema y monitoreo.
+- Define `@router.get/post/put`.
+- Extrae datos del Request.
+- Llama al Use Case.
+- Maneja excepciones específicas de HTTP.
 
-## 🛠 Cómo agregar un nuevo Router
+**Qué NO hace:**
 
-1.  Crear el archivo `mi_feature.py` en este directorio.
-2.  Definir `router = APIRouter()`.
-3.  Implementar endpoints usando `dependencies.py` para inyectar casos de uso.
-4.  Exponer el router en `__init__.py`.
-5.  Registrar el router en `../router.py` (el router raíz).
+- No contiene lógica de negocio.
+- No accede a DB.
 
-## 📝 Reglas de Juego (Guidelines)
+## 🗺️ Mapa del territorio
 
-### Inyección de Dependencias
+| Recurso         | Tipo       | Responsabilidad (en humano)                  |
+| :-------------- | :--------- | :------------------------------------------- |
+| `admin.py`      | 🐍 Archivo | Endpoints de administración (Users, System). |
+| `documents.py`  | 🐍 Archivo | Endpoints para `/documents` (CRUD, Upload).  |
+| `query.py`      | 🐍 Archivo | Endpoints para `/chat` y `/query` (RAG).     |
+| `workspaces.py` | 🐍 Archivo | Endpoints para `/workspaces` (Management).   |
 
-Usa `Depends(get_use_case_factory)` para obtener la lógica de negocio. Nunca instancies servicios manualmente dentro del endpoint.
+## ⚙️ ¿Cómo funciona por dentro?
 
-### Helpers Privados
+Cada módulo define una variable `router = APIRouter()`.
+Estos routers se agregan al router principal en `../routes.py`.
 
-Si tienes lógica repetitiva de validación HTTP (ej: validar un header específico), crea funciones privadas (`_helper_function`) al inicio del archivo o muévelas a `dependencies.py` si son compartidas.
+## 🔗 Conexiones y roles
 
-### Responses
+- **Rol Arquitectónico:** Controller.
+- **Llama a:** Use Cases.
 
-Usa siempre `response_model` con esquemas de `../schemas/`. Evita retornar diccionarios crudos.
+## 👩‍💻 Guía de uso (Snippets)
+
+### Definir un router
+
+```python
+from fastapi import APIRouter
+router = APIRouter(tags=["items"])
+
+@router.get("/")
+def list_items(): ...
+```
+
+## 🔎 Ver también
+
+- [Schemas (DTOs)](../schemas/README.md)

@@ -1,43 +1,78 @@
-# Infrastructure Layer
+# Layer: Infrastructure (Adapters)
 
-Esta capa contiene las **implementaciones concretas** de los puertos definidos en `app/domain`.
-Aquí es donde el código "puro" se encuentra con el mundo real (Base de Datos, Servicios Cloud, APIs externas).
+## 🎯 Misión
 
-## 🎯 Filosofía
+Esta capa contiene los **detalles técnicos** y las implementaciones concretas de los contratos definidos en el Dominio.
+Aquí es donde la aplicación "toca tierra": se conecta a bases de datos, llama a APIs externas, escribe en disco, etc.
 
-- **Plug-and-Play**: Las implementaciones deben ser intercambiables (ej: `PostgresDocumentRepository` vs `InMemoryDocumentRepository`) sin tocar el dominio.
-- **Aislamiento de Librerías**: `sqlalchemy`, `boto3`, `google-generativeai`, `redis`, `rq` viven AQUÍ. No deben importarse en `domain/` ni `application/`.
-- **Fail-Fast**: Las clases deben validar su configuración (connection strings, API keys) en el `__init__`.
+**Qué SÍ hace:**
 
-## 📂 Organización
+- Implementa Repositorios (`postgres`, `in_memory`).
+- Implementa Servicios de Dominio (`llm`, `storage`, `queue`).
+- Maneja drivers de base de datos (`psycopg`).
+- Parsea documentos (`pdf`, `docx`).
 
-| Módulo      | Responsabilidad                                | Port del Dominio          |
-| :---------- | :--------------------------------------------- | :------------------------ |
-| `db/`       | Persistencia relacional (Postgres + pgvector). | `repositories.py`         |
-| `queue/`    | Procesamiento asíncrono (Redis Queue).         | `DocumentProcessingQueue` |
-| `storage/`  | Almacenamiento de archivos (S3 / MinIO).       | `FileStoragePort`         |
-| `services/` | Integraciones externas (LLMs, Embeddings).     | `services.py`             |
-| `text/`     | Procesamiento de texto (Chunking, Parsing).    | `TextChunkerService`      |
-| `cache/`    | Caching de vectores y resultados.              | `EmbeddingCachePort`      |
+**Qué NO hace:**
 
-## 🛠 Patrones Clave
+- No define reglas de negocio.
+- No decide la lógica de orquestación.
 
-### 1. Repository Pattern
+**Analogía:**
+Si el Dominio es el "Arquitecto" que diseña la casa, la Infraestructura son los "Albañiles, Electricistas y Plomeros" que la construyen con materiales reales.
 
-Ocultamos SQL y ORMs detrás de métodos de colección (`save`, `get_by_id`, `find_by_criteria`).
-Usamos **PGVector** para búsqueda semántica, encapsulado en queries nativas o helpers.
+## 🗺️ Mapa del territorio
 
-### 2. Adapter Pattern
+| Recurso         | Tipo       | Responsabilidad (en humano)                               |
+| :-------------- | :--------- | :-------------------------------------------------------- |
+| `cache.py`      | 🐍 Archivo | Implementación de caché (Redis/Memory).                   |
+| `db/`           | 📁 Carpeta | Configuración del Pool de conexiones SQL.                 |
+| `parsers/`      | 📁 Carpeta | Extractores de texto para diferentes formatos de archivo. |
+| `prompts/`      | 📁 Carpeta | Cargador de templates de prompts desde disco.             |
+| `queue/`        | 📁 Carpeta | Adaptador para colas de tareas (RQ).                      |
+| `repositories/` | 📁 Carpeta | Implementaciones de persistencia (Postgres/Memory).       |
+| `services/`     | 📁 Carpeta | Implementaciones de servicios externos (LLM, Embedding).  |
+| `storage/`      | 📁 Carpeta | Almacenamiento de archivos binarios (S3/MinIO/Local).     |
+| `text/`         | 📁 Carpeta | Algoritmos de Chunking y procesamiento de texto.          |
 
-Cada clase aquí es un Adaptador que "enchufa" una librería externa a una "toma de corriente" (Protocolo) del dominio.
-Ejemplo: `RQDocumentProcessingQueue` adapta la librería `rq` al protocolo `DocumentProcessingQueue`.
+## ⚙️ ¿Cómo funciona por dentro?
 
-### 3. Instrumentation
+Patrón **Adapter**.
+Cada clase aquí implementa una interfaz (Protocol) definida en `app.domain` o `app.application`.
+La inyección de dependencia se resuelve en `app.container` (Composition Root).
 
-Los adaptadores deben emitir métricas y logs.
-Ejemplo: `InstrumentedConnectionPool` decora el pool de DB para medir tiempos de conexión.
+## 🔗 Conexiones y roles
 
-## ⚠️ Reglas de Importación
+- **Rol Arquitectónico:** Infrastructure Adapters (Hexagon Outside).
+- **Recibe órdenes de:** `application` (vía interfaces).
+- **Llama a:** Bases de Datos, APIs externas (Google, AWS), Sistema de Archivos.
 
-- ✅ Puede importar: `app.domain`, `app.crosscutting`.
-- ❌ NO puede importar: `app.api` (circular dependency), `app.application` (a veces permitido para DTOs, pero evitar si es posible).
+## 👩‍💻 Guía de uso (Snippets)
+
+### Uso típico (Inyección)
+
+Las clases de infra no suelen usarse directamente, se inyectan.
+
+```python
+# En app/container.py
+from app.infrastructure.repositories.postgres.document import PostgresDocumentRepository
+
+def get_document_repository() -> DocumentRepository:
+    return PostgresDocumentRepository()
+```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Nuevo adaptador:** Si quieres cambiar Postgres por Mongo, crea `infrastructure/repositories/mongo/` e implementa la misma interfaz del dominio.
+2.  **No importes infra en dominio:** Regla de oro. El dominio no puede saber que existe este directorio.
+
+## 🆘 Troubleshooting
+
+- **Síntoma:** Error de conexión a DB/Redis.
+  - **Causa:** Configuración de entorno incorrecta (`.env`). Revisa `db/` o `queue/`.
+- **Síntoma:** `ImportError` desde dominio.
+  - **Causa:** Violación de arquitectura. El dominio está importando infraestructura.
+
+## 🔎 Ver también
+
+- [Repositorios (Persistencia)](./repositories/README.md)
+- [Base de Datos (Conexión)](./db/README.md)

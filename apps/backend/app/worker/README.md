@@ -1,44 +1,87 @@
-# Worker Layer (RQ)
+# Layer: Worker (Async Processing)
 
-Esta capa implementa el procesamiento asíncrono de tareas pesadas (ingesta de documentos, generación de embeddings) utilizando **Redis Queue (RQ)**.
+## 🎯 Misión
 
-## 🎯 Responsabilidades
+Esta carpeta contiene el punto de entrada para los procesos en segundo plano (Workers).
+Se encarga de ejecutar tareas pesadas o de larga duración (como procesar PDFs, generar embeddings masivos) fuera del ciclo de petición-respuesta HTTP para no bloquear la API.
 
-- **Procesamiento Asíncrono**: Ejecutar casos de uso que tardan demasiado para ser una request HTTP sincrónica.
-- **Aislamiento**: Correr en un proceso separado para no bloquear el API.
-- **Resiliencia**: Manejo de reintentos (vía RQ) y reporte de fallos.
-- **Observabilidad**: Exponer sus propios endpoints de health y métricas.
+**Qué SÍ hace:**
 
-## 📂 Estructura
+- Inicializa un proceso worker de RQ (Redis Queue).
+- Escucha colas específicas (`default`, `high`, `low`).
+- Expone un servidor HTTP mínimo (`worker_server.py`) para health checks (Kubernetes probes).
 
-| Archivo            | Rol             | Descripción                                                                                                      |
-| :----------------- | :-------------- | :--------------------------------------------------------------------------------------------------------------- |
-| `worker.py`        | **Entrypoint**  | El `main` del proceso. Inicializa Redis, DB Pool y arranca el loop de RQ.                                        |
-| `jobs.py`          | **Tasks**       | Definición de las funciones ejecutables (`process_document_job`). Actúa como adaptador entre RQ y los Use Cases. |
-| `worker_server.py` | **Ops Server**  | Servidor HTTP liviano (`http.server`) para exponer `/healthz` y `/metrics`.                                      |
-| `worker_health.py` | **Diagnostics** | Lógica de chequeo de conectividad (Redis/DB) y CLI para Docker healthcheck.                                      |
+**Qué NO hace:**
 
-## 🚀 Flujo de Ejecución
+- No define la lógica de los jobs (eso está en `application` o `infrastructure/queue`).
+- No maneja peticiones de usuarios finales.
 
-1.  **Bootstrap**: `worker.py` valida conexión a Redis y DB.
-2.  **Server Ops**: Levanta un thread con `worker_server` en puerto 8001 (default).
-3.  **Loop**: `rq.Worker` comienza a escuchar en la cola `documents`.
-4.  **Job**: Al recibir un mensaje, invoca `jobs.process_document_job`.
-    - Parsea argumentos (UUIDs).
-    - Setea **Context Vars** (Request ID) para trazas distribuidas.
-    - Construye el Use Case (`ProcessUploadedDocumentUseCase`) con dependencias frescas.
-    - Ejecuta y reporta resultado.
+**Analogía:**
+Si la API es la persona que toma el pedido en el mostrador, el Worker es el cocinero en el fondo preparando el plato complejo que tarda 20 minutos.
 
-## 🛡️ Resilience & Safety
+## 🗺️ Mapa del territorio
 
-- **Fail-Fast**: El worker no arranca si Redis no responde.
-- **Graceful Shutdown**: Intercepta SIGINT/SIGTERM para terminar el job actual y cerrar conexiones a DB.
-- **Context Isolation**: Cada job limpia su contexto (`clear_context`) al terminar para evitar data leaks.
+| Recurso            | Tipo       | Responsabilidad (en humano)                                      |
+| :----------------- | :--------- | :--------------------------------------------------------------- |
+| `jobs.py`          | 🐍 Archivo | Definiciones de los jobs que RQ puede ejecutar.                  |
+| `worker.py`        | 🐍 Archivo | **Entrypoint**. Script que arranca el proceso worker.            |
+| `worker_health.py` | 🐍 Archivo | Lógica para chequear si el worker está "sano".                   |
+| `worker_server.py` | 🐍 Archivo | Servidor HTTP simple para exponer `/healthz` en puerto separado. |
 
-## 📊 Métricas y Health
+## ⚙️ ¿Cómo funciona por dentro?
 
-El worker expone un puerto HTTP (default 8001):
+### Tecnologías
 
-- `GET /healthz`: Liveness (¿estoy vivo?).
-- `GET /readyz`: Readiness (¿tengo DB y Redis?).
-- `GET /metrics`: Métricas Prometheus (Jobs procesados, tiempo de ejecución). **Requiere Auth** si está configurado.
+- **RQ (Redis Queue):** Sistema de colas simple basado en Redis.
+- **Redis:** Broker de mensajes.
+
+### Flujo
+
+1.  Se ejecuta `python -m app.worker.worker`.
+2.  El script conecta a Redis e instancia un `Worker`.
+3.  Arranca un thread separado con `worker_server` para responder a health checks (puerto 8001 por defecto).
+4.  El worker entra en loop infinito haciendo "polling" a Redis buscando tareas.
+5.  Cuando encuentra una tarea, hace fork (o usa el mismo proceso) y ejecuta la función Python correspondiente.
+
+## 🔗 Conexiones y roles
+
+- **Rol Arquitectónico:** Entry Point (Async).
+- **Recibe órdenes de:** La infraestructura de despliegue (Docker/K8s).
+- **Consume:** Tareas encoladas por la capa de `application`.
+- **Llama a:** `app.infrastructure.db` (para conectar a DB durante el job).
+
+## 👩‍💻 Guía de uso (Snippets)
+
+### Arrancar el Worker manualmente
+
+```bash
+# Desde apps/backend/
+# Asegúrate de que Redis esté corriendo
+export REDIS_URL=redis://localhost:6379/0
+python -m app.worker.worker
+```
+
+### Encolar un trabajo (desde la app)
+
+(Esto normalmente lo hace `infrastructure/queue`, pero conceptualmente:)
+
+```python
+from app.infrastructure.queue.rq_queue import queue
+# queue.enqueue(...)
+```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Nuevas Colas:** Si defines una nueva cola en `config`, asegúrate de que el worker la escuche (argumentos en `worker.py`).
+2.  **Timeout:** Ajusta el timeout de los jobs si tus tareas de PDF son muy largas.
+
+## 🆘 Troubleshooting
+
+- **Síntoma:** El worker arranca pero no procesa nada.
+  - **Causa:** Puede estar escuchando la cola incorrecta o Redis está vacío.
+- **Síntoma:** `WorkHorse terminated unexpectedly`.
+  - **Causa:** El job consumió demasiada memoria (OOM) o segfault en librerías C.
+
+## 🔎 Ver también
+
+- [Infraestructura de Cola (RQ Wrapper)](../infrastructure/queue/README.md)

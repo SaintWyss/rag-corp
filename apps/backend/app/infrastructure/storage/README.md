@@ -1,62 +1,54 @@
-# Infrastructure Storage Layer
+# Infra: File Storage (Blob Store)
 
-## 🎯 Propósito y Rol
+## 🎯 Misión
 
-Este paquete (`infrastructure/storage`) implementa la persistencia de archivos físicos (Blob Storage).
-Su responsabilidad es abstraer los detalles del proveedor (S3, MinIO) y exponer una interfaz limpia al dominio, manejando la complejidad de redes, streams y seguridad.
+Maneja el almacenamiento de archivos binarios (PDFs, imágenes) subidos por los usuarios.
+Abstrae el sistema de archivos o servicio en la nube (S3).
 
----
+**Qué SÍ hace:**
 
-## 🧩 Componentes Principales
+- Sube, baja y borra archivos.
+- Genera URLs presignadas (si el backend lo soporta).
 
-### 1. El Adaptador (Facade)
+**Qué NO hace:**
 
-| Archivo              | Rol         | Descripción                                                              |
-| :------------------- | :---------- | :----------------------------------------------------------------------- |
-| `s3_file_storage.py` | **Adapter** | Implementa `FileStoragePort`. Conecta con AWS S3 o MinIO usando `boto3`. |
-| `__init__.py`        | **Export**  | Expone las clases principales y limpia el namespace.                     |
+- No parsea el contenido.
 
-### 2. Manejo de Errores (Safety)
+## 🗺️ Mapa del territorio
 
-| Archivo     | Rol            | Descripción                                                                                                                                                          |
-| :---------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `errors.py` | **Exceptions** | Traduce errores de `botocore` (ClientError) a errores de dominio (`StorageNotFoundError`, `StoragePermissionError`). Evita que capas superiores dependan de `boto3`. |
+| Recurso              | Tipo       | Responsabilidad (en humano)                             |
+| :------------------- | :--------- | :------------------------------------------------------ |
+| `errors.py`          | 🐍 Archivo | Excepciones específicas de storage (FileNotFound).      |
+| `s3_file_storage.py` | 🐍 Archivo | Implementación compatible con S3 (AWS) y MinIO (Local). |
 
----
+## ⚙️ ¿Cómo funciona por dentro?
 
-## 🛠️ Arquitectura y Features
+Usa `boto3` o librerías similares.
+La configuración (Bucket, Region, Endpoint) viene de `crosscutting.config`.
 
-### Streaming Eficiente
+## 🔗 Conexiones y roles
 
-El método `upload_file` acepta `BinaryIO` (streams).
+- **Rol Arquitectónico:** Infrastructure Adapter.
+- **Llama a:** AWS S3 / MinIO Container.
 
-- **Por qué**: Permite subir archivos de gigabytes sin cargarlos en memoria RAM.
-- **Cómo**: Usa `upload_fileobj` de boto3 internamente.
+## 👩‍💻 Guía de uso (Snippets)
 
-### Presigned URLs
-
-Implementamos `generate_presigned_url`.
-
-- **Qué es**: Una URL temporal firmada criptográficamente.
-- **Ventaja**: El frontend puede descargar el archivo directamente desde S3/MinIO, liberando al backend de actuar como proxy de tráfico pesado.
-
-### Fail-Fast Configuration
-
-El adaptador valida la existencia de bucket y credenciales al instanciarse. Si falta algo, explota con `StorageConfigurationError` al inicio, no en runtime.
-
----
-
-## 🚀 Guía de Uso
+### Subir archivo
 
 ```python
-# Inyección (normalmente vía container.py)
-adapter = S3FileStorageAdapter(config=S3Config(...))
-
-# 1. Subir archivo (Stream)
-with open("large_video.mp4", "rb") as f:
-    adapter.upload_file("videos/video1.mp4", f, content_type="video/mp4")
-
-# 2. Generar link de descarga (seguro)
-url = adapter.generate_presigned_url("videos/video1.mp4", expires_in_seconds=300)
-# Retorna: https://s3.amazonaws.com/bucket/...?Signature=...
+storage = S3FileStorage(bucket="my-bucket", ...)
+key = storage.upload(file_bytes, "docs/manual.pdf")
 ```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Local Filesystem:** Podrías crear `LocalFileStorage` para guardar en disco sin usar S3/MinIO para desarrollo ultra-light.
+
+## 🆘 Troubleshooting
+
+- **Síntoma:** "Connection Refused" a MinIO.
+  - **Causa:** Docker no está corriendo o el puerto `9000` no está expuesto.
+
+## 🔎 Ver también
+
+- [Ingesta de Documentos (Consumidor)](../../../application/usecases/ingestion/README.md)

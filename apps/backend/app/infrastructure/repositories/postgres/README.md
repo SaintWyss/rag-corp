@@ -1,128 +1,72 @@
-# PostgreSQL Repositories
+# Infra: PostgreSQL Repositories
 
-Implementaciones de producción de los repositorios del dominio usando SQLAlchemy y PostgreSQL.
+## 🎯 Misión
 
-## Estructura
+Implementación de persistencia "Grade A" para producción usando PostgreSQL.
+Aprovecha características avanzadas como **pgvector** para búsqueda semántica e índices JSONB.
 
+**Qué SÍ hace:**
+
+- CRUD completo de entidades.
+- Búsqueda vectorial (`<->` operator de pgvector).
+- Mapeo manual SQL -> Objetos de Dominio (Data Mapper pattern).
+
+**Qué NO hace:**
+
+- No usa ORM pesado (SQLAlchemy ORM) para consultas, usa estilo Core/Raw para performance y control explícito.
+
+**Analogía:**
+Es el bibliotecario meticuloso que guarda cada libro en su estante exacto y sabe buscar por similitud de contenido.
+
+## 🗺️ Mapa del territorio
+
+| Recurso            | Tipo       | Responsabilidad (en humano)                                  |
+| :----------------- | :--------- | :----------------------------------------------------------- |
+| `audit_event.py`   | 🐍 Archivo | Persistencia de trazas de auditoría.                         |
+| `document.py`      | 🐍 Archivo | **Repositorio Complejo**. CRUD de Docs + Chunks vectoriales. |
+| `user.py`          | 🐍 Archivo | Gestión de usuarios (Tabla `users`).                         |
+| `workspace.py`     | 🐍 Archivo | Gestión de workspaces.                                       |
+| `workspace_acl.py` | 🐍 Archivo | Gestión de permisos (Tabla `workspace_acl`).                 |
+
+## ⚙️ ¿Cómo funciona por dentro?
+
+1.  Obtiene conexión (`get_session`).
+2.  Ejecuta SQL parametrizado.
+3.  Convierte filas (`Row`) a `Entity` o `DTO`.
+4.  Cierra sesión (bloque `finally`).
+
+### pgvector
+
+En `document.py`, usamos la extensión vector para buscar chunks similares.
+
+```sql
+SELECT * FROM chunks ORDER BY embedding <-> [vector] LIMIT 5
 ```
-postgres/
-├── __init__.py       # Exports públicos
-├── document.py       # PostgresDocumentRepository (Chunks + Vectors)
-├── workspace.py      # PostgresWorkspaceRepository
-├── workspace_acl.py  # PostgresWorkspaceAclRepository
-├── audit_event.py    # PostgresAuditEventRepository
-└── user.py           # Funciones de usuario (legacy functions)
-```
 
-## Repositorios
+## 🔗 Conexiones y roles
 
-### PostgresDocumentRepository
+- **Rol Arquitectónico:** Production Infrastructure.
+- **Llama a:** `app.infrastructure.db.pool`.
 
-El repositorio más complejo. Maneja:
+## 👩‍💻 Guía de uso (Snippets)
 
-- CRUD de documentos
-- Almacenamiento de chunks con embeddings (pgvector)
-- Búsqueda semántica (`find_similar_chunks`)
-- Soft delete con `deleted_at`
-- Estados de procesamiento (`pending`, `processing`, `ready`, `error`)
+### Ejemplo de uso interno (Document Repo)
 
 ```python
-from app.infrastructure.repositories.postgres import PostgresDocumentRepository
-
-repo = PostgresDocumentRepository()
-
-# Guardar documento + chunks atómicamente
-repo.save_document_with_chunks_atomic(document, chunks, workspace_id)
-
-# Búsqueda semántica
-similar = repo.find_similar_chunks(embedding, workspace_id, top_k=5)
+async with get_session() as conn:
+    await conn.execute("INSERT INTO documents ...")
 ```
 
-### PostgresWorkspaceRepository
+## 🧩 Cómo extender sin romper nada
 
-CRUD de workspaces con:
+1.  **Nuevas Queries:** Escribe SQL explícito. Evita Magic ORM.
+2.  **Transacciones:** Si una operación requiere atomicidad, usa `async with conn.transaction():`.
 
-- Visibilidad (PRIVATE, ORG_READ, SHARED)
-- Soft delete (archived_at)
-- Filtros por owner
+## 🆘 Troubleshooting
 
-```python
-from app.infrastructure.repositories.postgres import PostgresWorkspaceRepository
+- **Síntoma:** Error "relation 'vector' does not exist".
+  - **Causa:** No se instaló la extensión pgvector en la DB. (Revisa migraciones).
 
-repo = PostgresWorkspaceRepository()
+## 🔎 Ver también
 
-# Listar workspaces visibles para un usuario
-workspaces = repo.list_workspaces_visible_to_user(user_id)
-```
-
-### PostgresWorkspaceAclRepository
-
-Manejo de ACL para workspaces compartidos:
-
-- Lista de usuarios con acceso a un workspace
-- Reverse lookup: workspaces accesibles por un usuario
-
-### PostgresAuditEventRepository
-
-Registro de eventos de auditoría del sistema:
-
-- Login/logout
-- Cambios de configuración
-- Acciones administrativas
-
-### User Functions (Legacy)
-
-El archivo `user.py` contiene funciones standalone (no clase) para manejo de usuarios.
-**Nota:** Sería buena práctica refactorizarlo a una clase `PostgresUserRepository`.
-
-## Patrones Utilizados
-
-### 1. Session Management
-
-Cada método obtiene su propia sesión y la cierra:
-
-```python
-def get_document(self, document_id: UUID) -> Document | None:
-    from ....infrastructure.db.pool import get_session
-
-    session = get_session()
-    try:
-        # ... query
-    finally:
-        session.close()
-```
-
-### 2. Error Handling Centralizado
-
-Usa helpers de `crosscutting.exceptions`:
-
-```python
-from ....crosscutting.exceptions import DatabaseError
-
-try:
-    # ... operación
-except SQLAlchemyError as e:
-    raise DatabaseError("Descripción", original_error=e)
-```
-
-### 3. Soft Delete
-
-Todos los repositorios con datos importantes usan soft delete:
-
-```python
-# No se borra realmente
-document.deleted_at = datetime.now(UTC)
-```
-
-## Extensibilidad
-
-Para agregar un nuevo repositorio PostgreSQL:
-
-1. Crear archivo en `postgres/` (ej: `postgres/feedback.py`)
-2. Implementar la interfaz del `domain/repositories.py`
-3. Exportar en `postgres/__init__.py`
-4. Agregar factory en `container.py`
-
-## Migraciones
-
-Las tablas se manejan con Alembic. Ver `/alembic/versions/` para el historial.
+- [Database Pool](../../db/README.md)

@@ -1,77 +1,101 @@
-# Domain Layer
+# Layer: Domain (Core Business Logic)
 
-## 🎯 Propósito y Filosofía
+## 🎯 Misión
 
-Esta capa (`app/domain`) es el **núcleo** del sistema RAG. Contiene la lógica de negocio pura, las reglas empresariales y los contratos abstractos.
+Esta carpeta es el **Núcleo Sagrado** de la aplicación.
+Contiene las definiciones fundamentales del negocio, las reglas que deben cumplirse siempre y los contratos (Interfaces) que la infraestructura debe implementar.
 
-**Regla de Oro:**
+**Qué SÍ hace:**
 
-> El Dominio NO depende de nadie. El resto depende del Dominio.
+- Define Entidades (`Document`, `Chunk`, `Workspace`).
+- Define Objetos de Valor (`ConfidenceScore`, `SourceReference`).
+- Define Interfaces de Repositorios (Puertos).
+- Implementa lógica pura de dominio (validaciones invariantes).
 
-🚫 **Prohibido:**
+**Qué NO hace:**
 
-- Importar FastAPI, Pydantic, SQLAlchemy, Boto3, Redis.
-- Acceder a bases de datos o sistemas de archivos directamente.
-- Depender de `config` o variables de entorno.
+- **NUNCA** importa de `infrastructure`, `api` o `application`.
+- No sabe qué base de datos se usa.
+- No sabe si la API es REST o GraphQL.
 
-✅ **Permitido:**
+**Analogía:**
+Son las Leyes de la Física de este universo. No importa si usas un coche de gasolina o eléctrico (Infra), la gravedad (Dominio) funciona igual.
 
-- Definir `dataclasses` puros (Entidades, Value Objects).
-- Definir `Protocols` (Interfaces) para repositorios y servicios.
-- Lógica de negocio pura (validaciones de estado, cálculos).
+## 🗺️ Mapa del territorio
 
----
+| Recurso               | Tipo       | Responsabilidad (en humano)                                            |
+| :-------------------- | :--------- | :--------------------------------------------------------------------- |
+| `access.py`           | 🐍 Archivo | Reglas de acceso y permisos básicos.                                   |
+| `audit.py`            | 🐍 Archivo | Definición de eventos de auditoría (qué se tracea).                    |
+| `cache.py`            | 🐍 Archivo | Interfaces para servicios de caché.                                    |
+| `entities.py`         | 🐍 Archivo | **Entidades Principales**. Clases ricas con datos y comportamiento.    |
+| `repositories.py`     | 🐍 Archivo | **Puertos**. Clases abstractas (`Protocol` o `ABC`) para persistencia. |
+| `services.py`         | 🐍 Archivo | Servicios de dominio (lógica que involucra múltiples entidades).       |
+| `tags.py`             | 🐍 Archivo | Gestión de etiquetas/tags para documentos.                             |
+| `value_objects.py`    | 🐍 Archivo | Objetos inmutables (ej. un Score, coordenadas de un Chunk).            |
+| `workspace_policy.py` | 🐍 Archivo | Políticas complejas de aislamiento entre workspaces.                   |
 
-## 🧩 Estructura
+## ⚙️ ¿Cómo funciona por dentro?
 
-| Módulo                | Contenido                                                                                                      |
-| :-------------------- | :------------------------------------------------------------------------------------------------------------- |
-| `entities.py`         | **Entidades**: Objetos con identidad (ID). Ej: `Document`, `Workspace`, `User`.                                |
-| `value_objects.py`    | **Value Objects**: Conceptos inmutables definidos por sus atributos. Ej: `ConfidenceScore`, `SourceReference`. |
-| `repositories.py`     | **Puertos (Data)**: Contracts para persistencia. Ej: `DocumentRepository` (Protocol).                          |
-| `cache.py`            | **Puertos (Cache)**: Contract para caché key-value (Embeddings). Ej: `EmbeddingCachePort` (Protocol).          |
-| `services.py`         | **Puertos (Servicios)**: Contracts para sistemas externos. Ej: `LLMService`, `EmbeddingService`.               |
-| `workspace_policy.py` | **Políticas**: Reglas complejas de decisión aisladas. Ej: ¿Quién puede ver este workspace?                     |
-| `audit.py`            | **Auditoría**: Definición de eventos de compliance.                                                            |
+Es código Python puro (`dataclasses`, `Pydantic models` o clases estándar).
+No tiene dependencias externas pesadas.
 
----
+### Entidades (`entities.py`)
 
-## 💡 Conceptos Clave
+Modelan el estado. Ejemplo: Un `Document` tiene una lista de `Chunk`s y un estado (`PENDING`, `READY`).
 
-### Entidades Ricas (pero no pesadas)
+### Puertos (`repositories.py`)
 
-Las entidades no son solo datos ("anemia"). Tienen métodos que protegen sus invariantes de negocio básicas.
-
-- _Ejemplo_: `workspace.archive()` gestiona la fecha de archivado y valida el estado.
-
-### Inmutabilidad donde es posible
-
-Usamos `frozen=True` y `slots=True` extensivamente para `value_objects` y dondesea posible en `entities` para garantizar seguridad y performance.
-
-### Inversión de Dependencias (DIP)
-
-El dominio define **qué** necesita (ej: `save_document`), pero no **cómo** se hace.
-La capa de Infraestructura implementa estos Protocolos (ej: `PostgresDocumentRepository`).
-La capa de Aplicación (Use Cases) inyecta la implementación concreta en tiempo de ejecución.
-
----
-
-## 🔍 Ejemplos
-
-### Value Object (Confidence Score)
-
-```python
-score = calculate_confidence(...)  # Retorna ConfidenceScore
-if score.level == "low":
-    # Lógica de negocio basada en el VO
-    return "Consulte con un experto."
-```
-
-### Protocol (Repository)
+Definen _qué_ necesitamos guardar, pero no _cómo_.
 
 ```python
 class DocumentRepository(Protocol):
-    def get_document(self, id: UUID) -> Document | None: ...
+    def save(self, doc: Document) -> None: ...
 ```
 
-_(No hay SQL aquí. Solo el contrato)._
+## 🔗 Conexiones y roles
+
+- **Rol Arquitectónico:** Core Domain (Hexagon Core).
+- **Recibe órdenes de:** `application` (Use Cases).
+- **Es implementado por:** `infrastructure` (Adapters).
+
+## 👩‍💻 Guía de uso (Snippets)
+
+### Usar una Entidad
+
+```python
+from app.domain.entities import Document, DocumentStatus
+
+doc = Document(
+    title="Report.pdf",
+    status=DocumentStatus.PENDING,
+    workspace_id=some_uuid
+)
+# doc.calculate_something() # Comportamiento rico
+```
+
+### Definir un Puerto (Repository)
+
+```python
+from typing import Protocol
+from app.domain.entities import Document
+
+class DocumentRepository(Protocol):
+    def get_by_id(self, doc_id: str) -> Document | None:
+        ...
+```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Entidades:** Agrégalas en `entities.py`. Usa `dataclasses` si necesitas mutabilidad controlada o `Pydantic` si es puramente datos.
+2.  **Reglas:** Si una regla aplica a una sola entidad, ponla en su clase. Si aplica a varias, usa `services.py`.
+
+## 🆘 Troubleshooting
+
+- **Síntoma:** `ImportError` circular.
+  - **Causa:** Probablemente importaste algo de `application` dentro de `domain`. El dominio **no** debe tener imports externos.
+
+## 🔎 Ver también
+
+- [Capa de Aplicación (Quien usa el dominio)](../application/README.md)
+- [Capa de Infraestructura (Quien implementa el dominio)](../infrastructure/README.md)

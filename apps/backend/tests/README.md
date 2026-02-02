@@ -1,160 +1,59 @@
-# RAG Corp API - Test Suite
+# Layer: Tests Hub
 
-## Overview
+## 🎯 Misión
 
-Suite completa de tests para RAG Corp API, organizada en tests unitarios e integración siguiendo los principios de Clean Architecture.
+Esta carpeta contiene toda la estrategia de aseguramiento de calidad (QA) automatizada del backend.
+Sigue la **Pirámide de Tests**: muchos unitarios en la base, algunos de integración en el medio, y pocos E2E en la punta.
 
-## Estructura
+**Qué SÍ hace:**
 
-```
-tests/
-├── conftest.py                          # Fixtures compartidas y configuración
-├── unit/                                # Tests unitarios (rápidos, sin deps externas)
-│   ├── test_user_auth.py                # JWT auth + roles
-│   ├── test_upload_endpoint.py          # Upload + validations
-│   ├── test_jobs.py                     # Worker job pipeline
-│   └── test_document_acl.py             # ACL por documento
-└── integration/                         # Tests de integración (requieren DB/APIs)
-    ├── test_postgres_document_repo.py   # Tests del repositorio PostgreSQL
-    └── test_api_endpoints.py            # Tests end-to-end de la API
-```
+- Configura el entorno de pruebas (`conftest.py`).
+- Define los fixtures compartidos (User, Workspace, DB Session).
 
-## Ejecutar Tests
+**Qué NO hace:**
 
-### Unit tests (Docker, recomendado)
-```bash
-pnpm test:backend:unit
-```
+- No contiene código de producción.
 
-### Todos los tests (unit + integration si RUN_INTEGRATION=1)
+## 🗺️ Mapa del territorio
+
+| Recurso        | Tipo       | Responsabilidad (en humano)                                                     |
+| :------------- | :--------- | :------------------------------------------------------------------------------ |
+| `conftest.py`  | 🐍 Archivo | **Configuración Global**. Fixtures de Pytest (cliente HTTP, db session).        |
+| `e2e/`         | 📁 Carpeta | Tests de punta a punta (Smoke Tests).                                           |
+| `integration/` | 📁 Carpeta | Tests con dependencias reales (Postgres, pero con External Services mockeados). |
+| `unit/`        | 📁 Carpeta | Tests aislados y rápidos (sin I/O real).                                        |
+
+## ⚙️ ¿Cómo funciona por dentro?
+
+Usamos `pytest` como runner.
+
+- **Unitarios:** Usan `InMemoryDocumentRepository` para velocidad.
+- **Integración:** Encienden el contenedor de DB real (o usan el servicio de docker-compose) y limpian tablas entre tests.
+
+## 🔗 Conexiones y roles
+
+- **Rol Arquitectónico:** Quality Assurance.
+- **Importa:** Todo el código de `app`.
+
+## 👩‍💻 Guía de uso (Snippets)
+
+### Correr todo
+
 ```bash
 pytest
 ```
 
-### Solo tests unitarios (rápidos)
+### Correr solo unitarios (rápido)
+
 ```bash
-pytest -m unit
+pytest tests/unit
 ```
 
-### Solo tests de integración
-```bash
-RUN_INTEGRATION=1 pytest -m integration
-```
+## 🧩 Cómo extender sin romper nada
 
-### Con reporte de cobertura
-```bash
-pytest --cov=app --cov-report=html
-```
+1.  **Fixtures:** Si creas una nueva entidad compleja, crea un fixture `factory` en `conftest.py` para reutilizar.
 
-### Tests específicos
-```bash
-pytest tests/unit/test_domain_entities.py
-pytest -k test_answer_query
-```
+## 🔎 Ver también
 
-## Requisitos
-
-### Tests Unitarios
-- No requieren dependencias externas
-- Usan mocks para todas las dependencias
-- Si no hay Google API key, usar `FAKE_LLM=1 FAKE_EMBEDDINGS=1`
-
-### Tests de Integración
-- Requieren PostgreSQL en ejecución:
-  ```bash
-  docker compose up -d db
-  ```
-- Requieren `DATABASE_URL` configurado (default: localhost:5432)
-- Requieren `GOOGLE_API_KEY`
-- Se ejecutan solo si `RUN_INTEGRATION=1`
-
-## Cobertura
-
-Objetivo de cobertura: **>=70%** para componentes críticos (configurado en `pytest.ini`)
-
-### Cobertura Actual
-
-TODO: generar reporte y actualizar métricas reales.
-
-## Fixtures Principales
-
-### Entidades de Dominio
-- `sample_document`: Documento de prueba
-- `sample_chunk`: Chunk individual
-- `sample_chunks`: Lista de chunks (3)
-- `sample_query_result`: Resultado RAG completo
-
-### Mocks
-- `mock_repository`: Mock de DocumentRepository
-- `mock_embedding_service`: Mock de EmbeddingService
-- `mock_llm_service`: Mock de LLMService
-
-### Factories
-- `DocumentFactory`: Crear documentos personalizados
-- `ChunkFactory`: Crear chunks personalizados
-
-## Ejemplo de Uso
-
-```python
-import pytest
-from app.application.use_cases import AnswerQueryUseCase, AnswerQueryInput
-
-@pytest.mark.unit
-def test_my_feature(mock_repository, mock_embedding_service, mock_llm_service):
-    # Arrange
-    use_case = AnswerQueryUseCase(
-        repository=mock_repository,
-        embedding_service=mock_embedding_service,
-        llm_service=mock_llm_service
-    )
-    
-    # Act
-    result = use_case.execute(AnswerQueryInput(query="test"))
-    
-    # Assert
-    assert result.answer is not None
-```
-
-## Markers
-
-- `@pytest.mark.unit`: Tests unitarios
-- `@pytest.mark.integration`: Tests de integración
-- `@pytest.mark.slow`: Tests lentos (>1s)
-- `@pytest.mark.api`: Tests de API
-
-## Mejores Prácticas
-
-1. **Naming**: `test_<method>_<scenario>_<expected_result>`
-2. **AAA Pattern**: Arrange → Act → Assert
-3. **Isolation**: Cada test es independiente
-4. **Fast Unit Tests**: < 10ms por test unitario
-5. **Cleanup**: Tests de integración limpian sus datos
-6. **Mock External Services**: Nunca llamar APIs reales en tests unitarios
-
-## Troubleshooting
-
-### Tests de integración fallan con "connection refused"
-```bash
-# Verificar que PostgreSQL esté corriendo
-docker compose ps
-docker compose up -d db
-```
-
-### Import errors
-```bash
-# Instalar dependencias de testing
-pip install -r requirements.txt
-```
-
-### Cobertura baja
-```bash
-# Ver reporte detallado en HTML
-pytest --cov=app --cov-report=html
-open htmlcov/index.html
-```
-
-## Referencias
-
-- [Pytest Documentation](https://docs.pytest.org/)
-- [Clean Architecture Testing Patterns](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Testing FastAPI Applications](https://fastapi.tiangolo.com/tutorial/testing/)
+- [Tests Unitarios](./unit/README.md)
+- [Tests Integración](./integration/README.md)

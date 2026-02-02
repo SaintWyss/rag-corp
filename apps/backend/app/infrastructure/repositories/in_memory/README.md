@@ -1,133 +1,64 @@
-# In-Memory Repositories
+# Infra: In-Memory Repositories
 
-Implementaciones en memoria de los repositorios del dominio para **testing** y **desarrollo local**.
+## 🎯 Misión
 
-## ⚠️ NO APTO PARA PRODUCCIÓN
+Implementaciones volátiles de los repositorios para **Tests Unitarios** y desarrollo rápido sin Docker.
+Guardan los datos en diccionarios de Python (`dict`).
 
-Estas implementaciones:
+**Qué SÍ hace:**
 
-- **Pierden datos** cuando el proceso se reinicia
-- **No son thread-safe** para múltiples workers
-- **No tienen persistencia**
+- Simula persistencia (Create, Read, Update, Delete).
+- Simula búsqueda vectorial (usando fuerza bruta o librerías simples).
+- Se resetea al reiniciar la app.
 
-## Uso
+**Qué NO hace:**
 
-### Testing
+- No persiste datos en disco.
+- No soporta concurrencia real (thread-safety limitada).
 
-```python
-from app.infrastructure.repositories.in_memory import (
-    InMemoryFeedbackRepository,
-    InMemoryAnswerAuditRepository,
-)
+**Analogía:**
+Es un bloc de notas temporal. Sirve para probar ideas rápido, pero si cierras el cuaderno, se borra todo.
 
-def test_vote_answer():
-    feedback_repo = InMemoryFeedbackRepository()
+## 🗺️ Mapa del territorio
 
-    vote_id = feedback_repo.save_vote(
-        conversation_id="conv-123",
-        message_index=0,
-        user_id=uuid4(),
-        vote="up",
-    )
+| Recurso                  | Tipo       | Responsabilidad (en humano)           |
+| :----------------------- | :--------- | :------------------------------------ |
+| `audit_repository.py`    | 🐍 Archivo | Simulación de auditoría.              |
+| `conversation.py`        | 🐍 Archivo | Simulación de almacenamiento de chat. |
+| `feedback_repository.py` | 🐍 Archivo | Simulación de feedback.               |
+| `workspace.py`           | 🐍 Archivo | Simulación de workspaces.             |
+| `workspace_acl.py`       | 🐍 Archivo | Simulación de ACLs.                   |
 
-    assert vote_id.startswith("vote-")
+(Y otros archivos de repositorios que se vayan agregando).
 
-    # Cleanup
-    feedback_repo.clear()
-```
+## ⚙️ ¿Cómo funciona por dentro?
 
-### Desarrollo Local
+Usa diccionarios globales o de instancia:
 
 ```python
-# En el composition root (main.py o similar)
-from app.infrastructure.repositories.in_memory import (
-    InMemoryFeedbackRepository,
-    InMemoryAnswerAuditRepository,
-)
-
-if settings.environment == "development":
-    feedback_repo = InMemoryFeedbackRepository()
-    audit_repo = InMemoryAnswerAuditRepository()
-else:
-    feedback_repo = PostgresFeedbackRepository(db)
-    audit_repo = PostgresAnswerAuditRepository(db)
+self._store = {}  # {id: Entity}
 ```
 
-## Repositorios Disponibles
+Para búsqueda vectorial, calcula similitud de coseno en memoria (numpy o pure python).
 
-### InMemoryFeedbackRepository
+## 🔗 Conexiones y roles
 
-| Método                             | Descripción                       |
-| ---------------------------------- | --------------------------------- |
-| `save_vote(...)`                   | Guarda un voto (idempotente)      |
-| `get_vote(...)`                    | Obtiene voto existente            |
-| `list_votes_for_conversation(...)` | Lista votos de una conversación   |
-| `count_votes(...)`                 | Cuenta votos por tipo             |
-| `clear()`                          | Limpia todos los datos (testing)  |
-| `get_all_votes()`                  | Obtiene todos los votos (testing) |
+- **Rol Arquitectónico:** Test/Mock Infrastructure.
+- **Usado por:** `tests/unit/` y entorno local si `DATABASE_URL` no está set.
 
-### InMemoryAnswerAuditRepository
+## 👩‍💻 Guía de uso (Snippets)
 
-| Método                        | Descripción                      |
-| ----------------------------- | -------------------------------- |
-| `save_audit_record(...)`      | Guarda registro de auditoría     |
-| `get_audit_record(record_id)` | Obtiene registro por ID          |
-| `list_audit_records(...)`     | Lista con filtros                |
-| `list_high_risk_records(...)` | Lista solo high-risk             |
-| `update_rating(...)`          | Actualiza rating de feedback     |
-| `clear()`                     | Limpia todos los datos (testing) |
-| `get_all_records()`           | Obtiene todos (testing)          |
-| `count_by_confidence()`       | Cuenta por nivel de confianza    |
+### Resetear estado (para tests)
 
-## Implementaciones Postgres (TODO)
-
-Para producción, implementar:
-
-- `PostgresFeedbackRepository` en `infrastructure/repositories/postgres/`
-- `PostgresAnswerAuditRepository` en `infrastructure/repositories/postgres/`
-
-Esquema sugerido:
-
-```sql
-CREATE TABLE feedback_votes (
-    vote_id TEXT PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
-    message_index INT NOT NULL,
-    user_id UUID NOT NULL,
-    vote TEXT NOT NULL CHECK (vote IN ('up', 'down', 'neutral')),
-    comment TEXT,
-    tags TEXT[],
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (conversation_id, message_index, user_id)
-);
-
-CREATE TABLE answer_audit_records (
-    record_id TEXT PRIMARY KEY,
-    timestamp TIMESTAMPTZ NOT NULL,
-    user_id UUID NOT NULL,
-    workspace_id UUID NOT NULL,
-    query TEXT NOT NULL,
-    answer_preview TEXT NOT NULL,
-    confidence_level TEXT NOT NULL,
-    confidence_value FLOAT NOT NULL,
-    requires_verification BOOLEAN DEFAULT FALSE,
-    sources_count INT NOT NULL,
-    source_documents TEXT[],
-    user_email TEXT,
-    suggested_department TEXT,
-    conversation_id TEXT,
-    session_id TEXT,
-    ip_address TEXT,
-    user_agent TEXT,
-    response_time_ms INT,
-    was_rated BOOLEAN DEFAULT FALSE,
-    rating TEXT,
-    is_high_risk BOOLEAN DEFAULT FALSE,
-    metadata JSONB DEFAULT '{}'
-);
-
-CREATE INDEX idx_audit_workspace ON answer_audit_records(workspace_id);
-CREATE INDEX idx_audit_user ON answer_audit_records(user_id);
-CREATE INDEX idx_audit_high_risk ON answer_audit_records(is_high_risk) WHERE is_high_risk = TRUE;
-CREATE INDEX idx_audit_timestamp ON answer_audit_records(timestamp DESC);
+```python
+repo = InMemoryDocumentRepository()
+repo.clear()  # Método custom para tests
 ```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Paridad:** Si agregas un método en PostgreSQL, **DEBES** agregarlo aquí también para mantener la interfaz compatible.
+
+## 🔎 Ver también
+
+- [Capa de Tests](../../../../tests/README.md)

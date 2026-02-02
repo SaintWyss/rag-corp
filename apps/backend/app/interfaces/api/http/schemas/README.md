@@ -1,45 +1,56 @@
-# HTTP Schemas (DTOs)
+# HTTP Schemas (Data Contracts)
 
-Este directorio contiene los **Data Transfer Objects** (DTOs) definidos con Pydantic.
-Definen el **Contrato de la API**.
+## 🎯 Misión
 
-## 🎯 Propósito
+Define los contratos de datos (Data Transfer Objects - DTOs) para la API.
+Utiliza **Pydantic** para validar que los JSONs de entrada y salida cumplan con el formato esperado.
 
-Separar la estructura de datos pública (API) de la estructura interna (Dominio).
-Esto permite:
+**Qué SÍ hace:**
 
-- Ocultar campos internos (ej: `password_hash`, `internal_metadata`).
-- Formatear datos para el cliente (ej: fechas ISO, camelCase si fuese necesario).
-- Validar entradas estrictamente antes de que toquen el dominio.
+- Valida tipos (int, str, email).
+- Documenta ejemplos para OpenAPI/Swagger.
+- Sanitiza inputs.
 
-## 🗂 Estructura
+**Qué NO hace:**
 
-Sigue la misma nomenclatura que los routers:
+- No son Entidades de Dominio (aunque se parezcan).
 
-- `workspaces.py` → Schemas para `/workspaces`
-- `documents.py` → Schemas para `/documents`
-- `query.py` → Schemas para `/query` y `/ask`
+## 🗺️ Mapa del territorio
 
-## 📝 Convenciones de Nombramiento
+| Recurso        | Tipo       | Responsabilidad (en humano)                   |
+| :------------- | :--------- | :-------------------------------------------- |
+| `admin.py`     | 🐍 Archivo | Schemas para administración.                  |
+| `model.py`     | 🐍 Archivo | Schemas base genéricos (ej. `ErrorResponse`). |
+| `chat.py`      | 🐍 Archivo | Requests/Responses para Chat.                 |
+| `document.py`  | 🐍 Archivo | Requests/Responses para Documentos.           |
+| `workspace.py` | 🐍 Archivo | Requests/Responses para Workspaces.           |
 
-| Sufijo  | Uso                    | Ejemplo                                |
-| :------ | :--------------------- | :------------------------------------- |
-| `Req`   | Request Body (Entrada) | `CreateWorkspaceReq`, `IngestBatchReq` |
-| `Res`   | Response Body (Salida) | `WorkspaceRes`, `DocumentDetailRes`    |
-| `Query` | Query Params (Filtros) | `DocumentsListQuery`                   |
+## ⚙️ ¿Cómo funciona por dentro?
 
-## 🛡️ Guidelines
+Heredan de `pydantic.BaseModel`.
+Usa `ConfigDict(from_attributes=True)` para mapear fácilmente desde objetos de Dominio/ORM.
 
-### Validaciones
+## 🔗 Conexiones y roles
 
-Usa `@field_validator` para reglas sintácticas (trim, rangos, formatos).
-Las reglas de negocio complejas (ej: "nombre único") pertenecen al Caso de Uso, no aquí.
+- **Rol Arquitectónico:** Data Contracts.
+- **Usado por:** Routers.
 
-### Types
+## 👩‍💻 Guía de uso (Snippets)
 
-Usa `UUID` de Python stdlib, Pydantic lo serializa automáticamente a string.
-Usa `datetime` con timezone (UTC).
+### Definir un Schema
 
-### Annotated
+```python
+from pydantic import BaseModel, Field
 
-Preferimos `Annotated[str, Field(...)]` (estilo Pydantic v2) para mayor claridad.
+class CreateUserRequest(BaseModel):
+    email: str = Field(..., description="Email corporativo")
+    age: int | None = None
+```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Breaking Changes:** Evita renombrar campos en Schemas de respuesta. Si lo haces, rompes el Frontend.
+
+## 🔎 Ver también
+
+- [Routers](../routers/README.md)

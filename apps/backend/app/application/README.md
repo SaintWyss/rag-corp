@@ -1,215 +1,82 @@
-# Application Layer (Core Logic)
+# Layer: Application (Orchestration & Use Cases)
 
-Esta capa contiene la lógica de coordinación de la aplicación, actuando como intermediario entre la Infraestructura (detalles técnicos) y el Dominio (reglas de negocio puras).
+## 🎯 Misión
 
-## Estructura
+Esta capa contiene la **Lógica de la Aplicación**, es decir, los flujos de trabajo específicos que satisfacen los requerimientos del usuario.
+Aquí se orquestan los componentes del Dominio y se utilizan los servicios de Infraestructura para lograr un objetivo concreto (ej: "Subir un documento", "Responder una pregunta").
 
-```
-application/
-├── usecases/                   # Casos de uso (Entry points de negocio)
-│   ├── chat/                   # RAG + Chat conversacional
-│   ├── documents/              # Resultados y tipos compartidos
-│   ├── ingestion/              # Carga y procesamiento de documentos
-│   └── workspace/              # Gestión de workspaces
-├── context_builder.py          # Ensamblador de contexto para RAG
-├── prompt_injection_detector.py # Políticas de seguridad
-├── rate_limiting.py            # Control de cuotas y rate limiting
-├── dev_seed_admin.py           # Tarea: Seed de usuario Admin
-├── dev_seed_demo.py            # Tarea: Seed de entorno Demo
-└── __init__.py                 # Exports públicos
-```
+**Qué SÍ hace:**
 
-## Componentes Compartidos (Shared Logic)
+- Define Casos de Uso (Use Cases) como comandos ejecutables.
+- Orquesta: llama al repo, llama al servicio de IA, guarda resultados.
+- Implementa lógica de defensa: Rate Limiting de aplicación, detección de inyección de prompts.
+- Prepara el contexto para el LLM (`context_builder.py`).
 
-Estos módulos son utilizados por múltiples casos de uso para evitar duplicación de lógica compleja.
+**Qué NO hace:**
 
-### 1. `context_builder.py` (The Grounding Assembler)
+- No contiene endpoints HTTP ni conoce FastAPI.
+- No implementa SQL (eso es infra).
+- No define las entidades (eso es dominio).
 
-Es el responsable de armar el contexto que se envía al LLM.
+**Analogía:**
+Es el Director de Orquesta. No toca el violín (Dominio) ni construye el teatro (Infra), pero les dice cuándo entrar y salir para crear la sinfonía.
 
-- **Responsabilidad:** Toma una lista de chunks y los formatea con delimitadores de seguridad.
-- **Seguridad:** Aplica sanitización (escapa `---[S#]---` en el contenido) para evitar confusión del modelo.
-- **Presupuesto:** Implementa un algoritmo de "mochila" (Knapsack) para llenar el contexto hasta `max_size` sin cortar chunks por la mitad.
-- **Grounding:** Genera la sección "FUENTES" alineada con las citas `[S#]` del texto.
-- **Future-proofing:** Acepta un `size_counter` inyectable para integrar tiktoken (tokens reales) cuando se necesite.
+## 🗺️ Mapa del territorio
 
-### 2. `prompt_injection_detector.py` (The Security Guard)
+| Recurso                        | Tipo       | Responsabilidad (en humano)                                                      |
+| :----------------------------- | :--------- | :------------------------------------------------------------------------------- |
+| `usecases/`                    | 📁 Carpeta | **Catálogo de Acciones**. Contiene todos los casos de uso agrupados por feature. |
+| `context_builder.py`           | 🐍 Archivo | Ensambla chunks de texto recuperados para formar el prompt del LLM.              |
+| `conversations.py`             | 🐍 Archivo | Lógica para gestión de hilos de conversación (memoria).                          |
+| `prompt_injection_detector.py` | 🐍 Archivo | Capa de seguridad que analiza inputs buscando ataques al LLM.                    |
+| `query_rewriter.py`            | 🐍 Archivo | Mejora la query del usuario usando IA antes de buscar.                           |
+| `rate_limiting.py`             | 🐍 Archivo | Lógica de negocio para cuotas de uso (Tokens/Requests).                          |
+| `reranker.py`                  | 🐍 Archivo | Reordena resultados de búsqueda vectorial para mayor precisión.                  |
+| `dev_seed_admin.py`            | 🐍 Archivo | Tarea para crear usuario admin inicial.                                          |
+| `dev_seed_demo.py`             | 🐍 Archivo | Tarea para poblar datos de demo.                                                 |
 
-Sistema de defensa en profundidad.
+## ⚙️ ¿Cómo funciona por dentro?
 
-- **Responsabilidad:** Analiza texto no confiable (chunks recuperados) buscando patrones de ataque.
-- **Estrategia:** No borra datos, pero marca el contenido o lo mueve al final (`downrank`).
-- **Patrón:** Rule Engine data-driven (Reglas Regex con pesos).
+El patrón principal es el **Command Pattern** (Use Cases).
+Casi toda acción del sistema es una clase con un método `.execute(input_dto)`.
 
-### 3. `rate_limiting.py` (Usage Control) 🆕
+Componentes de Soporte RAG:
 
-Sistema de control de cuotas para prevenir abuso y gestionar costos.
+1.  **Query Rewriter:** Usuario dice "¿y de vacaciones?", reescribe a "¿Cuál es la política de vacaciones?".
+2.  **Reranker:** Toma 20 chunks top-k vectoriales y usa un modelo Cross-Encoder para elegir los 5 mejores reales.
+3.  **Context Builder:** Empaqueta esos 5 chunks en un prompt seguro cuidando el límite de tokens.
 
-- **Responsabilidad:** Verificar y registrar uso de recursos (mensajes, tokens, uploads).
-- **Estrategia:** Sliding Window Counter con ventanas de tiempo configurables.
-- **Implementaciones:** `InMemoryQuotaStorage` (dev/testing), fácil de extender a Redis/Postgres.
-- **Uso típico:**
-  ```python
-  limiter = RateLimiter(storage, config)
-  result = limiter.check("messages", user_id=user_id)
-  if not result.allowed:
-      raise RateLimitExceeded(result.retry_after_seconds)
-  ```
+## 🔗 Conexiones y roles
 
-### 4. `query_rewriter.py` (RAG Enhancement) 🆕
+- **Rol Arquitectónico:** Application Layer.
+- **Recibe órdenes de:** `interfaces/api` y `worker`.
+- **Llama a:** `domain` (Entidades) e `infrastructure` (Implementaciones de repos).
 
-Mejora la precisión del RAG reescribiendo queries ambiguos o incompletos.
+## 👩‍💻 Guía de uso (Snippets)
 
-- **Responsabilidad:** Detectar queries que necesitan contexto y reescribirlos.
-- **Problema que resuelve:** "¿y eso?" → "¿La política de vacaciones aplica a part-time?"
-- **Estrategia:** Analiza patrones (pronombres, palabras de seguimiento) + usa LLM si necesario.
-- **Uso típico:**
-  ```python
-  rewriter = QueryRewriter(llm_service, enabled=True)
-  result = rewriter.rewrite(query, history)
-  search_query = result.rewritten_query  # Usar para retrieval
-  # result.was_rewritten = True/False
-  # result.reason = "context_expanded" / "query_already_clear"
-  ```
-
-### 5. `reranker.py` (RAG Enhancement) 🆕
-
-Reordena chunks recuperados por relevancia semántica real.
-
-- **Responsabilidad:** Mejorar la selección de chunks después del retrieval vectorial.
-- **Problema que resuelve:** Cosine similarity es rápido pero "shallow". El reranker evalúa relevancia real.
-- **Estrategia:** Recuperar 20 chunks → Rerankar → Quedarse con los mejores 5.
-- **Modos disponibles:**
-  - `DISABLED`: Sin reranking (orden original).
-  - `HEURISTIC`: Reglas simples (keyword overlap, longitud). Rápido.
-  - `LLM`: Usa el LLM para puntuar cada chunk. Más preciso pero más lento.
-- **Uso típico:**
-  ```python
-  reranker = ChunkReranker(llm_service, mode=RerankerMode.HEURISTIC)
-  result = reranker.rerank(query, chunks, top_k=5)
-  best_chunks = result.chunks
-  # result.scores = [8.5, 7.2, 6.8, ...]  # Si aplica
-  ```
-
-## Casos de Uso (Use Cases)
-
-Los casos de uso están organizados por feature en `usecases/`:
-
-### Chat (`usecases/chat/`)
-
-| Use Case                        | Descripción                                                |
-| ------------------------------- | ---------------------------------------------------------- |
-| `AnswerQueryUseCase`            | RAG puro (stateless): embedding → retrieval → LLM          |
-| `StreamAnswerQueryUseCase` 🆕   | RAG con streaming de tokens (efecto "máquina de escribir") |
-| `AnswerQueryWithHistoryUseCase` | RAG + contexto conversacional + persistencia               |
-| `SearchChunksUseCase`           | Solo retrieval (sin LLM) para debugging/UI                 |
-| `CreateConversationUseCase`     | Inicia una nueva sesión de chat                            |
-| `GetConversationHistoryUseCase` | Recupera mensajes de una conversación                      |
-| `ClearConversationUseCase`      | Limpia el historial de una conversación                    |
-| `VoteAnswerUseCase` 🆕          | Feedback del usuario (RLHF - 👍/👎)                        |
-
-**Utilities:** `chat_utils.py` contiene helpers para formatear historial (`format_conversation_for_prompt`).
-
-**Streaming Protocol:**
+### Usar el Context Builder
 
 ```python
-for chunk in stream_use_case.execute(input_data):
-    if chunk.type == "token":
-        print(chunk.content, end="")  # Token de texto
-    elif chunk.type == "sources":
-        render_sources(chunk.sources)  # Fuentes estructuradas
-    elif chunk.type == "done":
-        show_confidence(chunk.confidence)  # Score de confianza
-```
+from app.application.context_builder import ContextBuilder
 
-### Ingestion (`usecases/ingestion/`)
-
-| Use Case                          | Descripción                                 |
-| --------------------------------- | ------------------------------------------- |
-| `UploadDocumentUseCase`           | Sube y persiste un documento (con rollback) |
-| `GetDocumentStatusUseCase`        | Consulta el estado de procesamiento         |
-| `CancelDocumentProcessingUseCase` | Cancela documentos atascados                |
-
-### Workspace (`usecases/workspace/`)
-
-| Use Case                 | Descripción                         |
-| ------------------------ | ----------------------------------- |
-| `ListDocumentsUseCase`   | Lista documentos de un workspace    |
-| `DeleteDocumentsUseCase` | Elimina documentos con autorización |
-
-## Value Objects del Dominio 🆕
-
-El módulo `domain/value_objects.py` contiene objetos de valor inmutables con enfoque empresarial:
-
-### SourceReference (Fuentes Estructuradas)
-
-```python
-# Permite al frontend renderizar "chips" clickeables con info de cada fuente
-source = SourceReference(
-    index=1,
-    document_title="Manual de RRHH",
-    snippet="La política de vacaciones...",
-    relevance_score=0.85,
+builder = ContextBuilder()
+context_str = builder.build(
+    chunks=[chunk1, chunk2],
+    max_tokens=2000
 )
 ```
 
-### ConfidenceScore (Score de Confianza - Enfoque Empresarial)
+## 🧩 Cómo extender sin romper nada
 
-```python
-# Indica al usuario si debe verificar la respuesta
-confidence = calculate_confidence(
-    chunks_used=3,
-    chunks_available=5,
-    response_length=250,
-    topic_category="finance",  # Sugiere "Finanzas" para verificación
-)
-# confidence.level = "high"
-# confidence.display_message = "Respuesta basada en múltiples fuentes verificadas."
-# confidence.requires_verification = False
-# confidence.suggested_department = "Finanzas"
-```
+1.  **Nuevo flujo:** Crea un Use Case en `usecases/`.
+2.  **Lógica compleja compartida:** Si una lógica se repite (ej. calcular precio de tokens), extráela a un archivo en esta carpeta raíz (como `rate_limiting.py`).
 
-### AnswerAuditRecord (Trazabilidad / Compliance)
+## 🆘 Troubleshooting
 
-```python
-# Registro de auditoría para cada respuesta (compliance empresarial)
-audit = AnswerAuditRecord(
-    record_id="audit-001",
-    timestamp=datetime.now(UTC).isoformat(),
-    user_id=user_id,
-    workspace_id=workspace_id,
-    query="¿Cuál es la política de vacaciones?",
-    answer_preview="La política establece...",
-    confidence_level="high",
-    confidence_value=0.85,
-    requires_verification=False,
-    sources_count=3,
-)
-# audit.is_high_risk = False
-# audit.audit_summary = "[timestamp] User=email Query='...' Confidence=high Sources=3"
-```
+- **Síntoma:** El LLM alucina respuestas.
+  - **Causa Probable:** El `ContextBuilder` no está filtrando bien o el `Reranker` está fallando.
+  - **Qué mirar:** Logs de `context_builder.py`.
 
-### UsageQuota (Rate Limiting)
+## 🔎 Ver también
 
-```python
-quota = UsageQuota(limit=100, used=45, resource="messages")
-# quota.remaining = 55
-# quota.is_exceeded = False
-# quota.usage_percentage = 45.0
-```
-
-## Tareas de Inicialización (Seed Tasks)
-
-Estos scripts se ejecutan al inicio (`main.py`) para preparar el entorno:
-
-- **`dev_seed_admin.py`:** Asegura que exista un super-admin (local + E2E).
-- **`dev_seed_demo.py`:** Crea un entorno completo para demos locales.
-
-## Principios de la Capa
-
-1. **Orquestación, no Cálculo:** Conecta componentes sin hacer cálculos complejos.
-2. **Fail-Fast:** Configuraciones inválidas lanzan excepciones inmediatas.
-3. **Observabilidad:** Logs estructurados y métricas de tiempo.
-4. **Inyección de Dependencias:** Cada use case recibe dependencias vía constructor.
-5. **Contratos Explícitos:** Inputs/Outputs tipados con dataclasses.
-6. **Enfoque Empresarial:** Trazabilidad, compliance y seguridad integrados.
+- [Casos de Uso (Detalle)](./usecases/README.md)

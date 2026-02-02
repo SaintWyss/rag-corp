@@ -1,54 +1,59 @@
-# Infrastructure Text Layer
+# Infra: Text Processing (Chunking)
 
-## 🎯 Propósito y Rol
+## 🎯 Misión
 
-Este paquete (`infrastructure/text`) se encarga de **procesar y dividir texto** (Chunking).
-Es una etapa crítica para RAG: un mal chunking rompe el contexto semántico y confunde al LLM.
+Se encarga de dividir textos largos en fragmentos más pequeños (**Chunks**) para que quepan en la ventana de contexto del LLM y para facilitar la búsqueda semántica.
+Es una parte crítica del pipeline RAG.
 
----
+**Qué SÍ hace:**
 
-## 🧩 Componentes Principales
+- Implementa estrategias de chunking: Estructurado (Markdown) y Semántico.
+- Calcula estadísticas básicas de texto.
 
-| Archivo                 | Rol          | Descripción                                                                                                                |
-| :---------------------- | :----------- | :------------------------------------------------------------------------------------------------------------------------- |
-| `chunker.py`            | **Core**     | Algoritmo de chunking recursivo. Prioriza cortes naturales (`\n\n`, `\n`, `.`). Expone la función compatible `chunk_text`. |
-| `structured_chunker.py` | **Strategy** | Chunking consciente de Markdown. Respeta bloques de código (```), headers (#) y listas. Evita romper sintaxis.             |
-| `models.py`             | **DTO**      | Define `ChunkFragment`, un objeto rico con metadatos (índice, contexto previo/siguiente, sección).                         |
+**Qué NO hace:**
 
----
+- No genera embeddings (eso es `services`).
 
-## 🛠️ Modos de Funcionamiento
+## 🗺️ Mapa del territorio
 
-El sistema soporta dos modos, configurables vía variable de entorno `TEXT_CHUNKER_MODE`:
+| Recurso                 | Tipo       | Responsabilidad (en humano)                                                         |
+| :---------------------- | :--------- | :---------------------------------------------------------------------------------- |
+| `chunker.py`            | 🐍 Archivo | Interfaz base para todos los chunkers.                                              |
+| `models.py`             | 🐍 Archivo | Modelos de datos para representar un Chunk de texto.                                |
+| `semantic_chunker.py`   | 🐍 Archivo | **Avanzado**. Divide texto basándose en cambios de significado (usando embeddings). |
+| `structured_chunker.py` | 🐍 Archivo | **Heurístico**. Divide texto respetando encabezados Markdown (#, ##).               |
 
-### 1. `simple` (Default)
+## ⚙️ ¿Cómo funciona por dentro?
 
-Técnica: "Recursive Character Splitting".
+### Structured Chunker
 
-- **Ventaja**: Rápido, predecible, funciona con cualquier texto sucio.
-- **Desventaja**: Puede partir una tabla o un bloque de código python a la mitad.
+Intenta mantener juntos los párrafos bajo un mismo título.
+Si un bloque es muy grande, lo divide recursivamente.
 
-### 2. `structured` (Recomendado para Docs Técnicos)
+### Semantic Chunker
 
-Técnica: "Structure Aware Splitting".
+Calcula embeddings de oraciones consecutivas. Si la similitud ("distancia coseno") cae drásticamente entre la oración A y B, inserta un corte, asumiendo cambio de tema.
 
-- Analiza Markdown headers.
-- Protege bloques de código y tablas.
-- Agrupa párrafos bajo su sección correspondiente.
+## 🔗 Conexiones y roles
 
----
+- **Rol Arquitectónico:** Infrastructure / Domain Service Implementation.
+- **Usado por:** `IngestDocumentUseCase`.
 
-## 🚀 Guía de Uso
+## 👩‍💻 Guía de uso (Snippets)
+
+### Chunking Estructurado
 
 ```python
-# Uso vía Container (transparente)
-chunker = get_text_chunker()
-chunks = chunker.chunk("Texto largo...")
-
-# Uso directo (Chunking Rico)
-from app.infrastructure.text.chunker import chunk_fragments
-
-fragments = chunk_fragments("Texto...", chunk_size=500)
-for frag in fragments:
-    print(f"Index: {frag.index}, Section: {frag.section}")
+chunker = StructuredChunker(max_tokens=500)
+chunks = chunker.chunk(text="# Titulo\nContenido...")
+# chunks es list[TextChunk]
 ```
+
+## 🧩 Cómo extender sin romper nada
+
+1.  **Nuevo Algoritmo:** Hereda de `Chunker` y define `chunk()`.
+2.  **Configuración:** Los parámetros (max_tokens, overlap) deberían venir inyectados.
+
+## 🔎 Ver también
+
+- [Ingesta de Documentos (Consumidor)](../../../application/usecases/ingestion/README.md)

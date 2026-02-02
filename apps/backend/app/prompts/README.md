@@ -1,74 +1,50 @@
-# Prompts Directory
+# Infra: Prompts Assets
 
-## Estructura
+## 🎯 Misión
 
-Este directorio contiene los **templates de prompts** organizados por funcionalidad (capability).
+Almacén de "Código en Lenguaje Natural".
+Aquí residen las plantillas de prompts que se envían a los LLMs. Separarlos del código Python permite que los "Prompt Engineers" iteren sin tocar el backend.
 
-```
-prompts/
-├── README.md              # Este archivo
-├── policy/                # Contratos de seguridad globales
-│   └── secure_contract_es.md
-└── rag_answer/            # Prompts para respuestas RAG
-    ├── v1_es.md           # Versión básica
-    └── v2_es.md           # Versión avanzada con formato estructurado
-```
+**Qué SÍ hace:**
 
-## Convenciones
+- Organiza prompts por caso de uso.
+- Mantiene versiones de prompts.
 
-### Nomenclatura de archivos
+**Qué NO hace:**
 
-```
-{version}_{lang}.md
-```
+- No contiene código ejecutable.
 
-- **version**: `v1`, `v2`, `v3`... (regex: `^v\d+$`)
-- **lang**: Código ISO 639-1 (`es`, `en`, `pt`, etc.)
+## 🗺️ Mapa del territorio
 
-### YAML Frontmatter (obligatorio)
+| Recurso       | Tipo       | Responsabilidad (en humano)                              |
+| :------------ | :--------- | :------------------------------------------------------- |
+| `policy/`     | 📁 Carpeta | Prompts de gobierno (qué puede y no puede hacer el bot). |
+| `rag_answer/` | 📁 Carpeta | Prompts para la generación de respuestas RAG.            |
 
-Cada archivo debe comenzar con metadatos en formato YAML:
+## ⚙️ ¿Cómo funciona por dentro?
 
-```yaml
----
-type: rag_answer # Tipo de prompt (debe coincidir con la carpeta)
-version: "2.1" # Versión semántica del contenido
-lang: es # Idioma
-description: > # Descripción multilinea
-  Breve explicación del propósito del prompt.
-author: RAG Corp # Autor/equipo responsable
-updated: "2026-01-30" # Última actualización
-inputs: # Tokens que el código debe proveer
-  - context
-  - query
----
+Son archivos de texto plano o Jinja2 (`.txt`, `.md`, `.j2`).
+El `Infrastructure/PromptLoader` los lee y la capa de `Application` inyecta las variables (ej: `{{ context }}`).
+
+## 🔗 Conexiones y roles
+
+- **Rol Arquitectónico:** Static Assets / Configuration.
+- **Consumido por:** `PromptLoader` (Infra).
+
+## 👩‍💻 Guía de uso (Snippets)
+
+### Estructura de archivo (Jinja2)
+
+```jinja
+Eres un asistente útil.
+Contexto: {{ context }}
+Pregunta: {{ query }}
 ```
 
-### Tokens de reemplazo
+## 🧩 Cómo extender sin romper nada
 
-Los prompts usan tokens con llaves simples:
+1.  **Versionado:** Si cambias drásticamente un prompt, crea `v2.md` y actualiza la configuración para usar la nueva versión gradualmente.
 
-- `{context}` - Contexto recuperado de documentos
-- `{query}` - Pregunta del usuario
+## 🔎 Ver también
 
-**Importante:** No uses `str.format()` de Python. El loader usa `.replace()` para evitar conflictos con JSON o código en los prompts.
-
-## Agregar una nueva versión
-
-1. Copia el archivo de la versión anterior
-2. Renómbralo con la nueva versión: `v3_es.md`
-3. Actualiza el frontmatter (version, updated, description)
-4. Modifica el contenido del prompt
-5. Prueba con `PROMPT_VERSION=v3` en tu entorno
-
-## Agregar una nueva capability
-
-1. Crea una nueva carpeta: `prompts/summarization/`
-2. Crea el primer template: `v1_es.md` con frontmatter apropiado
-3. Actualiza el loader si es necesario (agregar constante de directorio)
-
-## Seguridad
-
-- El **Policy Contract** (`policy/secure_contract_es.md`) se incluye automáticamente antes de cualquier template
-- Define reglas anti prompt-injection y jerarquía de instrucciones
-- **NUNCA** modifiques las reglas de seguridad sin revisión del equipo
+- [Prompt Loader (Infra)](../infrastructure/prompts/README.md)

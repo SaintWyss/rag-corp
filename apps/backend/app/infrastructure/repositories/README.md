@@ -1,82 +1,57 @@
-# Infrastructure Repositories
+# Infra: Repositories Hub
 
-Implementaciones concretas de los repositorios definidos en la capa de Domain.
+## 🎯 Misión
 
-## Estructura
+Contiene las implementaciones concretas de la persistencia de datos.
+Aquí se decide **dónde** y **cómo** se guardan las Entidades del Dominio.
 
-```
-repositories/
-├── __init__.py           # Exports centralizados
-├── postgres/             # Implementaciones de producción (PostgreSQL + SQLAlchemy)
-│   ├── document.py
-│   ├── workspace.py
-│   ├── workspace_acl.py
-│   ├── audit_event.py
-│   └── user.py
-└── in_memory/            # Implementaciones para testing/desarrollo
-    ├── conversation.py
-    ├── workspace.py
-    ├── workspace_acl.py
-    ├── feedback_repository.py
-    └── audit_repository.py
-```
+**Qué SÍ hace:**
 
-## Guía de Uso
+- Agrupa implementaciones por tecnología (`postgres`, `in_memory`).
 
-### Producción
+**Qué NO hace:**
+
+- No define las interfaces (eso está en `domain/repositories.py`).
+
+**Analogía:**
+Es el archivador. Puedes tener una carpeta física (`postgres`) o usar tu memoria (`in_memory`), pero ambos cumplen la función de guardar papeles.
+
+## 🗺️ Mapa del territorio
+
+| Recurso      | Tipo       | Responsabilidad (en humano)                                      |
+| :----------- | :--------- | :--------------------------------------------------------------- |
+| `in_memory/` | 📁 Carpeta | Implementaciones volátiles (Dicts) para tests unitarios rápidos. |
+| `postgres/`  | 📁 Carpeta | Implementaciones reales de producción sobre PostgreSQL.          |
+
+## ⚙️ ¿Cómo funciona por dentro?
+
+Todas las clases aquí deben implementar estrictamente los `Protocol` definidos en `app.domain.repositories`.
+Si el dominio pide `save(doc)`, ambas implementaciones deben tener ese método.
+
+## 🔗 Conexiones y roles
+
+- **Rol Arquitectónico:** Infrastructure Adapters.
+- **Implementa:** Interfaces de `app.domain`.
+
+## 👩‍💻 Guía de uso (Snippets)
+
+### Cambiar de implementación
+
+En `app/container.py`:
 
 ```python
-from app.infrastructure.repositories.postgres import (
-    PostgresDocumentRepository,
-    PostgresWorkspaceRepository,
-    PostgresAuditEventRepository,
-)
+# Para producción
+repo = PostgresDocumentRepository()
 
-# Típicamente se usan via el container (DI)
-from app.container import get_document_repository
-
-repo = get_document_repository()
+# Para testing local rápido
+repo = InMemoryDocumentRepository()
 ```
 
-### Testing
+## 🧩 Cómo extender sin romper nada
 
-```python
-from app.infrastructure.repositories.in_memory import (
-    InMemoryConversationRepository,
-    InMemoryFeedbackRepository,
-    InMemoryAnswerAuditRepository,
-)
+1.  **Nueva Tecnología:** Para agregar soporte a MongoDB, crea `repositories/mongo/` y sigue las mismas interfaces.
 
-# Para tests que no necesitan DB real
-feedback_repo = InMemoryFeedbackRepository()
-feedback_repo.save_vote(conversation_id="conv-1", ...)
-```
+## 🔎 Ver también
 
-## Mapeo: Domain Interface → Implementation
-
-| Interface (Domain)         | Production            | Testing              |
-| -------------------------- | --------------------- | -------------------- |
-| `DocumentRepository`       | `PostgresDocument...` | -                    |
-| `WorkspaceRepository`      | `PostgresWorkspace..` | `InMemoryWorkspace.` |
-| `WorkspaceAclRepository`   | `PostgresWorkspace..` | `InMemoryWorkspace.` |
-| `ConversationRepository`   | -                     | `InMemoryConvers...` |
-| `AuditEventRepository`     | `PostgresAuditEv...`  | -                    |
-| `FeedbackRepository` 🆕    | (TODO)                | `InMemoryFeedback..` |
-| `AnswerAuditRepository` 🆕 | (TODO)                | `InMemoryAnswerAu..` |
-
-## TODOs (Producción)
-
-Los siguientes repositorios tienen interfaz + implementación in-memory, pero **faltan** las implementaciones PostgreSQL:
-
-1. **`PostgresFeedbackRepository`** - Para persistir votos de RLHF
-2. **`PostgresAnswerAuditRepository`** - Para persistir logs de auditoría de respuestas
-
-Esquema SQL sugerido en `in_memory/README.md`.
-
-## Principios
-
-1. **Separación por Tecnología:** `postgres/` vs `in_memory/` vs `redis/` (futuro)
-2. **Thread Safety:** Las implementaciones in-memory usan `Lock`
-3. **Copias Defensivas:** No compartir listas/dicts mutables
-4. **Soft Delete:** Preferir `archived_at` / `deleted_at` sobre borrado físico
-5. **Naming Corto:** `document.py` en vez de `postgres_document_repository.py`
+- [PostgreSQL Repos](./postgres/README.md)
+- [In-Memory Repos](./in_memory/README.md)

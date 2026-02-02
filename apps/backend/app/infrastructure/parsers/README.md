@@ -1,74 +1,56 @@
-# Infrastructure Parsers Layer
+# Infra: Document Parsers
 
-## 🎯 Propósito y Rol
+## 🎯 Misión
 
-Este paquete (`infrastructure/parsers`) es responsable de **transformar archivos binarios** (PDF, DOCX) en texto plano limpio y normalizado que el sistema RAG pueda consumir.
+Extrae texto plano y metadatos desde archivos binarios (`.pdf`, `.docx`, `.txt`).
+Es el primer paso para entender un documento subido.
 
-Implementa un mecanismo robusto de selección de estrategia (Strategy Pattern) basado en tipos MIME, con protecciones contra archivos maliciosos o corruptos.
+**Qué SÍ hace:**
 
----
+- Convierte binario -> Texto (Markdown simplificado si es posible).
+- Detecta MIME types.
 
-## 🧩 Componentes Principales
+**Qué NO hace:**
 
-### 1. Registry & Factory (El Cerebro)
+- No hace OCR a imágenes (por ahora).
 
-| Archivo                      | Rol         | Descripción                                                                                         |
-| :--------------------------- | :---------- | :-------------------------------------------------------------------------------------------------- |
-| `registry.py`                | **Factory** | Mantiene un registro central de `MIME -> Parser`. Permite obtener el parser correcto dinámicamente. |
-| `document_text_extractor.py` | **Adapter** | La cara pública hacia el Dominio. Usa el Registry internamente para delegar el trabajo.             |
+## 🗺️ Mapa del territorio
 
-### 2. Estrategias de Parsing (Los Obreros)
+| Recurso          | Tipo       | Responsabilidad (en humano)                                  |
+| :--------------- | :--------- | :----------------------------------------------------------- |
+| `contracts.py`   | 🐍 Archivo | Interfaces para los parsers.                                 |
+| `docx_parser.py` | 🐍 Archivo | Parser para documentos Word (`python-docx`).                 |
+| `pdf_parser.py`  | 🐍 Archivo | Parser para PDFs (`pypdf`).                                  |
+| `registry.py`    | 🐍 Archivo | **Factory**. Devuelve el parser adecuado según el MIME type. |
+| `normalize.py`   | 🐍 Archivo | Limpieza básica de texto (espacios extra, caracteres raros). |
 
-| Archivo                    | Soporte | Descripción                                                                                     |
-| :------------------------- | :------ | :---------------------------------------------------------------------------------------------- |
-| `pdf_parser.py`            | PDF     | Usa `pypdf`. Maneja extracción página por página, tolerancia a fallos parciales y lazy loading. |
-| `docx_parser.py`           | DOCX    | Usa `python-docx`. Extrae párrafos y tablas.                                                    |
-| `registry.py` (TextParser) | TXT     | Maneja archivos de texto plano con decodificación resiliente (`utf-8/replace`).                 |
+## ⚙️ ¿Cómo funciona por dentro?
 
-### 3. Seguridad y Estabilidad (Guardrails)
+Patrón **Strategy** + **Registry**.
 
-| Archivo         | Rol                 | Descripción                                                                                        |
-| :-------------- | :------------------ | :------------------------------------------------------------------------------------------------- |
-| `normalize.py`  | **Sanitizer**       | Elimina caracteres nulos, colapsa espacios vacíos y trunca textos excesivamente largos.            |
-| `mime_types.py` | **Source of Truth** | Define los MIME types soportados para evitar "drift" entre la API y el Parser.                     |
-| `errors.py`     | **Exceptions**      | Define errores tipados (`DocumentParsingError`, `ParsingLimitExceededError`) para manejo granular. |
+1.  `registry.get_parser("application/pdf")` -> Retorna instancia de `PdfParser`.
+2.  `parser.parse(file_stream)` -> Retorna objeto `ParsedDocument`.
 
----
+## 🔗 Conexiones y roles
 
-## 🛠️ Patrones de Diseño
+- **Rol Arquitectónico:** Infrastructure Adapter.
+- **Llama a:** Librerías de terceros (`pypdf`, `python-docx`).
 
-### Strategy Pattern
+## 👩‍💻 Guía de uso (Snippets)
 
-Cada formato de archivo tiene su propia clase (`PdfParser`, `DocxParser`) que implementa la interfaz `BaseParser` (`contracts.py`). Agregar un nuevo formato (ej: Markdown) es tan simple como crear una clase y registrarla, cumpliendo el principio OCP (Open/Closed Principle).
-
-### Lazy Loading
-
-Las librerías pesadas (`pypdf`, `python-docx`) **solo se importan dentro del método parse**.
-
-- **Beneficio:** Inicio rápido de la aplicación (cold start) y menor consumo de memoria si no se procesan esos archivos.
-
-### Adapter Pattern
-
-El dominio solo conoce `DocumentTextExtractor`. Nuestra implementación `SimpleDocumentTextExtractor` adapta esa interfaz simple hacia nuestro sistema complejo de Registry y Parsers.
-
----
-
-## 🚀 Guía de Uso
+### Parsear un archivo desconocido
 
 ```python
-# Así lo usa el contenedor de dependencias:
-extractor = SimpleDocumentTextExtractor()
-
-# Así se invoca:
-text = extractor.extract_text(
-    mime_type="application/pdf",
-    content=b"%PDF-1.5..."
-)
+parser = ParserRegistry.get(mime_type)
+document = parser.parse(file_stream)
+print(document.text)
 ```
 
-### Configuración de Límites
+## 🧩 Cómo extender sin romper nada
 
-El sistema aplica límites por defecto para protección (Anti-DoS):
+1.  **Soporte HTML:** Crea `html_parser.py` (usando BeautifulSoup), implemanta `DocumentParser` y regístralo en `registry.py`.
 
-- **Max Pages:** 100 (configurable en `ParserOptions`)
-- **Max Chars:** 1,000,000 (configurable)
+## 🆘 Troubleshooting
+
+- **Síntoma:** Texto ilegible o garabatos.
+  - **Causa:** El PDF puede ser solo imágenes escaneadas (necesita OCR, no soportado aún).

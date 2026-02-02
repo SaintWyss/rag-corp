@@ -1,80 +1,99 @@
-# Crosscutting Layer
+# Layer: Crosscutting (Shared Utilities)
 
-## 🎯 Propósito y Rol
+## 🎯 Misión
 
-Este paquete (`app/crosscutting`) encapsula las preocupaciones **transversales** de la aplicación.
-Implementa patrones tipo AOP (Aspect Oriented Programming) de forma manual y explícita, asegurando que todos los subsistemas compartan:
+Esta carpeta contiene módulos transversales que son utilizados por **todas** las capas del sistema.
+Aquí viven las "herramientas" que no pertenecen a ningún dominio de negocio específico, pero son esenciales para que la aplicación funcione de manera profesional.
 
-- Observabilidad (Logging, Metrics, Tracing).
-- Seguridad Base (Rate Limit, Body Limits).
-- Configuración Runtime (Settings).
-- Manejo de Errores (Taxonomía, RFC7807).
+**Qué SÍ hace:**
 
----
+- Carga y valida configuración (`config.py`).
+- Gestiona Logging estructurado (`logger.py`).
+- Implementa métricas y observabilidad (`metrics.py`, `tracing.py`).
+- Define middlewares genéricos (`middleware.py`, `rate_limit.py`, `security.py`).
+- Estandariza errores HTTP (`error_responses.py`, `exceptions.py`).
 
-## 🧩 Componentes Principales
+**Qué NO hace:**
 
-| Archivo         | Rol                | Descripción                                                                                                   |
-| :-------------- | :----------------- | :------------------------------------------------------------------------------------------------------------ |
-| `config.py`     | **Singleton**      | Carga y valida variables de entorno (`.env`). Aplica validaciones de seguridad tipo fail-fast.                |
-| `logger.py`     | **Observabilidad** | Logger estructurado (JSON). Redacta automáticamente secretos (PII/Credenciales). Inyecta `request_id`.        |
-| `metrics.py`    | **Observabilidad** | Cliente Prometheus (opcional). Define métricas de negocio (RAG stages) e infraestructura (DB, Worker).        |
-| `tracing.py`    | **Observabilidad** | Cliente OpenTelemetry (opcional). Inyecta `trace_id` en logs para correlación distribuida.                    |
-| `exceptions.py` | **Contrato**       | Jerarquía de excepciones internas (`RAGError`). Garantiza códigos de error estables (`error_code`).           |
-| `middleware.py` | **Pipeline**       | Interceptores HTTP. Manejan Request Context (`request_id`) y protegen contra payloads gigantes (`BodyLimit`). |
-| `rate_limit.py` | **Protección**     | Algoritmo Token Bucket en memoria con limpieza automática (TTL). Protege contra abuso por IP o API Key.       |
+- No contiene lógica de negocio (Use Cases).
+- No accede a la base de datos (excepto para cosas muy puntuales de infra).
 
----
+**Analogía:**
+Son los **Cimientos y Servicios Públicos** del edificio (Agua, Luz, Gas). Están en todas partes, en todas las habitaciones, pero no son "la habitación" en sí.
 
-## 🛠️ Arquitectura y Decisiones de Diseño
+## 🗺️ Mapa del territorio
 
-### 1. Dependencias Opcionales (Fail-Safe)
+| Recurso              | Tipo       | Responsabilidad (en humano)                                      |
+| :------------------- | :--------- | :--------------------------------------------------------------- |
+| `config.py`          | 🐍 Archivo | Carga variables de entorno en un objeto `Settings` tipado.       |
+| `error_responses.py` | 🐍 Archivo | Modelos para respuestas de error estandarizadas (RFC7807).       |
+| `exceptions.py`      | 🐍 Archivo | Excepciones base del sistema (`AppException`).                   |
+| `logger.py`          | 🐍 Archivo | Configuración centralizada de logs (JSON en prod, color en dev). |
+| `metrics.py`         | 🐍 Archivo | Exposición de métricas Prometheus.                               |
+| `middleware.py`      | 🐍 Archivo | Middlewares HTTP varios (Contexto, Body Limit).                  |
+| `pagination.py`      | 🐍 Archivo | Modelos y lógica para paginación de listas.                      |
+| `rate_limit.py`      | 🐍 Archivo | Lógica y middleware de limitación de tasa (Rate Limiting).       |
+| `security.py`        | 🐍 Archivo | Headers de seguridad (CSP, HSTS) y utilidades crypto.            |
+| `streaming.py`       | 🐍 Archivo | Helpers para respuestas en streaming (SSE/NDJSON).               |
+| `timing.py`          | 🐍 Archivo | Decoradores para medir tiempo de ejecución.                      |
+| `tracing.py`         | 🐍 Archivo | Integración básica de tracing distribuido.                       |
 
-Sistemas como `metrics.py` y `tracing.py` están diseñados para **no romper** la aplicación si faltan librerías (`prometheus_client`, `opentelemetry`).
+## ⚙️ ¿Cómo funciona por dentro?
 
-- **Beneficio**: Permite despliegues ligeros o entornos de test aislados.
+### Configuración (`config.py`)
 
-### 2. Context Propagation
+Usamos **Pydantic Settings**.
 
-Usamos `contextvars` (en `app/context.py`) para propagar `request_id`, `trace_id` y `user_id` a través de capas asíncronas sin ensuciar la firma de los métodos.
+1.  Lee variables de entorno (`.env` o sistema).
+2.  Valida tipos (ej. puerto debe ser int).
+3.  Expone un singleton `get_settings()` cacheado.
 
-- `logger.py` lee estas variables automáticamente.
+### Logging (`logger.py`)
 
-### 3. Seguridad por Defecto
+Intercepamos el logging estándar de Python y lo redirigimos para que salga estructurado (con `extra={...}`).
+Soporta inyección de `request_id` context-aware.
 
-- **Logs**: `_Redactor` filtra claves como `password`, `api_key` antes de imprimir.
-- **Config**: Exige JWT_SECRET fuerte en modo producción.
-- **Rate Limit**: Activo por defecto con Token Bucket para suavizar picos de tráfico.
+## 🔗 Conexiones y roles
 
----
+- **Rol Arquitectónico:** Shared Kernel / Cross-cutting Concerns.
+- **Recibe órdenes de:** TODO el sistema (API, Domain, Infra, App).
+- **Llama a:** Librerías base (Stdlib, Pydantic, Prometheus client).
+- **Límites:** **NUNCA** debe importar de `application`, `interfaces` o `infrastructure` (para evitar ciclos). Debe ser autodependiente.
 
-## 🚀 Guía de Uso Rápido
+## 👩‍💻 Guía de uso (Snippets)
 
-### Configuración
+### Usar Configuración
 
 ```python
 from app.crosscutting.config import get_settings
 
 settings = get_settings()
-print(settings.chunk_size)  # Validado y tipeado
+print(settings.database_url)
 ```
 
-### Logging y Tracing
+### Usar Logger
 
 ```python
 from app.crosscutting.logger import logger
-from app.crosscutting.tracing import span
 
-with span("proceso_critico", {"usuario": "123"}):
-    # Logs heredan trace_id automáticamente
-    logger.info("Iniciando proceso", extra={"dato": "valor"})
+try:
+    process_data()
+except Exception as e:
+    logger.error("Error procesando datos", extra={"doc_id": "123", "error": str(e)})
 ```
 
-### Excepciones
+## 🧩 Cómo extender sin romper nada
 
-```python
-from app.crosscutting.exceptions import DatabaseError
+1.  **Nuevas Variables de Entorno:** Agrégalas a la clase `Settings` en `config.py` con su tipo y valor por defecto.
+2.  **Excepciones:** Hereda siempre de `AppException` (en `exceptions.py`) para que los handlers globales las capturen bien.
 
-raise DatabaseError("Fallo conexión pool", original_error=e)
-# El middleware de error capturará esto y devolverá un JSON RFC7807 estándar
-```
+## 🆘 Troubleshooting
+
+- **Síntoma:** "ValidationError: field required" al iniciar.
+  - **Causa:** Falta una variable de entorno obligatoria en `.env`.
+- **Síntoma:** Circular Import Error.
+  - **Causa:** Probablemente importaste algo de `application` dentro de `crosscutting`. Revisa tus imports.
+
+## 🔎 Ver también
+
+- [API (Consumidor principal)](../api/README.md)
