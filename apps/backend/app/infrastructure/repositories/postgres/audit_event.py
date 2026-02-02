@@ -50,7 +50,7 @@ class PostgresAuditEventRepository:
         if self._pool is not None:
             return self._pool
 
-        from ..db.pool import get_pool
+        from app.infrastructure.db.pool import get_pool
 
         return get_pool()
 

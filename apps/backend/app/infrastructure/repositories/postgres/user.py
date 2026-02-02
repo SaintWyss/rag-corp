@@ -61,7 +61,7 @@ def _get_pool() -> ConnectionPool:
     Nota: En repositorios más “OO” esto se inyecta por __init__ (mejor testability).
     Acá mantenemos el estilo funcional que ya usás, pero con helpers DRY.
     """
-    from ..db.pool import get_pool
+    from app.infrastructure.db.pool import get_pool
 
     return get_pool()
 

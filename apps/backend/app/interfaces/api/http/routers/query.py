@@ -66,7 +66,7 @@ from app.identity.dual_auth import (
 from app.identity.rbac import Permission
 from fastapi import APIRouter, Depends, Request
 
-from ..schemas.query import AskRes, Match, QueryReq, QueryRes
+from ..schemas.query import AskReq, AskRes, Match, QueryReq, QueryRes
 
 router = APIRouter()
 _settings = get_settings()
@@ -193,7 +193,7 @@ def query_compat(
     tags=["query"],
 )
 def ask_compat(
-    req: QueryReq,
+    req: AskReq,
     workspace_id: UUID,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
@@ -343,7 +343,7 @@ def query_workspace(
 )
 def ask_workspace(
     workspace_id: UUID,
-    req: QueryReq,
+    req: AskReq,
     use_case: AnswerQueryUseCase = Depends(get_answer_query_use_case),
     workspace_use_case: GetWorkspaceUseCase = Depends(get_get_workspace_use_case),
     conversation_repo: ConversationRepository = Depends(get_conversation_repository),

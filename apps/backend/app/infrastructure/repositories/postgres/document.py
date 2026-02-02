@@ -85,7 +85,7 @@ class PostgresDocumentRepository:
         if self._pool is not None:
             return self._pool
 
-        from ..db.pool import get_pool
+        from app.infrastructure.db.pool import get_pool
 
         return get_pool()
 
@@ -428,13 +428,14 @@ class PostgresDocumentRepository:
                 ]
 
                 # 3) Inserción batch
-                conn.executemany(
-                    """
-                    INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """,
-                    batch,
-                )
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        """
+                        INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """,
+                        batch,
+                    )
 
             logger.info(
                 "PostgresDocumentRepository: Saved chunks",
@@ -523,13 +524,14 @@ class PostgresDocumentRepository:
                             for idx, chunk in enumerate(chunks)
                         ]
 
-                        conn.executemany(
-                            """
-                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
-                            VALUES (%s, %s, %s, %s, %s, %s)
-                            """,
-                            batch,
-                        )
+                        with conn.cursor() as cur:
+                            cur.executemany(
+                                """
+                                INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                """,
+                                batch,
+                            )
 
             logger.info(
                 "PostgresDocumentRepository: Atomic save completed",

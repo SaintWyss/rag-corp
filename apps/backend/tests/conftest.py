@@ -47,9 +47,19 @@ from app.domain.repositories import DocumentRepository  # noqa: E402
 from app.domain.services import EmbeddingService, LLMService  # noqa: E402
 
 os.environ.setdefault("APP_ENV", "test")
-os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test_db")
+_db_user = os.getenv("POSTGRES_USER", "postgres")
+_db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+_db_host = os.getenv("POSTGRES_HOST", "localhost")
+_db_port = os.getenv("POSTGRES_HOST_PORT", "5432")
+_db_name = os.getenv("POSTGRES_DB", "rag")
+os.environ.setdefault(
+    "DATABASE_URL",
+    f"postgresql://{_db_user}:{_db_password}@{_db_host}:{_db_port}/{_db_name}",
+)
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-unit-tests-only")
 os.environ.setdefault("GOOGLE_API_KEY", "fake-test-api-key")
+os.environ.setdefault("FAKE_LLM", "1")
+os.environ.setdefault("FAKE_EMBEDDINGS", "1")
 
 
 def pytest_configure(config) -> None:

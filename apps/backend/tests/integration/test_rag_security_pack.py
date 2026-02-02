@@ -13,19 +13,19 @@ if os.getenv("RUN_INTEGRATION") != "1":
     )
 
 import psycopg
-from psycopg_pool import ConnectionPool
-from pgvector.psycopg import register_vector
-
 from app.application.context_builder import ContextBuilder
-from app.application.usecases.answer_query import AnswerQueryInput, AnswerQueryUseCase
+from app.application.usecases.chat.answer_query import (
+    AnswerQueryInput,
+    AnswerQueryUseCase,
+)
 from app.domain.entities import Chunk, Document, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole
-from app.infrastructure.repositories.postgres.document import (
-    PostgresDocumentRepository,
-)
+from app.infrastructure.repositories.postgres.document import PostgresDocumentRepository
 from app.infrastructure.services.fake_embedding_service import FakeEmbeddingService
 from app.infrastructure.services.llm.fake_llm import FakeLLMService
+from pgvector.psycopg import register_vector
+from psycopg_pool import ConnectionPool
 
 pytestmark = pytest.mark.integration
 
@@ -174,7 +174,7 @@ def test_security_pack_cross_workspace_and_sources(security_workspaces, db_pool)
     repo = PostgresDocumentRepository(pool=db_pool)
     embeddings = FakeEmbeddingService()
     llm = FakeLLMService()
-    context_builder = ContextBuilder(max_chars=2000)
+    context_builder = ContextBuilder(max_size=2000)
 
     doc_a, _ = _seed_documents(repo, embeddings, security_workspaces)
 
@@ -227,7 +227,7 @@ def test_security_pack_requires_sources_even_if_user_asks_otherwise(
     repo = PostgresDocumentRepository(pool=db_pool)
     embeddings = FakeEmbeddingService()
     llm = FakeLLMService()
-    context_builder = ContextBuilder(max_chars=2000)
+    context_builder = ContextBuilder(max_size=2000)
 
     _seed_documents(repo, embeddings, security_workspaces)
 
@@ -268,7 +268,7 @@ def test_security_pack_no_prompt_exfiltration(security_workspaces, db_pool):
     repo = PostgresDocumentRepository(pool=db_pool)
     embeddings = FakeEmbeddingService()
     llm = FakeLLMService()
-    context_builder = ContextBuilder(max_chars=2000)
+    context_builder = ContextBuilder(max_size=2000)
 
     _seed_documents(repo, embeddings, security_workspaces)
 
@@ -308,7 +308,7 @@ def test_security_pack_no_evidence_message(security_workspaces, db_pool):
     repo = PostgresDocumentRepository(pool=db_pool)
     embeddings = FakeEmbeddingService()
     llm = FakeLLMService()
-    context_builder = ContextBuilder(max_chars=2000)
+    context_builder = ContextBuilder(max_size=2000)
 
     workspace_repo = _WorkspaceRepo(
         {
