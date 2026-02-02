@@ -134,8 +134,12 @@ def dual_workspace_context(db_conn):
     workspace_b = uuid4()
     email = f"repo-owner-{owner_user_id}@example.com"
     _insert_user(db_conn, owner_user_id, email)
-    _insert_workspace(db_conn, workspace_a, owner_user_id, f"Repo Workspace A {workspace_a}")
-    _insert_workspace(db_conn, workspace_b, owner_user_id, f"Repo Workspace B {workspace_b}")
+    _insert_workspace(
+        db_conn, workspace_a, owner_user_id, f"Repo Workspace A {workspace_a}"
+    )
+    _insert_workspace(
+        db_conn, workspace_b, owner_user_id, f"Repo Workspace B {workspace_b}"
+    )
     yield {
         "owner_user_id": owner_user_id,
         "workspace_a": workspace_a,

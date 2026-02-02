@@ -76,7 +76,9 @@ def test_rewrite_is_used_for_retrieval_and_metadata_preserves_original():
 
     history = [
         ConversationMessage(role="user", content="Hablemos de planes premium"),
-        ConversationMessage(role="assistant", content="El plan premium incluye soporte"),
+        ConversationMessage(
+            role="assistant", content="El plan premium incluye soporte"
+        ),
     ]
     conversation_repo = _ConversationRepo(history)
     answer_query_spy = _AnswerQuerySpy()

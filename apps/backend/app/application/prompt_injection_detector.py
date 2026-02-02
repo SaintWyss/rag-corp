@@ -121,7 +121,9 @@ _RISK_SCORE_NORMALIZATION_THRESHOLD: Final[float] = 3.0
 _PATTERNS: Tuple[_PatternRule, ...] = (
     _PatternRule(
         slug="ignore_instructions",
-        regex=re.compile(r"\b(ignore|ignora)\b.+\b(instructions|instrucciones)\b", re.I),
+        regex=re.compile(
+            r"\b(ignore|ignora)\b.+\b(instructions|instrucciones)\b", re.I
+        ),
         flags=("instruction_override",),
         weight=1.2,
     ),
@@ -139,7 +141,9 @@ _PATTERNS: Tuple[_PatternRule, ...] = (
     ),
     _PatternRule(
         slug="reveal_secrets",
-        regex=re.compile(r"\b(reveal|leak|exfiltrate|revela|filtra|confidencial)\b", re.I),
+        regex=re.compile(
+            r"\b(reveal|leak|exfiltrate|revela|filtra|confidencial)\b", re.I
+        ),
         flags=("exfiltration_attempt",),
         weight=1.0,
     ),

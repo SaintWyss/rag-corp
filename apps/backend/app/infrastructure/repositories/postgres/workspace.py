@@ -100,7 +100,9 @@ class PostgresWorkspaceRepository:
     # =========================================================
     # Helpers de ejecución (DRY + errores consistentes)
     # =========================================================
-    def _fetchall(self, *, query: str, params: Iterable[object], context_msg: str, extra: dict) -> list[tuple]:
+    def _fetchall(
+        self, *, query: str, params: Iterable[object], context_msg: str, extra: dict
+    ) -> list[tuple]:
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
@@ -112,7 +114,9 @@ class PostgresWorkspaceRepository:
             )
             raise DatabaseError(f"{context_msg}: {exc}") from exc
 
-    def _fetchone(self, *, query: str, params: Iterable[object], context_msg: str, extra: dict) -> tuple | None:
+    def _fetchone(
+        self, *, query: str, params: Iterable[object], context_msg: str, extra: dict
+    ) -> tuple | None:
         try:
             pool = self._get_pool()
             with pool.connection() as conn:
@@ -330,7 +334,9 @@ class PostgresWorkspaceRepository:
         )
 
         if not row:
-            raise DatabaseError("PostgresWorkspaceRepository: Failed to create workspace: no row returned")
+            raise DatabaseError(
+                "PostgresWorkspaceRepository: Failed to create workspace: no row returned"
+            )
         return self._row_to_workspace(row)
 
     def update_workspace(

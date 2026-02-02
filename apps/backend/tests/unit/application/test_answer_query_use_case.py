@@ -23,7 +23,10 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.application.reranker import RerankResult, RerankerMode
-from app.application.usecases.chat.answer_query import AnswerQueryUseCase, AnswerQueryInput
+from app.application.usecases.chat.answer_query import (
+    AnswerQueryUseCase,
+    AnswerQueryInput,
+)
 from app.application.usecases.documents.document_results import DocumentErrorCode
 from app.domain.entities import Chunk, QueryResult, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor

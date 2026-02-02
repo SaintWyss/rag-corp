@@ -94,8 +94,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # HSTS: solo si prod + HTTPS (directo o detrás de proxy)
         if self._is_production:
-            proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").lower()
+            proto = (
+                request.headers.get("x-forwarded-proto") or request.url.scheme or ""
+            ).lower()
             if proto == "https":
-                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+                response.headers["Strict-Transport-Security"] = (
+                    "max-age=31536000; includeSubDomains"
+                )
 
         return response

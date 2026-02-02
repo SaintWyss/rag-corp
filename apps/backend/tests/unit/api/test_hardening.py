@@ -13,7 +13,7 @@ Notes:
 
 import json
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -159,9 +159,9 @@ class TestSecretRedaction:
             output = formatter.format(record)
 
             # R: The actual secret VALUE should never appear in output
-            assert (
-                secret_value not in output
-            ), f"Secret value for '{key}' was logged: {output}"
+            assert secret_value not in output, (
+                f"Secret value for '{key}' was logged: {output}"
+            )
 
 
 @pytest.mark.unit

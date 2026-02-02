@@ -227,7 +227,7 @@ class PostgresAuditEventRepository:
 
         # Mapping explícito: fácil de mantener / debuggear.
         events: list[AuditEvent] = []
-        for (event_id, actor, action, target_id, metadata, created_at) in rows:
+        for event_id, actor, action, target_id, metadata, created_at in rows:
             events.append(
                 AuditEvent(
                     id=event_id,

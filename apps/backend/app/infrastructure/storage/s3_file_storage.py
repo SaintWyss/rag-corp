@@ -264,7 +264,9 @@ class S3FileStorageAdapter(FileStoragePort):
             ReadTimeoutError = ()  # type: ignore
 
         # Timeouts / endpoint caído
-        if isinstance(exc, (EndpointConnectionError, ConnectTimeoutError, ReadTimeoutError)):  # type: ignore
+        if isinstance(
+            exc, (EndpointConnectionError, ConnectTimeoutError, ReadTimeoutError)
+        ):  # type: ignore
             logger.warning("Storage unavailable", extra={"action": action, "key": key})
             return StorageUnavailableError("Storage no disponible (timeout/conexión).")
 

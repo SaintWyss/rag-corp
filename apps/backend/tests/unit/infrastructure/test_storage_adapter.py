@@ -6,7 +6,7 @@ Responsibilities:
   - Avoid real network calls (mocked client)
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from app.infrastructure.storage import S3Config, S3FileStorageAdapter

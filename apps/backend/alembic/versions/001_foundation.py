@@ -192,7 +192,7 @@ def upgrade() -> None:
             postgresql.ARRAY(sa.String(50)),
             nullable=False,
             server_default=sa.text("ARRAY[]::varchar[]"),
-        ), 
+        ),
         # Upload / storage
         sa.Column("file_name", sa.String(500), nullable=True),
         sa.Column("mime_type", sa.String(100), nullable=True),

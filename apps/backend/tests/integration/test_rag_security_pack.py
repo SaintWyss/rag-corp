@@ -136,12 +136,8 @@ def _seed_documents(repo, embeddings, security_workspaces):
     doc_a = uuid4()
     doc_b = uuid4()
 
-    repo.save_document(
-        Document(id=doc_a, title="Alpha Doc", workspace_id=workspace_a)
-    )
-    repo.save_document(
-        Document(id=doc_b, title="Beta Doc", workspace_id=workspace_b)
-    )
+    repo.save_document(Document(id=doc_a, title="Alpha Doc", workspace_id=workspace_a))
+    repo.save_document(Document(id=doc_b, title="Beta Doc", workspace_id=workspace_b))
 
     alpha_embedding = embeddings.embed_batch(["Alpha"])[0]
     beta_embedding = embeddings.embed_batch(["Beta"])[0]
@@ -277,7 +273,11 @@ def test_security_pack_no_prompt_exfiltration(security_workspaces, db_pool):
     _seed_documents(repo, embeddings, security_workspaces)
 
     workspace_repo = _WorkspaceRepo(
-        {security_workspaces["workspace_a"]: _workspace_entity(security_workspaces["workspace_a"])}
+        {
+            security_workspaces["workspace_a"]: _workspace_entity(
+                security_workspaces["workspace_a"]
+            )
+        }
     )
     actor = WorkspaceActor(user_id=uuid4(), role=UserRole.ADMIN)
 
@@ -311,7 +311,11 @@ def test_security_pack_no_evidence_message(security_workspaces, db_pool):
     context_builder = ContextBuilder(max_chars=2000)
 
     workspace_repo = _WorkspaceRepo(
-        {security_workspaces["workspace_c"]: _workspace_entity(security_workspaces["workspace_c"])}
+        {
+            security_workspaces["workspace_c"]: _workspace_entity(
+                security_workspaces["workspace_c"]
+            )
+        }
     )
     actor = WorkspaceActor(user_id=uuid4(), role=UserRole.ADMIN)
 

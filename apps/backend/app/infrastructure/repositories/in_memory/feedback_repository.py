@@ -27,9 +27,9 @@ class InMemoryFeedbackRepository:
 
     def __init__(self) -> None:
         self._votes: Dict[str, dict] = {}  # vote_id -> vote data
-        self._by_message: Dict[str, Dict[str, str]] = (
-            {}
-        )  # "conv:msg" -> {user_id: vote_id}
+        self._by_message: Dict[
+            str, Dict[str, str]
+        ] = {}  # "conv:msg" -> {user_id: vote_id}
 
     def _make_message_key(self, conversation_id: str, message_index: int) -> str:
         return f"{conversation_id}:{message_index}"
