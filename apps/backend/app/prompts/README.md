@@ -1,50 +1,64 @@
-# Infra: Prompts Assets
+# Prompts (templates)
 
 ## 🎯 Misión
+Almacenar los templates de prompts versionados que alimentan al LLM, separados del código Python.
 
-Almacén de "Código en Lenguaje Natural".
-Aquí residen las plantillas de prompts que se envían a los LLMs. Separarlos del código Python permite que los "Prompt Engineers" iteren sin tocar el backend.
+**Qué SÍ hace**
+- Organiza prompts por capacidad (`policy`, `rag_answer`).
+- Mantiene versiones (`v1`, `v2`, ...).
+- Usa frontmatter para metadata e inputs.
 
-**Qué SÍ hace:**
-
-- Organiza prompts por caso de uso.
-- Mantiene versiones de prompts.
-
-**Qué NO hace:**
-
+**Qué NO hace**
+- No carga ni formatea prompts (eso está en `infrastructure/prompts`).
 - No contiene código ejecutable.
 
-## 🗺️ Mapa del territorio
+**Analogía (opcional)**
+- Es el “repositorio de guiones” que el LLM sigue.
 
-| Recurso       | Tipo       | Responsabilidad (en humano)                              |
-| :------------ | :--------- | :------------------------------------------------------- |
-| `policy/`     | 📁 Carpeta | Prompts de gobierno (qué puede y no puede hacer el bot). |
-| `rag_answer/` | 📁 Carpeta | Prompts para la generación de respuestas RAG.            |
+## 🗺️ Mapa del territorio
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 📁 `policy/` | Carpeta | Contratos de seguridad globales del LLM. |
+| 📁 `rag_answer/` | Carpeta | Prompts de respuesta RAG por versión. |
+| 📄 `README.md` | Documento | Esta documentación. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: versión configurada (ej. `prompt_version=v1`).
+- **Proceso**: `PromptLoader` combina policy + prompt y reemplaza `{context}`/`{query}`.
+- **Output**: prompt final enviado al LLM.
 
-Son archivos de texto plano o Jinja2 (`.txt`, `.md`, `.j2`).
-El `Infrastructure/PromptLoader` los lee y la capa de `Application` inyecta las variables (ej: `{{ context }}`).
+Tecnologías/librerías usadas aquí:
+- Markdown con frontmatter YAML.
+
+Flujo típico:
+- `infrastructure/prompts/loader.py` lee `policy/` y `rag_answer/`.
+- La app llama `PromptLoader.format()` con context/query.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Static Assets / Configuration.
-- **Consumido por:** `PromptLoader` (Infra).
+- Rol arquitectónico: Static Assets / Configuration.
+- Recibe órdenes de: `PromptLoader` en infraestructura.
+- Llama a: no aplica.
+- Contratos y límites: mantiene tokens `{context}` y `{query}` declarados en frontmatter.
 
 ## 👩‍💻 Guía de uso (Snippets)
+```python
+from app.infrastructure.prompts.loader import PromptLoader
 
-### Estructura de archivo (Jinja2)
-
-```jinja
-Eres un asistente útil.
-Contexto: {{ context }}
-Pregunta: {{ query }}
+loader = PromptLoader(version="v1", capability="rag_answer")
+prompt = loader.format(context="...", query="...")
 ```
 
 ## 🧩 Cómo extender sin romper nada
+- Versiona cambios grandes (`v2`, `v3`, ...).
+- Mantén frontmatter con `inputs` correctos.
+- No elimines `{context}`/`{query}` si el loader los espera.
 
-1.  **Versionado:** Si cambias drásticamente un prompt, crea `v2.md` y actualiza la configuración para usar la nueva versión gradualmente.
+## 🆘 Troubleshooting
+- Síntoma: prompt no cambia al editar → Causa probable: cache en loader → Reiniciar proceso.
+- Síntoma: tokens sin reemplazar → Causa probable: inputs no declarados → Revisar frontmatter.
 
 ## 🔎 Ver también
-
-- [Prompt Loader (Infra)](../infrastructure/prompts/README.md)
+- [Prompt Loader](../infrastructure/prompts/README.md)
+- [Policy](./policy/README.md)
+- [RAG Answer](./rag_answer/README.md)

@@ -1,62 +1,71 @@
-# Infra: Task Queue (Async Jobs)
+# Queue (RQ)
 
 ## 🎯 Misión
+Implementar el adaptador de cola para encolar procesamiento de documentos con RQ, con configuración y validaciones fail‑fast.
 
-Permite encolar tareas para ser procesadas en background por los Workers.
-Desacopla la recepción de la tarea de su ejecución inmediata.
+**Qué SÍ hace**
+- Encola jobs de procesamiento con RQ.
+- Valida paths de jobs importables.
+- Tipifica errores de configuración y enqueue.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No ejecuta los jobs (eso lo hace el worker).
+- No contiene lógica de negocio.
 
-- Encola jobs en Redis Queue (RQ).
-- Define helpers para importar funciones de jobs dinámicamente.
-
-**Qué NO hace:**
-
-- No ejecuta los jobs (eso lo hace el `app.worker`).
+**Analogía (opcional)**
+- Es la “bandeja de tareas” que pasa trabajos al taller (worker).
 
 ## 🗺️ Mapa del territorio
-
-| Recurso           | Tipo       | Responsabilidad (en humano)                                      |
-| :---------------- | :--------- | :--------------------------------------------------------------- |
-| `errors.py`       | 🐍 Archivo | Errores de encolado.                                             |
-| `import_utils.py` | 🐍 Archivo | Helpers para cargar módulos por path string (necesario para RQ). |
-| `job_paths.py`    | 🐍 Archivo | Constantes con los strings de importación de los jobs.           |
-| `rq_queue.py`     | 🐍 Archivo | Implementación concreta usando `rq`.                             |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Facade del adaptador de cola. |
+| 🐍 `errors.py` | Archivo Python | Errores tipados de cola. |
+| 🐍 `import_utils.py` | Archivo Python | Validación de dotted paths importables. |
+| 🐍 `job_paths.py` | Archivo Python | Paths y nombres de cola (constantes). |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `rq_queue.py` | Archivo Python | Adapter RQ para `DocumentProcessingQueue`. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: `document_id` y `workspace_id` desde el caso de uso.
+- **Proceso**: `RQDocumentProcessingQueue` valida config y encola job.
+- **Output**: `job_id` o error tipado.
 
-Usa `redis` y `rq`.
-Cuando la aplicación llama a `enqueue`, serializa los argumentos con `pickle` y los guarda en una lista de Redis.
+Tecnologías/librerías usadas aquí:
+- rq, redis-py.
+
+Flujo típico:
+- `UploadDocumentUseCase` llama `enqueue_document_processing()`.
+- El adapter valida `job_paths.PROCESS_DOCUMENT_JOB_PATH`.
+- RQ encola el job en Redis.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Adapter.
-- **Llama a:** Redis.
+- Rol arquitectónico: Infrastructure Adapter (queue).
+- Recibe órdenes de: Application (ingestion).
+- Llama a: RQ/Redis.
+- Contratos y límites: implementa `DocumentProcessingQueue` del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Encolar un trabajo
-
 ```python
-from app.infrastructure.queue.rq_queue import RQQueue
-from app.infrastructure.queue.job_paths import INGEST_DOC_JOB
+from redis import Redis
+from app.infrastructure.queue import RQDocumentProcessingQueue, RQQueueConfig
 
-queue = RQQueue(redis_conn)
-job_id = queue.enqueue(
-    job_name=INGEST_DOC_JOB,
-    params={"doc_id": "123"}
+queue = RQDocumentProcessingQueue(
+    redis=Redis.from_url("redis://localhost:6379"),
+    config=RQQueueConfig(),
 )
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevos Jobs:** Si creas un nuevo job en `app.worker.jobs`, registra su path en `job_paths.py` para evitar hardcoding de strings.
+- Si agregas un nuevo job, registra el dotted path en `job_paths.py`.
+- Mantén la validación `is_importable_dotted_path` para fail‑fast.
+- Documenta nuevos nombres de cola (ENV) si los agregas.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** `job not found`.
-  - **Causa:** El worker no tiene el código actualizado o el path del job cambió.
+- Síntoma: `Job path no importable` → Causa probable: path inválido → Mirar `job_paths.py` y `app/worker/jobs.py`.
+- Síntoma: enqueue falla → Causa probable: Redis no disponible → Revisar `REDIS_URL`.
+- Síntoma: jobs no se procesan → Causa probable: worker apagado → Revisar `app/worker/worker.py`.
 
 ## 🔎 Ver también
-
-- [Worker Entrypoint (Consumidor)](../../worker/README.md)
+- [Worker](../../worker/README.md)
+- [Ingestion use cases](../../application/usecases/ingestion/README.md)

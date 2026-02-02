@@ -1,83 +1,87 @@
-# Backend Application Source (`app/`)
+# Backend Application (paquete `app`)
 
 ## 🎯 Misión
+Este paquete contiene todo el código ejecutable del backend. Aquí viven las capas de Clean Architecture (dominio, aplicación, infraestructura e interfaces), el wiring de dependencias y los entrypoints de API/worker.
 
-Aquí reside el código fuente de la aplicación, estrictamente organizado siguiendo **Clean Architecture**.
-El objetivo es mantener la lógica de negocio (el "qué hace la app") desacoplada de los detalles técnicos (el "cómo lo hace").
+**Qué SÍ hace**
+- Define entidades y contratos centrales del negocio (Domain).
+- Orquesta casos de uso y reglas de flujo (Application).
+- Implementa adaptadores a DB, colas, storage y LLMs (Infrastructure).
+- Expone API HTTP y jobs de worker (Interfaces/Worker).
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No contiene scripts de desarrollo/CI (eso vive en `../scripts`).
+- No contiene pruebas (ver `../tests`).
 
-- Define las entidades del negocio (Domain).
-- Orquesta los flujos de trabajo (Application).
-- Implementa conexiones a bases de datos y servicios externos (Infrastructure).
-- Expone la API (Interfaces).
-
-**Qué NO hace:**
-
-- No contiene scripts de despliegue ni configuración de CI/CD.
-- No contiene archivos de tests (están en `../tests`).
-
-**Analogía:**
-Es como las capas de una cebolla. En el centro está el **Dominio** (intocable), rodeado por la **Aplicación**, y en el borde exterior están la **Infraestructura** y las **Interfaces**. Las dependencias solo apuntan hacia adentro.
+**Analogía (opcional)**
+- Es el motor completo del backend: piezas internas, cableado y puntos de entrada, pero no el “taller” ni el “manual de pruebas”.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso           | Tipo       | Responsabilidad (en humano)                                            |
-| :---------------- | :--------- | :--------------------------------------------------------------------- |
-| `api/`            | 📁 Carpeta | **Composition Root**. Punto de entrada, configuración y arranque.      |
-| `application/`    | 📁 Carpeta | **Lógica de Aplicación**. Casos de uso (Use Cases) y orquestación.     |
-| `crosscutting/`   | 📁 Carpeta | **Utilidades**. Herramientas compartidas (Logs, Config, Errores).      |
-| `domain/`         | 📁 Carpeta | **Negocio Puro**. Entidades y reglas que no cambian por tecnología.    |
-| `identity/`       | 📁 Carpeta | **Subdominio de Identidad**. Gestión de usuarios, roles y permisos.    |
-| `infrastructure/` | 📁 Carpeta | **Adaptadores Salientes (Infra)**. DB, S3, LLMs, Colas.                |
-| `interfaces/`     | 📁 Carpeta | **Adaptadores Entrantes (API)**. Routes, Schemas y Controladores HTTP. |
-| `prompts/`        | 📁 Carpeta | **Assets de IA**. Templates de prompts y políticas de sistema.         |
-| `worker/`         | 📁 Carpeta | **Procesamiento Async**. Entrypoint para los workers de cola.          |
-| `audit.py`        | 🐍 Archivo | Helper global de auditoría (Bridge pattern simplificado).              |
-| `container.py`    | 🐍 Archivo | **Inyección de Dependencias**. Fábrica de objetos y cableado.          |
-| `context.py`      | 🐍 Archivo | Gestión de contexto por request (User ID, Workspace ID).               |
-| `jobs.py`         | 🐍 Archivo | Definición de tareas en background (Jobs de RQ).                       |
-| `main.py`         | 🐍 Archivo | Re-exporta la app ASGI para servidores WSGI (Gunicorn).                |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 📁 `api/` | Carpeta | Composición de FastAPI, rutas auxiliares y versionado. |
+| 📁 `application/` | Carpeta | Casos de uso y servicios de aplicación. |
+| 🐍 `audit.py` | Archivo Python | Emisión de eventos de auditoría (best-effort). |
+| 🐍 `container.py` | Archivo Python | Composition root: factories y singletons de dependencias. |
+| 🐍 `context.py` | Archivo Python | Contexto request/job (request_id, tracing, etc.). |
+| 📁 `crosscutting/` | Carpeta | Utilidades transversales (config, logging, errores, métricas). |
+| 📁 `domain/` | Carpeta | Entidades, value objects y contratos del dominio. |
+| 📁 `identity/` | Carpeta | Auth, roles, permisos, RBAC y validaciones de acceso. |
+| 📁 `infrastructure/` | Carpeta | Adaptadores salientes: DB, storage, colas, parsers, LLMs. |
+| 📁 `interfaces/` | Carpeta | Adaptadores entrantes: API HTTP y mapeo de DTOs. |
+| 🐍 `jobs.py` | Archivo Python | Entrypoints estables para jobs RQ. |
+| 🐍 `main.py` | Archivo Python | Entrypoint ASGI (`app.main:app`). |
+| 📁 `prompts/` | Carpeta | Templates de prompts y políticas (archivos .md). |
+| 📄 `README.md` | Documento | Este documento. |
+| 📁 `worker/` | Carpeta | Proceso worker RQ + health/metrics. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: request HTTP (FastAPI en `api/`) o job RQ (en `worker/`).
+- **Proceso**: router → DTO → caso de uso (`application/usecases`) → repos/servicios (`domain` + `infrastructure`).
+- **Output**: respuesta HTTP (RFC7807 si hay error) o side-effects (DB, storage, métricas).
 
-El flujo de datos atraviesa las capas:
+Tecnologías/librerías usadas aquí:
+- FastAPI (capa API), Pydantic (schemas), psycopg + pgvector (DB), Redis/RQ (worker).
 
-1.  **Request HTTP** llega a `interfaces/api`.
-2.  El controlador invoca un **Use Case** en `application/`.
-3.  El Use Case pide datos a un **Repository Interface** (en `domain/`).
-4.  En tiempo de ejecución, `container.py` inyecta la implementación real del repositorio (de `infrastructure/`).
-5.  El Use Case devuelve una entidad de dominio o un DTO.
-6.  El controlador lo transforma a JSON y responde.
+Flujo típico:
+- `app.api.main.create_fastapi_app()` crea la app y registra routers.
+- `app.container` arma repositorios/servicios y los inyecta en use cases.
+- `app.main:app` expone el ASGI para Uvicorn/Gunicorn.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Source Root.
-- **Recibe órdenes de:** `../tests` (durante pruebas) o el servidor ASGI (Uvicorn).
-- **Llama a:** Librerías externas (SQLAlchemy, Pydantic, etc.).
+- Rol arquitectónico: Source Root (Composition + capas internas).
+- Recibe órdenes de: Uvicorn/Gunicorn (`app.main:app`), worker RQ, scripts de CLI.
+- Llama a: Domain, Application, Infrastructure, Interfaces, Crosscutting.
+- Contratos y límites: Domain no depende de Infrastructure; Application orquesta vía puertos; Interfaces solo adaptan HTTP.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Importar componentes entre capas
-
 ```python
-# Un controlador (Interfaces) importando un Use Case (Application)
-from app.application.usecases.chat.answer_query import AnswerQueryUseCase
+from fastapi.testclient import TestClient
+from app.api.main import fastapi_app
 
-# Una implementación (Infrastructure) importando una interfaz (Domain)
-from app.domain.repositories import DocumentRepository
+client = TestClient(fastapi_app)
+resp = client.get("/healthz")
+assert resp.status_code == 200
 ```
 
 ## 🧩 Cómo extender sin romper nada
+- Crea primero el caso de uso en `application/usecases/`.
+- Define/actualiza contratos en `domain/` (repos/services) si aplica.
+- Implementa adaptadores en `infrastructure/`.
+- Registra el cableado en `container.py`.
+- Expone el endpoint en `interfaces/api/http/routers/` + schema en `schemas/`.
+- Agrega/ajusta tests en `tests/unit` o `tests/integration`.
 
-1.  **Respeta la dirección de dependencias:**
-    - Domain NO importa nada (solo estándar).
-    - Application solo importa Domain.
-    - Infrastructure/Interfaces importan Application y Domain.
-2.  **Usa `metrics.py` y `logger.py` de `crosscutting`** para observabilidad uniforme.
+## 🆘 Troubleshooting
+- Síntoma: `ModuleNotFoundError: No module named 'app'` → Causa: ejecutás fuera de `apps/backend` → Mirar `PYTHONPATH` y cwd.
+- Síntoma: use cases usan repos in-memory inesperados → Causa: `APP_ENV=test` → Mirar `app/container.py` y env `APP_ENV`.
+- Síntoma: `Pool no inicializado` → Causa: no se ejecutó lifespan → Mirar `app/api/main.py` e inicialización del pool.
 
 ## 🔎 Ver también
-
-- [Root README](../README.md)
-- [Capa de API (Composition Root)](./api/README.md)
-- [Capa de Aplicación (Use Cases)](./application/README.md)
+- [Backend root](../README.md)
+- [Application](./application/README.md)
+- [Domain](./domain/README.md)
+- [Infrastructure](./infrastructure/README.md)
+- [Interfaces HTTP](./interfaces/api/http/README.md)
+- [Worker](./worker/README.md)

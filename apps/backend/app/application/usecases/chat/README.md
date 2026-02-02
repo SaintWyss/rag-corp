@@ -1,79 +1,81 @@
-# Feature: Chat & RAG
+# Use Cases: Chat / RAG
 
 ## 🎯 Misión
+Implementar los casos de uso de chat y RAG: búsqueda semántica, generación de respuestas, streaming y manejo de conversación.
 
-Contiene toda la lógica para la **Experiencia Conversacional Inteligente**.
-Aquí vive el algoritmo RAG (Retrieval-Augmented Generation), el manejo de historial de chat y el feedback de usuarios.
+**Qué SÍ hace**
+- Ejecuta retrieval (SearchChunks) y generación (AnswerQuery).
+- Orquesta conversación con historial persistente.
+- Provee streaming de tokens para la UI.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No define endpoints HTTP ni schemas (eso vive en interfaces).
+- No implementa DB/LLM concretos (usa puertos del dominio).
 
-- Implementa el flujo RAG: Pregunta -> Embedding -> Búsqueda -> Prompt -> LLM.
-- Maneja streaming de respuestas (Token a Token).
-- Gestiona sesiones de chat (Crear, Listar, Borrar).
-- Registra votos/feedback de usuarios.
-
-**Analogía:**
-Es el Bibliotecario experto que no solo busca el libro, sino que lo lee y te resume la respuesta a tu pregunta.
+**Analogía (opcional)**
+- Es el “motor de preguntas y respuestas” del backend.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                        | Tipo       | Responsabilidad (en humano)                                             |
-| :----------------------------- | :--------- | :---------------------------------------------------------------------- |
-| `answer_query.py`              | 🐍 Archivo | **RAG Estándar**. Respuesta completa de una sola vez (stateless).       |
-| `answer_query_with_history.py` | 🐍 Archivo | **Chat RAG**. Respuesta considerando mensajes anteriores.               |
-| `chat_utils.py`                | 🐍 Archivo | Helpers para formatear mensajes del historial para el LLM.              |
-| `clear_conversation.py`        | 🐍 Archivo | Borra mensajes de una sesión.                                           |
-| `create_conversation.py`       | 🐍 Archivo | Inicia una nueva sesión de chat vacía.                                  |
-| `get_conversation_history.py`  | 🐍 Archivo | Recupera los mensajes previos de una sesión.                            |
-| `record_answer_audit.py`       | 🐍 Archivo | Guarda trazas de auditoría de respuestas generadas.                     |
-| `search_chunks.py`             | 🐍 Archivo | **Retrieval Only**. Solo busca fragmentos relevantes sin llamar al LLM. |
-| `stream_answer_query.py`       | 🐍 Archivo | **Streaming RAG**. Generador que emite tokens en tiempo real.           |
-| `vote_answer.py`               | 🐍 Archivo | Registra si una respuesta fue útil (👍/👎).                             |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de los casos de uso de chat. |
+| 🐍 `answer_query.py` | Archivo Python | RAG completo: embed → retrieve → contexto → LLM. |
+| 🐍 `answer_query_with_history.py` | Archivo Python | RAG con historial conversacional persistido. |
+| 🐍 `chat_utils.py` | Archivo Python | Helpers de formato de historial para prompts. |
+| 🐍 `clear_conversation.py` | Archivo Python | Limpieza de conversaciones. |
+| 🐍 `create_conversation.py` | Archivo Python | Creación de conversaciones nuevas. |
+| 🐍 `get_conversation_history.py` | Archivo Python | Lectura de historial de conversación. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `record_answer_audit.py` | Archivo Python | Registro de auditoría de respuestas. |
+| 🐍 `search_chunks.py` | Archivo Python | Retrieval semántico sin generación. |
+| 🐍 `stream_answer_query.py` | Archivo Python | RAG con streaming de tokens. |
+| 🐍 `vote_answer.py` | Archivo Python | Votos/feedback sobre respuestas. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output (flujo típico de RAG):
+- **Input**: `AnswerQueryInput` / `SearchChunksInput` con `workspace_id`, `query` y `actor`.
+- **Proceso**: policy de acceso → embeddings → retrieval (similarity/MMR) → filtro de inyección → context builder → LLM.
+- **Output**: `AnswerQueryResult` o `SearchChunksResult` con error tipado si aplica.
 
-### Flujo RAG (`answer_query.py`)
+Tecnologías/librerías usadas aquí:
+- dataclasses/typing; servicios externos se consumen vía puertos.
 
-1.  **Rewrite:** Reescribe la pregunta si es ambigua.
-2.  **Embed:** Convierte la pregunta a vector.
-3.  **Retrieve:** Busca chunks similares en `DocumentRepository`.
-4.  **Rerank:** Reordena los chunks por relevancia.
-5.  **Generate:** Construye prompt con `ContextBuilder` e invoca al `LLMService`.
-
-### Streaming
-
-Usa generadores de Python (`yield`) para pasar los tokens desde el LLM hasta la API a medida que se generan.
+Flujo típico:
+- `SearchChunksUseCase.execute()` retorna matches (sin LLM).
+- `AnswerQueryUseCase.execute()` retorna `QueryResult` con fuentes.
+- `StreamAnswerQueryUseCase.execute()` retorna stream de `StreamChunk`.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Use Cases (Chat Feature).
-- **Colabora con:** `LLMService`, `EmbeddingService`, `DocumentRepository`.
+- Rol arquitectónico: Application (Use Cases).
+- Recibe órdenes de: Interfaces HTTP (`routers/query.py`).
+- Llama a: repositorios de documentos/workspaces, EmbeddingService, LLMService.
+- Contratos y límites: no conoce FastAPI ni SQL; usa puertos del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Ejecutar una búsqueda simple (SearchChunks)
-
 ```python
-use_case = SearchChunksUseCase(document_repo, embedding_service)
-results = use_case.execute(
-    SearchChunksInput(query="política de gastos", workspace_id=ws_id)
+from uuid import uuid4
+from app.application.usecases.chat.answer_query import AnswerQueryInput
+from app.container import get_answer_query_use_case
+
+use_case = get_answer_query_use_case()
+result = use_case.execute(
+    AnswerQueryInput(query="¿Qué dice el contrato?", workspace_id=uuid4(), actor=None)
 )
-for chunk in results.chunks:
-    print(chunk.content)
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevos Modelos:** Si quieres soportar "Thinking Models", modifica `answer_query.py` o crea un `think_answer_query.py`.
-2.  **Historial:** La gestión de memoria está en `chat_utils.py`.
+- Agrega un nuevo caso de uso como módulo (p. ej. `summarize_conversation.py`).
+- Define su `*Input`/`*Result` y errores tipados en `document_results.py` si aplica.
+- Usa `resolve_workspace_for_read/write` para acceso consistente.
+- Exporta el caso de uso en `chat/__init__.py` si es público.
+- Cablea en `app/container.py` y crea tests unitarios.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** Respuestas lentas.
-  - **Causa:** El modelo LLM es muy grande o el Reranker está tardando.
-- **Síntoma:** "I don't know".
-  - **Causa:** El retrieval no trajo chunks relevantes (revisar embeddings).
+- Síntoma: `FORBIDDEN` en queries → Causa probable: actor/policy → Mirar `workspace_access.py`.
+- Síntoma: respuestas vacías → Causa probable: `top_k` inválido o sin chunks → Mirar `search_chunks.py`.
+- Síntoma: streaming no emite tokens → Causa probable: LLM no soporta stream → Mirar `stream_answer_query.py`.
 
 ## 🔎 Ver también
-
-- [Use Case Hub](../README.md)
+- [Use cases](../README.md)
+- [Documents results](../documents/document_results.py)
+- [Interfaces query router](../../../interfaces/api/http/routers/query.py)

@@ -1,69 +1,65 @@
-# Layer: Scripts (Tooling)
+# Scripts de mantenimiento
 
 ## 🎯 Misión
+Este directorio contiene herramientas de línea de comandos para tareas administrativas y de documentación del backend.
 
-Esta carpeta contiene scripts de utilidad y herramientas de línea de comandos (CLI) para desarrolladores y administradores de sistemas.
-Son scripts "one-off" que no forman parte del ciclo de vida de la aplicación web, sino que se ejecutan bajo demanda.
+**Qué SÍ hace**
+- Crea usuarios admin directamente en Postgres.
+- Exporta el esquema OpenAPI desde la app FastAPI.
+- Permite tareas operativas sin levantar toda la API.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No reemplaza flujos de negocio ni endpoints HTTP.
+- No contiene migraciones de DB (eso está en `alembic/`).
 
-- Inicializa datos administrativos (`create_admin.py`).
-- Exporta esquemas de documentación (`export_openapi.py`).
-- Facilita tareas de mantenimiento.
-
-**Qué NO hace:**
-
-- No contiene lógica de negocio reutilizable (debe importar de `application` o `infrastructure`).
-- No es un punto de entrada de la aplicación en producción.
-
-**Analogía:**
-Si la aplicación es un coche de carreras, estos scripts son las herramientas neumáticas y llaves inglesas del equipo de pits.
+**Analogía (opcional)**
+- Son “llaves de servicio” para tareas específicas del backend.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso             | Tipo      | Responsabilidad (en humano)                                             |
-| :------------------ | :-------- | :---------------------------------------------------------------------- |
-| `create_admin.py`   | 🧰 Script | Crea un usuario administrador en la base de datos (para setup inicial). |
-| `export_openapi.py` | 🧰 Script | Genera el archivo `openapi.json` estático sin levantar el servidor.     |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🧰 `create_admin.py` | Script | Crea un usuario admin en la tabla `users` (idempotente). |
+| 🧰 `export_openapi.py` | Script | Exporta el esquema OpenAPI a un archivo JSON. |
+| 📄 `README.md` | Documento | Esta documentación. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: argumentos CLI (email, password, output path).
+- **Proceso**: conexión directa a Postgres o generación de OpenAPI desde `app.api.main`.
+- **Output**: usuario creado en DB o archivo JSON con el schema.
 
-Los scripts suelen seguir este patrón:
+Tecnologías/librerías usadas aquí:
+- argparse, psycopg, FastAPI (solo para exportar OpenAPI).
 
-1.  Configuran el `PYTHONPATH` para poder importar `app`.
-2.  Inicializan dependencias mínimas (como `Settings` o DB Pools).
-3.  Ejecutan una función de dominio o infraestructura.
-4.  Imprimen resultados en stdout.
+Flujo típico:
+- `create_admin.py` valida env y escribe en `users`.
+- `export_openapi.py` carga la app y serializa el schema.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Tooling / Support.
-- **Recibe órdenes de:** Humanos (CLI) o CI/CD pipelines.
-- **Llama a:** `app.infrastructure`, `app.identity`, etc.
+- Rol arquitectónico: Tooling.
+- Recibe órdenes de: operadores/desarrolladores por CLI.
+- Llama a: Postgres (psycopg) y `app.api.main`.
+- Contratos y límites: scripts no deben importar infraestructura compleja ni casos de uso.
 
 ## 👩‍💻 Guía de uso (Snippets)
+```python
+from scripts.export_openapi import _resolve_app
+from app.api.main import app
 
-### Crear un usuario admin
-
-```bash
-# Desde apps/backend/
-python -m scripts.create_admin --email admin@ragcorp.com --password secret
-```
-
-### Exportar OpenAPI para el frontend
-
-```bash
-python -m scripts.export_openapi > openapi.json
+schema = _resolve_app(app).openapi()
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevos Scripts:** Créalos aquí con nombres descriptivos (`fix_data_XYZ.py`).
-2.  **Entrada:** Usa `argparse` o `typer` para manejar argumentos.
-3.  **Logging:** Usa `print` para feedback de usuario o el `app.logger` si es un proceso desatendido.
+- Crea un script nuevo con `argparse` y una función `main()`.
+- Usa imports explícitos y evita side‑effects al importar.
+- Documenta variables de entorno requeridas en este README.
+- Mantén los scripts idempotentes cuando escriban en DB.
 
 ## 🆘 Troubleshooting
+- Síntoma: `DATABASE_URL is required` → Causa probable: env faltante → Mirar `.env` y `create_admin.py`.
+- Síntoma: export OpenAPI falla → Causa probable: import error en la app → Mirar `app/api/main.py`.
+- Síntoma: permisos insuficientes en DB → Causa probable: credenciales → Mirar `.env`.
 
-- **Síntoma:** "ModuleNotFoundError: No module named 'app'".
-  - **Causa:** Ejecutaste el script desde dentro de la carpeta `scripts/`.
-  - **Solución:** Ejecuta siempre desde la raíz del backend: `python -m scripts.nombre_script`.
+## 🔎 Ver también
+- [API composition](../app/api/README.md)
+- [Alembic](../alembic/README.md)

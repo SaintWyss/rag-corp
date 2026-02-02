@@ -1,44 +1,65 @@
-# Test: Integration Tests
+# Tests de Integración
 
 ## 🎯 Misión
+Verificar que el backend funcione con dependencias reales (principalmente Postgres) y que los flujos críticos se ejecuten end‑to‑end a nivel de componentes.
 
-Verificar que los componentes "hablan" bien entre sí y con la infraestructura real.
-El foco principal es la **Base de Datos** y las **Queries**.
+**Qué SÍ hace**
+- Prueba endpoints HTTP con FastAPI TestClient.
+- Verifica repositorios Postgres reales.
+- Valida controles de seguridad en búsquedas RAG.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No sustituye los tests unitarios.
+- No cubre escenarios full e2e con infraestructura externa completa.
 
-- Conecta a una Postgres real.
-- Verifica que el SQL manual funciona y retorna lo esperado.
-- Verifica constraints (Foreign Keys, Uniques).
-
-**Qué NO hace:**
-
-- No llama a APIs externas reales (Google, AWS) - esas se mockean para evitar costos y flakiness.
+**Analogía (opcional)**
+- Es el “ensayo general” con piezas reales.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso           | Tipo       | Responsabilidad (en humano)                                      |
-| :---------------- | :--------- | :--------------------------------------------------------------- |
-| `infrastructure/` | 📁 Carpeta | Tests de repositorios Postgres.                                  |
-| `api/`            | 📁 Carpeta | Tests de endpoints HTTP golpeando la DB real (Functional Tests). |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Marca el paquete de integración. |
+| 🐍 `conftest.py` | Archivo Python | Fixtures específicas de integración. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🧪 `test_api_endpoints.py` | Test | Verifica endpoints HTTP. |
+| 🧪 `test_postgres_document_repo.py` | Test | Prueba repositorios Postgres reales. |
+| 🧪 `test_rag_security_pack.py` | Test | Valida filtros de seguridad en RAG. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: `pytest tests/integration`.
+- **Proceso**: tests llaman API/repos reales con DB conectada.
+- **Output**: validación de flujos con infraestructura real.
 
-El `conftest.py` (nivel padre) configura una sesión de DB transaccional o trunca tablas.
-Requiere que `docker-compose up db` esté corriendo o que el runner de CI levante un servicio postgres.
+Tecnologías/librerías usadas aquí:
+- pytest, FastAPI TestClient, psycopg.
+
+## 🔗 Conexiones y roles
+- Rol arquitectónico: Tests (integration).
+- Recibe órdenes de: desarrolladores/CI.
+- Llama a: Postgres real y servicios configurados (fakes opcionales).
+- Contratos y límites: requiere DB con migraciones aplicadas.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Test de Repositorio Real
+Comandos típicos:
+- `pytest tests/integration -m integration`
 
 ```python
-@pytest.mark.asyncio
-async def test_save_document_pg(pg_repo):
-    await pg_repo.save(doc)
-    fetched = await pg_repo.get(doc.id)
-    assert fetched.title == doc.title
+import pytest
+
+pytest.main(["-v", "tests/integration", "-m", "integration"])
 ```
 
-## 🔎 Ver también
+## 🧩 Cómo extender sin romper nada
+- Asegura DB limpia y migrada antes de correr.
+- Mantén los tests idempotentes.
+- Si agregás una tabla, actualiza fixtures y datos de prueba.
 
-- [Tests Hub](../README.md)
+## 🆘 Troubleshooting
+- Síntoma: `UndefinedTable` → Causa probable: migraciones faltantes → Ejecutar Alembic.
+- Síntoma: conexión rechazada → Causa probable: DB apagada → Revisar `DATABASE_URL`.
+- Síntoma: endpoints 401/403 → Causa probable: auth habilitada → Revisar `.env` y API keys.
+
+## 🔎 Ver también
+- [Tests root](../README.md)
+- [Alembic](../../alembic/README.md)

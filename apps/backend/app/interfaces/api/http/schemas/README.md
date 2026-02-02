@@ -1,56 +1,62 @@
-# HTTP Schemas (Data Contracts)
+# Schemas HTTP
 
 ## 🎯 Misión
+Definir los DTOs HTTP (request/response) para los endpoints de la API, con validación Pydantic y límites configurables.
 
-Define los contratos de datos (Data Transfer Objects - DTOs) para la API.
-Utiliza **Pydantic** para validar que los JSONs de entrada y salida cumplan con el formato esperado.
+**Qué SÍ hace**
+- Modela payloads de entrada/salida para workspaces, documentos, query y admin.
+- Aplica validaciones y constraints de tamaño.
+- Mantiene contratos estables para los routers.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No contiene lógica de negocio.
+- No ejecuta queries ni servicios.
 
-- Valida tipos (int, str, email).
-- Documenta ejemplos para OpenAPI/Swagger.
-- Sanitiza inputs.
-
-**Qué NO hace:**
-
-- No son Entidades de Dominio (aunque se parezcan).
+**Analogía (opcional)**
+- Es el “formulario oficial” que todos los pedidos deben completar.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso        | Tipo       | Responsabilidad (en humano)                   |
-| :------------- | :--------- | :-------------------------------------------- |
-| `admin.py`     | 🐍 Archivo | Schemas para administración.                  |
-| `model.py`     | 🐍 Archivo | Schemas base genéricos (ej. `ErrorResponse`). |
-| `chat.py`      | 🐍 Archivo | Requests/Responses para Chat.                 |
-| `document.py`  | 🐍 Archivo | Requests/Responses para Documentos.           |
-| `workspace.py` | 🐍 Archivo | Requests/Responses para Workspaces.           |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de schemas. |
+| 🐍 `admin.py` | Archivo Python | DTOs de endpoints admin. |
+| 🐍 `documents.py` | Archivo Python | DTOs de documentos (upload/list/get). |
+| 🐍 `query.py` | Archivo Python | DTOs de búsqueda/ask/stream. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `workspaces.py` | Archivo Python | DTOs de workspaces. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Request → Schema → Application → Response:
+- **Request**: FastAPI recibe JSON/form-data.
+- **Schema**: Pydantic valida campos y límites.
+- **Application**: el router crea DTOs de use case.
+- **Response**: se serializa con schemas de salida.
 
-Heredan de `pydantic.BaseModel`.
-Usa `ConfigDict(from_attributes=True)` para mapear fácilmente desde objetos de Dominio/ORM.
+Tecnologías/librerías usadas aquí:
+- Pydantic.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Data Contracts.
-- **Usado por:** Routers.
+- Rol arquitectónico: Interface (DTOs HTTP).
+- Recibe órdenes de: routers HTTP.
+- Llama a: settings para límites (max_query_chars, max_top_k).
+- Contratos y límites: schemas no deben depender de infraestructura.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Definir un Schema
-
 ```python
-from pydantic import BaseModel, Field
+from app.interfaces.api.http.schemas.query import AskReq
 
-class CreateUserRequest(BaseModel):
-    email: str = Field(..., description="Email corporativo")
-    age: int | None = None
+req = AskReq(query="¿Qué dice el contrato?")
 ```
 
 ## 🧩 Cómo extender sin romper nada
+- Agrega un schema nuevo por endpoint y documenta campos.
+- Usa límites de `crosscutting.config` para consistencia.
+- Mantén nombres y tipos estables para clientes.
 
-1.  **Breaking Changes:** Evita renombrar campos en Schemas de respuesta. Si lo haces, rompes el Frontend.
+## 🆘 Troubleshooting
+- Síntoma: `422` en requests válidos → Causa probable: límites muy bajos → Revisar `config.py`.
+- Síntoma: campos faltantes → Causa probable: schema incorrecto → Revisar DTO correspondiente.
 
 ## 🔎 Ver también
-
 - [Routers](../routers/README.md)
+- [Crosscutting config](../../../../crosscutting/README.md)

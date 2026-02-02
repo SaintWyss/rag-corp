@@ -1,59 +1,66 @@
-# Infra: Text Processing (Chunking)
+# Text (chunking)
 
 ## 🎯 Misión
+Proveer utilidades de chunking de texto para la ingesta: fragmentación determinística, modelos de fragmentos y variantes semánticas/estructuradas.
 
-Se encarga de dividir textos largos en fragmentos más pequeños (**Chunks**) para que quepan en la ventana de contexto del LLM y para facilitar la búsqueda semántica.
-Es una parte crítica del pipeline RAG.
+**Qué SÍ hace**
+- Parte texto en chunks con overlap y metadata básica.
+- Ofrece modelos de fragmentos (`ChunkFragment`).
+- Expone chunkers semánticos/estructurados.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No genera embeddings ni accede a storage.
+- No aplica políticas de negocio.
 
-- Implementa estrategias de chunking: Estructurado (Markdown) y Semántico.
-- Calcula estadísticas básicas de texto.
-
-**Qué NO hace:**
-
-- No genera embeddings (eso es `services`).
+**Analogía (opcional)**
+- Es la “máquina cortadora” que prepara texto para indexarlo.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                 | Tipo       | Responsabilidad (en humano)                                                         |
-| :---------------------- | :--------- | :---------------------------------------------------------------------------------- |
-| `chunker.py`            | 🐍 Archivo | Interfaz base para todos los chunkers.                                              |
-| `models.py`             | 🐍 Archivo | Modelos de datos para representar un Chunk de texto.                                |
-| `semantic_chunker.py`   | 🐍 Archivo | **Avanzado**. Divide texto basándose en cambios de significado (usando embeddings). |
-| `structured_chunker.py` | 🐍 Archivo | **Heurístico**. Divide texto respetando encabezados Markdown (#, ##).               |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de chunking. |
+| 🐍 `chunker.py` | Archivo Python | Chunking base con overlap. |
+| 🐍 `models.py` | Archivo Python | Modelo `ChunkFragment`. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `semantic_chunker.py` | Archivo Python | Chunking con heurísticas semánticas. |
+| 🐍 `structured_chunker.py` | Archivo Python | Chunking respetando estructura (secciones). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: texto plano.
+- **Proceso**: separadores, overlap y límites de chunks.
+- **Output**: lista de strings o `ChunkFragment` con metadata.
 
-### Structured Chunker
+Tecnologías/librerías usadas aquí:
+- Python estándar.
 
-Intenta mantener juntos los párrafos bajo un mismo título.
-Si un bloque es muy grande, lo divide recursivamente.
-
-### Semantic Chunker
-
-Calcula embeddings de oraciones consecutivas. Si la similitud ("distancia coseno") cae drásticamente entre la oración A y B, inserta un corte, asumiendo cambio de tema.
+Flujo típico:
+- `chunk_fragments()` construye fragmentos con offsets.
+- `chunk_text()` devuelve solo strings (compatibilidad).
+- Chunkers semánticos/estructurados aplican heurísticas adicionales.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure / Domain Service Implementation.
-- **Usado por:** `IngestDocumentUseCase`.
+- Rol arquitectónico: Infrastructure Adapter (text processing).
+- Recibe órdenes de: use cases de ingesta.
+- Llama a: ninguna dependencia externa.
+- Contratos y límites: output alimenta embeddings y repos.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Chunking Estructurado
-
 ```python
-chunker = StructuredChunker(max_tokens=500)
-chunks = chunker.chunk(text="# Titulo\nContenido...")
-# chunks es list[TextChunk]
+from app.infrastructure.text.chunker import chunk_text
+
+chunks = chunk_text("Hola mundo. Esto es una prueba.", chunk_size=20, overlap=5)
 ```
 
 ## 🧩 Cómo extender sin romper nada
+- Si agregas un nuevo chunker, mantené `chunk_text` como baseline.
+- Respetá límites de tamaño y overlap defensivos.
+- Agrega tests para entradas largas y edge cases.
 
-1.  **Nuevo Algoritmo:** Hereda de `Chunker` y define `chunk()`.
-2.  **Configuración:** Los parámetros (max_tokens, overlap) deberían venir inyectados.
+## 🆘 Troubleshooting
+- Síntoma: demasiados chunks → Causa probable: `chunk_size` bajo → Ajustar settings.
+- Síntoma: chunks muy cortos al final → Causa probable: tail merge desactivado → Revisar `chunker.py`.
 
 ## 🔎 Ver también
-
-- [Ingesta de Documentos (Consumidor)](../../../application/usecases/ingestion/README.md)
+- [Ingestion use cases](../../application/usecases/ingestion/README.md)
+- [Domain services](../../domain/services.py)

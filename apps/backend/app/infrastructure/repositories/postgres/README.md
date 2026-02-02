@@ -1,72 +1,70 @@
-# Infra: PostgreSQL Repositories
+# Repositories Postgres
 
 ## 🎯 Misión
+Implementar repositorios del dominio sobre PostgreSQL usando psycopg y pgvector.
 
-Implementación de persistencia "Grade A" para producción usando PostgreSQL.
-Aprovecha características avanzadas como **pgvector** para búsqueda semántica e índices JSONB.
+**Qué SÍ hace**
+- Persiste documentos, chunks, workspaces, usuarios y auditoría.
+- Ejecuta búsqueda vectorial (similarity/MMR) para RAG.
+- Mantiene el scoping por `workspace_id` para seguridad.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No define reglas de negocio ni autorización.
+- No expone endpoints HTTP.
 
-- CRUD completo de entidades.
-- Búsqueda vectorial (`<->` operator de pgvector).
-- Mapeo manual SQL -> Objetos de Dominio (Data Mapper pattern).
-
-**Qué NO hace:**
-
-- No usa ORM pesado (SQLAlchemy ORM) para consultas, usa estilo Core/Raw para performance y control explícito.
-
-**Analogía:**
-Es el bibliotecario meticuloso que guarda cada libro en su estante exacto y sabe buscar por similitud de contenido.
+**Analogía (opcional)**
+- Es el “almacén” físico con un índice vectorial incorporado.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso            | Tipo       | Responsabilidad (en humano)                                  |
-| :----------------- | :--------- | :----------------------------------------------------------- |
-| `audit_event.py`   | 🐍 Archivo | Persistencia de trazas de auditoría.                         |
-| `document.py`      | 🐍 Archivo | **Repositorio Complejo**. CRUD de Docs + Chunks vectoriales. |
-| `user.py`          | 🐍 Archivo | Gestión de usuarios (Tabla `users`).                         |
-| `workspace.py`     | 🐍 Archivo | Gestión de workspaces.                                       |
-| `workspace_acl.py` | 🐍 Archivo | Gestión de permisos (Tabla `workspace_acl`).                 |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de repositorios Postgres. |
+| 🐍 `audit_event.py` | Archivo Python | Persistencia de eventos de auditoría. |
+| 🐍 `document.py` | Archivo Python | Documentos + chunks + búsqueda vectorial. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `user.py` | Archivo Python | CRUD de usuarios para auth/JWT. |
+| 🐍 `workspace.py` | Archivo Python | Persistencia de workspaces. |
+| 🐍 `workspace_acl.py` | Archivo Python | ACL de workspaces compartidos. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: métodos del repositorio llamados por casos de uso.
+- **Proceso**: SQL parametrizado + pgvector para similitud.
+- **Output**: entidades de dominio o resultados simples.
 
-1.  Obtiene conexión (`get_session`).
-2.  Ejecuta SQL parametrizado.
-3.  Convierte filas (`Row`) a `Entity` o `DTO`.
-4.  Cierra sesión (bloque `finally`).
+Tecnologías/librerías usadas aquí:
+- psycopg, pgvector, numpy (para embeddings en queries).
 
-### pgvector
-
-En `document.py`, usamos la extensión vector para buscar chunks similares.
-
-```sql
-SELECT * FROM chunks ORDER BY embedding <-> [vector] LIMIT 5
-```
+Flujo típico:
+- `PostgresDocumentRepository.find_similar_chunks()` ejecuta búsqueda vectorial.
+- `PostgresWorkspaceRepository` CRUD de workspaces.
+- `user.py` soporta login/admin de usuarios.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Production Infrastructure.
-- **Llama a:** `app.infrastructure.db.pool`.
+- Rol arquitectónico: Infrastructure Adapter (DB).
+- Recibe órdenes de: Application (use cases) y Identity (auth_users).
+- Llama a: `infrastructure/db/pool.get_pool()`.
+- Contratos y límites: no aplica policy; solo persistencia y mapping.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Ejemplo de uso interno (Document Repo)
-
 ```python
-async with get_session() as conn:
-    await conn.execute("INSERT INTO documents ...")
+from app.infrastructure.repositories.postgres import PostgresWorkspaceRepository
+
+repo = PostgresWorkspaceRepository()
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevas Queries:** Escribe SQL explícito. Evita Magic ORM.
-2.  **Transacciones:** Si una operación requiere atomicidad, usa `async with conn.transaction():`.
+- Mantén queries con scope por `workspace_id`.
+- No interpolar strings: usa parámetros.
+- Si agregas columnas, actualiza el mapping `_row_to_*`.
+- Añade migración y tests de integración.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** Error "relation 'vector' does not exist".
-  - **Causa:** No se instaló la extensión pgvector en la DB. (Revisa migraciones).
+- Síntoma: errores de `pgvector` → Causa probable: extensión no instalada → Revisar migraciones de DB.
+- Síntoma: resultados duplicados → Causa probable: join incorrecto → Revisar SQL en `document.py`.
+- Síntoma: `UndefinedTable` → Causa probable: migraciones faltantes → Ejecutar Alembic.
 
 ## 🔎 Ver también
-
-- [Database Pool](../../db/README.md)
+- [DB pool](../../db/README.md)
+- [Domain repositories](../../../domain/repositories.py)
+- [In-memory repos](../in_memory/README.md)

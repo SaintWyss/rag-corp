@@ -1,74 +1,76 @@
-# Layer: Use Cases (Actions)
+# Use Cases (casos de uso)
 
 ## 🎯 Misión
+Organizar los casos de uso por bounded context (chat, documentos, ingesta, workspace), con DTOs de entrada/salida y errores tipados.
 
-Este directorio es el **Menú de Opciones** de la aplicación.
-Cada carpeta aquí representa una "Feature" o área funcional, y cada archivo dentro representa una "Acción" que el usuario puede realizar.
+**Qué SÍ hace**
+- Define DTOs de entrada (`*Input`) y resultados (`*Result`).
+- Orquesta flujos de negocio sin depender de HTTP.
+- Expone un API público vía `usecases/__init__.py`.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No implementa acceso a DB/LLMs directamente.
+- No define endpoints ni validaciones de request HTTP.
 
-- Contiene clases `*UseCase` con un método público `execute()`.
-- Define los DTOs de entrada (`*Input`) y salida (`*Output`) si son complejos.
-- Aplica reglas de negocio específicas de la acción (ej. "¿Tiene permiso el usuario X para ver el documento Y?").
-
-**Qué NO hace:**
-
-- No implementa persistencia.
-- No sabe de HTTP (JSON, Status Codes).
-
-**Analogía:**
-Es el menú del restaurante. "Hamburguesa con queso", "Ensalada César". Cada ítem es un Use Case.
+**Analogía (opcional)**
+- Es el “menú” de operaciones de negocio disponibles en el backend.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso      | Tipo       | Responsabilidad (en humano)                                       |
-| :----------- | :--------- | :---------------------------------------------------------------- |
-| `chat/`      | 📁 Carpeta | Interacciones conversacionales (Preguntar, Historial, Streaming). |
-| `documents/` | 📁 Carpeta | Gestión CRUD de documentos (Listar, Borrar, Ver).                 |
-| `ingestion/` | 📁 Carpeta | Pipeline de carga y procesamiento (Upload, OCR, Chunking).        |
-| `workspace/` | 📁 Carpeta | Gestión de espacios de trabajo (Crear, Compartir, Editar).        |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Barrel exports de casos de uso y DTOs. |
+| 📁 `chat/` | Carpeta | RAG, búsqueda y conversación. |
+| 📁 `documents/` | Carpeta | CRUD de documentos y resultados comunes. |
+| 📁 `ingestion/` | Carpeta | Upload, procesamiento y re‑ingesta. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 📁 `workspace/` | Carpeta | Gestión y acceso a workspaces. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: DTOs `*Input` con datos validados por la capa HTTP.
+- **Proceso**: use case aplica políticas, llama repos/services y coordina pasos.
+- **Output**: `*Result` con `error` tipado o payload de éxito.
 
-Todos los Use Cases siguen un patrón similar:
+Tecnologías/librerías usadas aquí:
+- dataclasses/typing (sin dependencias externas).
 
-1.  **Inyección:** Reciben repositorios y servicios en el `__init__`.
-2.  **Validación:** Verifican permisos o reglas de negocio básicas.
-3.  **Ejecución:** Orquestan la llamada a repositorios/servicios.
-4.  **Retorno:** Devuelven objetos de Dominio o DTOs puros.
+Flujo típico:
+- Router construye `*Input`.
+- `*UseCase.execute()` decide y delega en puertos del dominio.
+- El resultado se mapea a HTTP (RFC7807) en interfaces.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Application Services (Feature Modules).
-- **Recibe órdenes de:** Controladores HTTP (API) y Workers (Background jobs).
+- Rol arquitectónico: Application (Use Cases).
+- Recibe órdenes de: Interfaces HTTP y Worker.
+- Llama a: Domain (repos/services) y Application helpers.
+- Contratos y límites: sin infraestructura directa, sin FastAPI.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Estructura típica de un Use Case
-
 ```python
-class MyUseCase:
-    def __init__(self, repo: MyRepository):
-        self.repo = repo
+from uuid import uuid4
+from app.application.usecases import SearchChunksInput
+from app.container import get_search_chunks_use_case
 
-    def execute(self, input_data: CreateItemInput) -> Item:
-        # 1. Validar
-        if input_data.value < 0:
-            raise ValueError("Invalid")
-
-        # 2. Orquestar
-        item = Item(name=input_data.name)
-        self.repo.save(item)
-
-        return item
+use_case = get_search_chunks_use_case()
+result = use_case.execute(
+    SearchChunksInput(query="hola", workspace_id=uuid4(), actor=None)
+)
 ```
 
 ## 🧩 Cómo extender sin romper nada
+- Crea un nuevo módulo en el subpaquete correcto (chat/documents/ingestion/workspace).
+- Define `*Input` y `*Result` con errores tipados.
+- Mantén dependencias solo a puertos del dominio.
+- Exporta el caso de uso en `usecases/__init__.py` si se consume desde fuera.
+- Cablea en `app/container.py` y agrega tests.
 
-1.  **Nueva Acción:** Identifica a qué familia pertenece (`chat`, `workspace`). Si no encaja, crea una carpeta nueva.
-2.  **Inyección:** Recuerda registrar el nuevo Use Case en `app/container.py` para que la API pueda instanciarlo.
+## 🆘 Troubleshooting
+- Síntoma: `ImportError` desde `usecases` → Causa probable: falta export en `__init__.py` → Mirar `usecases/__init__.py`.
+- Síntoma: `error` siempre `None` pero resultado vacío → Causa probable: dependencia None → Mirar `app/container.py`.
+- Síntoma: `FORBIDDEN` inesperado → Causa probable: actor/policy → Mirar `workspace_policy.py`.
 
 ## 🔎 Ver también
-
-- [Chat & RAG](./chat/README.md)
-- [Ingesta de Documentos](./ingestion/README.md)
+- [Chat](./chat/README.md)
+- [Documents](./documents/README.md)
+- [Ingestion](./ingestion/README.md)
+- [Workspace](./workspace/README.md)

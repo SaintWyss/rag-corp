@@ -1,43 +1,63 @@
-# Infra: Prompt Loader
+# Prompts Loader (infra)
 
 ## 🎯 Misión
+Cargar y formatear prompts versionados desde `app/prompts/`, combinando policy + template y validando frontmatter.
 
-Carga plantillas de texto (prompts) desde el sistema de archivos.
-Permite separar el código Python de los textos de ingeniería de prompts, facilitando su edición sin redeployar código (idealmente).
+**Qué SÍ hace**
+- Lee templates por versión y capacidad (rag_answer, policy).
+- Parsea frontmatter YAML y valida inputs.
+- Cachea prompts en memoria por instancia.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No contiene los prompts en sí (están en `app/prompts/`).
+- No decide el contenido del prompt (solo lo carga y formatea).
 
-- Lee archivos `.txt` o `.j2` (Jinja2) de la carpeta `app/prompts`.
-- Maneja caché simple para no leer disco en cada request.
-
-**Qué NO hace:**
-
-- No renderiza las variables (eso lo hace `application/context_builder` o similar usando formateo de strings).
+**Analogía (opcional)**
+- Es el “bibliotecario” que trae el prompt correcto del estante.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso     | Tipo       | Responsabilidad (en humano)                |
-| :---------- | :--------- | :----------------------------------------- |
-| `loader.py` | 🐍 Archivo | Clase `PromptLoader` que lee los archivos. |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports del loader. |
+| 🐍 `loader.py` | Archivo Python | Carga, cache y formateo de prompts. |
+| 📄 `README.md` | Documento | Esta documentación. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: versión (v1, v2) + capacidad (rag_answer).
+- **Proceso**: carga policy + template, parsea frontmatter y valida tokens.
+- **Output**: string de prompt listo para el LLM.
 
-Simplemente abre el archivo en `app/prompts/{name}.txt` y devuelve el contenido como string.
+Tecnologías/librerías usadas aquí:
+- Python estándar (Path, regex), sin YAML externo.
+
+Flujo típico:
+- `PromptLoader.get_template()` compone policy + template.
+- `PromptLoader.format()` reemplaza `{context}` y `{query}`.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Resource Access.
-- **Consume:** Archivos en `app/prompts`.
+- Rol arquitectónico: Infrastructure Adapter (filesystem prompts).
+- Recibe órdenes de: servicios LLM / casos de uso.
+- Llama a: filesystem local (`app/prompts`).
+- Contratos y límites: evita path traversal y valida versión.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Cargar un prompt
-
 ```python
-loader = PromptLoader()
-template = loader.load("rag_answer/system_prompt.txt")
+from app.infrastructure.prompts.loader import PromptLoader
+
+loader = PromptLoader(version="v1", capability="rag_answer")
+prompt = loader.format(context="...", query="...")
 ```
 
-## 🔎 Ver también
+## 🧩 Cómo extender sin romper nada
+- Agrega nuevos prompts en `app/prompts/` con frontmatter.
+- Usa versiones `vN` para mantener compatibilidad.
+- Actualiza tests si cambias el formato de tokens.
 
-- [Carpeta de Prompts (Assets)](../../prompts/README.md)
+## 🆘 Troubleshooting
+- Síntoma: prompt no encontrado → Causa probable: versión inválida → Mirar `loader.py`.
+- Síntoma: tokens sin reemplazar → Causa probable: frontmatter inputs no coincide → Revisar `.md`.
+
+## 🔎 Ver también
+- [Prompts (templates)](../../prompts/README.md)
+- [RAG Answer prompts](../../prompts/rag_answer/README.md)

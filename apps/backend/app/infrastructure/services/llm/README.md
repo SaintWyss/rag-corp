@@ -1,57 +1,63 @@
-# Infra: LLM Services (Generative AI)
+# LLM Services
 
 ## 🎯 Misión
+Implementar el servicio de LLM concreto (Google) y su fake determinista para tests.
 
-Implementaciones concretas de los Modelos de Lenguaje (Generación de texto).
-Transforma prompts (strings) en respuestas (strings o streams).
+**Qué SÍ hace**
+- Genera respuestas con LLM real o fake.
+- Soporta generación sincrónica y streaming (según implementación).
+- Expone metadata útil (prompt_version, model_id).
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No decide retrieval ni políticas de negocio.
+- No almacena respuestas ni métricas (eso se registra en capas superiores).
 
-- Cliente para Google Gemini (`google_llm_service.py`).
-- Cliente Mock (`fake_llm.py`) para tests sin costo.
-
-**Qué NO hace:**
-
-- No construye el prompt (eso es `application/context_builder.py`).
+**Analogía (opcional)**
+- Es el “hablante” del sistema: produce texto a partir de contexto.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                 | Tipo       | Responsabilidad (en humano)                                 |
-| :---------------------- | :--------- | :---------------------------------------------------------- |
-| `fake_llm.py`           | 🐍 Archivo | Simula un LLM repitiendo el input o devolviendo texto fijo. |
-| `google_llm_service.py` | 🐍 Archivo | Adaptador para Google Generative AI (Gemini Pro).           |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `fake_llm.py` | Archivo Python | LLM fake determinista para tests/CI. |
+| 🐍 `google_llm_service.py` | Archivo Python | LLM real vía Google GenAI. |
+| 📄 `README.md` | Documento | Esta documentación. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: query + contexto (o chunks para streaming).
+- **Proceso**: provider real o fake genera texto.
+- **Output**: string de respuesta o stream de tokens.
 
-Implementa `LLMService` del Dominio.
-Debe soportar dos modos:
+Tecnologías/librerías usadas aquí:
+- google-genai (real), implementación fake local.
 
-1.  `generate(prompt) -> str`: Bloqueante.
-2.  `generate_stream(prompt) -> Iterator[str]`: Streaming de tokens.
+Flujo típico:
+- Use case llama `LLMService.generate_answer()`.
+- En modo streaming, se usa `generate_stream()`.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Adapter.
-- **Llama a:** SDKs de proveedores (google-generativeai).
+- Rol arquitectónico: Infrastructure Adapter (LLM).
+- Recibe órdenes de: Application (use cases) y streaming.
+- Llama a: proveedor externo (Google) o fake local.
+- Contratos y límites: respeta `LLMService` del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Generación simple
-
 ```python
-llm = GoogleLLMService(api_key="...", model="gemini-pro")
-respuesta = llm.generate("¿Capital de Francia?")
+from app.infrastructure.services.llm.fake_llm import FakeLLMService
+
+llm = FakeLLMService()
+answer = llm.generate_answer("hola", context="contexto")
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevo Modelo:** Si agregas OpenAI GPT-4, asegúrate de implementar tanto `generate` como `generate_stream`.
+- Implementa un nuevo provider respetando `LLMService`.
+- Agrega propiedades útiles (model_id/prompt_version) para observabilidad.
+- Exporta el nuevo provider en `services/__init__.py`.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** Error 429 (Resource Exhausted).
-  - **Causa:** Cuota de API excedida. El sistema de `retry.py` debería manejarlo, pero si persiste, aumenta límites.
+- Síntoma: `LLMError` por query vacía → Causa probable: input vacío → Validar en use case.
+- Síntoma: proveedor real falla → Causa probable: API key/SDK → Revisar `.env` y `google_llm_service.py`.
 
 ## 🔎 Ver también
-
-- [Servicios Base](../README.md)
+- [Services](../README.md)
+- [Domain services](../../../domain/services.py)

@@ -1,88 +1,72 @@
-# Layer: Alembic (Database Migrations Config)
+# Alembic (migraciones)
 
 ## 🎯 Misión
+Configurar y ejecutar migraciones de esquema de base de datos usando Alembic, con conexión a Postgres y ejecución de scripts versionados.
 
-Esta carpeta contiene la configuración necesaria para que **Alembic** gestione los cambios en el esquema de la base de datos PostgreSQL.
-Define cómo conectarse a la base de datos para ejecutar migraciones y cómo generar nuevos scripts de revisión.
+**Qué SÍ hace**
+- Define el entorno de migración (online/offline).
+- Aplica scripts en `versions/` en orden.
+- Lee `DATABASE_URL` y adapta el driver a psycopg.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No define modelos ORM del dominio.
+- No autogenera migraciones (no hay metadata de ORM).
 
-- Configura el entorno de ejecución de migraciones (`env.py`).
-- Define la plantilla para nuevas migraciones (`script.py.mako`).
-- Almacena el historial de versiones en `versions/`.
-
-**Qué NO hace:**
-
-- No define tablas (eso está en `infrastructure/db`).
-- No ejecuta consultas de negocio.
-
-**Analogía:**
-Es el libro de bitácora de la construcción. Registra cada pared que se levantó y cada tubería que se movió, para que cualquiera pueda reconstruir el edificio desde cero.
+**Analogía (opcional)**
+- Es el historial de reformas del edificio: cada cambio queda registrado y ejecutable.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso          | Tipo        | Responsabilidad (en humano)                                                   |
-| :--------------- | :---------- | :---------------------------------------------------------------------------- |
-| `env.py`         | 🐍 Archivo  | **Script Crítico**. Configura la conexión SQLAlchemy para correr migraciones. |
-| `versions/`      | 📁 Carpeta  | Contiene los scripts individuales de migración (`.py`).                       |
-| `script.py.mako` | 📄 Template | Plantilla Mako para generar nuevos archivos de migración.                     |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `env.py` | Archivo Python | Configura Alembic y la conexión a la DB. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 📄 `script.py.mako` | Documento | Template para nuevos scripts de migración. |
+| 📁 `versions/` | Carpeta | Scripts versionados de migración. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: comando `alembic` + `DATABASE_URL`.
+- **Proceso**: `env.py` configura el contexto y ejecuta `run_migrations_*`.
+- **Output**: DDL aplicado en la base y versión registrada en `alembic_version`.
 
-**Nota Importante de Diseño:**
-Esta aplicación utiliza **Raw SQL (psycopg)** en sus repositorios y no define modelos ORM de SQLAlchemy completos.
-Por lo tanto, **NO hay autogeneración automática** de migraciones (`--autogenerate` no detectará cambios).
+Tecnologías/librerías usadas aquí:
+- Alembic, SQLAlchemy (solo para engine), psycopg.
 
-**Flujo:**
-
-1.  `env.py` lee `DATABASE_URL` del entorno.
-2.  Si es modo `online`, crea un Engine y conecta.
-3.  Si es modo `offline`, genera solo el SQL.
-4.  Alembic busca la tabla `alembic_version` en la DB para saber en qué revisión está.
-5.  Aplica los scripts de `versions/` secuencialmente hasta llegar a `head`.
+Flujo típico:
+- `env.py` transforma `postgres://` a `postgresql+psycopg://`.
+- `get_target_metadata()` retorna `None` (migraciones manuales).
+- Alembic aplica cada script en `versions/` hasta `head`.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Database Schema Management.
-- **Recibe órdenes de:** CLI de Alembic (`alembic upgrade head`).
-- **Llama a:** PostgreSQL (ddl).
+- Rol arquitectónico: Infrastructure (DB migrations).
+- Recibe órdenes de: CLI de Alembic.
+- Llama a: Postgres vía SQLAlchemy engine.
+- Contratos y límites: no depende de modelos ORM del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Crear una nueva migración (Manual)
-
-Dado que no usamos ORM metadata, debemos escribir el SQL/DDL a mano (o usando helpers de alembic).
-
-```bash
-alembic revision -m "create_users_table"
-```
-
-Luego editar el archivo generado en `versions/`:
+Comandos típicos:
+- `alembic upgrade head`
+- `alembic revision -m "create_users_table"`
 
 ```python
-def upgrade():
-    op.create_table(
-        'users',
-        sa.Column('id', sa.Integer, primary_key=True),
-        # ...
-    )
-```
+from alembic import command
+from alembic.config import Config
 
-### Aplicar cambios
-
-```bash
-alembic upgrade head
+cfg = Config("alembic.ini")
+command.current(cfg)
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nunca** modifiques una migración que ya ha sido mergeada a `main`. Crea una nueva revisión para corregir.
-2.  **Naming:** Usa nombres descriptivos para las revisiones.
+- Crea una nueva revisión en `versions/` para cada cambio de esquema.
+- No edites migraciones ya aplicadas en entornos compartidos.
+- Escribe DDL manual (no hay autogenerate).
+- Mantén coherente el orden de dependencias entre tablas.
 
 ## 🆘 Troubleshooting
+- Síntoma: `Target database is not up to date` → Causa probable: migraciones pendientes → Mirar `alembic upgrade head`.
+- Síntoma: `No module named psycopg` → Causa probable: deps no instaladas → Mirar `requirements.txt`.
+- Síntoma: `DATABASE_URL` inválida → Causa probable: env mal seteada → Mirar `.env` y `env.py`.
 
-- **Síntoma:** "Target database is not up to date".
-  - **Causa:** Tu código espera tablas que aún no existen en tu DB local.
-  - **Solución:** `alembic upgrade head`.
-- **Síntoma:** `alembic` command not found.
-  - **Solución:** `pip install -r requirements.txt`.
+## 🔎 Ver también
+- [Migrations folder](../migrations/README.md)
+- [Backend root](../README.md)

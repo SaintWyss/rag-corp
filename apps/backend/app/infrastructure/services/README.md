@@ -1,55 +1,74 @@
-# Infra: External Services (AI/ML)
+# Infrastructure Services
 
 ## 🎯 Misión
+Proveer implementaciones concretas de servicios externos (embeddings, LLM) y utilidades de resiliencia (retry), encapsulando SDKs y detalles técnicos.
 
-Adapta servicios externos (especialmente de Inteligencia Artificial) para que sean consumibles por el dominio.
-Maneja la complejidad de llamar a APIs de terceros, reintentos (retries) y mocks para pruebas.
+**Qué SÍ hace**
+- Implementa servicios de embeddings (Google, fake) y caching.
+- Implementa servicios LLM (Google, fake).
+- Provee utilidades de reintentos para llamadas externas.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No contiene reglas de negocio.
+- No expone endpoints ni DTOs HTTP.
 
-- Clientes para Embeddings (Google, OpenAI, Fake).
-- Estrategias de Caché y Retry.
-- Clientes LLM (ver subcarpeta `llm/`).
-
-**Qué NO hace:**
-
-- No decide qué prompt enviar (eso es `application`).
+**Analogía (opcional)**
+- Es el “puente” hacia proveedores externos.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                       | Tipo       | Responsabilidad (en humano)                                              |
-| :---------------------------- | :--------- | :----------------------------------------------------------------------- |
-| `llm/`                        | 📁 Carpeta | Implementaciones de Modelos de Lenguaje (LLM).                           |
-| `cached_embedding_service.py` | 🐍 Archivo | Decorador que cachea vectores para no gastar dinero repitiendo cálculos. |
-| `fake_embedding_service.py`   | 🐍 Archivo | Mock determinista para tests (devuelve vectores fijos).                  |
-| `google_embedding_service.py` | 🐍 Archivo | Cliente para Google Vertex AI / Gemini Embeddings.                       |
-| `retry.py`                    | 🐍 Archivo | Utilidad genérica para reintentar llamadas con backoff exponencial.      |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Facade de exports de servicios. |
+| 🐍 `cached_embedding_service.py` | Archivo Python | Decorator de cache para embeddings. |
+| 🐍 `fake_embedding_service.py` | Archivo Python | Embeddings fake para tests/dev. |
+| 🐍 `google_embedding_service.py` | Archivo Python | Embeddings reales via Google GenAI. |
+| 📁 `llm/` | Carpeta | Implementaciones de LLM (fake/Google). |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `retry.py` | Archivo Python | Utilidades de retry (transient/permanent). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: textos (embeddings) o prompts (LLM) desde casos de uso.
+- **Proceso**: llamadas a SDKs externos o fakes locales; retry opcional.
+- **Output**: embeddings o texto generado.
 
-Todas implementan el protocolo `EmbeddingService` definido en el Dominio.
-El `CachedEmbeddingService` es un **Proxy** que envuelve al servicio real y consulta Redis antes de llamar a la API externa.
+Tecnologías/librerías usadas aquí:
+- google-genai, tenacity (retry), numpy (embeddings), fakes locales.
+
+Flujo típico:
+- `CachingEmbeddingService` envuelve un proveedor real/fake.
+- `GoogleLLMService` genera texto y expone stream si aplica.
+- `retry.py` define qué errores son transitorios.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Adapters (External APIs).
-- **Llama a:** APIs HTTP externas.
+- Rol arquitectónico: Infrastructure Adapter (servicios externos).
+- Recibe órdenes de: Application (use cases) vía puertos del dominio.
+- Llama a: proveedores externos (Google) o fakes internos.
+- Contratos y límites: respeta `EmbeddingService` y `LLMService` del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Usar Embbedings
-
 ```python
-service = GoogleEmbeddingService(api_key="...")
-vector = service.embed_text("Hola mundo")
-# vector es list[float]
+from app.infrastructure.services import CachingEmbeddingService, FakeEmbeddingService
+from app.infrastructure.cache import get_embedding_cache
+
+service = CachingEmbeddingService(
+    provider=FakeEmbeddingService(),
+    cache=get_embedding_cache(),
+)
 ```
 
 ## 🧩 Cómo extender sin romper nada
+- Implementa un nuevo proveedor respetando `EmbeddingService` o `LLMService`.
+- Expórtalo desde `services/__init__.py`.
+- Usa `retry.py` si el SDK es inestable.
+- Agrega tests unitarios para el adapter.
 
-1.  **Nuevo Proveedor:** Crea `openai_embedding_service.py` e implementa la interfaz.
-2.  **Registro:** No olvides registrarlo en `app/container.py` basado en la configuración.
+## 🆘 Troubleshooting
+- Síntoma: llamadas externas fallan → Causa probable: API key inválida → Mirar `.env` y `config.py`.
+- Síntoma: embeddings vacíos → Causa probable: input vacío o proveedor fake → Mirar `FakeEmbeddingService`.
+- Síntoma: errores intermitentes → Causa probable: red → Revisa `retry.py`.
 
 ## 🔎 Ver también
-
-- [Servicios LLM](./llm/README.md)
+- [LLM services](./llm/README.md)
+- [Embedding cache](../cache.py)
+- [Domain services](../../domain/services.py)

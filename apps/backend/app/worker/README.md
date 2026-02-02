@@ -1,87 +1,69 @@
-# Layer: Worker (Async Processing)
+# Worker RQ
 
 ## 🎯 Misión
+Implementar el proceso worker que consume jobs de RQ para tareas pesadas (procesamiento de documentos) y exponer health/readiness/metrics del worker.
 
-Esta carpeta contiene el punto de entrada para los procesos en segundo plano (Workers).
-Se encarga de ejecutar tareas pesadas o de larga duración (como procesar PDFs, generar embeddings masivos) fuera del ciclo de petición-respuesta HTTP para no bloquear la API.
+**Qué SÍ hace**
+- Ejecuta jobs RQ (ej. `process_document_job`).
+- Inicializa Redis y pool de DB en el proceso worker.
+- Expone health/readiness/metrics con un HTTP server liviano.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No expone la API HTTP de negocio (eso vive en `app/api/`).
+- No contiene reglas de negocio; solo orquesta el caso de uso correspondiente.
 
-- Inicializa un proceso worker de RQ (Redis Queue).
-- Escucha colas específicas (`default`, `high`, `low`).
-- Expone un servidor HTTP mínimo (`worker_server.py`) para health checks (Kubernetes probes).
-
-**Qué NO hace:**
-
-- No define la lógica de los jobs (eso está en `application` o `infrastructure/queue`).
-- No maneja peticiones de usuarios finales.
-
-**Analogía:**
-Si la API es la persona que toma el pedido en el mostrador, el Worker es el cocinero en el fondo preparando el plato complejo que tarda 20 minutos.
+**Analogía (opcional)**
+- Es el “taller” que ejecuta trabajos pesados fuera de la API principal.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso            | Tipo       | Responsabilidad (en humano)                                      |
-| :----------------- | :--------- | :--------------------------------------------------------------- |
-| `jobs.py`          | 🐍 Archivo | Definiciones de los jobs que RQ puede ejecutar.                  |
-| `worker.py`        | 🐍 Archivo | **Entrypoint**. Script que arranca el proceso worker.            |
-| `worker_health.py` | 🐍 Archivo | Lógica para chequear si el worker está "sano".                   |
-| `worker_server.py` | 🐍 Archivo | Servidor HTTP simple para exponer `/healthz` en puerto separado. |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `jobs.py` | Archivo Python | Entrypoints de jobs RQ (procesamiento de documentos). |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `worker.py` | Archivo Python | Entrypoint del proceso worker (arranque y loop RQ). |
+| 🐍 `worker_health.py` | Archivo Python | Health/readiness del worker (DB + Redis). |
+| 🐍 `worker_server.py` | Archivo Python | HTTP server mínimo para health/ready/metrics. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: job en cola RQ con `document_id` + `workspace_id`.
+- **Proceso**: `worker.py` crea Worker RQ; `jobs.py` valida UUIDs y ejecuta el use case.
+- **Output**: actualización de estado del documento, chunks persistidos, métricas.
 
-### Tecnologías
+Tecnologías/librerías usadas aquí:
+- rq, redis, psycopg (health), http.server (health/metrics).
 
-- **RQ (Redis Queue):** Sistema de colas simple basado en Redis.
-- **Redis:** Broker de mensajes.
-
-### Flujo
-
-1.  Se ejecuta `python -m app.worker.worker`.
-2.  El script conecta a Redis e instancia un `Worker`.
-3.  Arranca un thread separado con `worker_server` para responder a health checks (puerto 8001 por defecto).
-4.  El worker entra en loop infinito haciendo "polling" a Redis buscando tareas.
-5.  Cuando encuentra una tarea, hace fork (o usa el mismo proceso) y ejecuta la función Python correspondiente.
+Flujo típico:
+- `worker.py` inicializa Redis y pool DB.
+- `process_document_job()` ejecuta `ProcessUploadedDocumentUseCase`.
+- `worker_server.py` sirve `/healthz`, `/readyz` y `/metrics`.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Entry Point (Async).
-- **Recibe órdenes de:** La infraestructura de despliegue (Docker/K8s).
-- **Consume:** Tareas encoladas por la capa de `application`.
-- **Llama a:** `app.infrastructure.db` (para conectar a DB durante el job).
+- Rol arquitectónico: Infrastructure Adapter (worker runtime).
+- Recibe órdenes de: RQ (jobs en Redis).
+- Llama a: `app/application/usecases/ingestion`, `app/container`, `app/infrastructure/*`.
+- Contratos y límites: el job no conoce detalles HTTP; solo usa casos de uso y puertos.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Arrancar el Worker manualmente
-
-```bash
-# Desde apps/backend/
-# Asegúrate de que Redis esté corriendo
-export REDIS_URL=redis://localhost:6379/0
-python -m app.worker.worker
-```
-
-### Encolar un trabajo (desde la app)
-
-(Esto normalmente lo hace `infrastructure/queue`, pero conceptualmente:)
-
 ```python
-from app.infrastructure.queue.rq_queue import queue
-# queue.enqueue(...)
+from app.worker.worker_health import readiness_payload
+
+status = readiness_payload()
+assert "db" in status and "redis" in status
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevas Colas:** Si defines una nueva cola en `config`, asegúrate de que el worker la escuche (argumentos en `worker.py`).
-2.  **Timeout:** Ajusta el timeout de los jobs si tus tareas de PDF son muy largas.
+- Define un nuevo job en `jobs.py` con firma simple (strings serializables).
+- Asegura que el job construye el caso de uso vía `app.container`.
+- Registra el path del job en `app/infrastructure/queue/job_paths.py`.
+- Actualiza tests de integración si el job toca DB/cola.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** El worker arranca pero no procesa nada.
-  - **Causa:** Puede estar escuchando la cola incorrecta o Redis está vacío.
-- **Síntoma:** `WorkHorse terminated unexpectedly`.
-  - **Causa:** El job consumió demasiada memoria (OOM) o segfault en librerías C.
+- Síntoma: worker no inicia → Causa probable: `REDIS_URL` faltante → Mirar `worker.py`.
+- Síntoma: `/readyz` devuelve `db: disconnected` → Causa probable: `DATABASE_URL` → Mirar `.env`.
+- Síntoma: `/metrics` 403 → Causa probable: `metrics_require_auth` → Mirar `app/crosscutting/config.py`.
 
 ## 🔎 Ver también
-
-- [Infraestructura de Cola (RQ Wrapper)](../infrastructure/queue/README.md)
+- [Ingestion use cases](../application/usecases/ingestion/README.md)
+- [Queue adapter](../infrastructure/queue/README.md)
+- [Crosscutting metrics](../crosscutting/metrics.py)

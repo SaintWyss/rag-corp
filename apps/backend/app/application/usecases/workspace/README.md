@@ -1,69 +1,79 @@
-# Feature: Workspace Management
+# Use Cases: Workspace
 
 ## 🎯 Misión
+Gestionar el ciclo de vida de workspaces: creación, lectura, actualización, publicación, archivado y control de acceso.
 
-Gestiona los **Espacios de Trabajo (Workspaces)**, que son los contenedores lógicos de documentos y usuarios.
-Define los límites de aislamiento: documentos en el Workspace A no deben verse en el Workspace B.
+**Qué SÍ hace**
+- Orquesta operaciones CRUD y de visibilidad de workspaces.
+- Aplica políticas de autorización con `WorkspaceActor`.
+- Devuelve resultados tipados y errores consistentes.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No expone endpoints HTTP.
+- No escribe SQL directo ni conoce la infraestructura.
 
-- CRUD de Workspaces (Crear, Editar, Archivar).
-- Gestión de acceso (quién puede ver este workspace).
-- Publicación de workspaces (hacerlos visibles a la organización).
-
-**Qué NO hace:**
-
-- No gestiona documentos dentro (eso es `usecases/documents`).
+**Analogía (opcional)**
+- Es el “administrador de espacios” donde viven los documentos.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                | Tipo       | Responsabilidad (en humano)                         |
-| :--------------------- | :--------- | :-------------------------------------------------- |
-| `archive_workspace.py` | 🐍 Archivo | Soft-delete de un workspace (papelera).             |
-| `create_workspace.py`  | 🐍 Archivo | Crea un nuevo espacio.                              |
-| `get_workspace.py`     | 🐍 Archivo | Obtiene detalles de un espacio por ID.              |
-| `list_workspaces.py`   | 🐍 Archivo | Lista los espacios visibles para el usuario.        |
-| `publish_workspace.py` | 🐍 Archivo | Cambia la visibilidad a pública/org.                |
-| `share_workspace.py`   | 🐍 Archivo | Permite compartir workspace con emails específicos. |
-| `update_workspace.py`  | 🐍 Archivo | Modifica nombre u opciones.                         |
-| `workspace_access.py`  | 🐍 Archivo | Lógica de validación de acceso.                     |
-| `workspace_results.py` | 🐍 Archivo | DTOs de salida comunes.                             |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de casos de uso de workspace. |
+| 🐍 `archive_workspace.py` | Archivo Python | Archivar workspaces (soft). |
+| 🐍 `create_workspace.py` | Archivo Python | Crear workspaces con reglas de negocio. |
+| 🐍 `get_workspace.py` | Archivo Python | Obtener un workspace con policy de acceso. |
+| 🐍 `list_workspaces.py` | Archivo Python | Listar workspaces visibles al actor. |
+| 🐍 `publish_workspace.py` | Archivo Python | Publicar/visibilidad del workspace. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `share_workspace.py` | Archivo Python | Compartir workspaces (ACL). |
+| 🐍 `update_workspace.py` | Archivo Python | Actualizar metadata del workspace. |
+| 🐍 `workspace_access.py` | Archivo Python | Helpers para acceso read/write a workspaces. |
+| 🐍 `workspace_results.py` | Archivo Python | DTOs de resultados y errores de workspace. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: `*Input` con `workspace_id` y `actor`.
+- **Proceso**: validaciones + policy (roles/visibilidad) → repositorio.
+- **Output**: `WorkspaceResult`/`WorkspaceListResult` o `WorkspaceError`.
 
-El concepto clave es **Visibilidad**:
+Tecnologías/librerías usadas aquí:
+- dataclasses/typing; dependencias externas se usan vía puertos.
 
-- **PRIVATE:** Solo el creador (Owner).
-- **SHARED:** Creador + usuarios invitados explícitamente (ACL).
-- **ORG_READ:** Toda la organización puede leer.
+Flujo típico:
+- `CreateWorkspaceUseCase.execute()` valida actor y unicidad.
+- `workspace_access.resolve_*` centraliza reglas de acceso.
+- `workspace_results.py` estandariza errores (`FORBIDDEN`, `NOT_FOUND`, etc.).
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Use Cases (Workspace Feature).
-- **Colabora con:** `WorkspaceRepository`, `WorkspaceACLRepository`.
+- Rol arquitectónico: Application (Use Cases).
+- Recibe órdenes de: Interfaces HTTP (routers/workspaces) y admin routes.
+- Llama a: WorkspaceRepository y WorkspaceAclRepository (puertos del dominio).
+- Contratos y límites: sin SQL ni FastAPI; solo puertos y políticas.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Crear un workspace
-
 ```python
-use_case = CreateWorkspaceUseCase(workspace_repo)
-ws = use_case.execute(
-    name="Finanzas 2024",
-    owner_id=user_id
+from uuid import uuid4
+from app.application.usecases.workspace.create_workspace import CreateWorkspaceInput
+from app.container import get_create_workspace_use_case
+
+use_case = get_create_workspace_use_case()
+result = use_case.execute(
+    CreateWorkspaceInput(name="Legal", actor=None, owner_user_id=uuid4())
 )
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevas reglas de permisos:** Modifica `workspace_access.py`.
-2.  **Validaciones:** Si quieres limitar workspaces por usuario, hazlo en `create_workspace.py`.
+- Agrega un nuevo caso de uso en este paquete con DTOs propios.
+- Reutiliza `workspace_access` para políticas consistentes.
+- Actualiza `workspace_results.py` si incorporas nuevos errores.
+- Exporta el caso de uso en `__init__.py` y cablea en `app/container.py`.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** El usuario no ve un workspace compartido.
-  - **Causa:** No se agregó la entrada en la tabla ACL. Revisa `share_workspace.py`.
+- Síntoma: `FORBIDDEN` en creación → Causa probable: rol no admin → Mirar `create_workspace.py`.
+- Síntoma: `NOT_FOUND` al leer → Causa probable: workspace archivado → Mirar `workspace_access.py`.
+- Síntoma: share no surte efecto → Causa probable: ACL repository vacío → Mirar repo en `infrastructure/repositories`.
 
 ## 🔎 Ver también
-
-- [Use Case Hub](../README.md)
+- [Use cases](../README.md)
+- [Workspace router](../../../interfaces/api/http/routers/workspaces.py)
+- [Domain workspace policy](../../../domain/workspace_policy.py)

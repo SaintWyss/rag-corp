@@ -1,81 +1,83 @@
-# Feature: Document Ingestion
+# Use Cases: Ingestion
 
 ## 🎯 Misión
+Gestionar la ingesta de documentos: upload, procesamiento asíncrono, re‑procesamiento y consulta de estado.
 
-Este módulo gestiona el ciclo de vida de **Ingesta**: desde que el usuario sube un archivo hasta que está listo para ser buscado (indexado).
-Es un proceso complejo y asíncrono.
+**Qué SÍ hace**
+- Sube archivos y encola su procesamiento.
+- Procesa documentos: descarga, extracción, chunking y embeddings.
+- Reintenta/reprocesa documentos y expone estado.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No define storage ni cola concretos (usa puertos del dominio).
+- No expone endpoints HTTP.
 
-- Recibe subidas de archivos (Upload).
-- Inicia el procesamiento en background (Encolar tarea).
-- Consulta el estado (Polling status).
-- Permite cancelar o reprocesar.
-
-**Qué NO hace:**
-
-- No hace el parsing del PDF (lo delega a Infra/Parsers).
-- No hace el embedding (lo delega a Infra/Services).
-- Solo **ORQUESTA** estos pasos.
-
-**Analogía:**
-Es la Oficina de Admisiones. Recibe los papeles, les pone un sello "Pendiente", y los manda a las oficinas de atrás (Workers) para que los lean y archiven.
+**Analogía (opcional)**
+- Es la “línea de producción” que transforma archivos en conocimiento buscable.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                         | Tipo       | Responsabilidad (en humano)                                            |
-| :------------------------------ | :--------- | :--------------------------------------------------------------------- |
-| `cancel_document_processing.py` | 🐍 Archivo | Detiene un proceso atascado.                                           |
-| `get_document_status.py`        | 🐍 Archivo | Consulta progreso (ej. 45% completado).                                |
-| `ingest_document.py`            | 🐍 Archivo | **Worker Logic**. La lógica real del Worker (Parse -> Chunk -> Embed). |
-| `process_uploaded_document.py`  | 🐍 Archivo | Encola la tarea después del upload.                                    |
-| `reprocess_document.py`         | 🐍 Archivo | Fuerza re-ingesta de un doc existente.                                 |
-| `upload_document.py`            | 🐍 Archivo | Guarda el binario en Storage y crea el registro DB inicial.            |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de casos de uso de ingesta. |
+| 🐍 `cancel_document_processing.py` | Archivo Python | Cancelar procesamiento en curso (si aplica). |
+| 🐍 `get_document_status.py` | Archivo Python | Obtener estado de procesamiento. |
+| 🐍 `ingest_document.py` | Archivo Python | Ingesta sin upload (texto ya disponible). |
+| 🐍 `process_uploaded_document.py` | Archivo Python | Pipeline asíncrono: extract → chunk → embed. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `reprocess_document.py` | Archivo Python | Reprocesar documentos existentes. |
+| 🐍 `upload_document.py` | Archivo Python | Upload + persistencia + enqueue. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: `UploadDocumentInput` o `ProcessUploadedDocumentInput`.
+- **Proceso**: policy de workspace → storage/queue → extracción → chunking → embeddings.
+- **Output**: `UploadDocumentResult` o `ProcessUploadedDocumentOutput` con status.
 
-### Pipeline de Ingesta (Happy Path)
+Tecnologías/librerías usadas aquí:
+- dataclasses/typing; I/O via puertos (storage, queue, embeddings).
 
-1.  **Upload:** `UploadDocumentUseCase` guarda bytes en S3/MinIO y crea `Document(status=PENDING)`.
-2.  **Enqueue:** `ProcessUploadedDocument` manda job a Redis Queue.
-3.  **Worker:** El Worker ejecuta `IngestDocumentUseCase.execute()`.
-    - Descarga de S3.
-    - Extrae texto (ParserService).
-    - Genera Chunks (Chunker).
-    - Genera Embeddings (EmbeddingService).
-    - Guarda en DB (DocumentRepository).
-    - Actualiza status a `READY`.
+Flujo típico:
+- `UploadDocumentUseCase` guarda metadata y encola job.
+- `ProcessUploadedDocumentUseCase` corre en worker y genera chunks/embeddings.
+- `ReprocessDocumentUseCase` fuerza el pipeline nuevamente.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Use Cases (Ingestion Feature).
-- **Colabora con:** `FileStorage`, `QueueService`, `ParserService`.
+- Rol arquitectónico: Application (Use Cases).
+- Recibe órdenes de: Interfaces HTTP y Worker.
+- Llama a: FileStoragePort, DocumentProcessingQueue, EmbeddingService, DocumentTextExtractor.
+- Contratos y límites: sin storage/queue concretos; usa puertos del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Subir un archivo
-
 ```python
-use_case = UploadDocumentUseCase(storage, doc_repo)
-doc = use_case.execute(
-    file_stream=my_file,
-    filename="factura.pdf",
-    workspace_id=ws_id
+from uuid import uuid4
+from app.application.usecases.ingestion.upload_document import UploadDocumentInput
+from app.container import get_upload_document_use_case
+
+use_case = get_upload_document_use_case()
+result = use_case.execute(
+    UploadDocumentInput(
+        workspace_id=uuid4(),
+        actor=None,
+        title="Manual",
+        file_name="manual.pdf",
+        mime_type="application/pdf",
+        content=b"%PDF-1.4...",
+    )
 )
-# doc.status es PENDING
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevos formatos:** Si quieres soportar `.docx`, registra el parser en Infraestructura, la orquestación aquí suele ser agnóstica.
-2.  **Pasos extra:** Si quieres agregar un paso de "Resumen" post-ingesta, agrégalo al flujo de `ingest_document.py`.
+- Mantén el pipeline idempotente (chequeos de status en `process_uploaded_document`).
+- Usa `DocumentErrorCode` para errores tipados y consistentes.
+- Si agregas un paso nuevo (p. ej. OCR), hazlo en `process_uploaded_document.py`.
+- Actualiza métricas si cambia el flujo (ver `crosscutting/metrics.py`).
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** El documento se queda en `PROCESSING` por siempre.
-  - **Causa:** El worker murió o dio error silencioso. Revisa logs del container `worker`.
-  - **Solución:** `CancelDocumentProcessingUseCase` para desbloquear.
+- Síntoma: `SERVICE_UNAVAILABLE` en upload → Causa probable: storage/queue no configurados → Mirar `upload_document.py`.
+- Síntoma: documento queda en PROCESSING → Causa probable: job falló → Mirar logs del worker.
+- Síntoma: chunks = 0 → Causa probable: extractor devolvió texto vacío → Mirar `DocumentTextExtractor`.
 
 ## 🔎 Ver también
-
-- [Infraestructura de Texto/Parsers](../../../infrastructure/parsers/README.md)
+- [Worker jobs](../../../worker/README.md)
+- [Infrastructure storage](../../../infrastructure/storage/README.md)
+- [Infrastructure queue](../../../infrastructure/queue/README.md)

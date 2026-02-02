@@ -1,68 +1,70 @@
-# Infra: Database (PostgreSQL Setup)
+# Infrastructure DB
 
 ## 🎯 Misión
+Centralizar el pool de conexiones a Postgres y su instrumentación (timings, healthchecks y errores tipados).
 
-Maneja la **conexión física** con la base de datos PostgreSQL.
-Responsable de iniciar y terminar el Pool de conexiones (Connection Pooling) y proveer sesiones a los repositorios.
+**Qué SÍ hace**
+- Inicializa y expone un pool singleton.
+- Instrumenta consultas para métricas y logs.
+- Define errores claros de pool/conectividad.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No contiene SQL de negocio (eso está en repositorios).
+- No define modelos de dominio.
 
-- Inicializa `psycopg_pool`.
-- Gestiona transacciones y sesiones.
-- Implementa instrumentación (tracing de SQL).
-
-**Qué NO hace:**
-
-- No define tablas (eso va en Repositorios o Alembic).
-- No ejecuta queries de negocio.
-
-**Analogía:**
-Es la Central Telefónica. No habla con nadie, pero conecta las llamadas de los repositorios hacia la base de datos.
+**Analogía (opcional)**
+- Es la “central eléctrica” que entrega conexiones seguras y medibles.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso              | Tipo       | Responsabilidad (en humano)                                    |
-| :------------------- | :--------- | :------------------------------------------------------------- |
-| `errors.py`          | 🐍 Archivo | Mapeo de errores de DB (UniqueViolation) a excepciones de App. |
-| `instrumentation.py` | 🐍 Archivo | Hooks de OpenTelemetry para trazar queries.                    |
-| `pool.py`            | 🐍 Archivo | **Singleton**. Crea y gestiona el Pool de conexiones.          |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports del pool y errores. |
+| 🐍 `errors.py` | Archivo Python | Errores tipados del pool DB. |
+| 🐍 `instrumentation.py` | Archivo Python | Proxy de conexión con métricas/slow queries. |
+| 🐍 `pool.py` | Archivo Python | Inicialización y ciclo de vida del pool. |
+| 📄 `README.md` | Documento | Esta documentación. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: `DATABASE_URL` y parámetros de pool.
+- **Proceso**: `init_pool()` crea el pool real y lo envuelve con instrumentación.
+- **Output**: `get_pool()` devuelve un pool listo para `with pool.connection()`.
 
-### Connection Pooling (`pool.py`)
+Tecnologías/librerías usadas aquí:
+- psycopg_pool, pgvector, métricas en `crosscutting/metrics`.
 
-Usamos `psycopg_pool.AsyncConnectionPool`.
-
-1.  `init_pool(dsn)`: Se llama al inicio de la app (`main.py`).
-2.  `get_session()`: Entrega una conexión del pool.
-3.  `close_pool()`: Cierra conexiones al apagar la app.
+Flujo típico:
+- La API llama `init_pool()` en startup.
+- Repositorios usan `get_pool()` y ejecutan SQL.
+- `InstrumentedConnectionPool` mide latencia y hace healthcheck opcional.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Low-level mechanics.
-- **Recibe órdenes de:** `main.py` (init) y Repositorios (get connection).
-- **Llama a:** Driver `psycopg`.
+- Rol arquitectónico: Infrastructure Adapter (DB access).
+- Recibe órdenes de: API startup/worker bootstrap.
+- Llama a: psycopg_pool, pgvector, métricas.
+- Contratos y límites: no contiene queries de negocio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Obtener una sesión (Low level)
-
 ```python
-from app.infrastructure.db.pool import get_session
+from app.infrastructure.db.pool import init_pool, get_pool, close_pool
 
-async with get_session() as conn:
-    await conn.execute("SELECT 1")
+init_pool(database_url="postgresql://...", min_size=1, max_size=5)
+with get_pool().connection() as conn:
+    conn.execute("SELECT 1")
+close_pool()
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Configuración:** Los parámetros del pool (min/max size) vienen de `crosscutting.config`.
+- Mantén el pool como singleton; evita múltiples inits.
+- Si agregas instrumentación, hazla en `instrumentation.py`.
+- No mezcles SQL de negocio aquí.
+- Agrega tests de integración si cambias la inicialización.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** "Pool not initialized".
-  - **Causa:** Intentaste usar la DB antes de que `main.py` llamara a `init_pool` (común en tests unitarios mal aislados).
+- Síntoma: `PoolNotInitializedError` → Causa probable: no se llamó `init_pool()` → Mirar `pool.py`.
+- Síntoma: `PoolAlreadyInitializedError` → Causa probable: doble init → Revisar startup.
+- Síntoma: `DatabaseConnectionError` → Causa probable: DB inaccesible → Revisar `DATABASE_URL`.
 
 ## 🔎 Ver también
-
-- [Repositorios Postgres](../repositories/postgres/README.md)
+- [Repositories](../repositories/README.md)
+- [Crosscutting metrics](../../crosscutting/metrics.py)

@@ -1,54 +1,72 @@
-# Infra: File Storage (Blob Store)
+# Storage (S3/MinIO)
 
 ## 🎯 Misión
+Implementar el adaptador de almacenamiento de archivos sobre S3 compatible (AWS S3 / MinIO) con errores tipados.
 
-Maneja el almacenamiento de archivos binarios (PDFs, imágenes) subidos por los usuarios.
-Abstrae el sistema de archivos o servicio en la nube (S3).
+**Qué SÍ hace**
+- Sube, descarga y elimina archivos.
+- Genera URLs presignadas.
+- Tipifica errores de storage.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No guarda metadata de documentos (eso está en repositorios).
+- No expone endpoints HTTP.
 
-- Sube, baja y borra archivos.
-- Genera URLs presignadas (si el backend lo soporta).
-
-**Qué NO hace:**
-
-- No parsea el contenido.
+**Analogía (opcional)**
+- Es el “depósito de archivos” del backend.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso              | Tipo       | Responsabilidad (en humano)                             |
-| :------------------- | :--------- | :------------------------------------------------------ |
-| `errors.py`          | 🐍 Archivo | Excepciones específicas de storage (FileNotFound).      |
-| `s3_file_storage.py` | 🐍 Archivo | Implementación compatible con S3 (AWS) y MinIO (Local). |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports del adapter y errores. |
+| 🐍 `errors.py` | Archivo Python | Errores tipados de storage. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `s3_file_storage.py` | Archivo Python | Adapter S3/MinIO (FileStoragePort). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: key + bytes/stream desde casos de uso.
+- **Proceso**: boto3 maneja la operación contra S3/MinIO.
+- **Output**: bytes descargados o confirmación (o error tipado).
 
-Usa `boto3` o librerías similares.
-La configuración (Bucket, Region, Endpoint) viene de `crosscutting.config`.
+Tecnologías/librerías usadas aquí:
+- boto3/botocore.
+
+Flujo típico:
+- `UploadDocumentUseCase` llama `upload_file()`.
+- `DownloadDocumentUseCase` llama `download_file()`.
+- Errores de SDK se mapean a `StorageError`.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Adapter.
-- **Llama a:** AWS S3 / MinIO Container.
+- Rol arquitectónico: Infrastructure Adapter (storage).
+- Recibe órdenes de: Application (use cases).
+- Llama a: S3/MinIO vía boto3.
+- Contratos y límites: respeta `FileStoragePort` del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Subir archivo
-
 ```python
-storage = S3FileStorage(bucket="my-bucket", ...)
-key = storage.upload(file_bytes, "docs/manual.pdf")
+from app.infrastructure.storage import S3Config, S3FileStorageAdapter
+
+storage = S3FileStorageAdapter(
+    S3Config(
+        bucket="rag-docs",
+        access_key="AKIA...",
+        secret_key="SECRET",
+        endpoint_url="http://localhost:9000",
+    )
+)
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Local Filesystem:** Podrías crear `LocalFileStorage` para guardar en disco sin usar S3/MinIO para desarrollo ultra-light.
+- Si agregas otro backend, implementa `FileStoragePort` y tipifica errores.
+- Mantén lazy import si la dependencia es opcional.
+- Agrega tests de integración con MinIO cuando cambies el adapter.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** "Connection Refused" a MinIO.
-  - **Causa:** Docker no está corriendo o el puerto `9000` no está expuesto.
+- Síntoma: `StorageConfigurationError` → Causa probable: bucket/credenciales faltantes → Mirar `.env`.
+- Síntoma: timeouts al subir → Causa probable: endpoint inválido → Revisar `endpoint_url`.
+- Síntoma: `StorageNotFoundError` → Causa probable: key inexistente → Revisar `storage_key` en DB.
 
 ## 🔎 Ver también
-
-- [Ingesta de Documentos (Consumidor)](../../../application/usecases/ingestion/README.md)
+- [Domain services](../../domain/services.py)
+- [Ingestion use cases](../../application/usecases/ingestion/README.md)

@@ -1,56 +1,72 @@
-# Infra: Document Parsers
+# Parsers (extracción de texto)
 
 ## 🎯 Misión
+Extraer texto desde archivos (PDF, DOCX, TXT) mediante parsers por MIME, aplicando normalización y límites defensivos.
 
-Extrae texto plano y metadatos desde archivos binarios (`.pdf`, `.docx`, `.txt`).
-Es el primer paso para entender un documento subido.
+**Qué SÍ hace**
+- Selecciona parser según MIME type.
+- Extrae texto y normaliza whitespace.
+- Centraliza errores y contratos de parsing.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No genera embeddings ni chunking (eso vive en `text/`).
+- No persiste nada en DB.
 
-- Convierte binario -> Texto (Markdown simplificado si es posible).
-- Detecta MIME types.
-
-**Qué NO hace:**
-
-- No hace OCR a imágenes (por ahora).
+**Analogía (opcional)**
+- Es el “lector” que convierte archivos en texto plano.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso          | Tipo       | Responsabilidad (en humano)                                  |
-| :--------------- | :--------- | :----------------------------------------------------------- |
-| `contracts.py`   | 🐍 Archivo | Interfaces para los parsers.                                 |
-| `docx_parser.py` | 🐍 Archivo | Parser para documentos Word (`python-docx`).                 |
-| `pdf_parser.py`  | 🐍 Archivo | Parser para PDFs (`pypdf`).                                  |
-| `registry.py`    | 🐍 Archivo | **Factory**. Devuelve el parser adecuado según el MIME type. |
-| `normalize.py`   | 🐍 Archivo | Limpieza básica de texto (espacios extra, caracteres raros). |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Exports de parsers y extractor. |
+| 🐍 `contracts.py` | Archivo Python | Contratos/DTOs para parsing. |
+| 🐍 `document_text_extractor.py` | Archivo Python | Adapter al puerto `DocumentTextExtractor`. |
+| 🐍 `docx_parser.py` | Archivo Python | Parser DOCX. |
+| 🐍 `errors.py` | Archivo Python | Errores de parsing (MIME no soportado, etc.). |
+| 🐍 `mime_types.py` | Archivo Python | Normalización y catálogo de MIME types. |
+| 🐍 `normalize.py` | Archivo Python | Normalización/truncado de texto. |
+| 🐍 `pdf_parser.py` | Archivo Python | Parser PDF. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `registry.py` | Archivo Python | Registry de parsers por MIME (Strategy). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: bytes del archivo + MIME type.
+- **Proceso**: registry elige parser → extrae → normaliza → trunca.
+- **Output**: texto plano listo para chunking.
 
-Patrón **Strategy** + **Registry**.
+Tecnologías/librerías usadas aquí:
+- pypdf, python-docx.
 
-1.  `registry.get_parser("application/pdf")` -> Retorna instancia de `PdfParser`.
-2.  `parser.parse(file_stream)` -> Retorna objeto `ParsedDocument`.
+Flujo típico:
+- `SimpleDocumentTextExtractor.extract_text()` delega al parser correcto.
+- `normalize.py` aplica higiene y límites de tamaño.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Adapter.
-- **Llama a:** Librerías de terceros (`pypdf`, `python-docx`).
+- Rol arquitectónico: Infrastructure Adapter (parsing).
+- Recibe órdenes de: use cases de ingesta.
+- Llama a: parsers concretos y normalizadores.
+- Contratos y límites: implementa `DocumentTextExtractor` del dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Parsear un archivo desconocido
-
 ```python
-parser = ParserRegistry.get(mime_type)
-document = parser.parse(file_stream)
-print(document.text)
+from app.infrastructure.parsers import SimpleDocumentTextExtractor
+
+extractor = SimpleDocumentTextExtractor()
+text = extractor.extract_text("text/plain", b"hola mundo")
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Soporte HTML:** Crea `html_parser.py` (usando BeautifulSoup), implemanta `DocumentParser` y regístralo en `registry.py`.
+- Implementa un parser nuevo que cumpla `BaseParser`.
+- Regístralo en `ParserRegistry.register()`.
+- Agrega el MIME a `mime_types.py`.
+- Actualiza tests de ingesta.
 
 ## 🆘 Troubleshooting
+- Síntoma: `UnsupportedMimeTypeError` → Causa probable: MIME no registrado → Mirar `registry.py`.
+- Síntoma: texto vacío → Causa probable: parser falló → Revisar `pdf_parser.py` o `docx_parser.py`.
+- Síntoma: texto truncado → Causa probable: `max_chars` → Mirar `contracts.py`/`normalize.py`.
 
-- **Síntoma:** Texto ilegible o garabatos.
-  - **Causa:** El PDF puede ser solo imágenes escaneadas (necesita OCR, no soportado aún).
+## 🔎 Ver también
+- [Ingestion use cases](../../application/usecases/ingestion/README.md)
+- [Text chunking](../text/README.md)

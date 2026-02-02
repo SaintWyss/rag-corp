@@ -1,99 +1,78 @@
-# Layer: Crosscutting (Shared Utilities)
+# Crosscutting (preocupaciones transversales)
 
 ## 🎯 Misión
+Agrupar utilidades transversales del backend: configuración, logging, métricas, middlewares, seguridad, errores tipados y helpers de observabilidad.
 
-Esta carpeta contiene módulos transversales que son utilizados por **todas** las capas del sistema.
-Aquí viven las "herramientas" que no pertenecen a ningún dominio de negocio específico, pero son esenciales para que la aplicación funcione de manera profesional.
+**Qué SÍ hace**
+- Define settings y validaciones de entorno (Pydantic Settings).
+- Estandariza errores HTTP (RFC7807) y excepciones internas.
+- Provee middlewares, métricas, tracing y utilidades de timing.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No implementa lógica de negocio ni acceso a datos.
+- No define endpoints; solo helpers usados por la capa HTTP y worker.
 
-- Carga y valida configuración (`config.py`).
-- Gestiona Logging estructurado (`logger.py`).
-- Implementa métricas y observabilidad (`metrics.py`, `tracing.py`).
-- Define middlewares genéricos (`middleware.py`, `rate_limit.py`, `security.py`).
-- Estandariza errores HTTP (`error_responses.py`, `exceptions.py`).
-
-**Qué NO hace:**
-
-- No contiene lógica de negocio (Use Cases).
-- No accede a la base de datos (excepto para cosas muy puntuales de infra).
-
-**Analogía:**
-Son los **Cimientos y Servicios Públicos** del edificio (Agua, Luz, Gas). Están en todas partes, en todas las habitaciones, pero no son "la habitación" en sí.
+**Analogía (opcional)**
+- Es la “caja de herramientas” común que usan todas las capas.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso              | Tipo       | Responsabilidad (en humano)                                      |
-| :------------------- | :--------- | :--------------------------------------------------------------- |
-| `config.py`          | 🐍 Archivo | Carga variables de entorno en un objeto `Settings` tipado.       |
-| `error_responses.py` | 🐍 Archivo | Modelos para respuestas de error estandarizadas (RFC7807).       |
-| `exceptions.py`      | 🐍 Archivo | Excepciones base del sistema (`AppException`).                   |
-| `logger.py`          | 🐍 Archivo | Configuración centralizada de logs (JSON en prod, color en dev). |
-| `metrics.py`         | 🐍 Archivo | Exposición de métricas Prometheus.                               |
-| `middleware.py`      | 🐍 Archivo | Middlewares HTTP varios (Contexto, Body Limit).                  |
-| `pagination.py`      | 🐍 Archivo | Modelos y lógica para paginación de listas.                      |
-| `rate_limit.py`      | 🐍 Archivo | Lógica y middleware de limitación de tasa (Rate Limiting).       |
-| `security.py`        | 🐍 Archivo | Headers de seguridad (CSP, HSTS) y utilidades crypto.            |
-| `streaming.py`       | 🐍 Archivo | Helpers para respuestas en streaming (SSE/NDJSON).               |
-| `timing.py`          | 🐍 Archivo | Decoradores para medir tiempo de ejecución.                      |
-| `tracing.py`         | 🐍 Archivo | Integración básica de tracing distribuido.                       |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `config.py` | Archivo Python | Settings tipados y validaciones (env → config). |
+| 🐍 `error_responses.py` | Archivo Python | RFC7807: errores HTTP estandarizados y factories. |
+| 🐍 `exceptions.py` | Archivo Python | Excepciones internas tipadas (RAGError y derivadas). |
+| 🐍 `logger.py` | Archivo Python | Logging JSON con contexto y redacción de secretos. |
+| 🐍 `metrics.py` | Archivo Python | Métricas Prometheus (best‑effort/no‑op). |
+| 🐍 `middleware.py` | Archivo Python | Middlewares de contexto y límites de body. |
+| 🐍 `pagination.py` | Archivo Python | Cursor base64 + Page[T] para listados. |
+| 🐍 `rate_limit.py` | Archivo Python | Rate limiting in‑memory (token bucket). |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `security.py` | Archivo Python | Security headers (CSP, HSTS, etc.). |
+| 🐍 `streaming.py` | Archivo Python | Streaming SSE para respuestas del LLM. |
+| 🐍 `timing.py` | Archivo Python | Timer + StageTimings para medir etapas. |
+| 🐍 `tracing.py` | Archivo Python | Tracing OpenTelemetry opcional. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: valores de env, requests HTTP, eventos de logging/métricas.
+- **Proceso**: settings se cachean; middlewares agregan contexto; errores se formatean a RFC7807.
+- **Output**: logs JSON, métricas Prometheus, respuestas con headers de seguridad.
 
-### Configuración (`config.py`)
+Tecnologías/librerías usadas aquí:
+- Pydantic Settings, FastAPI/Starlette (middlewares), prometheus_client (opcional).
 
-Usamos **Pydantic Settings**.
-
-1.  Lee variables de entorno (`.env` o sistema).
-2.  Valida tipos (ej. puerto debe ser int).
-3.  Expone un singleton `get_settings()` cacheado.
-
-### Logging (`logger.py`)
-
-Intercepamos el logging estándar de Python y lo redirigimos para que salga estructurado (con `extra={...}`).
-Soporta inyección de `request_id` context-aware.
+Flujo típico:
+- `get_settings()` valida config y se usa en composición (`app/api/main.py`).
+- Middlewares agregan `request_id` y límites de payload.
+- `error_responses` y `exception_handlers` estandarizan errores HTTP.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Shared Kernel / Cross-cutting Concerns.
-- **Recibe órdenes de:** TODO el sistema (API, Domain, Infra, App).
-- **Llama a:** Librerías base (Stdlib, Pydantic, Prometheus client).
-- **Límites:** **NUNCA** debe importar de `application`, `interfaces` o `infrastructure` (para evitar ciclos). Debe ser autodependiente.
+- Rol arquitectónico: Crosscutting (shared utilities).
+- Recibe órdenes de: API, worker, use cases.
+- Llama a: `app/context.py`, settings, logging, métricas.
+- Contratos y límites: no depende de infraestructura específica ni de dominio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Usar Configuración
-
 ```python
 from app.crosscutting.config import get_settings
 
 settings = get_settings()
-print(settings.database_url)
-```
-
-### Usar Logger
-
-```python
-from app.crosscutting.logger import logger
-
-try:
-    process_data()
-except Exception as e:
-    logger.error("Error procesando datos", extra={"doc_id": "123", "error": str(e)})
+max_upload = settings.max_upload_bytes
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevas Variables de Entorno:** Agrégalas a la clase `Settings` en `config.py` con su tipo y valor por defecto.
-2.  **Excepciones:** Hereda siempre de `AppException` (en `exceptions.py`) para que los handlers globales las capturen bien.
+- Agrega nuevos settings en `config.py` con validadores claros.
+- Si sumás un error nuevo, crea un `ErrorCode` y factory en `error_responses.py`.
+- Mantén no‑op cuando la dependencia sea opcional (ej. métricas/tracing).
+- En middlewares, no importes infraestructura ni repositorios.
+- Actualiza tests unitarios de utilidades si el contrato cambia.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** "ValidationError: field required" al iniciar.
-  - **Causa:** Falta una variable de entorno obligatoria en `.env`.
-- **Síntoma:** Circular Import Error.
-  - **Causa:** Probablemente importaste algo de `application` dentro de `crosscutting`. Revisa tus imports.
+- Síntoma: `/metrics` responde texto “no instalado” → Causa: falta `prometheus_client` → Mirar `requirements.txt`.
+- Síntoma: 413 al subir archivos → Causa: `max_upload_bytes` → Mirar `config.py`.
+- Síntoma: headers de seguridad no aparecen → Causa: middleware no registrado → Mirar `app/api/main.py`.
 
 ## 🔎 Ver también
-
-- [API (Consumidor principal)](../api/README.md)
+- [API composition](../api/README.md)
+- [Interfaces HTTP](../interfaces/api/http/README.md)
+- [Context](../context.py)

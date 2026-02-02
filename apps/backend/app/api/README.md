@@ -1,93 +1,72 @@
-# Layer: API (Composition Root)
+# API Composition (FastAPI)
 
 ## 🎯 Misión
+Esta carpeta compone la aplicación FastAPI: registra middlewares, routers, endpoints operativos (health/metrics) y el mapeo centralizado de errores a RFC7807.
 
-Esta carpeta es el **Punto de Entrada** y **Raíz de Composición** de la aplicación web.
-Aquí es donde se "ensambla" el servidor: se configura FastAPI, se registran los middlewares, se montan las rutas y se maneja el ciclo de vida (startup/shutdown).
+**Qué SÍ hace**
+- Construye la instancia FastAPI y su OpenAPI.
+- Registra middlewares transversales (CORS, límites, contexto, seguridad).
+- Incluye routers de negocio y rutas auxiliares (auth/admin).
+- Mapea excepciones de la app a respuestas RFC7807.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No implementa reglas de negocio (eso vive en `app/application/usecases/`).
+- No contiene lógica de persistencia (repos en `app/infrastructure/`).
 
-- Inicializa la instancia `FastAPI`.
-- Configura Middlewares globales (CORS, Rate Limit, Security Headers).
-- Gestiona el `lifespan` (conexión a DB al iniciar, desconexión al cerrar).
-- Define rutas " administrativas" o de "fontanería" (`/healthz`, `/metrics`, `/auth`).
-- Integra las rutas de negocio desde `interfaces/api`.
-
-**Qué NO hace:**
-
-- No contiene lógica de negocio (eso va en `application`).
-- No define los esquemas de datos JSON (eso va en `interfaces`).
-- No implementa los controladores de endpoints de negocio (eso va en `interfaces/routers`).
-
-**Analogía:**
-Si la app es un coche, este módulo es el **Chasis y el contacto de encendido**. Conecta el motor, las ruedas y la carrocería, y se asegura de que todo arranque cuando giras la llave.
+**Analogía (opcional)**
+- Es la torre de control: coordina entradas/salidas sin pilotear los aviones.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                 | Tipo       | Responsabilidad (en humano)                                        |
-| :---------------------- | :--------- | :----------------------------------------------------------------- |
-| `admin_routes.py`       | 🐍 Archivo | Endpoints solo para administradores (ej. gestión de usuarios).     |
-| `auth_routes.py`        | 🐍 Archivo | Endpoints de autenticación (login, refresh, me).                   |
-| `exception_handlers.py` | 🐍 Archivo | Manejo global de errores (transforma excepciones en JSON RFC7807). |
-| `main.py`               | 🐍 Archivo | **Entrypoint Principal**. Crea la app `app` y `fastapi_app`.       |
-| `versioning.py`         | 🐍 Archivo | Utilidades para versionado de API (alias `/api/v1` -> `/v1`).      |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `admin_routes.py` | Archivo Python | Endpoints admin (provisionamiento) + auditoría best‑effort. |
+| 🐍 `auth_routes.py` | Archivo Python | Endpoints de login/logout/me y admin de usuarios. |
+| 🐍 `exception_handlers.py` | Archivo Python | Registro de handlers y mapeo de errores a RFC7807. |
+| 🐍 `main.py` | Archivo Python | Composición principal de FastAPI + health/metrics. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `versioning.py` | Archivo Python | Alias de rutas (compatibilidad /api/v1). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: import de `app.api.main.app` por Uvicorn/Gunicorn.
+- **Proceso**: `create_fastapi_app()` registra middlewares, routers y handlers; luego se envuelve con `RateLimitMiddleware`.
+- **Output**: ASGI app lista para servir HTTP.
 
-El archivo `main.py` es el protagonista:
+Tecnologías/librerías usadas aquí:
+- FastAPI, Pydantic (DTOs en rutas), Starlette (middlewares).
 
-1.  **Lifespan:** Al arrancar, valida configuración (`get_settings`) e inicializa el pool de base de datos (`init_pool`).
-2.  **Factory:** `create_fastapi_app()` instancia FastAPI.
-3.  **Middlewares:** Se añaden capas de seguridad y observabilidad (`SecurityHeaders`, `BodyLimit`, `Metrics`).
-4.  **Routing:** Incluye los routers de `interfaces.api.http.routes` (Negocio) y los locales (`auth`, `admin`).
-5.  **OpenAPI Custom:** Reescribe el esquema OpenAPI para soportar autenticación dual (API Key + JWT) corrección de docs.
+Flujo típico:
+- `create_fastapi_app()` crea la app y define `/healthz`, `/readyz`, `/metrics`.
+- `include_versioned_routes()` agrega alias `/api/v1`.
+- `register_exception_handlers()` mapea errores internos a RFC7807.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Composition Root / Framework Binding.
-- **Recibe órdenes de:** Servidor ASGI (Uvicorn/Hypercorn).
-- **Llama a:**
-  - `interfaces/api/http` (para montar rutas de negocio).
-  - `infrastructure/db` (para iniciar pool).
-  - `application/dev_seed_*` (para sembrar datos dev).
+- Rol arquitectónico: Interface (HTTP composition).
+- Recibe órdenes de: servidor ASGI (Uvicorn/Gunicorn).
+- Llama a: `app.interfaces.api.http.routes`, `app.container`, `app.crosscutting`.
+- Contratos y límites: no contiene reglas de negocio ni acceso a DB directo.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Cómo se inicia la app (Contexto Uvicorn)
-
-El servidor Uvicorn busca la variable `app` en `main.py`.
-
 ```python
-from app.api.main import app
+from app.api.main import create_fastapi_app
 
-# 'app' es en realidad un Middleware ASGI (RateLimitMiddleware)
-# que envuelve a la instancia real de FastAPI ('fastapi_app').
-```
-
-### Agregar un nuevo Middleware global
-
-En `main.py`, dentro de `create_fastapi_app()`:
-
-```python
-# ...
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(MiNuevoMiddleware)  # <--- Aquí
-# ...
+app = create_fastapi_app()
+openapi = app.openapi()
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevas Rutas de Negocio:** No las agregues aquí. Agrégalas en `app/interfaces/api/http/routes.py`.
-2.  **Configuración de Inicio:** Si necesitas ejecutar código al inicio (ej. cargar un modelo ML), úsalo dentro de la función `lifespan` en `main.py`.
+- Agrega nuevos routers en `app/interfaces/api/http/routers/`.
+- Inclúyelos en `app/interfaces/api/http/router.py`.
+- Si necesitás una ruta operativa nueva, declárala en `app/api/main.py`.
+- Para nuevos errores tipados, amplía `app/crosscutting/error_responses.py`.
+- Revisa permisos en `app/identity/*` si el endpoint es sensible.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** "404 Not Found" en endpoints `/v1/...`.
-  - **Causa:** El router no está incluido en `main.py` o el prefijo está mal.
-- **Síntoma:** Error de CORS al llamar desde el frontend.
-  - **Solución:** Revisa `_get_allowed_origins()` en `main.py` y la variable de entorno `CORS_ORIGINS`.
+- Síntoma: `422` inesperado → Causa probable: validación Pydantic → Mirar schema en `app/interfaces/api/http/schemas/`.
+- Síntoma: `/metrics` devuelve 401/403 → Causa probable: permiso `ADMIN_METRICS` → Mirar `app/identity/rbac.py`.
+- Síntoma: CORS bloquea el frontend → Causa probable: `allowed_origins` → Mirar `app/crosscutting/config.py`.
 
 ## 🔎 Ver también
-
-- [Interfaces HTTP (Routers de Negocio)](../interfaces/api/http/README.md)
-- [Configuración (Settings)](../crosscutting/README.md)
+- [Interfaces HTTP](../interfaces/api/http/README.md)
+- [Crosscutting](../crosscutting/README.md)
+- [Root app](../README.md)

@@ -1,82 +1,76 @@
-# Layer: Application (Orchestration & Use Cases)
+# Application (casos de uso y servicios)
 
 ## 🎯 Misión
+Orquestar la lógica de aplicación: casos de uso, políticas operativas y servicios que coordinan dominio e infraestructura sin depender de HTTP.
 
-Esta capa contiene la **Lógica de la Aplicación**, es decir, los flujos de trabajo específicos que satisfacen los requerimientos del usuario.
-Aquí se orquestan los componentes del Dominio y se utilizan los servicios de Infraestructura para lograr un objetivo concreto (ej: "Subir un documento", "Responder una pregunta").
+**Qué SÍ hace**
+- Orquesta casos de uso (chat, documentos, workspaces, ingesta).
+- Implementa servicios de aplicación (context builder, reranker, query rewriter).
+- Define tareas de seed de desarrollo.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No expone endpoints HTTP (eso vive en `app/interfaces`).
+- No implementa persistencia concreta (eso vive en `app/infrastructure`).
 
-- Define Casos de Uso (Use Cases) como comandos ejecutables.
-- Orquesta: llama al repo, llama al servicio de IA, guarda resultados.
-- Implementa lógica de defensa: Rate Limiting de aplicación, detección de inyección de prompts.
-- Prepara el contexto para el LLM (`context_builder.py`).
-
-**Qué NO hace:**
-
-- No contiene endpoints HTTP ni conoce FastAPI.
-- No implementa SQL (eso es infra).
-- No define las entidades (eso es dominio).
-
-**Analogía:**
-Es el Director de Orquesta. No toca el violín (Dominio) ni construye el teatro (Infra), pero les dice cuándo entrar y salir para crear la sinfonía.
+**Analogía (opcional)**
+- Es el “director de orquesta”: coordina músicos (dominio/infra) para lograr el resultado.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                        | Tipo       | Responsabilidad (en humano)                                                      |
-| :----------------------------- | :--------- | :------------------------------------------------------------------------------- |
-| `usecases/`                    | 📁 Carpeta | **Catálogo de Acciones**. Contiene todos los casos de uso agrupados por feature. |
-| `context_builder.py`           | 🐍 Archivo | Ensambla chunks de texto recuperados para formar el prompt del LLM.              |
-| `conversations.py`             | 🐍 Archivo | Lógica para gestión de hilos de conversación (memoria).                          |
-| `prompt_injection_detector.py` | 🐍 Archivo | Capa de seguridad que analiza inputs buscando ataques al LLM.                    |
-| `query_rewriter.py`            | 🐍 Archivo | Mejora la query del usuario usando IA antes de buscar.                           |
-| `rate_limiting.py`             | 🐍 Archivo | Lógica de negocio para cuotas de uso (Tokens/Requests).                          |
-| `reranker.py`                  | 🐍 Archivo | Reordena resultados de búsqueda vectorial para mayor precisión.                  |
-| `dev_seed_admin.py`            | 🐍 Archivo | Tarea para crear usuario admin inicial.                                          |
-| `dev_seed_demo.py`             | 🐍 Archivo | Tarea para poblar datos de demo.                                                 |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | API pública de la capa de aplicación. |
+| 🐍 `context_builder.py` | Archivo Python | Ensambla el contexto RAG con fuentes y límites. |
+| 🐍 `conversations.py` | Archivo Python | Utilidades de conversaciones (format/ID). |
+| 🐍 `dev_seed_admin.py` | Archivo Python | Seed de admin en entornos controlados. |
+| 🐍 `dev_seed_demo.py` | Archivo Python | Seed de datos demo (dev/CI). |
+| 🐍 `prompt_injection_detector.py` | Archivo Python | Detección y filtrado de prompt injection. |
+| 🐍 `query_rewriter.py` | Archivo Python | Reescritura de queries para mejorar retrieval. |
+| 🐍 `rate_limiting.py` | Archivo Python | Rate limiting por cuota (ventana deslizante). |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `reranker.py` | Archivo Python | Reranking de chunks por relevancia. |
+| 📁 `usecases/` | Carpeta | Casos de uso por bounded context. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: DTOs de entrada desde interfaces o jobs.
+- **Proceso**: use cases validan, aplican policy y llaman puertos del dominio.
+- **Output**: resultados tipados (Result/Error) para mapear a HTTP o jobs.
 
-El patrón principal es el **Command Pattern** (Use Cases).
-Casi toda acción del sistema es una clase con un método `.execute(input_dto)`.
+Tecnologías/librerías usadas aquí:
+- Solo Python estándar + dataclasses/typing (la infraestructura vive afuera).
 
-Componentes de Soporte RAG:
-
-1.  **Query Rewriter:** Usuario dice "¿y de vacaciones?", reescribe a "¿Cuál es la política de vacaciones?".
-2.  **Reranker:** Toma 20 chunks top-k vectoriales y usa un modelo Cross-Encoder para elegir los 5 mejores reales.
-3.  **Context Builder:** Empaqueta esos 5 chunks en un prompt seguro cuidando el límite de tokens.
+Flujo típico:
+- Un router crea un `*Input` y ejecuta `*UseCase.execute()`.
+- El use case usa repositorios/servicios definidos en el dominio.
+- Servicios auxiliares (context builder, reranker, rewriter) enriquecen el flujo.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Application Layer.
-- **Recibe órdenes de:** `interfaces/api` y `worker`.
-- **Llama a:** `domain` (Entidades) e `infrastructure` (Implementaciones de repos).
+- Rol arquitectónico: Application.
+- Recibe órdenes de: Interfaces HTTP y Worker.
+- Llama a: Domain (entidades/puertos) e Infrastructure (implementaciones vía container).
+- Contratos y límites: Application no importa detalles HTTP ni SQL directo.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Usar el Context Builder
-
 ```python
 from app.application.context_builder import ContextBuilder
+from app.domain.entities import Chunk
 
-builder = ContextBuilder()
-context_str = builder.build(
-    chunks=[chunk1, chunk2],
-    max_tokens=2000
-)
+builder = ContextBuilder(max_size=2000)
+context, used = builder.build([Chunk(content="hola", embedding=[0.0])])
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevo flujo:** Crea un Use Case en `usecases/`.
-2.  **Lógica compleja compartida:** Si una lógica se repite (ej. calcular precio de tokens), extráela a un archivo en esta carpeta raíz (como `rate_limiting.py`).
+- Crea un nuevo caso de uso en `usecases/` con DTOs de entrada/salida.
+- Usa solo puertos del dominio (repos/services), sin infraestructura directa.
+- Reexporta el use case en `usecases/__init__.py` si debe ser público.
+- Registra el cableado en `app/container.py`.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** El LLM alucina respuestas.
-  - **Causa Probable:** El `ContextBuilder` no está filtrando bien o el `Reranker` está fallando.
-  - **Qué mirar:** Logs de `context_builder.py`.
+- Síntoma: errores de import al crear use case → Causa probable: export faltante → Mirar `usecases/__init__.py`.
+- Síntoma: resultados sin error pero vacíos → Causa probable: dependencias no inyectadas → Mirar `app/container.py`.
+- Síntoma: `ContextBuilder` corta el contexto temprano → Causa probable: `max_context_chars` → Mirar `crosscutting/config.py`.
 
 ## 🔎 Ver también
-
-- [Casos de Uso (Detalle)](./usecases/README.md)
+- [Use cases](./usecases/README.md)
+- [Domain](../domain/README.md)
+- [Infrastructure](../infrastructure/README.md)

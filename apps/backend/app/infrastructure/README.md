@@ -1,78 +1,77 @@
-# Layer: Infrastructure (Adapters)
+# Infrastructure (adaptadores)
 
 ## 🎯 Misión
+Implementar los adaptadores concretos del backend: DB, repositorios, storage, colas, parsers, LLMs y utilidades de texto.
 
-Esta capa contiene los **detalles técnicos** y las implementaciones concretas de los contratos definidos en el Dominio.
-Aquí es donde la aplicación "toca tierra": se conecta a bases de datos, llama a APIs externas, escribe en disco, etc.
+**Qué SÍ hace**
+- Provee implementaciones reales de los puertos del dominio.
+- Conecta con Postgres, Redis, S3 y proveedores de IA.
+- Encapsula detalles técnicos fuera de la capa de aplicación.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No define reglas de negocio (eso está en Application/Domain).
+- No expone endpoints HTTP.
 
-- Implementa Repositorios (`postgres`, `in_memory`).
-- Implementa Servicios de Dominio (`llm`, `storage`, `queue`).
-- Maneja drivers de base de datos (`psycopg`).
-- Parsea documentos (`pdf`, `docx`).
-
-**Qué NO hace:**
-
-- No define reglas de negocio.
-- No decide la lógica de orquestación.
-
-**Analogía:**
-Si el Dominio es el "Arquitecto" que diseña la casa, la Infraestructura son los "Albañiles, Electricistas y Plomeros" que la construyen con materiales reales.
+**Analogía (opcional)**
+- Es la “ferretería” donde viven las herramientas concretas.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso         | Tipo       | Responsabilidad (en humano)                               |
-| :-------------- | :--------- | :-------------------------------------------------------- |
-| `cache.py`      | 🐍 Archivo | Implementación de caché (Redis/Memory).                   |
-| `db/`           | 📁 Carpeta | Configuración del Pool de conexiones SQL.                 |
-| `parsers/`      | 📁 Carpeta | Extractores de texto para diferentes formatos de archivo. |
-| `prompts/`      | 📁 Carpeta | Cargador de templates de prompts desde disco.             |
-| `queue/`        | 📁 Carpeta | Adaptador para colas de tareas (RQ).                      |
-| `repositories/` | 📁 Carpeta | Implementaciones de persistencia (Postgres/Memory).       |
-| `services/`     | 📁 Carpeta | Implementaciones de servicios externos (LLM, Embedding).  |
-| `storage/`      | 📁 Carpeta | Almacenamiento de archivos binarios (S3/MinIO/Local).     |
-| `text/`         | 📁 Carpeta | Algoritmos de Chunking y procesamiento de texto.          |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | Facade de exports de infraestructura. |
+| 🐍 `cache.py` | Archivo Python | Cache de embeddings (Redis o in‑memory). |
+| 📁 `db/` | Carpeta | Pool, errores e instrumentación de DB. |
+| 📁 `parsers/` | Carpeta | Extracción de texto (PDF/DOCX) y registry. |
+| 📁 `prompts/` | Carpeta | Loader de prompts con frontmatter y versionado. |
+| 📁 `queue/` | Carpeta | Adapter RQ para encolar jobs. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 📁 `repositories/` | Carpeta | Repositorios Postgres e in‑memory. |
+| 📁 `services/` | Carpeta | Implementaciones de embeddings y LLM. |
+| 📁 `storage/` | Carpeta | Adapter S3/MinIO para archivos. |
+| 📁 `text/` | Carpeta | Chunking y modelos de fragmentos de texto. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: llamadas desde casos de uso vía puertos del dominio.
+- **Proceso**: adaptadores transforman la llamada en SQL, HTTP, Redis, S3, etc.
+- **Output**: datos persistidos, respuestas de proveedores o errores tipados.
 
-Patrón **Adapter**.
-Cada clase aquí implementa una interfaz (Protocol) definida en `app.domain` o `app.application`.
-La inyección de dependencia se resuelve en `app.container` (Composition Root).
+Tecnologías/librerías usadas aquí:
+- psycopg/pgvector, redis + rq, boto3, google-genai, pypdf/docx.
+
+Flujo típico:
+- Un use case llama un repositorio → `repositories/postgres/*` ejecuta SQL.
+- Upload llama storage → `storage/s3_file_storage.py` sube bytes.
+- Enqueue usa `queue/rq_queue.py` para crear jobs.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Infrastructure Adapters (Hexagon Outside).
-- **Recibe órdenes de:** `application` (vía interfaces).
-- **Llama a:** Bases de Datos, APIs externas (Google, AWS), Sistema de Archivos.
+- Rol arquitectónico: Infrastructure Adapter.
+- Recibe órdenes de: Application (use cases), Worker.
+- Llama a: Postgres, Redis, S3, proveedores LLM/embeddings.
+- Contratos y límites: infraestructura no debe contener reglas de negocio.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Uso típico (Inyección)
-
-Las clases de infra no suelen usarse directamente, se inyectan.
-
 ```python
-# En app/container.py
-from app.infrastructure.repositories.postgres.document import PostgresDocumentRepository
+from app.infrastructure.db.pool import init_pool, close_pool
 
-def get_document_repository() -> DocumentRepository:
-    return PostgresDocumentRepository()
+pool = init_pool(database_url="postgresql://...", min_size=1, max_size=5)
+close_pool()
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Nuevo adaptador:** Si quieres cambiar Postgres por Mongo, crea `infrastructure/repositories/mongo/` e implementa la misma interfaz del dominio.
-2.  **No importes infra en dominio:** Regla de oro. El dominio no puede saber que existe este directorio.
+- Implementa nuevos adapters respetando los puertos del dominio.
+- Mantén validaciones y manejo de errores tipados.
+- Evita side‑effects en imports; usa lazy imports cuando sea opcional.
+- Agrega tests de integración si el adapter toca recursos reales.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** Error de conexión a DB/Redis.
-  - **Causa:** Configuración de entorno incorrecta (`.env`). Revisa `db/` o `queue/`.
-- **Síntoma:** `ImportError` desde dominio.
-  - **Causa:** Violación de arquitectura. El dominio está importando infraestructura.
+- Síntoma: `PoolNotInitializedError` → Causa probable: no se inicializó pool → Mirar `db/pool.py`.
+- Síntoma: embeddings no funcionan → Causa probable: API key o fake enabled → Mirar `services/` y `config`.
+- Síntoma: parser falla con un MIME → Causa probable: registry sin parser → Mirar `parsers/registry.py`.
 
 ## 🔎 Ver también
-
-- [Repositorios (Persistencia)](./repositories/README.md)
-- [Base de Datos (Conexión)](./db/README.md)
+- [DB](./db/README.md)
+- [Repositories](./repositories/README.md)
+- [Services](./services/README.md)
+- [Storage](./storage/README.md)
+- [Queue](./queue/README.md)

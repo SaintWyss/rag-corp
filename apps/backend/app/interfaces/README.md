@@ -1,51 +1,63 @@
-# Layer: Interfaces (Adapters In)
+# Interfaces (adaptadores entrantes)
 
 ## 🎯 Misión
+Concentrar las interfaces de entrada al backend (HTTP), convirtiendo requests en DTOs de aplicación y respuestas RFC7807.
 
-Esta capa contiene los **Adaptadores de Entrada** (Driving Adapters).
-Es la "cara" de la aplicación hacia el mundo exterior. Recibe estímulos externos (HTTP requests, comandos CLI, mensajes de cola) y los traduce a comandos que la Capa de Aplicación entienda.
+**Qué SÍ hace**
+- Define el borde HTTP del sistema.
+- Mapea requests a use cases y resultados a responses.
+- Centraliza schemas y routers.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No contiene reglas de negocio (eso está en Application).
+- No accede directamente a DB.
 
-- Define cómo el mundo habla con nosotros.
-- Valida formatos de entrada (JSON, XML).
-- Gestiona códigos de estado HTTP (200, 404).
-
-**Qué NO hace:**
-
-- No contiene lógica de negocio.
-- No accede a la base de datos directamente (debe usar Use Cases).
-
-**Analogía:**
-Son los traductores de la ONU. Traducen "HTTP POST /users" (Idioma Web) a "CreateUserUseCase.execute()" (Idioma Dominio).
+**Analogía (opcional)**
+- Es la recepción del backend: recibe pedidos y los encamina.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso | Tipo       | Responsabilidad (en humano)                      |
-| :------ | :--------- | :----------------------------------------------- |
-| `api/`  | 📁 Carpeta | adaptadores para APIs (HTTP REST, GraphQL, etc). |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 📁 `api/` | Carpeta | Adaptador HTTP (FastAPI). |
+| 📄 `README.md` | Documento | Esta documentación. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: requests HTTP.
+- **Proceso**: routers → schemas → use cases → error mapping.
+- **Output**: respuestas JSON o streaming SSE.
 
-Sigue el flujo:
-`Input Externo` -> `Adaptador (Interface)` -> `DTO` -> `Caso de Uso (Application)`
+Tecnologías/librerías usadas aquí:
+- FastAPI, Pydantic.
+
+Flujo típico:
+- Router toma request y construye DTO.
+- Llama al caso de uso en `app/application/usecases/`.
+- Mapea errores a RFC7807.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Driving Adapters (Hexagon Outside).
-- **Llama a:** `app.application` (Use Cases) y `app.domain` (para DTOs).
+- Rol arquitectónico: Interface.
+- Recibe órdenes de: clientes HTTP.
+- Llama a: Application (use cases), Crosscutting (errores, config).
+- Contratos y límites: interfaces solo adaptan; no contienen negocio.
 
 ## 👩‍💻 Guía de uso (Snippets)
+```python
+from app.interfaces.api.http.router import router
 
-### Definir un endpoint
-
-Ver `api/http/README.md`.
+# router se incluye desde app/api/main.py
+```
 
 ## 🧩 Cómo extender sin romper nada
+- Crea un router nuevo en `api/http/routers/`.
+- Define schemas en `api/http/schemas/`.
+- Incluye el router en `api/http/router.py`.
+- Mantén el mapeo de errores en `api/http/error_mapping.py`.
 
-1.  **Nuevo canal:** Si quieres soportar gRPC, crea `interfaces/grpc`.
-2.  **CLI:** Si quieres soportar comandos de terminal complejos, crea `interfaces/cli`.
+## 🆘 Troubleshooting
+- Síntoma: `422` inesperado → Causa probable: schema inválido → Revisar `schemas/`.
+- Síntoma: `500` sin detalle → Causa probable: error sin mapping → Revisar `error_mapping.py`.
 
 ## 🔎 Ver también
-
-- [API HTTP](./api/README.md)
+- [API HTTP](./api/http/README.md)
+- [Use cases](../application/usecases/README.md)

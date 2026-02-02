@@ -1,101 +1,77 @@
-# Layer: Domain (Core Business Logic)
+# Domain (núcleo del negocio)
 
 ## 🎯 Misión
+Definir el lenguaje del negocio: entidades, objetos de valor, políticas puras y contratos (puertos) que la aplicación usa para orquestar casos de uso sin depender de infraestructura.
 
-Esta carpeta es el **Núcleo Sagrado** de la aplicación.
-Contiene las definiciones fundamentales del negocio, las reglas que deben cumplirse siempre y los contratos (Interfaces) que la infraestructura debe implementar.
+**Qué SÍ hace**
+- Modela entidades centrales (Document, Workspace, Chunk, QueryResult, Conversation).
+- Define contratos de repositorios y servicios externos (Protocols).
+- Provee políticas puras (ej. acceso a workspaces) y normalizadores.
 
-**Qué SÍ hace:**
+**Qué NO hace**
+- No accede a base de datos ni APIs externas.
+- No depende de FastAPI, Redis, S3 ni librerías de infraestructura.
 
-- Define Entidades (`Document`, `Chunk`, `Workspace`).
-- Define Objetos de Valor (`ConfidenceScore`, `SourceReference`).
-- Define Interfaces de Repositorios (Puertos).
-- Implementa lógica pura de dominio (validaciones invariantes).
-
-**Qué NO hace:**
-
-- **NUNCA** importa de `infrastructure`, `api` o `application`.
-- No sabe qué base de datos se usa.
-- No sabe si la API es REST o GraphQL.
-
-**Analogía:**
-Son las Leyes de la Física de este universo. No importa si usas un coche de gasolina o eléctrico (Infra), la gravedad (Dominio) funciona igual.
+**Analogía (opcional)**
+- Es el “contrato legal” del negocio: reglas y términos, sin implementación técnica.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso               | Tipo       | Responsabilidad (en humano)                                            |
-| :-------------------- | :--------- | :--------------------------------------------------------------------- |
-| `access.py`           | 🐍 Archivo | Reglas de acceso y permisos básicos.                                   |
-| `audit.py`            | 🐍 Archivo | Definición de eventos de auditoría (qué se tracea).                    |
-| `cache.py`            | 🐍 Archivo | Interfaces para servicios de caché.                                    |
-| `entities.py`         | 🐍 Archivo | **Entidades Principales**. Clases ricas con datos y comportamiento.    |
-| `repositories.py`     | 🐍 Archivo | **Puertos**. Clases abstractas (`Protocol` o `ABC`) para persistencia. |
-| `services.py`         | 🐍 Archivo | Servicios de dominio (lógica que involucra múltiples entidades).       |
-| `tags.py`             | 🐍 Archivo | Gestión de etiquetas/tags para documentos.                             |
-| `value_objects.py`    | 🐍 Archivo | Objetos inmutables (ej. un Score, coordenadas de un Chunk).            |
-| `workspace_policy.py` | 🐍 Archivo | Políticas complejas de aislamiento entre workspaces.                   |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :--- | :--- | :--- |
+| 🐍 `__init__.py` | Archivo Python | API pública del dominio (re‑exports). |
+| 🐍 `access.py` | Archivo Python | Normalización de `allowed_roles` desde metadata. |
+| 🐍 `audit.py` | Archivo Python | Modelo de evento de auditoría del dominio. |
+| 🐍 `cache.py` | Archivo Python | Puerto de cache de embeddings (Protocol). |
+| 🐍 `entities.py` | Archivo Python | Entidades: Document, Workspace, Chunk, QueryResult, Conversation. |
+| 📄 `README.md` | Documento | Esta documentación. |
+| 🐍 `repositories.py` | Archivo Python | Puertos de persistencia (repositorios). |
+| 🐍 `services.py` | Archivo Python | Puertos de servicios externos (LLM/embeddings/storage/queue). |
+| 🐍 `tags.py` | Archivo Python | Normalización de tags desde metadata. |
+| 🐍 `value_objects.py` | Archivo Python | Objetos de valor (sources, quotas, feedback, etc.). |
+| 🐍 `workspace_policy.py` | Archivo Python | Policy pura de acceso a workspaces. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
+Input → Proceso → Output:
+- **Input**: datos del negocio (ej. metadata, roles, visibilidad).
+- **Proceso**: normaliza, valida y evalúa políticas sin side‑effects.
+- **Output**: entidades/objetos de valor estables y decisiones de acceso.
 
-Es código Python puro (`dataclasses`, `Pydantic models` o clases estándar).
-No tiene dependencias externas pesadas.
+Tecnologías/librerías usadas aquí:
+- Solo Python estándar + typing (sin infraestructura).
 
-### Entidades (`entities.py`)
-
-Modelan el estado. Ejemplo: Un `Document` tiene una lista de `Chunk`s y un estado (`PENDING`, `READY`).
-
-### Puertos (`repositories.py`)
-
-Definen _qué_ necesitamos guardar, pero no _cómo_.
-
-```python
-class DocumentRepository(Protocol):
-    def save(self, doc: Document) -> None: ...
-```
+Flujo típico:
+- Un use case crea `Document` y aplica `normalize_tags`.
+- `workspace_policy.can_read_workspace()` decide acceso en base a actor/visibilidad.
+- Repositorios y servicios se tipan vía Protocols.
 
 ## 🔗 Conexiones y roles
-
-- **Rol Arquitectónico:** Core Domain (Hexagon Core).
-- **Recibe órdenes de:** `application` (Use Cases).
-- **Es implementado por:** `infrastructure` (Adapters).
+- Rol arquitectónico: Core Domain.
+- Recibe órdenes de: capa Application (use cases).
+- Llama a: no aplica (solo define contratos/políticas).
+- Contratos y límites: no depende de infraestructura ni frameworks.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### Usar una Entidad
-
 ```python
-from app.domain.entities import Document, DocumentStatus
-
-doc = Document(
-    title="Report.pdf",
-    status=DocumentStatus.PENDING,
-    workspace_id=some_uuid
-)
-# doc.calculate_something() # Comportamiento rico
-```
-
-### Definir un Puerto (Repository)
-
-```python
-from typing import Protocol
+from uuid import uuid4
 from app.domain.entities import Document
 
-class DocumentRepository(Protocol):
-    def get_by_id(self, doc_id: str) -> Document | None:
-        ...
+doc = Document(id=uuid4(), title="Manual")
+doc.mark_deleted()
+assert doc.is_deleted
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-1.  **Entidades:** Agrégalas en `entities.py`. Usa `dataclasses` si necesitas mutabilidad controlada o `Pydantic` si es puramente datos.
-2.  **Reglas:** Si una regla aplica a una sola entidad, ponla en su clase. Si aplica a varias, usa `services.py`.
+- Agrega nuevas entidades en `entities.py` con invariantes mínimas.
+- Si necesitás nuevo puerto, defínelo en `repositories.py` o `services.py`.
+- Mantén las políticas puras (sin I/O ni dependencias externas).
+- Re‑exporta en `__init__.py` solo lo que sea parte del API del dominio.
 
 ## 🆘 Troubleshooting
-
-- **Síntoma:** `ImportError` circular.
-  - **Causa:** Probablemente importaste algo de `application` dentro de `domain`. El dominio **no** debe tener imports externos.
+- Síntoma: imports profundos y acoplamientos → Causa probable: falta export en `__init__.py` → Mirar `domain/__init__.py`.
+- Síntoma: policy devuelve False inesperado → Causa probable: actor incompleto → Mirar `workspace_policy.py`.
+- Síntoma: roles filtrados vacíos → Causa probable: metadata mal formada → Mirar `access.py`.
 
 ## 🔎 Ver también
-
-- [Capa de Aplicación (Quien usa el dominio)](../application/README.md)
-- [Capa de Infraestructura (Quien implementa el dominio)](../infrastructure/README.md)
+- [Application](../application/README.md)
+- [Identity](../identity/README.md)
+- [Infrastructure repos](../infrastructure/repositories/README.md)
