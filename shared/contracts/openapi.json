@@ -102,7 +102,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspacesListRes"
+                  "$ref": "#/components/schemas/WorkspacesListRes"
                 }
               }
             }
@@ -4668,7 +4668,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/QueryReq"
+                "$ref": "#/components/schemas/AskReq"
               }
             }
           }
@@ -5321,7 +5321,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/QueryReq"
+                "$ref": "#/components/schemas/AskReq"
               }
             }
           }
@@ -7642,7 +7642,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspacesListRes"
+                  "$ref": "#/components/schemas/app__api__admin_routes__WorkspacesListRes"
                 }
               }
             }
@@ -7890,7 +7890,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspacesListRes"
+                  "$ref": "#/components/schemas/WorkspacesListRes"
                 }
               }
             }
@@ -12456,7 +12456,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/QueryReq"
+                "$ref": "#/components/schemas/AskReq"
               }
             }
           }
@@ -13109,7 +13109,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/QueryReq"
+                "$ref": "#/components/schemas/AskReq"
               }
             }
           }
@@ -13957,6 +13957,45 @@
         ],
         "title": "ArchiveWorkspaceRes",
         "description": "Resultado de archivado."
+      },
+      "AskReq": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          },
+          "use_mmr": {
+            "type": "boolean",
+            "title": "Use Mmr",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "AskReq",
+        "description": "Request para Answer (RAG)."
       },
       "AskRes": {
         "properties": {
@@ -15229,6 +15268,23 @@
         "properties": {
           "workspaces": {
             "items": {
+              "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspaces"
+        ],
+        "title": "WorkspacesListRes",
+        "description": "Listado de workspaces."
+      },
+      "app__api__admin_routes__WorkspacesListRes": {
+        "properties": {
+          "workspaces": {
+            "items": {
               "$ref": "#/components/schemas/WorkspaceRes"
             },
             "type": "array",
@@ -15326,23 +15382,6 @@
         ],
         "title": "WorkspaceRes",
         "description": "Response de workspace."
-      },
-      "app__interfaces__api__http__schemas__workspaces__WorkspacesListRes": {
-        "properties": {
-          "workspaces": {
-            "items": {
-              "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
-            },
-            "type": "array",
-            "title": "Workspaces"
-          }
-        },
-        "type": "object",
-        "required": [
-          "workspaces"
-        ],
-        "title": "WorkspacesListRes",
-        "description": "Listado de workspaces."
       }
     },
     "securitySchemes": {

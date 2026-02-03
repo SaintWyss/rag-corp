@@ -5,32 +5,58 @@
  * OpenAPI spec version: 0.1.0
  */
 /**
- * Workspace description
+ * Descripción (opcional)
  */
 export type AdminCreateWorkspaceReqDescription = string | null;
 
 /**
- * Request to create a workspace for a specific user.
+ * Request: crear workspace asignándolo a un usuario específico.
  */
 export interface AdminCreateWorkspaceReq {
-  /** User ID who will own the workspace */
+  /** ID del usuario owner del workspace */
   owner_user_id: string;
   /**
-   * Workspace name
+   * Nombre del workspace
    * @minLength 1
    * @maxLength 255
    */
   name: string;
-  /** Workspace description */
+  /** Descripción (opcional) */
   description?: AdminCreateWorkspaceReqDescription;
 }
 
+/**
+ * Resultado de archivado.
+ */
 export interface ArchiveWorkspaceRes {
   archived: boolean;
 }
 
+export type AskReqConversationId = string | null;
+
+/**
+ * Request para Answer (RAG).
+ */
+export interface AskReq {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  query: string;
+  conversation_id?: AskReqConversationId;
+  /**
+   * @minimum 1
+   * @maximum 20
+   */
+  top_k?: number;
+  use_mmr?: boolean;
+}
+
 export type AskResConversationId = string | null;
 
+/**
+ * Response ask.
+ */
 export interface AskRes {
   answer: string;
   sources: string[];
@@ -43,6 +69,9 @@ export type AuditEventResMetadata = { [key: string]: unknown };
 
 export type AuditEventResCreatedAt = string | null;
 
+/**
+ * Evento de auditoría serializable.
+ */
 export interface AuditEventRes {
   id: string;
   actor: string;
@@ -54,12 +83,13 @@ export interface AuditEventRes {
 
 export type AuditEventsResNextOffset = number | null;
 
+/**
+ * Listado paginado simple (offset-based).
+ */
 export interface AuditEventsRes {
   events: AuditEventRes[];
   next_offset?: AuditEventsResNextOffset;
 }
-
-export type BodyUploadDocumentApiV1DocumentsUploadPostTitle = string | null;
 
 export type BodyUploadDocumentApiV1DocumentsUploadPostSource = string | null;
 
@@ -67,12 +97,11 @@ export type BodyUploadDocumentApiV1DocumentsUploadPostMetadata = string | null;
 
 export interface BodyUploadDocumentApiV1DocumentsUploadPost {
   file: Blob;
-  title?: BodyUploadDocumentApiV1DocumentsUploadPostTitle;
+  workspace_id: string;
+  title: string;
   source?: BodyUploadDocumentApiV1DocumentsUploadPostSource;
   metadata?: BodyUploadDocumentApiV1DocumentsUploadPostMetadata;
 }
-
-export type BodyUploadDocumentV1DocumentsUploadPostTitle = string | null;
 
 export type BodyUploadDocumentV1DocumentsUploadPostSource = string | null;
 
@@ -80,12 +109,11 @@ export type BodyUploadDocumentV1DocumentsUploadPostMetadata = string | null;
 
 export interface BodyUploadDocumentV1DocumentsUploadPost {
   file: Blob;
-  title?: BodyUploadDocumentV1DocumentsUploadPostTitle;
+  workspace_id: string;
+  title: string;
   source?: BodyUploadDocumentV1DocumentsUploadPostSource;
   metadata?: BodyUploadDocumentV1DocumentsUploadPostMetadata;
 }
-
-export type BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostTitle = string | null;
 
 export type BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostSource = string | null;
 
@@ -93,12 +121,10 @@ export type BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUpload
 
 export interface BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost {
   file: Blob;
-  title?: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostTitle;
+  title: string;
   source?: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostSource;
   metadata?: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata;
 }
-
-export type BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostTitle = string | null;
 
 export type BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostSource = string | null;
 
@@ -106,7 +132,7 @@ export type BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPos
 
 export interface BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost {
   file: Blob;
-  title?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostTitle;
+  title: string;
   source?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostSource;
   metadata?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata;
 }
@@ -123,22 +149,33 @@ export interface CreateUserRequest {
    */
   password: string;
   role?: UserRole;
+  is_active?: boolean;
 }
 
+/**
+ * Owner explícito (si aplica)
+ */
 export type CreateWorkspaceReqOwnerUserId = string | null;
 
+/**
+ * Request para crear workspace.
+ */
 export interface CreateWorkspaceReq {
   /**
-   * Workspace name
+   * Nombre del workspace
    * @minLength 1
    * @maxLength 200
    */
   name: string;
   visibility?: WorkspaceVisibility;
+  /** Owner explícito (si aplica) */
   owner_user_id?: CreateWorkspaceReqOwnerUserId;
   acl?: WorkspaceACL;
 }
 
+/**
+ * Response de delete.
+ */
 export interface DeleteDocumentRes {
   deleted: boolean;
 }
@@ -159,18 +196,24 @@ export type DocumentDetailResDeletedAt = string | null;
 
 export type DocumentDetailResErrorMessage = string | null;
 
+export type DocumentDetailResStorageKey = string | null;
+
+/**
+ * Detalle extendido.
+ */
 export interface DocumentDetailRes {
   id: string;
   title: string;
-  source: DocumentDetailResSource;
-  metadata: DocumentDetailResMetadata;
-  created_at: DocumentDetailResCreatedAt;
+  source?: DocumentDetailResSource;
+  metadata?: DocumentDetailResMetadata;
+  created_at?: DocumentDetailResCreatedAt;
   file_name?: DocumentDetailResFileName;
   mime_type?: DocumentDetailResMimeType;
   status?: DocumentDetailResStatus;
   tags?: string[];
   deleted_at?: DocumentDetailResDeletedAt;
   error_message?: DocumentDetailResErrorMessage;
+  storage_key?: DocumentDetailResStorageKey;
 }
 
 export type DocumentSummaryResSource = string | null;
@@ -185,12 +228,15 @@ export type DocumentSummaryResMimeType = string | null;
 
 export type DocumentSummaryResStatus = string | null;
 
+/**
+ * Resumen para listados.
+ */
 export interface DocumentSummaryRes {
   id: string;
   title: string;
-  source: DocumentSummaryResSource;
-  metadata: DocumentSummaryResMetadata;
-  created_at: DocumentSummaryResCreatedAt;
+  source?: DocumentSummaryResSource;
+  metadata?: DocumentSummaryResMetadata;
+  created_at?: DocumentSummaryResCreatedAt;
   file_name?: DocumentSummaryResFileName;
   mime_type?: DocumentSummaryResMimeType;
   status?: DocumentSummaryResStatus;
@@ -199,14 +245,14 @@ export interface DocumentSummaryRes {
 
 export type DocumentsListResNextCursor = string | null;
 
+/**
+ * Response de listados.
+ */
 export interface DocumentsListRes {
   documents: DocumentSummaryRes[];
   next_cursor?: DocumentsListResNextCursor;
 }
 
-/**
- * Application error codes for client-side handling.
- */
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
 
 
@@ -234,7 +280,11 @@ export type ErrorDetailErrorsAnyOfItem = { [key: string]: unknown };
 export type ErrorDetailErrors = ErrorDetailErrorsAnyOfItem[] | null;
 
 /**
- * RFC 7807 Problem Details response.
+ * Modelo RFC 7807 (Problem Details).
+
+Campos extra:
+- code: error code estable para clientes
+- errors: lista opcional de detalles (ej: [{"field":"x","msg":"..."}])
  */
 export interface ErrorDetail {
   type?: string;
@@ -250,49 +300,51 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+/**
+ * Batch de documentos (ingesta texto).
+ */
 export interface IngestBatchReq {
   /**
-   * List of documents to ingest (1-10)
+   * Batch limitado para proteger recursos
    * @minItems 1
    * @maxItems 10
    */
   documents: IngestTextReq[];
 }
 
+/**
+ * Respuesta de ingesta batch.
+ */
 export interface IngestBatchRes {
   documents: IngestTextRes[];
   total_chunks: number;
 }
 
-/**
- * Optional source URL or identifier (max 500 chars)
- */
 export type IngestTextReqSource = string | null;
 
-/**
- * Additional custom metadata (JSONB)
- */
 export type IngestTextReqMetadata = { [key: string]: unknown };
 
+/**
+ * Crear documento a partir de texto (ingesta directa).
+ */
 export interface IngestTextReq {
   /**
-   * Document title (1-200 chars)
    * @minLength 1
    * @maxLength 200
    */
   title: string;
   /**
-   * Full document text to be chunked (1-100,000 chars)
    * @minLength 1
    * @maxLength 100000
    */
   text: string;
-  /** Optional source URL or identifier (max 500 chars) */
   source?: IngestTextReqSource;
-  /** Additional custom metadata (JSONB) */
   metadata?: IngestTextReqMetadata;
 }
 
+/**
+ * Respuesta de ingesta individual.
+ */
 export interface IngestTextRes {
   document_id: string;
   chunks: number;
@@ -318,6 +370,9 @@ export interface LoginResponse {
   user: UserResponse;
 }
 
+/**
+ * Match de retrieval.
+ */
 export interface Match {
   chunk_id: string;
   document_id: string;
@@ -326,33 +381,32 @@ export interface Match {
 }
 
 /**
- * Conversation ID for multi-turn chat (optional)
+ * Request para retrieval (similarity o MMR).
  */
-export type QueryReqConversationId = string | null;
-
 export interface QueryReq {
   /**
-   * User's natural language question (1-2,000 chars)
    * @minLength 1
    * @maxLength 2000
    */
   query: string;
-  /** Conversation ID for multi-turn chat (optional) */
-  conversation_id?: QueryReqConversationId;
   /**
-   * Number of similar chunks to retrieve (1-20)
    * @minimum 1
    * @maximum 20
    */
   top_k?: number;
-  /** Use Maximal Marginal Relevance for diverse results (slower but reduces redundancy) */
   use_mmr?: boolean;
 }
 
+/**
+ * Response retrieval.
+ */
 export interface QueryRes {
   matches: Match[];
 }
 
+/**
+ * Response de reprocess.
+ */
 export interface ReprocessDocumentRes {
   document_id: string;
   status: string;
@@ -367,28 +421,46 @@ export interface ResetPasswordRequest {
   password: string;
 }
 
+/**
+ * Request para reemplazar ACL de usuarios (shared).
+ */
 export interface ShareWorkspaceReq {
-  /** List of user IDs to grant read access */
+  /**
+   * IDs de usuarios con acceso
+   * @minItems 0
+   */
   user_ids: string[];
 }
 
 /**
- * Workspace name
+ * Nuevo nombre del workspace
  */
 export type UpdateWorkspaceReqName = string | null;
 
 /**
- * Workspace description
+ * Descripción
  */
 export type UpdateWorkspaceReqDescription = string | null;
 
+export type UpdateWorkspaceReqVisibility = WorkspaceVisibility | null;
+
+export type UpdateWorkspaceReqAcl = WorkspaceACL | null;
+
+/**
+ * Request para actualizar workspace (patch).
+ */
 export interface UpdateWorkspaceReq {
-  /** Workspace name */
+  /** Nuevo nombre del workspace */
   name?: UpdateWorkspaceReqName;
-  /** Workspace description */
+  /** Descripción */
   description?: UpdateWorkspaceReqDescription;
+  visibility?: UpdateWorkspaceReqVisibility;
+  acl?: UpdateWorkspaceReqAcl;
 }
 
+/**
+ * Response de upload + encolado.
+ */
 export interface UploadDocumentRes {
   document_id: string;
   status: string;
@@ -407,7 +479,7 @@ export interface UserResponse {
 }
 
 /**
- * R: Supported user roles for JWT auth.
+ * Roles soportados para autenticación JWT.
  */
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
@@ -418,10 +490,6 @@ export const UserRole = {
   employee: 'employee',
 } as const;
 
-export interface UsersListResponse {
-  users: UserResponse[];
-}
-
 export type ValidationErrorLocItem = string | number;
 
 export interface ValidationError {
@@ -430,7 +498,14 @@ export interface ValidationError {
   type: string;
 }
 
+/**
+ * ACL del workspace (por roles).
+ */
 export interface WorkspaceACL {
+  /**
+   * Lista de roles permitidos (strings normalizados)
+   * @maxItems 50
+   */
   allowed_roles?: string[];
 }
 
@@ -445,7 +520,7 @@ export type WorkspaceResUpdatedAt = string | null;
 export type WorkspaceResArchivedAt = string | null;
 
 /**
- * Workspace response for admin endpoints.
+ * Respuesta: workspace (vista admin).
  */
 export interface WorkspaceRes {
   id: string;
@@ -459,7 +534,7 @@ export interface WorkspaceRes {
 }
 
 /**
- * R: Workspace visibility options.
+ * Visibilidad del workspace.
  */
 export type WorkspaceVisibility = typeof WorkspaceVisibility[keyof typeof WorkspaceVisibility];
 
@@ -471,114 +546,103 @@ export const WorkspaceVisibility = {
   SHARED: 'SHARED',
 } as const;
 
+/**
+ * Listado de workspaces.
+ */
 export interface WorkspacesListRes {
-  workspaces: AppInterfacesApiHttpRoutesWorkspaceRes[];
+  workspaces: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes[];
 }
 
-/**
- * List of workspaces response.
- */
 export interface AppApiAdminRoutesWorkspacesListRes {
   workspaces: WorkspaceRes[];
 }
 
-export type AppInterfacesApiHttpRoutesWorkspaceResOwnerUserId = string | null;
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResOwnerUserId = string | null;
 
-export type AppInterfacesApiHttpRoutesWorkspaceResCreatedAt = string | null;
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResDescription = string | null;
 
-export type AppInterfacesApiHttpRoutesWorkspaceResUpdatedAt = string | null;
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResCreatedAt = string | null;
 
-export type AppInterfacesApiHttpRoutesWorkspaceResArchivedAt = string | null;
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResUpdatedAt = string | null;
 
-export interface AppInterfacesApiHttpRoutesWorkspaceRes {
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResArchivedAt = string | null;
+
+/**
+ * Response de workspace.
+ */
+export interface AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes {
   id: string;
   name: string;
   visibility: WorkspaceVisibility;
-  owner_user_id?: AppInterfacesApiHttpRoutesWorkspaceResOwnerUserId;
-  acl: WorkspaceACL;
-  created_at?: AppInterfacesApiHttpRoutesWorkspaceResCreatedAt;
-  updated_at?: AppInterfacesApiHttpRoutesWorkspaceResUpdatedAt;
-  archived_at?: AppInterfacesApiHttpRoutesWorkspaceResArchivedAt;
+  owner_user_id?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResOwnerUserId;
+  description?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResDescription;
+  acl?: WorkspaceACL;
+  created_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResCreatedAt;
+  updated_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResUpdatedAt;
+  archived_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResArchivedAt;
 }
 
 export type ListWorkspacesV1WorkspacesGetParams = {
 owner_user_id?: string | null;
 include_archived?: boolean;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type ListDocumentsV1DocumentsGetParams = {
 workspace_id: string | null;
-q?: string | null;
 status?: string | null;
-tag?: string | null;
-sort?: string | null;
-cursor?: string | null;
-/**
- * @minimum 1
- * @maximum 200
- */
 limit?: number;
-/**
- * @minimum 0
- */
 offset?: number;
 };
 
 export type GetDocumentV1DocumentsDocumentIdGetParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type DeleteDocumentV1DocumentsDocumentIdDeleteParams = {
-workspace_id: string | null;
-};
-
-export type UploadDocumentV1DocumentsUploadPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type ReprocessDocumentV1DocumentsDocumentIdReprocessPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type IngestTextV1IngestTextPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type IngestBatchV1IngestBatchPostParams = {
-workspace_id: string | null;
-};
-
-export type QueryV1QueryPostParams = {
-workspace_id: string | null;
-};
-
-export type AskV1AskPostParams = {
-workspace_id: string | null;
-};
-
-export type AskStreamV1AskStreamPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type ListWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetParams = {
-q?: string | null;
 status?: string | null;
-tag?: string | null;
-sort?: string | null;
-cursor?: string | null;
-/**
- * @minimum 1
- * @maximum 200
- */
 limit?: number;
-/**
- * @minimum 0
- */
 offset?: number;
 };
 
+export type QueryCompatV1QueryPostParams = {
+workspace_id: string;
+};
+
+export type AskCompatV1AskPostParams = {
+workspace_id: string;
+};
+
+export type AskStreamCompatV1AskStreamPostParams = {
+workspace_id: string;
+};
+
 export type ListAuditEventsV1AdminAuditGetParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 actor_id?: string | null;
 action_prefix?: string | null;
 start_at?: string | null;
@@ -594,6 +658,11 @@ limit?: number;
 offset?: number;
 };
 
+export type ListUsersAdminAuthUsersGetParams = {
+limit?: number;
+offset?: number;
+};
+
 export type AdminListUserWorkspacesAdminUsersUserIdWorkspacesGetParams = {
 include_archived?: boolean;
 };
@@ -601,81 +670,64 @@ include_archived?: boolean;
 export type ListWorkspacesApiV1WorkspacesGetParams = {
 owner_user_id?: string | null;
 include_archived?: boolean;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type ListDocumentsApiV1DocumentsGetParams = {
 workspace_id: string | null;
-q?: string | null;
 status?: string | null;
-tag?: string | null;
-sort?: string | null;
-cursor?: string | null;
-/**
- * @minimum 1
- * @maximum 200
- */
 limit?: number;
-/**
- * @minimum 0
- */
 offset?: number;
 };
 
 export type GetDocumentApiV1DocumentsDocumentIdGetParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type DeleteDocumentApiV1DocumentsDocumentIdDeleteParams = {
-workspace_id: string | null;
-};
-
-export type UploadDocumentApiV1DocumentsUploadPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type ReprocessDocumentApiV1DocumentsDocumentIdReprocessPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type IngestTextApiV1IngestTextPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type IngestBatchApiV1IngestBatchPostParams = {
-workspace_id: string | null;
-};
-
-export type QueryApiV1QueryPostParams = {
-workspace_id: string | null;
-};
-
-export type AskApiV1AskPostParams = {
-workspace_id: string | null;
-};
-
-export type AskStreamApiV1AskStreamPostParams = {
-workspace_id: string | null;
+workspace_id: string;
 };
 
 export type ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams = {
-q?: string | null;
 status?: string | null;
-tag?: string | null;
-sort?: string | null;
-cursor?: string | null;
-/**
- * @minimum 1
- * @maximum 200
- */
 limit?: number;
-/**
- * @minimum 0
- */
 offset?: number;
 };
 
+export type QueryCompatApiV1QueryPostParams = {
+workspace_id: string;
+};
+
+export type AskCompatApiV1AskPostParams = {
+workspace_id: string;
+};
+
+export type AskStreamCompatApiV1AskStreamPostParams = {
+workspace_id: string;
+};
+
 export type ListAuditEventsApiV1AdminAuditGetParams = {
-workspace_id?: string | null;
+workspace_id: string | null;
 actor_id?: string | null;
 action_prefix?: string | null;
 start_at?: string | null;
@@ -735,6 +787,16 @@ export type listWorkspacesV1WorkspacesGetResponse409 = {
   status: 409
 }
 
+export type listWorkspacesV1WorkspacesGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listWorkspacesV1WorkspacesGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listWorkspacesV1WorkspacesGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -742,13 +804,13 @@ export type listWorkspacesV1WorkspacesGetResponse422 = {
 
 export type listWorkspacesV1WorkspacesGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listWorkspacesV1WorkspacesGetResponseSuccess = (listWorkspacesV1WorkspacesGetResponse200) & {
   headers: Headers;
 };
-export type listWorkspacesV1WorkspacesGetResponseError = (listWorkspacesV1WorkspacesGetResponse400 | listWorkspacesV1WorkspacesGetResponse401 | listWorkspacesV1WorkspacesGetResponse403 | listWorkspacesV1WorkspacesGetResponse404 | listWorkspacesV1WorkspacesGetResponse409 | listWorkspacesV1WorkspacesGetResponse422 | listWorkspacesV1WorkspacesGetResponseDefault) & {
+export type listWorkspacesV1WorkspacesGetResponseError = (listWorkspacesV1WorkspacesGetResponse400 | listWorkspacesV1WorkspacesGetResponse401 | listWorkspacesV1WorkspacesGetResponse403 | listWorkspacesV1WorkspacesGetResponse404 | listWorkspacesV1WorkspacesGetResponse409 | listWorkspacesV1WorkspacesGetResponse413 | listWorkspacesV1WorkspacesGetResponse415 | listWorkspacesV1WorkspacesGetResponse422 | listWorkspacesV1WorkspacesGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -792,7 +854,7 @@ export const listWorkspacesV1WorkspacesGet = async (params?: ListWorkspacesV1Wor
  * @summary Create Workspace
  */
 export type createWorkspaceV1WorkspacesPostResponse201 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 201
 }
 
@@ -821,6 +883,16 @@ export type createWorkspaceV1WorkspacesPostResponse409 = {
   status: 409
 }
 
+export type createWorkspaceV1WorkspacesPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type createWorkspaceV1WorkspacesPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type createWorkspaceV1WorkspacesPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -828,13 +900,13 @@ export type createWorkspaceV1WorkspacesPostResponse422 = {
 
 export type createWorkspaceV1WorkspacesPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type createWorkspaceV1WorkspacesPostResponseSuccess = (createWorkspaceV1WorkspacesPostResponse201) & {
   headers: Headers;
 };
-export type createWorkspaceV1WorkspacesPostResponseError = (createWorkspaceV1WorkspacesPostResponse400 | createWorkspaceV1WorkspacesPostResponse401 | createWorkspaceV1WorkspacesPostResponse403 | createWorkspaceV1WorkspacesPostResponse404 | createWorkspaceV1WorkspacesPostResponse409 | createWorkspaceV1WorkspacesPostResponse422 | createWorkspaceV1WorkspacesPostResponseDefault) & {
+export type createWorkspaceV1WorkspacesPostResponseError = (createWorkspaceV1WorkspacesPostResponse400 | createWorkspaceV1WorkspacesPostResponse401 | createWorkspaceV1WorkspacesPostResponse403 | createWorkspaceV1WorkspacesPostResponse404 | createWorkspaceV1WorkspacesPostResponse409 | createWorkspaceV1WorkspacesPostResponse413 | createWorkspaceV1WorkspacesPostResponse415 | createWorkspaceV1WorkspacesPostResponse422 | createWorkspaceV1WorkspacesPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -872,7 +944,7 @@ export const createWorkspaceV1WorkspacesPost = async (createWorkspaceReq: Create
  * @summary Get Workspace
  */
 export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -901,6 +973,16 @@ export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse409 = {
   status: 409
 }
 
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -908,13 +990,13 @@ export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse422 = {
 
 export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseSuccess = (getWorkspaceV1WorkspacesWorkspaceIdGetResponse200) & {
   headers: Headers;
 };
-export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseError = (getWorkspaceV1WorkspacesWorkspaceIdGetResponse400 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse401 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse403 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse404 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse409 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse422 | getWorkspaceV1WorkspacesWorkspaceIdGetResponseDefault) & {
+export type getWorkspaceV1WorkspacesWorkspaceIdGetResponseError = (getWorkspaceV1WorkspacesWorkspaceIdGetResponse400 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse401 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse403 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse404 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse409 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse413 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse415 | getWorkspaceV1WorkspacesWorkspaceIdGetResponse422 | getWorkspaceV1WorkspacesWorkspaceIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -951,7 +1033,7 @@ export const getWorkspaceV1WorkspacesWorkspaceIdGet = async (workspaceId: string
  * @summary Update Workspace
  */
 export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -980,6 +1062,16 @@ export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse409 = {
   status: 409
 }
 
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse422 = {
   data: ErrorDetail
   status: 422
@@ -987,13 +1079,13 @@ export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse422 = {
 
 export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseSuccess = (updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse200) & {
   headers: Headers;
 };
-export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseError = (updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse400 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse401 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse403 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse404 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse409 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse422 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseDefault) & {
+export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseError = (updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse400 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse401 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse403 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse404 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse409 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse413 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse415 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse422 | updateWorkspaceV1WorkspacesWorkspaceIdPatchResponseDefault) & {
   headers: Headers;
 };
 
@@ -1029,58 +1121,69 @@ export const updateWorkspaceV1WorkspacesWorkspaceIdPatch = async (workspaceId: s
 
 
 /**
- * @summary Archive Workspace
+ * Delete lógico (alias de archive). No se borra físicamente.
+ * @summary Delete Workspace
  */
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200 = {
   data: ArchiveWorkspaceRes
   status: 200
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse400 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse401 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse403 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse404 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse409 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse422 = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseDefault = {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseSuccess = (archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200) & {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponseSuccess = (deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse200) & {
   headers: Headers;
 };
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseError = (archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse400 | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse401 | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse403 | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse404 | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse409 | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse422 | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseDefault) & {
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponseError = (deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse400 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse401 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse403 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse404 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse409 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse413 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse415 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse422 | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
-export type archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse = (archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseSuccess | archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponseError)
+export type deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse = (deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponseSuccess | deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponseError)
 
-export const getArchiveWorkspaceV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
+export const getDeleteWorkspaceV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
 
 
   
@@ -1088,9 +1191,9 @@ export const getArchiveWorkspaceV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId:
   return `/v1/workspaces/${workspaceId}`
 }
 
-export const archiveWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse> => {
+export const deleteWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse> => {
   
-  const res = await fetch(getArchiveWorkspaceV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
+  const res = await fetch(getDeleteWorkspaceV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
   {      
     ...options,
     method: 'DELETE'
@@ -1101,8 +1204,8 @@ export const archiveWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId:
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as archiveWorkspaceV1WorkspacesWorkspaceIdDeleteResponse
+  const data: deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteWorkspaceV1WorkspacesWorkspaceIdDeleteResponse
 }
 
 
@@ -1111,7 +1214,7 @@ export const archiveWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId:
  * @summary Publish Workspace
  */
 export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -1140,6 +1243,16 @@ export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse409 = {
   status: 409
 }
 
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1147,13 +1260,13 @@ export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse422 = {
 
 export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseSuccess = (publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse200) & {
   headers: Headers;
 };
-export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseError = (publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse400 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse401 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse403 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse404 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse409 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse422 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseDefault) & {
+export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseError = (publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse400 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse401 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse403 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse404 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse409 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse413 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse415 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse422 | publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1190,7 +1303,7 @@ export const publishWorkspaceV1WorkspacesWorkspaceIdPublishPost = async (workspa
  * @summary Share Workspace
  */
 export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -1219,6 +1332,16 @@ export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse409 = {
   status: 409
 }
 
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1226,13 +1349,13 @@ export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse422 = {
 
 export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseSuccess = (shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse200) & {
   headers: Headers;
 };
-export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseError = (shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse400 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse401 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse403 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse404 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse409 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse422 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseDefault) & {
+export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseError = (shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse400 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse401 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse403 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse404 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse409 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse413 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse415 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse422 | shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1268,58 +1391,68 @@ export const shareWorkspaceV1WorkspacesWorkspaceIdSharePost = async (workspaceId
 
 
 /**
- * @summary Archive Workspace Action
+ * @summary Archive Workspace
  */
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse200 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse200 = {
   data: ArchiveWorkspaceRes
   status: 200
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse400 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse401 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse403 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse404 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse409 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse422 = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseDefault = {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseSuccess = (archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse200) & {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponseSuccess = (archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse200) & {
   headers: Headers;
 };
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseError = (archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse400 | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse401 | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse403 | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse404 | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse409 | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse422 | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseDefault) & {
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponseError = (archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse400 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse401 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse403 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse404 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse409 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse413 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse415 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse422 | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponseDefault) & {
   headers: Headers;
 };
 
-export type archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse = (archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseSuccess | archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponseError)
+export type archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse = (archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponseSuccess | archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponseError)
 
-export const getArchiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostUrl = (workspaceId: string,) => {
+export const getArchiveWorkspaceV1WorkspacesWorkspaceIdArchivePostUrl = (workspaceId: string,) => {
 
 
   
@@ -1327,9 +1460,9 @@ export const getArchiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostUrl = (w
   return `/v1/workspaces/${workspaceId}/archive`
 }
 
-export const archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePost = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse> => {
+export const archiveWorkspaceV1WorkspacesWorkspaceIdArchivePost = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse> => {
   
-  const res = await fetch(getArchiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostUrl(workspaceId),
+  const res = await fetch(getArchiveWorkspaceV1WorkspacesWorkspaceIdArchivePostUrl(workspaceId),
   {      
     ...options,
     method: 'POST'
@@ -1340,8 +1473,8 @@ export const archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePost = async (w
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as archiveWorkspaceActionV1WorkspacesWorkspaceIdArchivePostResponse
+  const data: archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as archiveWorkspaceV1WorkspacesWorkspaceIdArchivePostResponse
 }
 
 
@@ -1380,6 +1513,16 @@ export type listDocumentsV1DocumentsGetResponse409 = {
   status: 409
 }
 
+export type listDocumentsV1DocumentsGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listDocumentsV1DocumentsGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listDocumentsV1DocumentsGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1387,13 +1530,13 @@ export type listDocumentsV1DocumentsGetResponse422 = {
 
 export type listDocumentsV1DocumentsGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listDocumentsV1DocumentsGetResponseSuccess = (listDocumentsV1DocumentsGetResponse200) & {
   headers: Headers;
 };
-export type listDocumentsV1DocumentsGetResponseError = (listDocumentsV1DocumentsGetResponse400 | listDocumentsV1DocumentsGetResponse401 | listDocumentsV1DocumentsGetResponse403 | listDocumentsV1DocumentsGetResponse404 | listDocumentsV1DocumentsGetResponse409 | listDocumentsV1DocumentsGetResponse422 | listDocumentsV1DocumentsGetResponseDefault) & {
+export type listDocumentsV1DocumentsGetResponseError = (listDocumentsV1DocumentsGetResponse400 | listDocumentsV1DocumentsGetResponse401 | listDocumentsV1DocumentsGetResponse403 | listDocumentsV1DocumentsGetResponse404 | listDocumentsV1DocumentsGetResponse409 | listDocumentsV1DocumentsGetResponse413 | listDocumentsV1DocumentsGetResponse415 | listDocumentsV1DocumentsGetResponse422 | listDocumentsV1DocumentsGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -1467,6 +1610,16 @@ export type getDocumentV1DocumentsDocumentIdGetResponse409 = {
   status: 409
 }
 
+export type getDocumentV1DocumentsDocumentIdGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getDocumentV1DocumentsDocumentIdGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type getDocumentV1DocumentsDocumentIdGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1474,13 +1627,13 @@ export type getDocumentV1DocumentsDocumentIdGetResponse422 = {
 
 export type getDocumentV1DocumentsDocumentIdGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type getDocumentV1DocumentsDocumentIdGetResponseSuccess = (getDocumentV1DocumentsDocumentIdGetResponse200) & {
   headers: Headers;
 };
-export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1DocumentsDocumentIdGetResponse400 | getDocumentV1DocumentsDocumentIdGetResponse401 | getDocumentV1DocumentsDocumentIdGetResponse403 | getDocumentV1DocumentsDocumentIdGetResponse404 | getDocumentV1DocumentsDocumentIdGetResponse409 | getDocumentV1DocumentsDocumentIdGetResponse422 | getDocumentV1DocumentsDocumentIdGetResponseDefault) & {
+export type getDocumentV1DocumentsDocumentIdGetResponseError = (getDocumentV1DocumentsDocumentIdGetResponse400 | getDocumentV1DocumentsDocumentIdGetResponse401 | getDocumentV1DocumentsDocumentIdGetResponse403 | getDocumentV1DocumentsDocumentIdGetResponse404 | getDocumentV1DocumentsDocumentIdGetResponse409 | getDocumentV1DocumentsDocumentIdGetResponse413 | getDocumentV1DocumentsDocumentIdGetResponse415 | getDocumentV1DocumentsDocumentIdGetResponse422 | getDocumentV1DocumentsDocumentIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -1556,6 +1709,16 @@ export type deleteDocumentV1DocumentsDocumentIdDeleteResponse409 = {
   status: 409
 }
 
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1563,13 +1726,13 @@ export type deleteDocumentV1DocumentsDocumentIdDeleteResponse422 = {
 
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type deleteDocumentV1DocumentsDocumentIdDeleteResponseSuccess = (deleteDocumentV1DocumentsDocumentIdDeleteResponse200) & {
   headers: Headers;
 };
-export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentV1DocumentsDocumentIdDeleteResponse400 | deleteDocumentV1DocumentsDocumentIdDeleteResponse401 | deleteDocumentV1DocumentsDocumentIdDeleteResponse403 | deleteDocumentV1DocumentsDocumentIdDeleteResponse404 | deleteDocumentV1DocumentsDocumentIdDeleteResponse409 | deleteDocumentV1DocumentsDocumentIdDeleteResponse422 | deleteDocumentV1DocumentsDocumentIdDeleteResponseDefault) & {
+export type deleteDocumentV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentV1DocumentsDocumentIdDeleteResponse400 | deleteDocumentV1DocumentsDocumentIdDeleteResponse401 | deleteDocumentV1DocumentsDocumentIdDeleteResponse403 | deleteDocumentV1DocumentsDocumentIdDeleteResponse404 | deleteDocumentV1DocumentsDocumentIdDeleteResponse409 | deleteDocumentV1DocumentsDocumentIdDeleteResponse413 | deleteDocumentV1DocumentsDocumentIdDeleteResponse415 | deleteDocumentV1DocumentsDocumentIdDeleteResponse422 | deleteDocumentV1DocumentsDocumentIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
@@ -1615,9 +1778,9 @@ export const deleteDocumentV1DocumentsDocumentIdDelete = async (documentId: stri
  * @deprecated
  * @summary Upload Document
  */
-export type uploadDocumentV1DocumentsUploadPostResponse202 = {
+export type uploadDocumentV1DocumentsUploadPostResponse200 = {
   data: UploadDocumentRes
-  status: 202
+  status: 200
 }
 
 export type uploadDocumentV1DocumentsUploadPostResponse400 = {
@@ -1645,6 +1808,16 @@ export type uploadDocumentV1DocumentsUploadPostResponse409 = {
   status: 409
 }
 
+export type uploadDocumentV1DocumentsUploadPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type uploadDocumentV1DocumentsUploadPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type uploadDocumentV1DocumentsUploadPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1652,40 +1825,31 @@ export type uploadDocumentV1DocumentsUploadPostResponse422 = {
 
 export type uploadDocumentV1DocumentsUploadPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type uploadDocumentV1DocumentsUploadPostResponseSuccess = (uploadDocumentV1DocumentsUploadPostResponse202) & {
+export type uploadDocumentV1DocumentsUploadPostResponseSuccess = (uploadDocumentV1DocumentsUploadPostResponse200) & {
   headers: Headers;
 };
-export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1DocumentsUploadPostResponse400 | uploadDocumentV1DocumentsUploadPostResponse401 | uploadDocumentV1DocumentsUploadPostResponse403 | uploadDocumentV1DocumentsUploadPostResponse404 | uploadDocumentV1DocumentsUploadPostResponse409 | uploadDocumentV1DocumentsUploadPostResponse422 | uploadDocumentV1DocumentsUploadPostResponseDefault) & {
+export type uploadDocumentV1DocumentsUploadPostResponseError = (uploadDocumentV1DocumentsUploadPostResponse400 | uploadDocumentV1DocumentsUploadPostResponse401 | uploadDocumentV1DocumentsUploadPostResponse403 | uploadDocumentV1DocumentsUploadPostResponse404 | uploadDocumentV1DocumentsUploadPostResponse409 | uploadDocumentV1DocumentsUploadPostResponse413 | uploadDocumentV1DocumentsUploadPostResponse415 | uploadDocumentV1DocumentsUploadPostResponse422 | uploadDocumentV1DocumentsUploadPostResponseDefault) & {
   headers: Headers;
 };
 
 export type uploadDocumentV1DocumentsUploadPostResponse = (uploadDocumentV1DocumentsUploadPostResponseSuccess | uploadDocumentV1DocumentsUploadPostResponseError)
 
-export const getUploadDocumentV1DocumentsUploadPostUrl = (params: UploadDocumentV1DocumentsUploadPostParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getUploadDocumentV1DocumentsUploadPostUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
+  
 
-  return stringifiedParams.length > 0 ? `/v1/documents/upload?${stringifiedParams}` : `/v1/documents/upload`
+  return `/v1/documents/upload`
 }
 
-export const uploadDocumentV1DocumentsUploadPost = async (bodyUploadDocumentV1DocumentsUploadPost: BodyUploadDocumentV1DocumentsUploadPost,
-    params: UploadDocumentV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
+export const uploadDocumentV1DocumentsUploadPost = async (bodyUploadDocumentV1DocumentsUploadPost: BodyUploadDocumentV1DocumentsUploadPost, options?: RequestInit): Promise<uploadDocumentV1DocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadDocumentV1DocumentsUploadPost.file)
-if(bodyUploadDocumentV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentV1DocumentsUploadPost.title !== null) {
- formData.append(`title`, bodyUploadDocumentV1DocumentsUploadPost.title)
- }
+formData.append(`workspace_id`, bodyUploadDocumentV1DocumentsUploadPost.workspace_id)
+formData.append(`title`, bodyUploadDocumentV1DocumentsUploadPost.title)
 if(bodyUploadDocumentV1DocumentsUploadPost.source !== undefined && bodyUploadDocumentV1DocumentsUploadPost.source !== null) {
  formData.append(`source`, bodyUploadDocumentV1DocumentsUploadPost.source)
  }
@@ -1693,7 +1857,7 @@ if(bodyUploadDocumentV1DocumentsUploadPost.metadata !== undefined && bodyUploadD
  formData.append(`metadata`, bodyUploadDocumentV1DocumentsUploadPost.metadata)
  }
 
-  const res = await fetch(getUploadDocumentV1DocumentsUploadPostUrl(params),
+  const res = await fetch(getUploadDocumentV1DocumentsUploadPostUrl(),
   {      
     ...options,
     method: 'POST'
@@ -1707,6 +1871,97 @@ if(bodyUploadDocumentV1DocumentsUploadPost.metadata !== undefined && bodyUploadD
   
   const data: uploadDocumentV1DocumentsUploadPostResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as uploadDocumentV1DocumentsUploadPostResponse
+}
+
+
+
+/**
+ * @summary Reprocess Workspace Document
+ */
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202 = {
+  data: ReprocessDocumentRes
+  status: 202
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202) & {
+  headers: Headers;
+};
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse413 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse415 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError)
+
+export const getReprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/documents/${documentId}/reprocess`
+}
+
+export const reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPost = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse> => {
+  
+  const res = await fetch(getReprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse
 }
 
 
@@ -1745,6 +2000,16 @@ export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse409 = {
   status: 409
 }
 
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1752,13 +2017,13 @@ export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422 = {
 
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseSuccess = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse202) & {
   headers: Headers;
 };
-export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse400 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse401 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse403 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse404 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse409 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseDefault) & {
+export type reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse400 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse401 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse403 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse404 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse409 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse413 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse415 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponse422 | reprocessDocumentV1DocumentsDocumentIdReprocessPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1834,6 +2099,16 @@ export type ingestTextV1IngestTextPostResponse409 = {
   status: 409
 }
 
+export type ingestTextV1IngestTextPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type ingestTextV1IngestTextPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type ingestTextV1IngestTextPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1841,13 +2116,13 @@ export type ingestTextV1IngestTextPostResponse422 = {
 
 export type ingestTextV1IngestTextPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type ingestTextV1IngestTextPostResponseSuccess = (ingestTextV1IngestTextPostResponse200) & {
   headers: Headers;
 };
-export type ingestTextV1IngestTextPostResponseError = (ingestTextV1IngestTextPostResponse400 | ingestTextV1IngestTextPostResponse401 | ingestTextV1IngestTextPostResponse403 | ingestTextV1IngestTextPostResponse404 | ingestTextV1IngestTextPostResponse409 | ingestTextV1IngestTextPostResponse422 | ingestTextV1IngestTextPostResponseDefault) & {
+export type ingestTextV1IngestTextPostResponseError = (ingestTextV1IngestTextPostResponse400 | ingestTextV1IngestTextPostResponse401 | ingestTextV1IngestTextPostResponse403 | ingestTextV1IngestTextPostResponse404 | ingestTextV1IngestTextPostResponse409 | ingestTextV1IngestTextPostResponse413 | ingestTextV1IngestTextPostResponse415 | ingestTextV1IngestTextPostResponse422 | ingestTextV1IngestTextPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1890,10 +2165,6 @@ export const ingestTextV1IngestTextPost = async (ingestTextReq: IngestTextReq,
 
 
 /**
- * Ingest multiple documents in a single request.
-
-Processes up to 10 documents sequentially.
-Returns results for all successfully ingested documents.
  * @deprecated
  * @summary Ingest Batch
  */
@@ -1927,6 +2198,16 @@ export type ingestBatchV1IngestBatchPostResponse409 = {
   status: 409
 }
 
+export type ingestBatchV1IngestBatchPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type ingestBatchV1IngestBatchPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type ingestBatchV1IngestBatchPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -1934,13 +2215,13 @@ export type ingestBatchV1IngestBatchPostResponse422 = {
 
 export type ingestBatchV1IngestBatchPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type ingestBatchV1IngestBatchPostResponseSuccess = (ingestBatchV1IngestBatchPostResponse200) & {
   headers: Headers;
 };
-export type ingestBatchV1IngestBatchPostResponseError = (ingestBatchV1IngestBatchPostResponse400 | ingestBatchV1IngestBatchPostResponse401 | ingestBatchV1IngestBatchPostResponse403 | ingestBatchV1IngestBatchPostResponse404 | ingestBatchV1IngestBatchPostResponse409 | ingestBatchV1IngestBatchPostResponse422 | ingestBatchV1IngestBatchPostResponseDefault) & {
+export type ingestBatchV1IngestBatchPostResponseError = (ingestBatchV1IngestBatchPostResponse400 | ingestBatchV1IngestBatchPostResponse401 | ingestBatchV1IngestBatchPostResponse403 | ingestBatchV1IngestBatchPostResponse404 | ingestBatchV1IngestBatchPostResponse409 | ingestBatchV1IngestBatchPostResponse413 | ingestBatchV1IngestBatchPostResponse415 | ingestBatchV1IngestBatchPostResponse422 | ingestBatchV1IngestBatchPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -1983,292 +2264,6 @@ export const ingestBatchV1IngestBatchPost = async (ingestBatchReq: IngestBatchRe
 
 
 /**
- * @deprecated
- * @summary Query
- */
-export type queryV1QueryPostResponse200 = {
-  data: QueryRes
-  status: 200
-}
-
-export type queryV1QueryPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type queryV1QueryPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type queryV1QueryPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type queryV1QueryPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type queryV1QueryPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type queryV1QueryPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type queryV1QueryPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type queryV1QueryPostResponseSuccess = (queryV1QueryPostResponse200) & {
-  headers: Headers;
-};
-export type queryV1QueryPostResponseError = (queryV1QueryPostResponse400 | queryV1QueryPostResponse401 | queryV1QueryPostResponse403 | queryV1QueryPostResponse404 | queryV1QueryPostResponse409 | queryV1QueryPostResponse422 | queryV1QueryPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type queryV1QueryPostResponse = (queryV1QueryPostResponseSuccess | queryV1QueryPostResponseError)
-
-export const getQueryV1QueryPostUrl = (params: QueryV1QueryPostParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/v1/query?${stringifiedParams}` : `/v1/query`
-}
-
-export const queryV1QueryPost = async (queryReq: QueryReq,
-    params: QueryV1QueryPostParams, options?: RequestInit): Promise<queryV1QueryPostResponse> => {
-  
-  const res = await fetch(getQueryV1QueryPostUrl(params),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      queryReq,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: queryV1QueryPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as queryV1QueryPostResponse
-}
-
-
-
-/**
- * R: RAG endpoint using Clean Architecture (Use Case pattern).
-
-This endpoint demonstrates the architecture improvement:
-- Business logic in use case (testable, framework-independent)
-- Dependency injection via FastAPI Depends
-- Separation of concerns (HTTP ↔ Business Logic)
-
-Uses the same query contract as /query with a generation step.
-Set use_mmr=true for diverse results (reduces redundant chunks).
- * @deprecated
- * @summary Ask
- */
-export type askV1AskPostResponse200 = {
-  data: AskRes
-  status: 200
-}
-
-export type askV1AskPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type askV1AskPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type askV1AskPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type askV1AskPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type askV1AskPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type askV1AskPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type askV1AskPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type askV1AskPostResponseSuccess = (askV1AskPostResponse200) & {
-  headers: Headers;
-};
-export type askV1AskPostResponseError = (askV1AskPostResponse400 | askV1AskPostResponse401 | askV1AskPostResponse403 | askV1AskPostResponse404 | askV1AskPostResponse409 | askV1AskPostResponse422 | askV1AskPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type askV1AskPostResponse = (askV1AskPostResponseSuccess | askV1AskPostResponseError)
-
-export const getAskV1AskPostUrl = (params: AskV1AskPostParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/v1/ask?${stringifiedParams}` : `/v1/ask`
-}
-
-export const askV1AskPost = async (queryReq: QueryReq,
-    params: AskV1AskPostParams, options?: RequestInit): Promise<askV1AskPostResponse> => {
-  
-  const res = await fetch(getAskV1AskPostUrl(params),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      queryReq,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: askV1AskPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as askV1AskPostResponse
-}
-
-
-
-/**
- * R: Streaming RAG endpoint using Server-Sent Events.
-
-Returns tokens as they are generated by the LLM for better UX.
-Uses the same query contract as /ask but streams the response.
-
-SSE Events:
-- sources: Initial event with retrieved chunks
-- token: Individual tokens as generated
-- done: Final event with complete answer
-- error: Error event if generation fails
- * @deprecated
- * @summary Ask Stream
- */
-export type askStreamV1AskStreamPostResponse200 = {
-  data: unknown
-  status: 200
-}
-
-export type askStreamV1AskStreamPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type askStreamV1AskStreamPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type askStreamV1AskStreamPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type askStreamV1AskStreamPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type askStreamV1AskStreamPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type askStreamV1AskStreamPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type askStreamV1AskStreamPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type askStreamV1AskStreamPostResponseSuccess = (askStreamV1AskStreamPostResponse200) & {
-  headers: Headers;
-};
-export type askStreamV1AskStreamPostResponseError = (askStreamV1AskStreamPostResponse400 | askStreamV1AskStreamPostResponse401 | askStreamV1AskStreamPostResponse403 | askStreamV1AskStreamPostResponse404 | askStreamV1AskStreamPostResponse409 | askStreamV1AskStreamPostResponse422 | askStreamV1AskStreamPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type askStreamV1AskStreamPostResponse = (askStreamV1AskStreamPostResponseSuccess | askStreamV1AskStreamPostResponseError)
-
-export const getAskStreamV1AskStreamPostUrl = (params: AskStreamV1AskStreamPostParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/v1/ask/stream?${stringifiedParams}` : `/v1/ask/stream`
-}
-
-export const askStreamV1AskStreamPost = async (queryReq: QueryReq,
-    params: AskStreamV1AskStreamPostParams, options?: RequestInit): Promise<askStreamV1AskStreamPostResponse> => {
-  
-  const res = await fetch(getAskStreamV1AskStreamPostUrl(params),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      queryReq,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: askStreamV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as askStreamV1AskStreamPostResponse
-}
-
-
-
-/**
  * @summary List Workspace Documents
  */
 export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse200 = {
@@ -2301,6 +2296,16 @@ export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse409
   status: 409
 }
 
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -2308,13 +2313,13 @@ export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse422
 
 export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseSuccess = (listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse200) & {
   headers: Headers;
 };
-export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseError = (listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse400 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse401 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse403 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse404 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse409 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse422 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseDefault) & {
+export type listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseError = (listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse400 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse401 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse403 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse404 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse409 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse413 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse415 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponse422 | listWorkspaceDocumentsV1WorkspacesWorkspaceIdDocumentsGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -2389,6 +2394,16 @@ export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetRes
   status: 409
 }
 
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -2396,13 +2411,13 @@ export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetRes
 
 export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseSuccess = (getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse200) & {
   headers: Headers;
 };
-export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError = (getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse400 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse401 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse403 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse404 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse409 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse422 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault) & {
+export type getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError = (getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse400 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse401 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse403 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse404 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse409 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse413 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse415 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse422 | getWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -2470,6 +2485,16 @@ export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDel
   status: 409
 }
 
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse422 = {
   data: ErrorDetail
   status: 422
@@ -2477,13 +2502,13 @@ export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDel
 
 export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseSuccess = (deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse200) & {
   headers: Headers;
 };
-export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError = (deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse400 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse401 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse403 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse404 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse409 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse422 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault) & {
+export type deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError = (deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse400 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse401 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse403 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse404 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse409 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse413 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse415 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse422 | deleteWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
@@ -2551,6 +2576,16 @@ export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostRes
   status: 409
 }
 
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -2558,13 +2593,13 @@ export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostRes
 
 export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseSuccess = (uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse202) & {
   headers: Headers;
 };
-export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError = (uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse400 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse401 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse403 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse404 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse409 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse422 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault) & {
+export type uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError = (uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse400 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse401 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse403 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse404 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse409 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse413 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse415 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse422 | uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -2582,9 +2617,7 @@ export const uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost =
     bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost, options?: RequestInit): Promise<uploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.file)
-if(bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== undefined && bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== null) {
- formData.append(`title`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title)
- }
+formData.append(`title`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.title)
 if(bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== undefined && bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== null) {
  formData.append(`source`, bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.source)
  }
@@ -2611,244 +2644,298 @@ if(bodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPost.metadat
 
 
 /**
- * @summary Reprocess Workspace Document
+ * @deprecated
+ * @summary Query Compat
  */
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202 = {
-  data: ReprocessDocumentRes
-  status: 202
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202) & {
-  headers: Headers;
-};
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse = (reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess | reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError)
-
-export const getReprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl = (workspaceId: string,
-    documentId: string,) => {
-
-
-  
-
-  return `/v1/workspaces/${workspaceId}/documents/${documentId}/reprocess`
-}
-
-export const reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPost = async (workspaceId: string,
-    documentId: string, options?: RequestInit): Promise<reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse> => {
-  
-  const res = await fetch(getReprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl(workspaceId,documentId),
-  {      
-    ...options,
-    method: 'POST'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as reprocessWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse
-}
-
-
-
-/**
- * @summary Ingest Workspace Text
- */
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse200 = {
-  data: IngestTextRes
+export type queryCompatV1QueryPostResponse200 = {
+  data: QueryRes
   status: 200
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse400 = {
+export type queryCompatV1QueryPostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse401 = {
+export type queryCompatV1QueryPostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse403 = {
+export type queryCompatV1QueryPostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse404 = {
+export type queryCompatV1QueryPostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse409 = {
+export type queryCompatV1QueryPostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse422 = {
+export type queryCompatV1QueryPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type queryCompatV1QueryPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type queryCompatV1QueryPostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseDefault = {
+export type queryCompatV1QueryPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess = (ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse200) & {
+export type queryCompatV1QueryPostResponseSuccess = (queryCompatV1QueryPostResponse200) & {
   headers: Headers;
 };
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseError = (ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse400 | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse401 | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse403 | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse404 | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse409 | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse422 | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseDefault) & {
+export type queryCompatV1QueryPostResponseError = (queryCompatV1QueryPostResponse400 | queryCompatV1QueryPostResponse401 | queryCompatV1QueryPostResponse403 | queryCompatV1QueryPostResponse404 | queryCompatV1QueryPostResponse409 | queryCompatV1QueryPostResponse413 | queryCompatV1QueryPostResponse415 | queryCompatV1QueryPostResponse422 | queryCompatV1QueryPostResponseDefault) & {
   headers: Headers;
 };
 
-export type ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse = (ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess | ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponseError)
+export type queryCompatV1QueryPostResponse = (queryCompatV1QueryPostResponseSuccess | queryCompatV1QueryPostResponseError)
 
-export const getIngestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostUrl = (workspaceId: string,) => {
+export const getQueryCompatV1QueryPostUrl = (params: QueryCompatV1QueryPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/workspaces/${workspaceId}/ingest/text`
+  return stringifiedParams.length > 0 ? `/v1/query?${stringifiedParams}` : `/v1/query`
 }
 
-export const ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPost = async (workspaceId: string,
-    ingestTextReq: IngestTextReq, options?: RequestInit): Promise<ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse> => {
+export const queryCompatV1QueryPost = async (queryReq: QueryReq,
+    params: QueryCompatV1QueryPostParams, options?: RequestInit): Promise<queryCompatV1QueryPostResponse> => {
   
-  const res = await fetch(getIngestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostUrl(workspaceId),
+  const res = await fetch(getQueryCompatV1QueryPostUrl(params),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      ingestTextReq,)
+      queryReq,)
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as ingestWorkspaceTextV1WorkspacesWorkspaceIdIngestTextPostResponse
+  const data: queryCompatV1QueryPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as queryCompatV1QueryPostResponse
 }
 
 
 
 /**
- * @summary Ingest Workspace Batch
+ * @deprecated
+ * @summary Ask Compat
  */
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse200 = {
-  data: IngestBatchRes
+export type askCompatV1AskPostResponse200 = {
+  data: AskRes
   status: 200
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse400 = {
+export type askCompatV1AskPostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse401 = {
+export type askCompatV1AskPostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse403 = {
+export type askCompatV1AskPostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse404 = {
+export type askCompatV1AskPostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse409 = {
+export type askCompatV1AskPostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse422 = {
+export type askCompatV1AskPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askCompatV1AskPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type askCompatV1AskPostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault = {
+export type askCompatV1AskPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess = (ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse200) & {
+export type askCompatV1AskPostResponseSuccess = (askCompatV1AskPostResponse200) & {
   headers: Headers;
 };
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseError = (ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse400 | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse401 | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse403 | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse404 | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse409 | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse422 | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault) & {
+export type askCompatV1AskPostResponseError = (askCompatV1AskPostResponse400 | askCompatV1AskPostResponse401 | askCompatV1AskPostResponse403 | askCompatV1AskPostResponse404 | askCompatV1AskPostResponse409 | askCompatV1AskPostResponse413 | askCompatV1AskPostResponse415 | askCompatV1AskPostResponse422 | askCompatV1AskPostResponseDefault) & {
   headers: Headers;
 };
 
-export type ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse = (ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess | ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponseError)
+export type askCompatV1AskPostResponse = (askCompatV1AskPostResponseSuccess | askCompatV1AskPostResponseError)
 
-export const getIngestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostUrl = (workspaceId: string,) => {
+export const getAskCompatV1AskPostUrl = (params: AskCompatV1AskPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/workspaces/${workspaceId}/ingest/batch`
+  return stringifiedParams.length > 0 ? `/v1/ask?${stringifiedParams}` : `/v1/ask`
 }
 
-export const ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPost = async (workspaceId: string,
-    ingestBatchReq: IngestBatchReq, options?: RequestInit): Promise<ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse> => {
+export const askCompatV1AskPost = async (askReq: AskReq,
+    params: AskCompatV1AskPostParams, options?: RequestInit): Promise<askCompatV1AskPostResponse> => {
   
-  const res = await fetch(getIngestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostUrl(workspaceId),
+  const res = await fetch(getAskCompatV1AskPostUrl(params),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      ingestBatchReq,)
+      askReq,)
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as ingestWorkspaceBatchV1WorkspacesWorkspaceIdIngestBatchPostResponse
+  const data: askCompatV1AskPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askCompatV1AskPostResponse
+}
+
+
+
+/**
+ * @deprecated
+ * @summary Ask Stream Compat
+ */
+export type askStreamCompatV1AskStreamPostResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type askStreamCompatV1AskStreamPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type askStreamCompatV1AskStreamPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type askStreamCompatV1AskStreamPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type askStreamCompatV1AskStreamPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type askStreamCompatV1AskStreamPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type askStreamCompatV1AskStreamPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askStreamCompatV1AskStreamPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type askStreamCompatV1AskStreamPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type askStreamCompatV1AskStreamPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type askStreamCompatV1AskStreamPostResponseSuccess = (askStreamCompatV1AskStreamPostResponse200) & {
+  headers: Headers;
+};
+export type askStreamCompatV1AskStreamPostResponseError = (askStreamCompatV1AskStreamPostResponse400 | askStreamCompatV1AskStreamPostResponse401 | askStreamCompatV1AskStreamPostResponse403 | askStreamCompatV1AskStreamPostResponse404 | askStreamCompatV1AskStreamPostResponse409 | askStreamCompatV1AskStreamPostResponse413 | askStreamCompatV1AskStreamPostResponse415 | askStreamCompatV1AskStreamPostResponse422 | askStreamCompatV1AskStreamPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type askStreamCompatV1AskStreamPostResponse = (askStreamCompatV1AskStreamPostResponseSuccess | askStreamCompatV1AskStreamPostResponseError)
+
+export const getAskStreamCompatV1AskStreamPostUrl = (params: AskStreamCompatV1AskStreamPostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/ask/stream?${stringifiedParams}` : `/v1/ask/stream`
+}
+
+export const askStreamCompatV1AskStreamPost = async (queryReq: QueryReq,
+    params: AskStreamCompatV1AskStreamPostParams, options?: RequestInit): Promise<askStreamCompatV1AskStreamPostResponse> => {
+  
+  const res = await fetch(getAskStreamCompatV1AskStreamPostUrl(params),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askStreamCompatV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askStreamCompatV1AskStreamPostResponse
 }
 
 
@@ -2886,6 +2973,16 @@ export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse409 = {
   status: 409
 }
 
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -2893,13 +2990,13 @@ export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse422 = {
 
 export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseSuccess = (queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse200) & {
   headers: Headers;
 };
-export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseError = (queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse400 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse401 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse403 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse404 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse409 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse422 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseDefault) & {
+export type queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseError = (queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse400 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse401 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse403 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse404 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse409 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse413 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse415 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponse422 | queryWorkspaceV1WorkspacesWorkspaceIdQueryPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -2967,6 +3064,16 @@ export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse409 = {
   status: 409
 }
 
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -2974,13 +3081,13 @@ export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse422 = {
 
 export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseSuccess = (askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse200) & {
   headers: Headers;
 };
-export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseError = (askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse400 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse401 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse403 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse404 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse409 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse422 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseDefault) & {
+export type askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseError = (askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse400 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse401 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse403 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse404 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse409 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse413 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse415 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse422 | askWorkspaceV1WorkspacesWorkspaceIdAskPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -2995,7 +3102,7 @@ export const getAskWorkspaceV1WorkspacesWorkspaceIdAskPostUrl = (workspaceId: st
 }
 
 export const askWorkspaceV1WorkspacesWorkspaceIdAskPost = async (workspaceId: string,
-    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse> => {
+    askReq: AskReq, options?: RequestInit): Promise<askWorkspaceV1WorkspacesWorkspaceIdAskPostResponse> => {
   
   const res = await fetch(getAskWorkspaceV1WorkspacesWorkspaceIdAskPostUrl(workspaceId),
   {      
@@ -3003,7 +3110,7 @@ export const askWorkspaceV1WorkspacesWorkspaceIdAskPost = async (workspaceId: st
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      queryReq,)
+      askReq,)
   }
 )
 
@@ -3016,58 +3123,68 @@ export const askWorkspaceV1WorkspacesWorkspaceIdAskPost = async (workspaceId: st
 
 
 /**
- * @summary Ask Workspace Stream
+ * @summary Ask Stream Workspace
  */
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse200 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse200 = {
   data: unknown
   status: 200
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse400 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse401 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse403 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse404 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse409 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse422 = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseDefault = {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess = (askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse200) & {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess = (askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse200) & {
   headers: Headers;
 };
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseError = (askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse400 | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse401 | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse403 | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse404 | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse409 | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse422 | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseDefault) & {
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponseError = (askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse400 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse401 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse403 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse404 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse409 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse413 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse415 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse422 | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponseDefault) & {
   headers: Headers;
 };
 
-export type askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse = (askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess | askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponseError)
+export type askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse = (askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess | askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponseError)
 
-export const getAskWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostUrl = (workspaceId: string,) => {
+export const getAskStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostUrl = (workspaceId: string,) => {
 
 
   
@@ -3075,10 +3192,10 @@ export const getAskWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostUrl = (wor
   return `/v1/workspaces/${workspaceId}/ask/stream`
 }
 
-export const askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPost = async (workspaceId: string,
-    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse> => {
+export const askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse> => {
   
-  const res = await fetch(getAskWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostUrl(workspaceId),
+  const res = await fetch(getAskStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostUrl(workspaceId),
   {      
     ...options,
     method: 'POST',
@@ -3090,8 +3207,8 @@ export const askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPost = async (wor
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as askWorkspaceStreamV1WorkspacesWorkspaceIdAskStreamPostResponse
+  const data: askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse
 }
 
 
@@ -3129,6 +3246,16 @@ export type listAuditEventsV1AdminAuditGetResponse409 = {
   status: 409
 }
 
+export type listAuditEventsV1AdminAuditGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listAuditEventsV1AdminAuditGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listAuditEventsV1AdminAuditGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3136,19 +3263,19 @@ export type listAuditEventsV1AdminAuditGetResponse422 = {
 
 export type listAuditEventsV1AdminAuditGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listAuditEventsV1AdminAuditGetResponseSuccess = (listAuditEventsV1AdminAuditGetResponse200) & {
   headers: Headers;
 };
-export type listAuditEventsV1AdminAuditGetResponseError = (listAuditEventsV1AdminAuditGetResponse400 | listAuditEventsV1AdminAuditGetResponse401 | listAuditEventsV1AdminAuditGetResponse403 | listAuditEventsV1AdminAuditGetResponse404 | listAuditEventsV1AdminAuditGetResponse409 | listAuditEventsV1AdminAuditGetResponse422 | listAuditEventsV1AdminAuditGetResponseDefault) & {
+export type listAuditEventsV1AdminAuditGetResponseError = (listAuditEventsV1AdminAuditGetResponse400 | listAuditEventsV1AdminAuditGetResponse401 | listAuditEventsV1AdminAuditGetResponse403 | listAuditEventsV1AdminAuditGetResponse404 | listAuditEventsV1AdminAuditGetResponse409 | listAuditEventsV1AdminAuditGetResponse413 | listAuditEventsV1AdminAuditGetResponse415 | listAuditEventsV1AdminAuditGetResponse422 | listAuditEventsV1AdminAuditGetResponseDefault) & {
   headers: Headers;
 };
 
 export type listAuditEventsV1AdminAuditGetResponse = (listAuditEventsV1AdminAuditGetResponseSuccess | listAuditEventsV1AdminAuditGetResponseError)
 
-export const getListAuditEventsV1AdminAuditGetUrl = (params?: ListAuditEventsV1AdminAuditGetParams,) => {
+export const getListAuditEventsV1AdminAuditGetUrl = (params: ListAuditEventsV1AdminAuditGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -3163,7 +3290,7 @@ export const getListAuditEventsV1AdminAuditGetUrl = (params?: ListAuditEventsV1A
   return stringifiedParams.length > 0 ? `/v1/admin/audit?${stringifiedParams}` : `/v1/admin/audit`
 }
 
-export const listAuditEventsV1AdminAuditGet = async (params?: ListAuditEventsV1AdminAuditGetParams, options?: RequestInit): Promise<listAuditEventsV1AdminAuditGetResponse> => {
+export const listAuditEventsV1AdminAuditGet = async (params: ListAuditEventsV1AdminAuditGetParams, options?: RequestInit): Promise<listAuditEventsV1AdminAuditGetResponse> => {
   
   const res = await fetch(getListAuditEventsV1AdminAuditGetUrl(params),
   {      
@@ -3183,6 +3310,9 @@ export const listAuditEventsV1AdminAuditGet = async (params?: ListAuditEventsV1A
 
 
 /**
+ * Inicia sesión y devuelve JWT.
+
+- Si hay cookie habilitada, también setea cookie httpOnly.
  * @summary Login
  */
 export type loginAuthLoginPostResponse200 = {
@@ -3215,6 +3345,16 @@ export type loginAuthLoginPostResponse409 = {
   status: 409
 }
 
+export type loginAuthLoginPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type loginAuthLoginPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type loginAuthLoginPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3222,13 +3362,13 @@ export type loginAuthLoginPostResponse422 = {
 
 export type loginAuthLoginPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type loginAuthLoginPostResponseSuccess = (loginAuthLoginPostResponse200) & {
   headers: Headers;
 };
-export type loginAuthLoginPostResponseError = (loginAuthLoginPostResponse400 | loginAuthLoginPostResponse401 | loginAuthLoginPostResponse403 | loginAuthLoginPostResponse404 | loginAuthLoginPostResponse409 | loginAuthLoginPostResponse422 | loginAuthLoginPostResponseDefault) & {
+export type loginAuthLoginPostResponseError = (loginAuthLoginPostResponse400 | loginAuthLoginPostResponse401 | loginAuthLoginPostResponse403 | loginAuthLoginPostResponse404 | loginAuthLoginPostResponse409 | loginAuthLoginPostResponse413 | loginAuthLoginPostResponse415 | loginAuthLoginPostResponse422 | loginAuthLoginPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -3263,85 +3403,10 @@ export const loginAuthLoginPost = async (loginRequest: LoginRequest, options?: R
 
 
 /**
- * @summary Me
- */
-export type meAuthMeGetResponse200 = {
-  data: UserResponse
-  status: 200
-}
+ * Cierra sesión.
 
-export type meAuthMeGetResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type meAuthMeGetResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type meAuthMeGetResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type meAuthMeGetResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type meAuthMeGetResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type meAuthMeGetResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type meAuthMeGetResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type meAuthMeGetResponseSuccess = (meAuthMeGetResponse200) & {
-  headers: Headers;
-};
-export type meAuthMeGetResponseError = (meAuthMeGetResponse400 | meAuthMeGetResponse401 | meAuthMeGetResponse403 | meAuthMeGetResponse404 | meAuthMeGetResponse409 | meAuthMeGetResponse422 | meAuthMeGetResponseDefault) & {
-  headers: Headers;
-};
-
-export type meAuthMeGetResponse = (meAuthMeGetResponseSuccess | meAuthMeGetResponseError)
-
-export const getMeAuthMeGetUrl = () => {
-
-
-  
-
-  return `/auth/me`
-}
-
-export const meAuthMeGet = async ( options?: RequestInit): Promise<meAuthMeGetResponse> => {
-  
-  const res = await fetch(getMeAuthMeGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: meAuthMeGetResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as meAuthMeGetResponse
-}
-
-
-
-/**
+- Siempre borra la cookie (si estaba presente).
+- No requiere autenticación: es idempotente y seguro.
  * @summary Logout
  */
 export type logoutAuthLogoutPostResponse200 = {
@@ -3374,6 +3439,16 @@ export type logoutAuthLogoutPostResponse409 = {
   status: 409
 }
 
+export type logoutAuthLogoutPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type logoutAuthLogoutPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type logoutAuthLogoutPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3381,13 +3456,13 @@ export type logoutAuthLogoutPostResponse422 = {
 
 export type logoutAuthLogoutPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type logoutAuthLogoutPostResponseSuccess = (logoutAuthLogoutPostResponse200) & {
   headers: Headers;
 };
-export type logoutAuthLogoutPostResponseError = (logoutAuthLogoutPostResponse400 | logoutAuthLogoutPostResponse401 | logoutAuthLogoutPostResponse403 | logoutAuthLogoutPostResponse404 | logoutAuthLogoutPostResponse409 | logoutAuthLogoutPostResponse422 | logoutAuthLogoutPostResponseDefault) & {
+export type logoutAuthLogoutPostResponseError = (logoutAuthLogoutPostResponse400 | logoutAuthLogoutPostResponse401 | logoutAuthLogoutPostResponse403 | logoutAuthLogoutPostResponse404 | logoutAuthLogoutPostResponse409 | logoutAuthLogoutPostResponse413 | logoutAuthLogoutPostResponse415 | logoutAuthLogoutPostResponse422 | logoutAuthLogoutPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -3421,10 +3496,101 @@ export const logoutAuthLogoutPost = async ( options?: RequestInit): Promise<logo
 
 
 /**
+ * Devuelve el usuario autenticado (JWT o cookie).
+ * @summary Me
+ */
+export type meAuthMeGetResponse200 = {
+  data: UserResponse
+  status: 200
+}
+
+export type meAuthMeGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type meAuthMeGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type meAuthMeGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type meAuthMeGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type meAuthMeGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type meAuthMeGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type meAuthMeGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type meAuthMeGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type meAuthMeGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type meAuthMeGetResponseSuccess = (meAuthMeGetResponse200) & {
+  headers: Headers;
+};
+export type meAuthMeGetResponseError = (meAuthMeGetResponse400 | meAuthMeGetResponse401 | meAuthMeGetResponse403 | meAuthMeGetResponse404 | meAuthMeGetResponse409 | meAuthMeGetResponse413 | meAuthMeGetResponse415 | meAuthMeGetResponse422 | meAuthMeGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type meAuthMeGetResponse = (meAuthMeGetResponseSuccess | meAuthMeGetResponseError)
+
+export const getMeAuthMeGetUrl = () => {
+
+
+  
+
+  return `/auth/me`
+}
+
+export const meAuthMeGet = async ( options?: RequestInit): Promise<meAuthMeGetResponse> => {
+  
+  const res = await fetch(getMeAuthMeGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: meAuthMeGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as meAuthMeGetResponse
+}
+
+
+
+/**
+ * Lista usuarios (admin).
  * @summary List Users Admin
  */
 export type listUsersAdminAuthUsersGetResponse200 = {
-  data: UsersListResponse
+  data: UserResponse[]
   status: 200
 }
 
@@ -3453,6 +3619,16 @@ export type listUsersAdminAuthUsersGetResponse409 = {
   status: 409
 }
 
+export type listUsersAdminAuthUsersGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listUsersAdminAuthUsersGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listUsersAdminAuthUsersGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3460,29 +3636,36 @@ export type listUsersAdminAuthUsersGetResponse422 = {
 
 export type listUsersAdminAuthUsersGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listUsersAdminAuthUsersGetResponseSuccess = (listUsersAdminAuthUsersGetResponse200) & {
   headers: Headers;
 };
-export type listUsersAdminAuthUsersGetResponseError = (listUsersAdminAuthUsersGetResponse400 | listUsersAdminAuthUsersGetResponse401 | listUsersAdminAuthUsersGetResponse403 | listUsersAdminAuthUsersGetResponse404 | listUsersAdminAuthUsersGetResponse409 | listUsersAdminAuthUsersGetResponse422 | listUsersAdminAuthUsersGetResponseDefault) & {
+export type listUsersAdminAuthUsersGetResponseError = (listUsersAdminAuthUsersGetResponse400 | listUsersAdminAuthUsersGetResponse401 | listUsersAdminAuthUsersGetResponse403 | listUsersAdminAuthUsersGetResponse404 | listUsersAdminAuthUsersGetResponse409 | listUsersAdminAuthUsersGetResponse413 | listUsersAdminAuthUsersGetResponse415 | listUsersAdminAuthUsersGetResponse422 | listUsersAdminAuthUsersGetResponseDefault) & {
   headers: Headers;
 };
 
 export type listUsersAdminAuthUsersGetResponse = (listUsersAdminAuthUsersGetResponseSuccess | listUsersAdminAuthUsersGetResponseError)
 
-export const getListUsersAdminAuthUsersGetUrl = () => {
+export const getListUsersAdminAuthUsersGetUrl = (params?: ListUsersAdminAuthUsersGetParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/auth/users`
+  return stringifiedParams.length > 0 ? `/auth/users?${stringifiedParams}` : `/auth/users`
 }
 
-export const listUsersAdminAuthUsersGet = async ( options?: RequestInit): Promise<listUsersAdminAuthUsersGetResponse> => {
+export const listUsersAdminAuthUsersGet = async (params?: ListUsersAdminAuthUsersGetParams, options?: RequestInit): Promise<listUsersAdminAuthUsersGetResponse> => {
   
-  const res = await fetch(getListUsersAdminAuthUsersGetUrl(),
+  const res = await fetch(getListUsersAdminAuthUsersGetUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -3500,6 +3683,7 @@ export const listUsersAdminAuthUsersGet = async ( options?: RequestInit): Promis
 
 
 /**
+ * Crea un usuario (admin).
  * @summary Create User Admin
  */
 export type createUserAdminAuthUsersPostResponse201 = {
@@ -3532,6 +3716,16 @@ export type createUserAdminAuthUsersPostResponse409 = {
   status: 409
 }
 
+export type createUserAdminAuthUsersPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type createUserAdminAuthUsersPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type createUserAdminAuthUsersPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3539,13 +3733,13 @@ export type createUserAdminAuthUsersPostResponse422 = {
 
 export type createUserAdminAuthUsersPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type createUserAdminAuthUsersPostResponseSuccess = (createUserAdminAuthUsersPostResponse201) & {
   headers: Headers;
 };
-export type createUserAdminAuthUsersPostResponseError = (createUserAdminAuthUsersPostResponse400 | createUserAdminAuthUsersPostResponse401 | createUserAdminAuthUsersPostResponse403 | createUserAdminAuthUsersPostResponse404 | createUserAdminAuthUsersPostResponse409 | createUserAdminAuthUsersPostResponse422 | createUserAdminAuthUsersPostResponseDefault) & {
+export type createUserAdminAuthUsersPostResponseError = (createUserAdminAuthUsersPostResponse400 | createUserAdminAuthUsersPostResponse401 | createUserAdminAuthUsersPostResponse403 | createUserAdminAuthUsersPostResponse404 | createUserAdminAuthUsersPostResponse409 | createUserAdminAuthUsersPostResponse413 | createUserAdminAuthUsersPostResponse415 | createUserAdminAuthUsersPostResponse422 | createUserAdminAuthUsersPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -3580,6 +3774,7 @@ export const createUserAdminAuthUsersPost = async (createUserRequest: CreateUser
 
 
 /**
+ * Desactiva un usuario (admin).
  * @summary Disable User Admin
  */
 export type disableUserAdminAuthUsersUserIdDisablePostResponse200 = {
@@ -3612,6 +3807,16 @@ export type disableUserAdminAuthUsersUserIdDisablePostResponse409 = {
   status: 409
 }
 
+export type disableUserAdminAuthUsersUserIdDisablePostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type disableUserAdminAuthUsersUserIdDisablePostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type disableUserAdminAuthUsersUserIdDisablePostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3619,13 +3824,13 @@ export type disableUserAdminAuthUsersUserIdDisablePostResponse422 = {
 
 export type disableUserAdminAuthUsersUserIdDisablePostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type disableUserAdminAuthUsersUserIdDisablePostResponseSuccess = (disableUserAdminAuthUsersUserIdDisablePostResponse200) & {
   headers: Headers;
 };
-export type disableUserAdminAuthUsersUserIdDisablePostResponseError = (disableUserAdminAuthUsersUserIdDisablePostResponse400 | disableUserAdminAuthUsersUserIdDisablePostResponse401 | disableUserAdminAuthUsersUserIdDisablePostResponse403 | disableUserAdminAuthUsersUserIdDisablePostResponse404 | disableUserAdminAuthUsersUserIdDisablePostResponse409 | disableUserAdminAuthUsersUserIdDisablePostResponse422 | disableUserAdminAuthUsersUserIdDisablePostResponseDefault) & {
+export type disableUserAdminAuthUsersUserIdDisablePostResponseError = (disableUserAdminAuthUsersUserIdDisablePostResponse400 | disableUserAdminAuthUsersUserIdDisablePostResponse401 | disableUserAdminAuthUsersUserIdDisablePostResponse403 | disableUserAdminAuthUsersUserIdDisablePostResponse404 | disableUserAdminAuthUsersUserIdDisablePostResponse409 | disableUserAdminAuthUsersUserIdDisablePostResponse413 | disableUserAdminAuthUsersUserIdDisablePostResponse415 | disableUserAdminAuthUsersUserIdDisablePostResponse422 | disableUserAdminAuthUsersUserIdDisablePostResponseDefault) & {
   headers: Headers;
 };
 
@@ -3659,6 +3864,7 @@ export const disableUserAdminAuthUsersUserIdDisablePost = async (userId: string,
 
 
 /**
+ * Resetea contraseña (admin).
  * @summary Reset Password Admin
  */
 export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse200 = {
@@ -3691,6 +3897,16 @@ export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse409 = {
   status: 409
 }
 
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3698,13 +3914,13 @@ export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse422 = {
 
 export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseSuccess = (resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse200) & {
   headers: Headers;
 };
-export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseError = (resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse400 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse401 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse403 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse404 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse409 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse422 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseDefault) & {
+export type resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseError = (resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse400 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse401 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse403 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse404 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse409 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse413 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse415 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponse422 | resetPasswordAdminAuthUsersUserIdResetPasswordPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -3740,8 +3956,12 @@ export const resetPasswordAdminAuthUsersUserIdResetPasswordPost = async (userId:
 
 
 /**
- * ADR-008: Admin can create a workspace and assign it to a specific user.
- * @summary Create workspace for user (admin-only)
+ * Crea un workspace asignando owner_user_id explícito.
+
+Reglas:
+  - Solo admin.
+  - Visibilidad inicial: PRIVATE (evita exposición accidental).
+ * @summary Crear workspace para usuario (admin)
  */
 export type adminCreateWorkspaceAdminWorkspacesPostResponse201 = {
   data: WorkspaceRes
@@ -3773,6 +3993,16 @@ export type adminCreateWorkspaceAdminWorkspacesPostResponse409 = {
   status: 409
 }
 
+export type adminCreateWorkspaceAdminWorkspacesPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type adminCreateWorkspaceAdminWorkspacesPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type adminCreateWorkspaceAdminWorkspacesPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3780,13 +4010,13 @@ export type adminCreateWorkspaceAdminWorkspacesPostResponse422 = {
 
 export type adminCreateWorkspaceAdminWorkspacesPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type adminCreateWorkspaceAdminWorkspacesPostResponseSuccess = (adminCreateWorkspaceAdminWorkspacesPostResponse201) & {
   headers: Headers;
 };
-export type adminCreateWorkspaceAdminWorkspacesPostResponseError = (adminCreateWorkspaceAdminWorkspacesPostResponse400 | adminCreateWorkspaceAdminWorkspacesPostResponse401 | adminCreateWorkspaceAdminWorkspacesPostResponse403 | adminCreateWorkspaceAdminWorkspacesPostResponse404 | adminCreateWorkspaceAdminWorkspacesPostResponse409 | adminCreateWorkspaceAdminWorkspacesPostResponse422 | adminCreateWorkspaceAdminWorkspacesPostResponseDefault) & {
+export type adminCreateWorkspaceAdminWorkspacesPostResponseError = (adminCreateWorkspaceAdminWorkspacesPostResponse400 | adminCreateWorkspaceAdminWorkspacesPostResponse401 | adminCreateWorkspaceAdminWorkspacesPostResponse403 | adminCreateWorkspaceAdminWorkspacesPostResponse404 | adminCreateWorkspaceAdminWorkspacesPostResponse409 | adminCreateWorkspaceAdminWorkspacesPostResponse413 | adminCreateWorkspaceAdminWorkspacesPostResponse415 | adminCreateWorkspaceAdminWorkspacesPostResponse422 | adminCreateWorkspaceAdminWorkspacesPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -3821,8 +4051,8 @@ export const adminCreateWorkspaceAdminWorkspacesPost = async (adminCreateWorkspa
 
 
 /**
- * ADR-008: Admin can view all workspaces owned by a specific user.
- * @summary List workspaces for user (admin-only)
+ * Lista workspaces cuyo owner_user_id coincide con user_id.
+ * @summary Listar workspaces por usuario (admin)
  */
 export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse200 = {
   data: AppApiAdminRoutesWorkspacesListRes
@@ -3854,6 +4084,16 @@ export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse409 = {
   status: 409
 }
 
+export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3861,13 +4101,13 @@ export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse422 = {
 
 export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponseSuccess = (adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse200) & {
   headers: Headers;
 };
-export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponseError = (adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse400 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse401 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse403 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse404 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse409 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse422 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponseDefault) & {
+export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponseError = (adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse400 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse401 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse403 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse404 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse409 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse413 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse415 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse422 | adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -3942,6 +4182,16 @@ export type listWorkspacesApiV1WorkspacesGetResponse409 = {
   status: 409
 }
 
+export type listWorkspacesApiV1WorkspacesGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listWorkspacesApiV1WorkspacesGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listWorkspacesApiV1WorkspacesGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -3949,13 +4199,13 @@ export type listWorkspacesApiV1WorkspacesGetResponse422 = {
 
 export type listWorkspacesApiV1WorkspacesGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listWorkspacesApiV1WorkspacesGetResponseSuccess = (listWorkspacesApiV1WorkspacesGetResponse200) & {
   headers: Headers;
 };
-export type listWorkspacesApiV1WorkspacesGetResponseError = (listWorkspacesApiV1WorkspacesGetResponse400 | listWorkspacesApiV1WorkspacesGetResponse401 | listWorkspacesApiV1WorkspacesGetResponse403 | listWorkspacesApiV1WorkspacesGetResponse404 | listWorkspacesApiV1WorkspacesGetResponse409 | listWorkspacesApiV1WorkspacesGetResponse422 | listWorkspacesApiV1WorkspacesGetResponseDefault) & {
+export type listWorkspacesApiV1WorkspacesGetResponseError = (listWorkspacesApiV1WorkspacesGetResponse400 | listWorkspacesApiV1WorkspacesGetResponse401 | listWorkspacesApiV1WorkspacesGetResponse403 | listWorkspacesApiV1WorkspacesGetResponse404 | listWorkspacesApiV1WorkspacesGetResponse409 | listWorkspacesApiV1WorkspacesGetResponse413 | listWorkspacesApiV1WorkspacesGetResponse415 | listWorkspacesApiV1WorkspacesGetResponse422 | listWorkspacesApiV1WorkspacesGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -3999,7 +4249,7 @@ export const listWorkspacesApiV1WorkspacesGet = async (params?: ListWorkspacesAp
  * @summary Create Workspace
  */
 export type createWorkspaceApiV1WorkspacesPostResponse201 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 201
 }
 
@@ -4028,6 +4278,16 @@ export type createWorkspaceApiV1WorkspacesPostResponse409 = {
   status: 409
 }
 
+export type createWorkspaceApiV1WorkspacesPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type createWorkspaceApiV1WorkspacesPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type createWorkspaceApiV1WorkspacesPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4035,13 +4295,13 @@ export type createWorkspaceApiV1WorkspacesPostResponse422 = {
 
 export type createWorkspaceApiV1WorkspacesPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type createWorkspaceApiV1WorkspacesPostResponseSuccess = (createWorkspaceApiV1WorkspacesPostResponse201) & {
   headers: Headers;
 };
-export type createWorkspaceApiV1WorkspacesPostResponseError = (createWorkspaceApiV1WorkspacesPostResponse400 | createWorkspaceApiV1WorkspacesPostResponse401 | createWorkspaceApiV1WorkspacesPostResponse403 | createWorkspaceApiV1WorkspacesPostResponse404 | createWorkspaceApiV1WorkspacesPostResponse409 | createWorkspaceApiV1WorkspacesPostResponse422 | createWorkspaceApiV1WorkspacesPostResponseDefault) & {
+export type createWorkspaceApiV1WorkspacesPostResponseError = (createWorkspaceApiV1WorkspacesPostResponse400 | createWorkspaceApiV1WorkspacesPostResponse401 | createWorkspaceApiV1WorkspacesPostResponse403 | createWorkspaceApiV1WorkspacesPostResponse404 | createWorkspaceApiV1WorkspacesPostResponse409 | createWorkspaceApiV1WorkspacesPostResponse413 | createWorkspaceApiV1WorkspacesPostResponse415 | createWorkspaceApiV1WorkspacesPostResponse422 | createWorkspaceApiV1WorkspacesPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -4079,7 +4339,7 @@ export const createWorkspaceApiV1WorkspacesPost = async (createWorkspaceReq: Cre
  * @summary Get Workspace
  */
 export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -4108,6 +4368,16 @@ export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse409 = {
   status: 409
 }
 
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4115,13 +4385,13 @@ export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse422 = {
 
 export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseSuccess = (getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse200) & {
   headers: Headers;
 };
-export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseError = (getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse400 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse401 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse403 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse404 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse409 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse422 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseDefault) & {
+export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseError = (getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse400 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse401 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse403 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse404 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse409 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse413 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse415 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse422 | getWorkspaceApiV1WorkspacesWorkspaceIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -4158,7 +4428,7 @@ export const getWorkspaceApiV1WorkspacesWorkspaceIdGet = async (workspaceId: str
  * @summary Update Workspace
  */
 export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -4187,6 +4457,16 @@ export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse409 = {
   status: 409
 }
 
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4194,13 +4474,13 @@ export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse422 = {
 
 export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseSuccess = (updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse200) & {
   headers: Headers;
 };
-export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseError = (updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse400 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse401 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse403 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse404 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse409 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse422 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseDefault) & {
+export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseError = (updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse400 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse401 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse403 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse404 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse409 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse413 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse415 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse422 | updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponseDefault) & {
   headers: Headers;
 };
 
@@ -4236,58 +4516,69 @@ export const updateWorkspaceApiV1WorkspacesWorkspaceIdPatch = async (workspaceId
 
 
 /**
- * @summary Archive Workspace
+ * Delete lógico (alias de archive). No se borra físicamente.
+ * @summary Delete Workspace
  */
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200 = {
   data: ArchiveWorkspaceRes
   status: 200
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse400 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse401 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse403 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse404 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse409 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse422 = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseDefault = {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseSuccess = (archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200) & {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseSuccess = (deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse200) & {
   headers: Headers;
 };
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseError = (archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse400 | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse401 | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse403 | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse404 | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse409 | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse422 | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseDefault) & {
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseError = (deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse400 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse401 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse403 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse404 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse409 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse413 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse415 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse422 | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
-export type archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse = (archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseSuccess | archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseError)
+export type deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse = (deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseSuccess | deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponseError)
 
-export const getArchiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
+export const getDeleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
 
 
   
@@ -4295,9 +4586,9 @@ export const getArchiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl = (workspace
   return `/api/v1/workspaces/${workspaceId}`
 }
 
-export const archiveWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse> => {
+export const deleteWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse> => {
   
-  const res = await fetch(getArchiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
+  const res = await fetch(getDeleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
   {      
     ...options,
     method: 'DELETE'
@@ -4308,8 +4599,8 @@ export const archiveWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspace
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as archiveWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse
+  const data: deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteWorkspaceApiV1WorkspacesWorkspaceIdDeleteResponse
 }
 
 
@@ -4318,7 +4609,7 @@ export const archiveWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspace
  * @summary Publish Workspace
  */
 export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -4347,6 +4638,16 @@ export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse409 = {
   status: 409
 }
 
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4354,13 +4655,13 @@ export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse422 = {
 
 export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseSuccess = (publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse200) & {
   headers: Headers;
 };
-export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseError = (publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse400 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse401 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse403 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse404 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse409 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse422 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseDefault) & {
+export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseError = (publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse400 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse401 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse403 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse404 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse409 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse413 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse415 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse422 | publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -4397,7 +4698,7 @@ export const publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPost = async (work
  * @summary Share Workspace
  */
 export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse200 = {
-  data: AppInterfacesApiHttpRoutesWorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -4426,6 +4727,16 @@ export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse409 = {
   status: 409
 }
 
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4433,13 +4744,13 @@ export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse422 = {
 
 export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseSuccess = (shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse200) & {
   headers: Headers;
 };
-export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseError = (shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse400 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse401 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse403 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse404 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse409 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse422 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseDefault) & {
+export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseError = (shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse400 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse401 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse403 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse404 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse409 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse413 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse415 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse422 | shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponseDefault) & {
   headers: Headers;
 };
 
@@ -4475,58 +4786,68 @@ export const shareWorkspaceApiV1WorkspacesWorkspaceIdSharePost = async (workspac
 
 
 /**
- * @summary Archive Workspace Action
+ * @summary Archive Workspace
  */
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse200 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse200 = {
   data: ArchiveWorkspaceRes
   status: 200
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse400 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse401 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse403 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse404 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse409 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse422 = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseDefault = {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseSuccess = (archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse200) & {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponseSuccess = (archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse200) & {
   headers: Headers;
 };
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseError = (archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse400 | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse401 | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse403 | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse404 | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse409 | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse422 | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseDefault) & {
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponseError = (archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse400 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse401 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse403 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse404 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse409 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse413 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse415 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse422 | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponseDefault) & {
   headers: Headers;
 };
 
-export type archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse = (archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseSuccess | archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponseError)
+export type archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse = (archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponseSuccess | archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponseError)
 
-export const getArchiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostUrl = (workspaceId: string,) => {
+export const getArchiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostUrl = (workspaceId: string,) => {
 
 
   
@@ -4534,9 +4855,9 @@ export const getArchiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostUrl =
   return `/api/v1/workspaces/${workspaceId}/archive`
 }
 
-export const archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePost = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse> => {
+export const archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePost = async (workspaceId: string, options?: RequestInit): Promise<archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse> => {
   
-  const res = await fetch(getArchiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostUrl(workspaceId),
+  const res = await fetch(getArchiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostUrl(workspaceId),
   {      
     ...options,
     method: 'POST'
@@ -4547,8 +4868,8 @@ export const archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePost = async
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as archiveWorkspaceActionApiV1WorkspacesWorkspaceIdArchivePostResponse
+  const data: archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as archiveWorkspaceApiV1WorkspacesWorkspaceIdArchivePostResponse
 }
 
 
@@ -4587,6 +4908,16 @@ export type listDocumentsApiV1DocumentsGetResponse409 = {
   status: 409
 }
 
+export type listDocumentsApiV1DocumentsGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listDocumentsApiV1DocumentsGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listDocumentsApiV1DocumentsGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4594,13 +4925,13 @@ export type listDocumentsApiV1DocumentsGetResponse422 = {
 
 export type listDocumentsApiV1DocumentsGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listDocumentsApiV1DocumentsGetResponseSuccess = (listDocumentsApiV1DocumentsGetResponse200) & {
   headers: Headers;
 };
-export type listDocumentsApiV1DocumentsGetResponseError = (listDocumentsApiV1DocumentsGetResponse400 | listDocumentsApiV1DocumentsGetResponse401 | listDocumentsApiV1DocumentsGetResponse403 | listDocumentsApiV1DocumentsGetResponse404 | listDocumentsApiV1DocumentsGetResponse409 | listDocumentsApiV1DocumentsGetResponse422 | listDocumentsApiV1DocumentsGetResponseDefault) & {
+export type listDocumentsApiV1DocumentsGetResponseError = (listDocumentsApiV1DocumentsGetResponse400 | listDocumentsApiV1DocumentsGetResponse401 | listDocumentsApiV1DocumentsGetResponse403 | listDocumentsApiV1DocumentsGetResponse404 | listDocumentsApiV1DocumentsGetResponse409 | listDocumentsApiV1DocumentsGetResponse413 | listDocumentsApiV1DocumentsGetResponse415 | listDocumentsApiV1DocumentsGetResponse422 | listDocumentsApiV1DocumentsGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -4674,6 +5005,16 @@ export type getDocumentApiV1DocumentsDocumentIdGetResponse409 = {
   status: 409
 }
 
+export type getDocumentApiV1DocumentsDocumentIdGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getDocumentApiV1DocumentsDocumentIdGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type getDocumentApiV1DocumentsDocumentIdGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4681,13 +5022,13 @@ export type getDocumentApiV1DocumentsDocumentIdGetResponse422 = {
 
 export type getDocumentApiV1DocumentsDocumentIdGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type getDocumentApiV1DocumentsDocumentIdGetResponseSuccess = (getDocumentApiV1DocumentsDocumentIdGetResponse200) & {
   headers: Headers;
 };
-export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentApiV1DocumentsDocumentIdGetResponse400 | getDocumentApiV1DocumentsDocumentIdGetResponse401 | getDocumentApiV1DocumentsDocumentIdGetResponse403 | getDocumentApiV1DocumentsDocumentIdGetResponse404 | getDocumentApiV1DocumentsDocumentIdGetResponse409 | getDocumentApiV1DocumentsDocumentIdGetResponse422 | getDocumentApiV1DocumentsDocumentIdGetResponseDefault) & {
+export type getDocumentApiV1DocumentsDocumentIdGetResponseError = (getDocumentApiV1DocumentsDocumentIdGetResponse400 | getDocumentApiV1DocumentsDocumentIdGetResponse401 | getDocumentApiV1DocumentsDocumentIdGetResponse403 | getDocumentApiV1DocumentsDocumentIdGetResponse404 | getDocumentApiV1DocumentsDocumentIdGetResponse409 | getDocumentApiV1DocumentsDocumentIdGetResponse413 | getDocumentApiV1DocumentsDocumentIdGetResponse415 | getDocumentApiV1DocumentsDocumentIdGetResponse422 | getDocumentApiV1DocumentsDocumentIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -4763,6 +5104,16 @@ export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse409 = {
   status: 409
 }
 
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4770,13 +5121,13 @@ export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422 = {
 
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseSuccess = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse200) & {
   headers: Headers;
 };
-export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse400 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse401 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse403 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse404 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse409 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponseDefault) & {
+export type deleteDocumentApiV1DocumentsDocumentIdDeleteResponseError = (deleteDocumentApiV1DocumentsDocumentIdDeleteResponse400 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse401 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse403 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse404 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse409 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse413 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse415 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponse422 | deleteDocumentApiV1DocumentsDocumentIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
@@ -4822,9 +5173,9 @@ export const deleteDocumentApiV1DocumentsDocumentIdDelete = async (documentId: s
  * @deprecated
  * @summary Upload Document
  */
-export type uploadDocumentApiV1DocumentsUploadPostResponse202 = {
+export type uploadDocumentApiV1DocumentsUploadPostResponse200 = {
   data: UploadDocumentRes
-  status: 202
+  status: 200
 }
 
 export type uploadDocumentApiV1DocumentsUploadPostResponse400 = {
@@ -4852,6 +5203,16 @@ export type uploadDocumentApiV1DocumentsUploadPostResponse409 = {
   status: 409
 }
 
+export type uploadDocumentApiV1DocumentsUploadPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type uploadDocumentApiV1DocumentsUploadPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type uploadDocumentApiV1DocumentsUploadPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4859,40 +5220,31 @@ export type uploadDocumentApiV1DocumentsUploadPostResponse422 = {
 
 export type uploadDocumentApiV1DocumentsUploadPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type uploadDocumentApiV1DocumentsUploadPostResponseSuccess = (uploadDocumentApiV1DocumentsUploadPostResponse202) & {
+export type uploadDocumentApiV1DocumentsUploadPostResponseSuccess = (uploadDocumentApiV1DocumentsUploadPostResponse200) & {
   headers: Headers;
 };
-export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumentApiV1DocumentsUploadPostResponse400 | uploadDocumentApiV1DocumentsUploadPostResponse401 | uploadDocumentApiV1DocumentsUploadPostResponse403 | uploadDocumentApiV1DocumentsUploadPostResponse404 | uploadDocumentApiV1DocumentsUploadPostResponse409 | uploadDocumentApiV1DocumentsUploadPostResponse422 | uploadDocumentApiV1DocumentsUploadPostResponseDefault) & {
+export type uploadDocumentApiV1DocumentsUploadPostResponseError = (uploadDocumentApiV1DocumentsUploadPostResponse400 | uploadDocumentApiV1DocumentsUploadPostResponse401 | uploadDocumentApiV1DocumentsUploadPostResponse403 | uploadDocumentApiV1DocumentsUploadPostResponse404 | uploadDocumentApiV1DocumentsUploadPostResponse409 | uploadDocumentApiV1DocumentsUploadPostResponse413 | uploadDocumentApiV1DocumentsUploadPostResponse415 | uploadDocumentApiV1DocumentsUploadPostResponse422 | uploadDocumentApiV1DocumentsUploadPostResponseDefault) & {
   headers: Headers;
 };
 
 export type uploadDocumentApiV1DocumentsUploadPostResponse = (uploadDocumentApiV1DocumentsUploadPostResponseSuccess | uploadDocumentApiV1DocumentsUploadPostResponseError)
 
-export const getUploadDocumentApiV1DocumentsUploadPostUrl = (params: UploadDocumentApiV1DocumentsUploadPostParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getUploadDocumentApiV1DocumentsUploadPostUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
+  
 
-  return stringifiedParams.length > 0 ? `/api/v1/documents/upload?${stringifiedParams}` : `/api/v1/documents/upload`
+  return `/api/v1/documents/upload`
 }
 
-export const uploadDocumentApiV1DocumentsUploadPost = async (bodyUploadDocumentApiV1DocumentsUploadPost: BodyUploadDocumentApiV1DocumentsUploadPost,
-    params: UploadDocumentApiV1DocumentsUploadPostParams, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
+export const uploadDocumentApiV1DocumentsUploadPost = async (bodyUploadDocumentApiV1DocumentsUploadPost: BodyUploadDocumentApiV1DocumentsUploadPost, options?: RequestInit): Promise<uploadDocumentApiV1DocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadDocumentApiV1DocumentsUploadPost.file)
-if(bodyUploadDocumentApiV1DocumentsUploadPost.title !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.title !== null) {
- formData.append(`title`, bodyUploadDocumentApiV1DocumentsUploadPost.title)
- }
+formData.append(`workspace_id`, bodyUploadDocumentApiV1DocumentsUploadPost.workspace_id)
+formData.append(`title`, bodyUploadDocumentApiV1DocumentsUploadPost.title)
 if(bodyUploadDocumentApiV1DocumentsUploadPost.source !== undefined && bodyUploadDocumentApiV1DocumentsUploadPost.source !== null) {
  formData.append(`source`, bodyUploadDocumentApiV1DocumentsUploadPost.source)
  }
@@ -4900,7 +5252,7 @@ if(bodyUploadDocumentApiV1DocumentsUploadPost.metadata !== undefined && bodyUplo
  formData.append(`metadata`, bodyUploadDocumentApiV1DocumentsUploadPost.metadata)
  }
 
-  const res = await fetch(getUploadDocumentApiV1DocumentsUploadPostUrl(params),
+  const res = await fetch(getUploadDocumentApiV1DocumentsUploadPostUrl(),
   {      
     ...options,
     method: 'POST'
@@ -4914,6 +5266,97 @@ if(bodyUploadDocumentApiV1DocumentsUploadPost.metadata !== undefined && bodyUplo
   
   const data: uploadDocumentApiV1DocumentsUploadPostResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as uploadDocumentApiV1DocumentsUploadPostResponse
+}
+
+
+
+/**
+ * @summary Reprocess Workspace Document
+ */
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202 = {
+  data: ReprocessDocumentRes
+  status: 202
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202) & {
+  headers: Headers;
+};
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse413 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse415 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError)
+
+export const getReprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl = (workspaceId: string,
+    documentId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/documents/${documentId}/reprocess`
+}
+
+export const reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPost = async (workspaceId: string,
+    documentId: string, options?: RequestInit): Promise<reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse> => {
+  
+  const res = await fetch(getReprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl(workspaceId,documentId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse
 }
 
 
@@ -4952,6 +5395,16 @@ export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse409 = 
   status: 409
 }
 
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -4959,13 +5412,13 @@ export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422 = 
 
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseSuccess = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse202) & {
   headers: Headers;
 };
-export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse400 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse401 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse403 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse404 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse409 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseDefault) & {
+export type reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseError = (reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse400 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse401 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse403 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse404 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse409 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse413 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse415 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponse422 | reprocessDocumentApiV1DocumentsDocumentIdReprocessPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -5041,6 +5494,16 @@ export type ingestTextApiV1IngestTextPostResponse409 = {
   status: 409
 }
 
+export type ingestTextApiV1IngestTextPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type ingestTextApiV1IngestTextPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type ingestTextApiV1IngestTextPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -5048,13 +5511,13 @@ export type ingestTextApiV1IngestTextPostResponse422 = {
 
 export type ingestTextApiV1IngestTextPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type ingestTextApiV1IngestTextPostResponseSuccess = (ingestTextApiV1IngestTextPostResponse200) & {
   headers: Headers;
 };
-export type ingestTextApiV1IngestTextPostResponseError = (ingestTextApiV1IngestTextPostResponse400 | ingestTextApiV1IngestTextPostResponse401 | ingestTextApiV1IngestTextPostResponse403 | ingestTextApiV1IngestTextPostResponse404 | ingestTextApiV1IngestTextPostResponse409 | ingestTextApiV1IngestTextPostResponse422 | ingestTextApiV1IngestTextPostResponseDefault) & {
+export type ingestTextApiV1IngestTextPostResponseError = (ingestTextApiV1IngestTextPostResponse400 | ingestTextApiV1IngestTextPostResponse401 | ingestTextApiV1IngestTextPostResponse403 | ingestTextApiV1IngestTextPostResponse404 | ingestTextApiV1IngestTextPostResponse409 | ingestTextApiV1IngestTextPostResponse413 | ingestTextApiV1IngestTextPostResponse415 | ingestTextApiV1IngestTextPostResponse422 | ingestTextApiV1IngestTextPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -5097,10 +5560,6 @@ export const ingestTextApiV1IngestTextPost = async (ingestTextReq: IngestTextReq
 
 
 /**
- * Ingest multiple documents in a single request.
-
-Processes up to 10 documents sequentially.
-Returns results for all successfully ingested documents.
  * @deprecated
  * @summary Ingest Batch
  */
@@ -5134,6 +5593,16 @@ export type ingestBatchApiV1IngestBatchPostResponse409 = {
   status: 409
 }
 
+export type ingestBatchApiV1IngestBatchPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type ingestBatchApiV1IngestBatchPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type ingestBatchApiV1IngestBatchPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -5141,13 +5610,13 @@ export type ingestBatchApiV1IngestBatchPostResponse422 = {
 
 export type ingestBatchApiV1IngestBatchPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type ingestBatchApiV1IngestBatchPostResponseSuccess = (ingestBatchApiV1IngestBatchPostResponse200) & {
   headers: Headers;
 };
-export type ingestBatchApiV1IngestBatchPostResponseError = (ingestBatchApiV1IngestBatchPostResponse400 | ingestBatchApiV1IngestBatchPostResponse401 | ingestBatchApiV1IngestBatchPostResponse403 | ingestBatchApiV1IngestBatchPostResponse404 | ingestBatchApiV1IngestBatchPostResponse409 | ingestBatchApiV1IngestBatchPostResponse422 | ingestBatchApiV1IngestBatchPostResponseDefault) & {
+export type ingestBatchApiV1IngestBatchPostResponseError = (ingestBatchApiV1IngestBatchPostResponse400 | ingestBatchApiV1IngestBatchPostResponse401 | ingestBatchApiV1IngestBatchPostResponse403 | ingestBatchApiV1IngestBatchPostResponse404 | ingestBatchApiV1IngestBatchPostResponse409 | ingestBatchApiV1IngestBatchPostResponse413 | ingestBatchApiV1IngestBatchPostResponse415 | ingestBatchApiV1IngestBatchPostResponse422 | ingestBatchApiV1IngestBatchPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -5190,292 +5659,6 @@ export const ingestBatchApiV1IngestBatchPost = async (ingestBatchReq: IngestBatc
 
 
 /**
- * @deprecated
- * @summary Query
- */
-export type queryApiV1QueryPostResponse200 = {
-  data: QueryRes
-  status: 200
-}
-
-export type queryApiV1QueryPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type queryApiV1QueryPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type queryApiV1QueryPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type queryApiV1QueryPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type queryApiV1QueryPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type queryApiV1QueryPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type queryApiV1QueryPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type queryApiV1QueryPostResponseSuccess = (queryApiV1QueryPostResponse200) & {
-  headers: Headers;
-};
-export type queryApiV1QueryPostResponseError = (queryApiV1QueryPostResponse400 | queryApiV1QueryPostResponse401 | queryApiV1QueryPostResponse403 | queryApiV1QueryPostResponse404 | queryApiV1QueryPostResponse409 | queryApiV1QueryPostResponse422 | queryApiV1QueryPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type queryApiV1QueryPostResponse = (queryApiV1QueryPostResponseSuccess | queryApiV1QueryPostResponseError)
-
-export const getQueryApiV1QueryPostUrl = (params: QueryApiV1QueryPostParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v1/query?${stringifiedParams}` : `/api/v1/query`
-}
-
-export const queryApiV1QueryPost = async (queryReq: QueryReq,
-    params: QueryApiV1QueryPostParams, options?: RequestInit): Promise<queryApiV1QueryPostResponse> => {
-  
-  const res = await fetch(getQueryApiV1QueryPostUrl(params),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      queryReq,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: queryApiV1QueryPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as queryApiV1QueryPostResponse
-}
-
-
-
-/**
- * R: RAG endpoint using Clean Architecture (Use Case pattern).
-
-This endpoint demonstrates the architecture improvement:
-- Business logic in use case (testable, framework-independent)
-- Dependency injection via FastAPI Depends
-- Separation of concerns (HTTP ↔ Business Logic)
-
-Uses the same query contract as /query with a generation step.
-Set use_mmr=true for diverse results (reduces redundant chunks).
- * @deprecated
- * @summary Ask
- */
-export type askApiV1AskPostResponse200 = {
-  data: AskRes
-  status: 200
-}
-
-export type askApiV1AskPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type askApiV1AskPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type askApiV1AskPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type askApiV1AskPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type askApiV1AskPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type askApiV1AskPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type askApiV1AskPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type askApiV1AskPostResponseSuccess = (askApiV1AskPostResponse200) & {
-  headers: Headers;
-};
-export type askApiV1AskPostResponseError = (askApiV1AskPostResponse400 | askApiV1AskPostResponse401 | askApiV1AskPostResponse403 | askApiV1AskPostResponse404 | askApiV1AskPostResponse409 | askApiV1AskPostResponse422 | askApiV1AskPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type askApiV1AskPostResponse = (askApiV1AskPostResponseSuccess | askApiV1AskPostResponseError)
-
-export const getAskApiV1AskPostUrl = (params: AskApiV1AskPostParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v1/ask?${stringifiedParams}` : `/api/v1/ask`
-}
-
-export const askApiV1AskPost = async (queryReq: QueryReq,
-    params: AskApiV1AskPostParams, options?: RequestInit): Promise<askApiV1AskPostResponse> => {
-  
-  const res = await fetch(getAskApiV1AskPostUrl(params),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      queryReq,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: askApiV1AskPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as askApiV1AskPostResponse
-}
-
-
-
-/**
- * R: Streaming RAG endpoint using Server-Sent Events.
-
-Returns tokens as they are generated by the LLM for better UX.
-Uses the same query contract as /ask but streams the response.
-
-SSE Events:
-- sources: Initial event with retrieved chunks
-- token: Individual tokens as generated
-- done: Final event with complete answer
-- error: Error event if generation fails
- * @deprecated
- * @summary Ask Stream
- */
-export type askStreamApiV1AskStreamPostResponse200 = {
-  data: unknown
-  status: 200
-}
-
-export type askStreamApiV1AskStreamPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type askStreamApiV1AskStreamPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type askStreamApiV1AskStreamPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type askStreamApiV1AskStreamPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type askStreamApiV1AskStreamPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type askStreamApiV1AskStreamPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type askStreamApiV1AskStreamPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type askStreamApiV1AskStreamPostResponseSuccess = (askStreamApiV1AskStreamPostResponse200) & {
-  headers: Headers;
-};
-export type askStreamApiV1AskStreamPostResponseError = (askStreamApiV1AskStreamPostResponse400 | askStreamApiV1AskStreamPostResponse401 | askStreamApiV1AskStreamPostResponse403 | askStreamApiV1AskStreamPostResponse404 | askStreamApiV1AskStreamPostResponse409 | askStreamApiV1AskStreamPostResponse422 | askStreamApiV1AskStreamPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type askStreamApiV1AskStreamPostResponse = (askStreamApiV1AskStreamPostResponseSuccess | askStreamApiV1AskStreamPostResponseError)
-
-export const getAskStreamApiV1AskStreamPostUrl = (params: AskStreamApiV1AskStreamPostParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v1/ask/stream?${stringifiedParams}` : `/api/v1/ask/stream`
-}
-
-export const askStreamApiV1AskStreamPost = async (queryReq: QueryReq,
-    params: AskStreamApiV1AskStreamPostParams, options?: RequestInit): Promise<askStreamApiV1AskStreamPostResponse> => {
-  
-  const res = await fetch(getAskStreamApiV1AskStreamPostUrl(params),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      queryReq,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: askStreamApiV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as askStreamApiV1AskStreamPostResponse
-}
-
-
-
-/**
  * @summary List Workspace Documents
  */
 export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse200 = {
@@ -5508,6 +5691,16 @@ export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse
   status: 409
 }
 
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -5515,13 +5708,13 @@ export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse
 
 export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseSuccess = (listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse200) & {
   headers: Headers;
 };
-export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseError = (listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse400 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse401 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse403 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse404 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse409 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse422 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseDefault) & {
+export type listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseError = (listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse400 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse401 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse403 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse404 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse409 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse413 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse415 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponse422 | listWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -5596,6 +5789,16 @@ export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGet
   status: 409
 }
 
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -5603,13 +5806,13 @@ export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGet
 
 export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseSuccess = (getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse200) & {
   headers: Headers;
 };
-export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError = (getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse400 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse401 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse403 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse404 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse409 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse422 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault) & {
+export type getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseError = (getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse400 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse401 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse403 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse404 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse409 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse413 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse415 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponse422 | getWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdGetResponseDefault) & {
   headers: Headers;
 };
 
@@ -5677,6 +5880,16 @@ export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentId
   status: 409
 }
 
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse422 = {
   data: ErrorDetail
   status: 422
@@ -5684,13 +5897,13 @@ export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentId
 
 export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseSuccess = (deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse200) & {
   headers: Headers;
 };
-export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError = (deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse400 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse401 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse403 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse404 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse409 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse422 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault) & {
+export type deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseError = (deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse400 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse401 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse403 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse404 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse409 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse413 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse415 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponse422 | deleteWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdDeleteResponseDefault) & {
   headers: Headers;
 };
 
@@ -5758,6 +5971,16 @@ export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost
   status: 409
 }
 
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -5765,13 +5988,13 @@ export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost
 
 export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseSuccess = (uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse202) & {
   headers: Headers;
 };
-export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError = (uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse400 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse401 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse403 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse404 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse409 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse422 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault) & {
+export type uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseError = (uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse400 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse401 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse403 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse404 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse409 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse413 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse415 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse422 | uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -5789,9 +6012,7 @@ export const uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPos
     bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost: BodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost, options?: RequestInit): Promise<uploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.file)
-if(bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== undefined && bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title !== null) {
- formData.append(`title`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title)
- }
+formData.append(`title`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.title)
 if(bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== undefined && bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.source !== null) {
  formData.append(`source`, bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.source)
  }
@@ -5818,244 +6039,298 @@ if(bodyUploadWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsUploadPost.meta
 
 
 /**
- * @summary Reprocess Workspace Document
+ * @deprecated
+ * @summary Query Compat
  */
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202 = {
-  data: ReprocessDocumentRes
-  status: 202
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 = {
-  data: ErrorDetail
-  status: 400
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 = {
-  data: ErrorDetail
-  status: 401
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 = {
-  data: ErrorDetail
-  status: 403
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 = {
-  data: ErrorDetail
-  status: 404
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 = {
-  data: ErrorDetail
-  status: 409
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 = {
-  data: ErrorDetail
-  status: 422
-}
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault = {
-  data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 202 | 400 | 401 | 403 | 404 | 409 | 422>
-}
-    
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse202) & {
-  headers: Headers;
-};
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse400 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse401 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse403 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse404 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse409 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse422 | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseDefault) & {
-  headers: Headers;
-};
-
-export type reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse = (reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseSuccess | reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponseError)
-
-export const getReprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl = (workspaceId: string,
-    documentId: string,) => {
-
-
-  
-
-  return `/api/v1/workspaces/${workspaceId}/documents/${documentId}/reprocess`
-}
-
-export const reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPost = async (workspaceId: string,
-    documentId: string, options?: RequestInit): Promise<reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse> => {
-  
-  const res = await fetch(getReprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostUrl(workspaceId,documentId),
-  {      
-    ...options,
-    method: 'POST'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as reprocessWorkspaceDocumentApiV1WorkspacesWorkspaceIdDocumentsDocumentIdReprocessPostResponse
-}
-
-
-
-/**
- * @summary Ingest Workspace Text
- */
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse200 = {
-  data: IngestTextRes
+export type queryCompatApiV1QueryPostResponse200 = {
+  data: QueryRes
   status: 200
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse400 = {
+export type queryCompatApiV1QueryPostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse401 = {
+export type queryCompatApiV1QueryPostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse403 = {
+export type queryCompatApiV1QueryPostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse404 = {
+export type queryCompatApiV1QueryPostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse409 = {
+export type queryCompatApiV1QueryPostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse422 = {
+export type queryCompatApiV1QueryPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type queryCompatApiV1QueryPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type queryCompatApiV1QueryPostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseDefault = {
+export type queryCompatApiV1QueryPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess = (ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse200) & {
+export type queryCompatApiV1QueryPostResponseSuccess = (queryCompatApiV1QueryPostResponse200) & {
   headers: Headers;
 };
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseError = (ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse400 | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse401 | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse403 | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse404 | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse409 | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse422 | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseDefault) & {
+export type queryCompatApiV1QueryPostResponseError = (queryCompatApiV1QueryPostResponse400 | queryCompatApiV1QueryPostResponse401 | queryCompatApiV1QueryPostResponse403 | queryCompatApiV1QueryPostResponse404 | queryCompatApiV1QueryPostResponse409 | queryCompatApiV1QueryPostResponse413 | queryCompatApiV1QueryPostResponse415 | queryCompatApiV1QueryPostResponse422 | queryCompatApiV1QueryPostResponseDefault) & {
   headers: Headers;
 };
 
-export type ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse = (ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseSuccess | ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponseError)
+export type queryCompatApiV1QueryPostResponse = (queryCompatApiV1QueryPostResponseSuccess | queryCompatApiV1QueryPostResponseError)
 
-export const getIngestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostUrl = (workspaceId: string,) => {
+export const getQueryCompatApiV1QueryPostUrl = (params: QueryCompatApiV1QueryPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/workspaces/${workspaceId}/ingest/text`
+  return stringifiedParams.length > 0 ? `/api/v1/query?${stringifiedParams}` : `/api/v1/query`
 }
 
-export const ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPost = async (workspaceId: string,
-    ingestTextReq: IngestTextReq, options?: RequestInit): Promise<ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse> => {
+export const queryCompatApiV1QueryPost = async (queryReq: QueryReq,
+    params: QueryCompatApiV1QueryPostParams, options?: RequestInit): Promise<queryCompatApiV1QueryPostResponse> => {
   
-  const res = await fetch(getIngestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostUrl(workspaceId),
+  const res = await fetch(getQueryCompatApiV1QueryPostUrl(params),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      ingestTextReq,)
+      queryReq,)
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as ingestWorkspaceTextApiV1WorkspacesWorkspaceIdIngestTextPostResponse
+  const data: queryCompatApiV1QueryPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as queryCompatApiV1QueryPostResponse
 }
 
 
 
 /**
- * @summary Ingest Workspace Batch
+ * @deprecated
+ * @summary Ask Compat
  */
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse200 = {
-  data: IngestBatchRes
+export type askCompatApiV1AskPostResponse200 = {
+  data: AskRes
   status: 200
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse400 = {
+export type askCompatApiV1AskPostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse401 = {
+export type askCompatApiV1AskPostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse403 = {
+export type askCompatApiV1AskPostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse404 = {
+export type askCompatApiV1AskPostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse409 = {
+export type askCompatApiV1AskPostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse422 = {
+export type askCompatApiV1AskPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askCompatApiV1AskPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type askCompatApiV1AskPostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault = {
+export type askCompatApiV1AskPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess = (ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse200) & {
+export type askCompatApiV1AskPostResponseSuccess = (askCompatApiV1AskPostResponse200) & {
   headers: Headers;
 };
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseError = (ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse400 | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse401 | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse403 | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse404 | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse409 | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse422 | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseDefault) & {
+export type askCompatApiV1AskPostResponseError = (askCompatApiV1AskPostResponse400 | askCompatApiV1AskPostResponse401 | askCompatApiV1AskPostResponse403 | askCompatApiV1AskPostResponse404 | askCompatApiV1AskPostResponse409 | askCompatApiV1AskPostResponse413 | askCompatApiV1AskPostResponse415 | askCompatApiV1AskPostResponse422 | askCompatApiV1AskPostResponseDefault) & {
   headers: Headers;
 };
 
-export type ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse = (ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseSuccess | ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponseError)
+export type askCompatApiV1AskPostResponse = (askCompatApiV1AskPostResponseSuccess | askCompatApiV1AskPostResponseError)
 
-export const getIngestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostUrl = (workspaceId: string,) => {
+export const getAskCompatApiV1AskPostUrl = (params: AskCompatApiV1AskPostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/workspaces/${workspaceId}/ingest/batch`
+  return stringifiedParams.length > 0 ? `/api/v1/ask?${stringifiedParams}` : `/api/v1/ask`
 }
 
-export const ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPost = async (workspaceId: string,
-    ingestBatchReq: IngestBatchReq, options?: RequestInit): Promise<ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse> => {
+export const askCompatApiV1AskPost = async (askReq: AskReq,
+    params: AskCompatApiV1AskPostParams, options?: RequestInit): Promise<askCompatApiV1AskPostResponse> => {
   
-  const res = await fetch(getIngestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostUrl(workspaceId),
+  const res = await fetch(getAskCompatApiV1AskPostUrl(params),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      ingestBatchReq,)
+      askReq,)
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as ingestWorkspaceBatchApiV1WorkspacesWorkspaceIdIngestBatchPostResponse
+  const data: askCompatApiV1AskPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askCompatApiV1AskPostResponse
+}
+
+
+
+/**
+ * @deprecated
+ * @summary Ask Stream Compat
+ */
+export type askStreamCompatApiV1AskStreamPostResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type askStreamCompatApiV1AskStreamPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type askStreamCompatApiV1AskStreamPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type askStreamCompatApiV1AskStreamPostResponseSuccess = (askStreamCompatApiV1AskStreamPostResponse200) & {
+  headers: Headers;
+};
+export type askStreamCompatApiV1AskStreamPostResponseError = (askStreamCompatApiV1AskStreamPostResponse400 | askStreamCompatApiV1AskStreamPostResponse401 | askStreamCompatApiV1AskStreamPostResponse403 | askStreamCompatApiV1AskStreamPostResponse404 | askStreamCompatApiV1AskStreamPostResponse409 | askStreamCompatApiV1AskStreamPostResponse413 | askStreamCompatApiV1AskStreamPostResponse415 | askStreamCompatApiV1AskStreamPostResponse422 | askStreamCompatApiV1AskStreamPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type askStreamCompatApiV1AskStreamPostResponse = (askStreamCompatApiV1AskStreamPostResponseSuccess | askStreamCompatApiV1AskStreamPostResponseError)
+
+export const getAskStreamCompatApiV1AskStreamPostUrl = (params: AskStreamCompatApiV1AskStreamPostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/ask/stream?${stringifiedParams}` : `/api/v1/ask/stream`
+}
+
+export const askStreamCompatApiV1AskStreamPost = async (queryReq: QueryReq,
+    params: AskStreamCompatApiV1AskStreamPostParams, options?: RequestInit): Promise<askStreamCompatApiV1AskStreamPostResponse> => {
+  
+  const res = await fetch(getAskStreamCompatApiV1AskStreamPostUrl(params),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      queryReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: askStreamCompatApiV1AskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askStreamCompatApiV1AskStreamPostResponse
 }
 
 
@@ -6093,6 +6368,16 @@ export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse409 = {
   status: 409
 }
 
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -6100,13 +6385,13 @@ export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse422 = {
 
 export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseSuccess = (queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse200) & {
   headers: Headers;
 };
-export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseError = (queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse400 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse401 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse403 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse404 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse409 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse422 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseDefault) & {
+export type queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseError = (queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse400 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse401 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse403 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse404 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse409 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse413 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse415 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponse422 | queryWorkspaceApiV1WorkspacesWorkspaceIdQueryPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -6174,6 +6459,16 @@ export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse409 = {
   status: 409
 }
 
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse422 = {
   data: ErrorDetail
   status: 422
@@ -6181,13 +6476,13 @@ export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse422 = {
 
 export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseSuccess = (askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse200) & {
   headers: Headers;
 };
-export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseError = (askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse400 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse401 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse403 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse404 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse409 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse422 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseDefault) & {
+export type askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseError = (askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse400 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse401 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse403 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse404 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse409 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse413 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse415 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse422 | askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponseDefault) & {
   headers: Headers;
 };
 
@@ -6202,7 +6497,7 @@ export const getAskWorkspaceApiV1WorkspacesWorkspaceIdAskPostUrl = (workspaceId:
 }
 
 export const askWorkspaceApiV1WorkspacesWorkspaceIdAskPost = async (workspaceId: string,
-    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse> => {
+    askReq: AskReq, options?: RequestInit): Promise<askWorkspaceApiV1WorkspacesWorkspaceIdAskPostResponse> => {
   
   const res = await fetch(getAskWorkspaceApiV1WorkspacesWorkspaceIdAskPostUrl(workspaceId),
   {      
@@ -6210,7 +6505,7 @@ export const askWorkspaceApiV1WorkspacesWorkspaceIdAskPost = async (workspaceId:
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      queryReq,)
+      askReq,)
   }
 )
 
@@ -6223,58 +6518,68 @@ export const askWorkspaceApiV1WorkspacesWorkspaceIdAskPost = async (workspaceId:
 
 
 /**
- * @summary Ask Workspace Stream
+ * @summary Ask Stream Workspace
  */
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse200 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse200 = {
   data: unknown
   status: 200
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse400 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse400 = {
   data: ErrorDetail
   status: 400
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse401 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse401 = {
   data: ErrorDetail
   status: 401
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse403 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse403 = {
   data: ErrorDetail
   status: 403
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse404 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse404 = {
   data: ErrorDetail
   status: 404
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse409 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse409 = {
   data: ErrorDetail
   status: 409
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse422 = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse422 = {
   data: ErrorDetail
   status: 422
 }
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseDefault = {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess = (askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse200) & {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess = (askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse200) & {
   headers: Headers;
 };
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseError = (askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse400 | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse401 | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse403 | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse404 | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse409 | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse422 | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseDefault) & {
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponseError = (askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse400 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse401 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse403 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse404 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse409 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse413 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse415 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse422 | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponseDefault) & {
   headers: Headers;
 };
 
-export type askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse = (askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess | askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponseError)
+export type askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse = (askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponseSuccess | askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponseError)
 
-export const getAskWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostUrl = (workspaceId: string,) => {
+export const getAskStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostUrl = (workspaceId: string,) => {
 
 
   
@@ -6282,10 +6587,10 @@ export const getAskWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostUrl = (
   return `/api/v1/workspaces/${workspaceId}/ask/stream`
 }
 
-export const askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPost = async (workspaceId: string,
-    queryReq: QueryReq, options?: RequestInit): Promise<askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse> => {
+export const askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPost = async (workspaceId: string,
+    queryReq: QueryReq, options?: RequestInit): Promise<askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse> => {
   
-  const res = await fetch(getAskWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostUrl(workspaceId),
+  const res = await fetch(getAskStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostUrl(workspaceId),
   {      
     ...options,
     method: 'POST',
@@ -6297,8 +6602,8 @@ export const askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPost = async (
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as askWorkspaceStreamApiV1WorkspacesWorkspaceIdAskStreamPostResponse
+  const data: askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse
 }
 
 
@@ -6336,6 +6641,16 @@ export type listAuditEventsApiV1AdminAuditGetResponse409 = {
   status: 409
 }
 
+export type listAuditEventsApiV1AdminAuditGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listAuditEventsApiV1AdminAuditGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
 export type listAuditEventsApiV1AdminAuditGetResponse422 = {
   data: ErrorDetail
   status: 422
@@ -6343,19 +6658,19 @@ export type listAuditEventsApiV1AdminAuditGetResponse422 = {
 
 export type listAuditEventsApiV1AdminAuditGetResponseDefault = {
   data: ErrorDetail
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
 }
     
 export type listAuditEventsApiV1AdminAuditGetResponseSuccess = (listAuditEventsApiV1AdminAuditGetResponse200) & {
   headers: Headers;
 };
-export type listAuditEventsApiV1AdminAuditGetResponseError = (listAuditEventsApiV1AdminAuditGetResponse400 | listAuditEventsApiV1AdminAuditGetResponse401 | listAuditEventsApiV1AdminAuditGetResponse403 | listAuditEventsApiV1AdminAuditGetResponse404 | listAuditEventsApiV1AdminAuditGetResponse409 | listAuditEventsApiV1AdminAuditGetResponse422 | listAuditEventsApiV1AdminAuditGetResponseDefault) & {
+export type listAuditEventsApiV1AdminAuditGetResponseError = (listAuditEventsApiV1AdminAuditGetResponse400 | listAuditEventsApiV1AdminAuditGetResponse401 | listAuditEventsApiV1AdminAuditGetResponse403 | listAuditEventsApiV1AdminAuditGetResponse404 | listAuditEventsApiV1AdminAuditGetResponse409 | listAuditEventsApiV1AdminAuditGetResponse413 | listAuditEventsApiV1AdminAuditGetResponse415 | listAuditEventsApiV1AdminAuditGetResponse422 | listAuditEventsApiV1AdminAuditGetResponseDefault) & {
   headers: Headers;
 };
 
 export type listAuditEventsApiV1AdminAuditGetResponse = (listAuditEventsApiV1AdminAuditGetResponseSuccess | listAuditEventsApiV1AdminAuditGetResponseError)
 
-export const getListAuditEventsApiV1AdminAuditGetUrl = (params?: ListAuditEventsApiV1AdminAuditGetParams,) => {
+export const getListAuditEventsApiV1AdminAuditGetUrl = (params: ListAuditEventsApiV1AdminAuditGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -6370,7 +6685,7 @@ export const getListAuditEventsApiV1AdminAuditGetUrl = (params?: ListAuditEvents
   return stringifiedParams.length > 0 ? `/api/v1/admin/audit?${stringifiedParams}` : `/api/v1/admin/audit`
 }
 
-export const listAuditEventsApiV1AdminAuditGet = async (params?: ListAuditEventsApiV1AdminAuditGetParams, options?: RequestInit): Promise<listAuditEventsApiV1AdminAuditGetResponse> => {
+export const listAuditEventsApiV1AdminAuditGet = async (params: ListAuditEventsApiV1AdminAuditGetParams, options?: RequestInit): Promise<listAuditEventsApiV1AdminAuditGetResponse> => {
   
   const res = await fetch(getListAuditEventsApiV1AdminAuditGetUrl(params),
   {      
@@ -6390,17 +6705,10 @@ export const listAuditEventsApiV1AdminAuditGet = async (params?: ListAuditEvents
 
 
 /**
- * R: Enhanced health check that verifies system dependencies.
+ * Health check ampliado.
 
-Args:
-    full: If True, also check Google API connectivity (slower)
-          Respects HEALTHCHECK_GOOGLE_ENABLED setting
-
-Returns:
-    ok: True if all checked systems operational
-    db: "connected" or "disconnected"
-    google: "available", "unavailable", "disabled", or "skipped" (only with full=true)
-    request_id: Correlation ID for this request
+- Siempre chequea BD.
+- Si full=true, chequea conectividad Google API (si está habilitado).
  * @summary Healthz
  */
 export type healthzHealthzGetResponse200 = {
@@ -6457,12 +6765,7 @@ export const healthzHealthzGet = async (params?: HealthzHealthzGetParams, option
 
 
 /**
- * R: Minimal readiness check for core dependencies only.
-
-Returns:
-    ok: True if core dependencies are operational
-    db: "connected" or "disconnected"
-    request_id: Correlation ID for this request
+ * Readiness mínimo: dependencias core (BD).
  * @summary Readyz
  */
 export type readyzReadyzGetResponse200 = {
@@ -6505,12 +6808,7 @@ export const readyzReadyzGet = async ( options?: RequestInit): Promise<readyzRea
 
 
 /**
- * R: Expose Prometheus metrics.
-
-Returns:
-    Prometheus text format metrics
-
-Requires X-API-Key when METRICS_REQUIRE_AUTH=true.
+ * Expone métricas Prometheus (si está instalado).
  * @summary Metrics
  */
 export type metricsMetricsGetResponse200 = {
