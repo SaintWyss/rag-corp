@@ -1,12 +1,17 @@
-# Prompt Policy
+# Prompt policy y mitigación de inyección
+Fuente de verdad: prompts y utilidades del backend.
 
-Based on [ADR-010-prompt-policy-and-hard-scoping](../architecture/adr/ADR-010-prompt-policy-and-hard-scoping.md).
+## Policy contract
+- Asset principal → `apps/backend/app/prompts/policy/secure_contract_es.md`.
+- Loader → `apps/backend/app/infrastructure/prompts/loader.py`.
 
-## Policies
+## Contexto con citas
+- `ContextBuilder` compone contexto con `[S#]` y sección `FUENTES`.
+- Evidencia: `apps/backend/app/application/context_builder.py`.
 
-- **Hard Scoping**: Prompts must restrict answers to the context.
-- **Tone**: Professional and concise.
+## Detector de inyección
+- Detector heurístico → `apps/backend/app/application/prompt_injection_detector.py`.
+- Modos de filtrado configurables → `rag_injection_filter_mode` en `apps/backend/app/crosscutting/config.py`.
 
-## Implementation
-
-- `apps/backend/app/prompts/policy/*`
+## Métricas
+- `rag_prompt_injection_detected_total` y `rag_policy_refusal_total` en `apps/backend/app/crosscutting/metrics.py`.

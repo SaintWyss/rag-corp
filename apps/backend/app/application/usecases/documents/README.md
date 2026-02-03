@@ -11,12 +11,8 @@ Este paquete implementa los casos de uso de documentos dentro de un workspace: l
 - Devuelve resultados tipados (`DocumentError`, `DocumentErrorCode`).
 
 ### Qué NO hace (y por qué)
-- No implementa DB ni storage concretos.
-  - Razón: se usa puertos del dominio.
-  - Consecuencia: infra se inyecta desde `container.py`.
-- No expone HTTP.
-  - Razón: el transporte vive en `interfaces/`.
-  - Consecuencia: los routers solo adaptan.
+- No implementa DB ni storage concretos. Razón: se usa puertos del dominio. Consecuencia: infra se inyecta desde `container.py`.
+- No expone HTTP. Razón: el transporte vive en `interfaces/`. Consecuencia: los routers solo adaptan.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -46,6 +42,7 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.container import get_get_document_use_case
 
 use_case = get_get_document_use_case()
@@ -53,6 +50,7 @@ result = use_case.execute(document_id="...", workspace_id="...", actor=None)
 ```
 
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.container import get_list_documents_use_case
 
 use_case = get_list_documents_use_case()
@@ -60,6 +58,7 @@ result = use_case.execute(workspace_id="...", actor=None, limit=20, offset=0)
 ```
 
 ```python
+# Por qué: deja visible el flujo principal.
 from app.container import get_download_document_use_case
 
 use_case = get_download_document_use_case()
@@ -75,21 +74,21 @@ result = use_case.execute(document_id="...", workspace_id="...", actor=None)
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `NOT_FOUND` con documento existente.
-  - **Causa probable:** `workspace_id` incorrecto o sin acceso.
-  - **Dónde mirar:** `workspace_access.py`.
-  - **Solución:** revisar actor y scope.
+- **Causa probable:** `workspace_id` incorrecto o sin acceso.
+- **Dónde mirar:** `workspace_access.py`.
+- **Solución:** revisar actor y scope.
 - **Síntoma:** metadata no se actualiza.
-  - **Causa probable:** campos inválidos o vacíos.
-  - **Dónde mirar:** `update_document_metadata.py`.
-  - **Solución:** enviar `name`/`tags` válidos.
+- **Causa probable:** campos inválidos o vacíos.
+- **Dónde mirar:** `update_document_metadata.py`.
+- **Solución:** enviar `name`/`tags` válidos.
 - **Síntoma:** download falla.
-  - **Causa probable:** `storage_key` ausente o storage no configurado.
-  - **Dónde mirar:** `download_document.py` y `container.py`.
-  - **Solución:** corregir storage y metadata.
+- **Causa probable:** `storage_key` ausente o storage no configurado.
+- **Dónde mirar:** `download_document.py` y `container.py`.
+- **Solución:** corregir storage y metadata.
 - **Síntoma:** delete “no borra”.
-  - **Causa probable:** es soft delete por diseño.
-  - **Dónde mirar:** `delete_document.py`.
-  - **Solución:** validar estado o crear purge explícito.
+- **Causa probable:** es soft delete por diseño.
+- **Dónde mirar:** `delete_document.py`.
+- **Solución:** validar estado o crear purge explícito.
 
 ## 🔎 Ver también
 - `../README.md`

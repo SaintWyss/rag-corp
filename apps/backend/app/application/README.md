@@ -18,12 +18,8 @@ Rutas rápidas:
 - Expone servicios de aplicación reutilizables (context builder, rewriter, reranker).
 
 ### Qué NO hace (y por qué)
-- No define endpoints HTTP ni schemas.
-  - Razón: el transporte vive en `interfaces/`.
-  - Consecuencia: los casos de uso son invocables desde HTTP o worker.
-- No ejecuta SQL ni SDKs externos.
-  - Razón: el IO real vive en `infrastructure/`.
-  - Consecuencia: las implementaciones se inyectan desde `container.py`.
+- No define endpoints HTTP ni schemas. Razón: el transporte vive en `interfaces/`. Consecuencia: los casos de uso son invocables desde HTTP o worker.
+- No ejecuta SQL ni SDKs externos. Razón: el IO real vive en `infrastructure/`. Consecuencia: las implementaciones se inyectan desde `container.py`.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -38,20 +34,20 @@ Rutas rápidas:
 | `query_rewriter.py` | Archivo Python | Reescritura de queries con LLM (feature flag). |
 | `rate_limiting.py` | Archivo Python | Rate limit por cuota (messages/tokens/uploads). |
 | `reranker.py` | Archivo Python | Reranking de chunks (heurístico/LLM). |
-| `usecases/` | Carpeta | Casos de uso por bounded context. |
+| `usecases` | Carpeta | Casos de uso por bounded context. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
 
 - **Contrato común**
-  - Input: `*Input` (dataclass o equivalente).
-  - Proceso: `UseCase.execute(...)` valida y orquesta puertos.
-  - Output: `*Result` con `error` tipado si aplica.
+- Input: `*Input` (dataclass o equivalente).
+- Proceso: `UseCase.execute(...)` valida y orquesta puertos.
+- Output: `*Result` con `error` tipado si aplica.
 - **Servicios de aplicación**
-  - `ContextBuilder` construye contexto con `[S#]` y sección `FUENTES`.
-  - `QueryRewriter` mejora consultas con LLM (si está habilitado).
-  - `ChunkReranker` reordena candidatos con heurística o LLM.
-  - `RateLimiter` controla cuotas por workspace/user.
+- `ContextBuilder` construye contexto con `[S#]` y sección `FUENTES`.
+- `QueryRewriter` mejora consultas con LLM (si está habilitado).
+- `ChunkReranker` reordena candidatos con heurística o LLM.
+- `RateLimiter` controla cuotas por workspace/user.
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** Application (orquestación + políticas).
@@ -61,6 +57,7 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.application import ContextBuilder
 from app.domain.entities import Chunk
 
@@ -69,6 +66,7 @@ context, used = builder.build([Chunk(content="...", document_title="Doc", docume
 ```
 
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.application import RateLimitConfig, RateLimiter, InMemoryQuotaStorage
 
 limiter = RateLimiter(InMemoryQuotaStorage(), RateLimitConfig(messages_per_hour=2))
@@ -76,6 +74,7 @@ check = limiter.check("messages", workspace_id="...")
 ```
 
 ```python
+# Por qué: deja visible el flujo principal.
 from app.container import get_answer_query_use_case
 use_case = get_answer_query_use_case()
 ```
@@ -88,21 +87,21 @@ use_case = get_answer_query_use_case()
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `ValueError` por recursos de rate limit.
-  - **Causa probable:** resource no reconocido.
-  - **Dónde mirar:** `rate_limiting.py`.
-  - **Solución:** usar nombres permitidos o extender config.
+- **Causa probable:** resource no reconocido.
+- **Dónde mirar:** `rate_limiting.py`.
+- **Solución:** usar nombres permitidos o extender config.
 - **Síntoma:** `QueryRewriter` no actúa.
-  - **Causa probable:** feature flag deshabilitado o query no cumple criterios.
-  - **Dónde mirar:** `query_rewriter.py` y settings.
-  - **Solución:** habilitar flag y validar precondiciones.
+- **Causa probable:** feature flag deshabilitado o query no cumple criterios.
+- **Dónde mirar:** `query_rewriter.py` y settings.
+- **Solución:** habilitar flag y validar precondiciones.
 - **Síntoma:** contexto RAG vacío.
-  - **Causa probable:** `max_size` bajo o chunks vacíos.
-  - **Dónde mirar:** `context_builder.py`.
-  - **Solución:** ajustar límites y revisar chunks.
+- **Causa probable:** `max_size` bajo o chunks vacíos.
+- **Dónde mirar:** `context_builder.py`.
+- **Solución:** ajustar límites y revisar chunks.
 - **Síntoma:** import de use case falla.
-  - **Causa probable:** falta re-export en `usecases/__init__.py`.
-  - **Dónde mirar:** `usecases/__init__.py`.
-  - **Solución:** exportar el símbolo.
+- **Causa probable:** falta re-export en `usecases/__init__.py`.
+- **Dónde mirar:** `usecases/__init__.py`.
+- **Solución:** exportar el símbolo.
 
 ## 🔎 Ver también
 - `./usecases/README.md`

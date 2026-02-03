@@ -1,5 +1,4 @@
 # Schemas HTTP
-
 Como un **formulario oficial**: define exactamente qué puede entrar y salir por la API, valida forma y límites, y garantiza contratos estables entre clientes y use cases.
 
 ## 🎯 Misión
@@ -23,51 +22,45 @@ Recorridos rápidos por intención:
 ### Qué SÍ hace
 
 - Modela payloads de entrada/salida para features expuestas por HTTP:
-  - workspaces
-  - documents
-  - query
-  - admin
+- workspaces
+- documents
+- query
+- admin
 
 - Aplica validaciones con Pydantic:
-  - tipos (UUID, str, int, bool)
-  - required/optional
-  - constraints (min/max, regex, longitudes)
-  - normalizaciones mínimas (strip)
+- tipos (UUID, str, int, bool)
+- required/optional
+- constraints (min/max, regex, longitudes)
+- normalizaciones mínimas (strip)
 
 - Aplica límites defensivos configurables:
-  - largo máximo de query
-  - top_k máximo
-  - límites de streaming/buffers (cuando corresponda)
+- largo máximo de query
+- top_k máximo
+- límites de streaming/buffers (cuando corresponda)
 
 - Mantiene contratos consistentes para routers:
-  - responses serializables
-  - nombres estables
-  - versionado explícito cuando sea necesario (ideal: introducir `v1/` si alguna vez cambia públicamente)
+- responses serializables
+- nombres estables
+- versionado explícito cuando sea necesario (ideal: introducir `v1/` si alguna vez cambia públicamente)
 
 ### Qué NO hace (y por qué)
 
-- No contiene lógica de negocio.
-  - **Razón:** decisiones de negocio viven en Application/Domain.
-  - **Impacto:** un schema no decide permisos ni estados; solo valida formato y límites.
+- No contiene lógica de negocio. Razón: ** decisiones de negocio viven en Application/Domain. Impacto: ** un schema no decide permisos ni estados; solo valida formato y límites.
 
-- No ejecuta queries ni llama servicios.
-  - **Razón:** IO pertenece a Infrastructure; orquestación a Application.
-  - **Impacto:** no hay repos/DB/LLM aquí; si aparece, es boundary roto.
+- No ejecuta queries ni llama servicios. Razón: ** IO pertenece a Infrastructure; orquestación a Application. Impacto: ** no hay repos/DB/LLM aquí; si aparece, es boundary roto.
 
-- No debería depender de infraestructura ni de modelos de vendor.
-  - **Razón:** mantener schemas portables y predecibles.
-  - **Impacto:** evitar imports a `boto3`, `psycopg`, SDKs o clases internas de infraestructura.
+- No debería depender de infraestructura ni de modelos de vendor. Razón: ** mantener schemas portables y predecibles. Impacto: ** evitar imports a `boto3`, `psycopg`, SDKs o clases internas de infraestructura.
 
 ## 🗺️ Mapa del territorio
 
-| Recurso         | Tipo           | Responsabilidad (en humano)                                                                               |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :-------------- | :------------- | :-------------------------------------------------------------------------------------------------------- |
-| `__init__.py`   | Archivo Python | Exporta schemas para imports estables desde routers (evita imports profundos).                            |
-| `admin.py`      | Archivo Python | DTOs de endpoints admin: requests/responses para operaciones privilegiadas.                               |
-| `documents.py`  | Archivo Python | DTOs de documentos: upload (multipart helpers en routers), list/get/status/reprocess, metadata y filtros. |
-| `query.py`      | Archivo Python | DTOs de query/ask/stream: query, top_k, filtros por workspace, opciones de streaming y respuestas.        |
-| `workspaces.py` | Archivo Python | DTOs de workspaces: create/update, publish/archive, share/ACL, list/get.                                  |
-| `README.md`     | Documento      | Portada + guía de navegación de schemas HTTP (este archivo).                                              |
+| `__init__.py` | Archivo Python | Exporta schemas para imports estables desde routers (evita imports profundos). |
+| `admin.py` | Archivo Python | DTOs de endpoints admin: requests/responses para operaciones privilegiadas. |
+| `documents.py` | Archivo Python | DTOs de documentos: upload (multipart helpers en routers), list/get/status/reprocess, metadata y filtros. |
+| `query.py` | Archivo Python | DTOs de query/ask/stream: query, top_k, filtros por workspace, opciones de streaming y respuestas. |
+| `workspaces.py` | Archivo Python | DTOs de workspaces: create/update, publish/archive, share/ACL, list/get. |
+| `README.md` | Documento | Portada + guía de navegación de schemas HTTP (este archivo). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -81,25 +74,25 @@ Recorridos rápidos por intención:
 
 - **Application:** el router crea `*Input` de use case usando los valores ya validados.
 - **Response:** el router devuelve un objeto:
-  - Pydantic lo serializa a JSON.
-  - si hay errores, se devuelven por RFC7807 (eso lo maneja `error_mapping.py`, no los schemas).
+- Pydantic lo serializa a JSON.
+- si hay errores, se devuelven por RFC7807 (eso lo maneja `error_mapping.py`, no los schemas).
 
 ### Validaciones típicas (patrones)
 
 - **Strings**
-  - `min_length=1` para campos obligatorios (ej. `name`, `title`).
-  - `max_length=Settings.max_*` para evitar payloads gigantes.
-  - `strip_whitespace=True` para evitar inputs “vacíos” con espacios.
+- `min_length=1` para campos obligatorios (ej. `name`, `title`).
+- `max_length=Settings.max_*` para evitar payloads gigantes.
+- `strip_whitespace=True` para evitar inputs “vacíos” con espacios.
 
 - **Enteros**
-  - `ge=1` y `le=Settings.max_top_k` para `top_k`.
-  - `ge=0` para offsets/paginación.
+- `ge=1` y `le=Settings.max_top_k` para `top_k`.
+- `ge=0` para offsets/paginación.
 
 - **UUIDs**
-  - parseo directo a `UUID` para evitar strings inválidos.
+- parseo directo a `UUID` para evitar strings inválidos.
 
 - **Enums**
-  - en requests públicos, usar enums explícitos para evitar strings libres.
+- en requests públicos, usar enums explícitos para evitar strings libres.
 
 ### Límites configurables
 
@@ -118,138 +111,61 @@ Ejemplos típicos:
 - **Rol arquitectónico:** _Interfaces_ (DTOs HTTP / contratos públicos).
 
 - **Recibe órdenes de:**
-  - routers HTTP en `../routers/`.
+- routers HTTP en `../routers/`.
 
 - **Llama a:**
-  - settings/config para límites (por ejemplo `get_settings()`), sin IO.
+- settings/config para límites (por ejemplo `get_settings()`), sin IO.
 
 - **Reglas de límites (imports/ownership):**
-  - schemas no dependen de infraestructura.
-  - schemas no importan repositorios ni servicios.
-  - schemas no crean `*Input` de Application (eso es responsabilidad del router).
+- schemas no dependen de infraestructura.
+- schemas no importan repositorios ni servicios.
+- schemas no crean `*Input` de Application (eso es responsabilidad del router).
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Construir un request model (uso directo)
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.interfaces.api.http.schemas.query import AskReq
 
 req = AskReq(query="¿Qué dice el contrato?")
-print(req.query)
 ```
 
-### 2) Validación automática (raise en inválidos)
-
 ```python
-from pydantic import ValidationError
-
-from app.interfaces.api.http.schemas.query import AskReq
-
-try:
-    AskReq(query="")  # inválido si min_length=1
-except ValidationError as e:
-    print(e)
-```
-
-### 3) Response model (serializable)
-
-```python
-from uuid import uuid4
-
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.interfaces.api.http.schemas.workspaces import WorkspaceResponse
-
-resp = WorkspaceResponse(
-    id=uuid4(),
-    name="Legal",
-    is_published=False,
-)
-print(resp.model_dump())
 ```
 
-### 4) Usar límites desde config (patrón)
-
 ```python
-from pydantic import BaseModel, Field
-
+# Por qué: deja visible el flujo principal.
 from app.crosscutting.config import get_settings
-
 _settings = get_settings()
-
-class AskReq(BaseModel):
-    query: str = Field(min_length=1, max_length=_settings.max_query_chars)
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist para agregar/ajustar schemas sin romper clientes:
-
-1. **Agregar schema por endpoint**
-
-- Crear/editar `schemas/<feature>.py`.
-- Definir request/response models con nombres explícitos.
-
-2. **Mantener contratos estables**
-
-- No renombrar campos públicos sin un plan de compatibilidad.
-- Si necesitás cambiar forma de payload, introducir versionado (ej. `v1/`, o mantener alias de campos).
-
-3. **Validaciones en el borde, no negocio**
-
-- Validar formato (UUID, longitudes, enums).
-- No validar “permisos”, “estado válido” o “existe en DB” (eso es Application).
-
-4. **Límites desde settings**
-
-- Cualquier max/min que impacte al usuario debe estar en config.
-- Evitar números mágicos dispersos.
-
-5. **Documentación de campos**
-
-- Usar `Field(description=...)` en campos públicos importantes.
-- Mantener consistencia de nombres (snake_case vs camelCase según estándar del proyecto).
-
-6. **Tests**
-
-- Unit: validar que constraints funcionan (422 en HTTP).
-- Compat: si cambiaste un schema, agregar test que cubra el payload anterior si se mantiene.
+- Agregá schemas nuevos en el archivo del feature correspondiente.
+- Mantené constraints en línea con settings (`crosscutting.config`).
+- Actualizá routers y response_model.
+- Wiring: dependencias reales se obtienen desde `app/container.py` en routers.
+- Tests: unit en `apps/backend/tests/unit/api/`.
 
 ## 🆘 Troubleshooting
-
-1. **`422` en requests que “parecen válidos”**
-
-- Causa probable: constraints más restrictivos de lo esperado (max_length, enum, required).
-- Dónde mirar: schema específico en `schemas/<feature>.py`.
-- Solución: ajustar límites en config o relajar constraint (con criterio).
-
-2. **Límites muy bajos / demasiado altos**
-
-- Causa probable: settings mal configurados.
-- Dónde mirar: `app/crosscutting/config.py`.
-- Solución: actualizar settings (env) y asegurar que los schemas usen esos valores.
-
-3. **Campo “faltante” en response**
-
-- Causa probable: el response_model no lo define o está marcado optional con default.
-- Dónde mirar: schema de response correspondiente.
-- Solución: definir el campo y revisar que el router lo complete.
-
-4. **Serialización rara (UUID/datetime)**
-
-- Causa probable: configuración de Pydantic o tipos no serializables.
-- Dónde mirar: el modelo y su config (`model_config` / `json_encoders`).
-- Solución: usar tipos estándar (UUID/datetime) y configurar serialización si hace falta.
-
-5. **Inconsistencia entre routers y schemas**
-
-- Causa probable: el router construye un payload distinto al schema.
-- Dónde mirar: router del endpoint y el schema asociado.
-- Solución: alinear mapping; preferir `response_model` y `model_dump()` controlado.
+- **Síntoma:** 422 inesperado.
+- **Causa probable:** constraint demasiado estricto.
+- **Dónde mirar:** schema del endpoint.
+- **Solución:** ajustar límites en settings o schema.
+- **Síntoma:** campo faltante en response.
+- **Causa probable:** response_model no define el campo.
+- **Dónde mirar:** schema de response.
+- **Solución:** agregar el campo y mapear en router.
+- **Síntoma:** serialización rara (UUID/datetime).
+- **Causa probable:** tipo no serializable.
+- **Dónde mirar:** schema.
+- **Solución:** usar tipos estándar o configurar serialización.
+- **Síntoma:** routers y schemas desalineados.
+- **Causa probable:** cambios no propagados.
+- **Dónde mirar:** router y schema correspondiente.
+- **Solución:** alinear mapping.
 
 ## 🔎 Ver también
-
-- `../routers/README.md` (endpoints que consumen estos schemas)
-- `../README.md` (visión general del adaptador HTTP)
-- `../../../../crosscutting/README.md` (settings, límites y convenciones)
-- `../../../../crosscutting/config.py` (valores de `max_*` y flags)
-- `../error_mapping.py` (RFC7807; los schemas no mapean errores)
+- `../routers/README.md`
+- `../README.md`
+- `../../../../crosscutting/config.py`

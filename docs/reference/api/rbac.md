@@ -1,155 +1,73 @@
-# Role-Based Access Control (RBAC)
+# RBAC para API Keys
+Fuente de verdad: `apps/backend/app/identity/rbac.py` y `apps/backend/app/identity/auth.py`.
 
-**Project:** RAG Corp  
-**Last Updated:** 2026-01-22
+## Resumen
+- RBAC aplica a **API keys** (`X-API-Key`).
+- Si existe `RBAC_CONFIG`, la autorización se resuelve por roles/permisos.
+- Si **no** existe `RBAC_CONFIG` pero sí `API_KEYS_CONFIG`, se aplica el fallback por scopes.
+- Si no hay ninguna configuración, la auth por API key se considera deshabilitada.
 
----
+## Permisos disponibles
+Definidos en `Permission` (`apps/backend/app/identity/rbac.py`):
+- `documents:create`
+- `documents:read`
+- `documents:delete`
+- `query:search`
+- `query:ask`
+- `query:stream`
+- `admin:metrics`
+- `admin:health`
+- `admin:config`
+- `*` (wildcard)
 
-## Overview
+## Scopes legacy → permisos
+Mapeo `SCOPE_PERMISSIONS` (`apps/backend/app/identity/rbac.py`):
+- `ingest` → `documents:create`, `documents:read`, `documents:delete`
+- `ask` → `documents:read`, `query:search`, `query:ask`, `query:stream`
+- `metrics` → `admin:metrics`
 
-RBAC agrega permisos a las API keys existentes. El flujo es:
+## Roles por defecto
+`DEFAULT_ROLES` en `apps/backend/app/identity/rbac.py`:
+- `admin` → `*`
+- `user` → create/read docs + search/ask/stream
+- `readonly` → read docs + search/ask
+- `ingest-only` → create docs
 
-1) API key valida (si `API_KEYS_CONFIG` esta configurado)  
-2) RBAC check (si `RBAC_CONFIG` esta configurado)  
-3) Fallback a scopes legacy cuando no hay RBAC
-
-Notas:
-- RBAC aplica solo a **API keys**.
-- JWT (usuarios) usa roles `admin|employee` via `/auth/*`.
-
----
-
-## Permisos
-
-```python
-# Document operations
-DOCUMENTS_CREATE = "documents:create"
-DOCUMENTS_READ = "documents:read"
-DOCUMENTS_DELETE = "documents:delete"
-
-# Query operations
-QUERY_SEARCH = "query:search"
-QUERY_ASK = "query:ask"
-QUERY_STREAM = "query:stream"
-
-# Admin operations
-ADMIN_METRICS = "admin:metrics"
-ADMIN_HEALTH = "admin:health"
-ADMIN_CONFIG = "admin:config"
-```
-
----
-
-## Scopes legacy -> permisos
-
-En ausencia de RBAC, los scopes se mapean asi:
-
-| Scope | Permisos |
-|-------|----------|
-| `ingest` | `documents:create`, `documents:read`, `documents:delete` |
-| `ask` | `documents:read`, `query:search`, `query:ask`, `query:stream` |
-| `metrics` | `admin:metrics` |
-| `*` | `*` |
-
----
-
-## Default Roles
-
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| `admin` | Full system access | `*` |
-| `user` | Standard user | create/read docs, search, ask, stream |
-| `readonly` | Read-only access | read docs, search, ask |
-| `ingest-only` | Automation | create docs only |
-
----
-
-## JWT Roles (UI)
-
-Para autenticacion de usuarios (JWT), los roles son:
-
-- `admin`
-- `employee`
-
-Los guards de endpoints combinan JWT role gates con permisos RBAC para API keys.
-
----
-
-## Permission Matrix (v6)
-
-| Endpoint / Accion | Admin (JWT) | Employee (JWT) | Service/API Key |
-|---|---|---|---|
-| `GET /v1/workspaces` | ✅ | ✅ | ❌ (user-only) |
-| `GET /v1/workspaces/{id}` | ✅ | ✅ | ❌ (user-only) |
-| `POST /v1/workspaces` | ✅ | ❌ | ❌ (user-only admin) |
-| `PATCH /v1/workspaces/{id}` / `publish` / `share` / `archive` | ✅ | ❌ | ❌ (user-only admin) |
-| `GET /v1/workspaces/{id}/documents` | ✅ | ✅ (si tiene acceso) | ✅ (`documents:read`) |
-| `POST /v1/workspaces/{id}/documents/upload` | ✅ | ✅ (owner/admin) | ✅ (`documents:create`) |
-| `DELETE /v1/workspaces/{id}/documents/{doc_id}` | ✅ | ✅ (owner/admin) | ✅ (`documents:delete`) |
-| `POST /v1/workspaces/{id}/query` / `ask` / `ask/stream` | ✅ | ✅ (si tiene acceso) | ✅ (`query:*`) |
-| `GET /v1/admin/audit` | ✅ | ❌ | ✅ (`admin:config`) |
-| `/auth/users*` | ✅ | ❌ | ✅ (`admin:config`) |
-
-Notas:
-- “Service/API Key” aplica a principals con `X-API-Key` y permisos RBAC o scopes legacy.
-- Los endpoints **user-only** usan `require_user_*` y bloquean principals de servicio.
-
----
-
-## Configuration
-
+## Configuración
 ### RBAC_CONFIG
+Se parsea desde env en `apps/backend/app/identity/rbac.py`.
 
-```bash
-RBAC_CONFIG='{
+Shape esperado:
+```json
+{
   "roles": {
-    "custom-analyst": {
-      "permissions": ["documents:read", "query:search", "query:ask"],
-      "description": "Data analyst with query access"
+    "custom-role": {
+      "permissions": ["documents:read"],
+      "inherits_from": "readonly",
+      "description": "Rol personalizado"
     }
   },
   "key_roles": {
-    "abc123hash...": "admin",
-    "def456hash...": "user"
+    "<key_hash>": "admin"
   }
-}'
+}
 ```
 
-### Key hash
+### API_KEYS_CONFIG (fallback)
+Se parsea en `apps/backend/app/identity/auth.py`.
 
-```python
-import hashlib
-
-api_key = "your-api-key"
-key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:12]
-print(key_hash)
+Shape esperado:
+```json
+{
+  "mi-api-key": ["ingest", "ask"],
+  "otra-key": ["*"]
+}
 ```
 
----
+### Hash de API key
+El hash recortado se calcula con SHA-256 y longitud fija (`_KEY_HASH_LEN`) en `apps/backend/app/identity/auth.py`.
 
-## Usage in Routes
-
-```python
-from app.identity.rbac import require_permissions, Permission
-
-@router.post("/ingest/text")
-def ingest(_: None = Depends(require_permissions(Permission.DOCUMENTS_CREATE))):
-    ...
-```
-
-Para endpoints admin de `/auth/users`, el permiso requerido es `admin:config` (solo RBAC).
-
----
-
-## Fallback Behavior
-
-- Si `RBAC_CONFIG` no esta configurado: usa scopes legacy.
-- Si `API_KEYS_CONFIG` y `RBAC_CONFIG` estan vacias: auth deshabilitada.
-
----
-
-## Testing
-
-```bash
-pnpm test:backend:unit
-```
+## OBSOLETO (no verificado)
+El detalle de “matrices por endpoint” quedó desactualizado tras la reestructuración. Usar OpenAPI como fuente de verdad:
+- `../../shared/contracts/openapi.json`
+- Routers actuales: `../../apps/backend/app/interfaces/api/http/routers/`

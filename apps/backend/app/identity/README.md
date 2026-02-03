@@ -11,12 +11,8 @@ Este módulo define la capa de **identidad y autorización** del backend. Provee
 - Aplica helpers de acceso a documentos (`can_access_document`).
 
 ### Qué NO hace (y por qué)
-- No ejecuta lógica de negocio de dominio.
-  - Razón: las políticas de negocio viven en Domain/Application.
-  - Consecuencia: identity solo decide autenticación/autorización y el shape del actor.
-- No accede a DB directamente salvo repositorios de usuario vía infraestructura.
-  - Razón: el storage real está en `infrastructure/`.
-  - Consecuencia: cualquier IO adicional debe modelarse como puerto/adaptador.
+- No ejecuta lógica de negocio de dominio. Razón: las políticas de negocio viven en Domain/Application. Consecuencia: identity solo decide autenticación/autorización y el shape del actor.
+- No accede a DB directamente salvo repositorios de usuario vía infraestructura. Razón: el storage real está en `infrastructure/`. Consecuencia: cualquier IO adicional debe modelarse como puerto/adaptador.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -28,26 +24,25 @@ Este módulo define la capa de **identidad y autorización** del backend. Provee
 | `dual_auth.py` | Archivo Python | Principal unificado (JWT + API key) y dependencias de permisos/roles. |
 | `rbac.py` | Archivo Python | RBAC para API keys: permisos, roles y dependencias. |
 | `users.py` | Archivo Python | `UserRole` y modelo `User` usados por auth. |
-
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
 
 - **API key**
-  - Input: header `X-API-Key`.
-  - Proceso: `auth.py` parsea `API_KEYS_CONFIG`, valida key y scopes; `rbac.py` puede reemplazar scopes con `RBAC_CONFIG`.
-  - Output: permisos disponibles para el request.
+- Input: header `X-API-Key`.
+- Proceso: `auth.py` parsea `API_KEYS_CONFIG`, valida key y scopes; `rbac.py` puede reemplazar scopes con `RBAC_CONFIG`.
+- Output: permisos disponibles para el request.
 - **JWT (usuarios)**
-  - Input: `Authorization: Bearer ...` o cookie.
-  - Proceso: `auth_users.py` valida firma/exp/claims, resuelve usuario y rol.
-  - Output: `User` autenticado o 401/403.
+- Input: `Authorization: Bearer ...` o cookie.
+- Proceso: `auth_users.py` valida firma/exp/claims, resuelve usuario y rol.
+- Output: `User` autenticado o 401/403.
 - **Principal unificado**
-  - Input: request HTTP.
-  - Proceso: `dual_auth.require_principal()` elige JWT si existe, si no API key; construye `Principal`.
-  - Output: `Principal` con `principal_type=USER|SERVICE`.
+- Input: request HTTP.
+- Proceso: `dual_auth.require_principal()` elige JWT si existe, si no API key; construye `Principal`.
+- Output: `Principal` con `principal_type=USER|SERVICE`.
 - **Acceso a documentos**
-  - Input: `Document` + `Principal`.
-  - Proceso: `access_control.can_access_document` aplica reglas defensivas (default allow si no hay principal o allowed_roles).
-  - Output: booleano de acceso.
+- Input: `Document` + `Principal`.
+- Proceso: `access_control.can_access_document` aplica reglas defensivas (default allow si no hay principal o allowed_roles).
+- Output: booleano de acceso.
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** Interfaces/Security boundary (authN + authZ).
@@ -89,21 +84,21 @@ token, expires_in = create_access_token(user)
 
 ## 🆘 Troubleshooting
 - **Síntoma:** 401 en endpoints protegidos.
-  - **Causa probable:** token/JWT inválido o falta API key.
-  - **Dónde mirar:** `identity/auth_users.py` o `identity/auth.py`.
-  - **Solución:** revisar headers/cookie y settings de auth.
+- **Causa probable:** token/JWT inválido o falta API key.
+- **Dónde mirar:** `identity/auth_users.py` o `identity/auth.py`.
+- **Solución:** revisar headers/cookie y settings de auth.
 - **Síntoma:** 403 con API key válida.
-  - **Causa probable:** permisos RBAC o scopes insuficientes.
-  - **Dónde mirar:** `identity/rbac.py` y `API_KEYS_CONFIG`/`RBAC_CONFIG`.
-  - **Solución:** actualizar permisos o scopes del key.
+- **Causa probable:** permisos RBAC o scopes insuficientes.
+- **Dónde mirar:** `identity/rbac.py` y `API_KEYS_CONFIG`/`RBAC_CONFIG`.
+- **Solución:** actualizar permisos o scopes del key.
 - **Síntoma:** auth “deshabilitada” sin querer.
-  - **Causa probable:** `API_KEYS_CONFIG` vacío y `RBAC_CONFIG` ausente.
-  - **Dónde mirar:** `crosscutting/config.py` y variables de entorno.
-  - **Solución:** setear config de keys o RBAC.
+- **Causa probable:** `API_KEYS_CONFIG` vacío y `RBAC_CONFIG` ausente.
+- **Dónde mirar:** `crosscutting/config.py` y variables de entorno.
+- **Solución:** setear config de keys o RBAC.
 - **Síntoma:** `ModuleNotFoundError` al usar scripts de auth.
-  - **Causa probable:** cwd incorrecto o `PYTHONPATH` no incluye `apps/backend`.
-  - **Dónde mirar:** `pwd` y logs.
-  - **Solución:** ejecutar desde `apps/backend/`.
+- **Causa probable:** cwd incorrecto o `PYTHONPATH` no incluye `apps/backend`.
+- **Dónde mirar:** `pwd` y logs.
+- **Solución:** ejecutar desde `apps/backend/`.
 
 ## 🔎 Ver también
 - `../interfaces/api/http/README.md`

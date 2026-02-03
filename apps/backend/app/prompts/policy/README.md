@@ -1,5 +1,4 @@
 # policy
-
 Como un **reglamento interno**: define reglas globales de seguridad y evidencia que se anteponen a cualquier prompt.
 
 ## 🎯 Misión
@@ -20,19 +19,15 @@ Recorridos rápidos por intención:
 
 ### Qué NO hace (y por qué)
 
-- No contiene lógica de ejecución.
-  - **Razón:** es un asset estático; la aplicación ejecuta reglas en código y el loader solo compone texto.
-  - **Impacto:** cambios acá se reflejan al construir el prompt final (no hay “código” que correr).
+- No contiene lógica de ejecución. Razón: ** es un asset estático; la aplicación ejecuta reglas en código y el loader solo compone texto. Impacto: ** cambios acá se reflejan al construir el prompt final (no hay “código” que correr).
 
-- No define prompts específicos de tarea.
-  - **Razón:** las tareas viven en directorios por capability (ej. `rag_answer/`).
-  - **Impacto:** si querés cambiar estructura de respuesta, se hace en el prompt de la capability, no acá.
+- No define prompts específicos de tarea. Razón: ** las tareas viven en directorios por capability (ej. `rag_answer/`). Impacto: ** si querés cambiar estructura de respuesta, se hace en el prompt de la capability, no acá.
 
 ## 🗺️ Mapa del territorio
 
-| Recurso                 | Tipo      | Responsabilidad (en humano)                                           |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :---------------------- | :-------- | :-------------------------------------------------------------------- |
-| `README.md`             | Documento | Portada + reglas de extensión del contrato global.                    |
+| `README.md` | Documento | Portada + reglas de extensión del contrato global. |
 | `secure_contract_es.md` | Documento | Contrato de seguridad en español que se antepone a todos los prompts. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
@@ -58,67 +53,56 @@ Conceptos en contexto:
 - **Rol arquitectónico:** Static Assets / Configuration.
 
 - **Recibe órdenes de:**
-  - `PromptLoader` en infraestructura.
+- `PromptLoader` en infraestructura.
 
 - **Llama a:** no aplica.
 
 - **Reglas de límites (contratos):**
-  - Debe ser consistente con el formato de citación esperado (`[S#]` u otro) para que el consumidor no tenga que “adivinar”.
-  - Debe evitar contradicciones internas (reglas que se anulan entre sí).
-  - Debe mantenerse estable: cambios impactan a todas las capabilities.
+- Debe ser consistente con el formato de citación esperado (`[S#]` u otro) para que el consumidor no tenga que “adivinar”.
+- Debe evitar contradicciones internas (reglas que se anulan entre sí).
+- Debe mantenerse estable: cambios impactan a todas las capabilities.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Obtener policy + template ya concatenados
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.infrastructure.prompts.loader import PromptLoader
 
 loader = PromptLoader(version="v1", capability="rag_answer", lang="es")
 policy_plus_template = loader.get_template()
-print(policy_plus_template[:500])
 ```
-
-### 2) Formatear un prompt final (incluye policy automáticamente)
-
-```python
-from app.infrastructure.prompts.loader import PromptLoader
-
-loader = PromptLoader(version="v2", capability="rag_answer", lang="es")
-prompt = loader.format(context="...", query="...")
-assert "..." in prompt
-```
-
-### 3) Checklist rápido de revisión de policy (manual)
 
 ```text
-- No contradice reglas del sistema (seguridad / fuentes / evidencia).
-- No fuerza un formato imposible para el template.
-- No introduce tokens que el loader no reemplaza.
+# Checklist manual
+- No contradice reglas del sistema
+- No introduce tokens no reemplazables
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. **Mantené el contrato corto y directo**: reglas globales, no detalles de una sola tarea.
-2. **Evitá contradicciones**: una regla por intención; sin duplicados que divergen.
-3. **No inventes tokens**: si agregás placeholders, el loader debe reemplazarlos (si no, quedarán literales).
-4. **Versionado**:
-   - si el cambio altera comportamiento esperado de salida (citas, evidencia, seguridad), tratá el cambio como “breaking” y documentalo.
-
-5. **Validación**:
-   - corré un sanity test que haga `PromptLoader(...).format(...)` y verifique que el prompt final incluye policy.
+- Mantener policy breve y global (no específica de una sola tarea).
+- Evitar tokens que el loader no reemplaza.
+- Si el cambio es breaking, versionar la capability y documentar.
+- Si el consumo cambia, cablear el loader desde `app/container.py`.
+- Tests: unit en `apps/backend/tests/unit/` con `PromptLoader.format(...)`.
 
 ## 🆘 Troubleshooting
-
-- **Respuestas sin “Fuentes”** → policy y prompt de capability desalineados → revisar `secure_contract_es.md` y el template en `../rag_answer/`.
-- **El loader falla al cargar policy** → frontmatter YAML inválido o archivo malformado → revisar encabezado en `secure_contract_es.md`.
-- **Aparecen literales tipo `{algo}` en la salida** → policy introdujo tokens que el loader no reemplaza → remover o implementar reemplazo en infraestructura.
-- **Cambió el comportamiento de todas las respuestas** → se editó policy → revertir o documentar el cambio y ajustar prompts/tests.
+- **Síntoma:** respuestas sin fuentes.
+- **Causa probable:** policy y template desalineados.
+- **Dónde mirar:** `secure_contract_es.md` y `rag_answer/`.
+- **Solución:** alinear reglas y formato.
+- **Síntoma:** `FileNotFoundError` de policy.
+- **Causa probable:** archivo faltante o renombrado.
+- **Dónde mirar:** `infrastructure/prompts/loader.py`.
+- **Solución:** restaurar `secure_contract_es.md`.
+- **Síntoma:** tokens literales en salida.
+- **Causa probable:** policy agregó placeholders no soportados.
+- **Dónde mirar:** policy.
+- **Solución:** eliminar tokens no soportados.
+- **Síntoma:** cambios no se reflejan.
+- **Causa probable:** loader cacheado.
+- **Dónde mirar:** `get_prompt_loader()`.
+- **Solución:** reiniciar proceso.
 
 ## 🔎 Ver también
-
-- `../README.md` (índice general de prompts)
-- `../rag_answer/README.md` (prompts de respuesta RAG)
-- `../../infrastructure/prompts/README.md` (loader, c
+- `../README.md`
+- `../rag_answer/README.md`
+- `../../infrastructure/prompts/README.md`

@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Version:** v6 (Definitivo)  
 **Last Updated:** 2026-01-24  
-**Source of Truth:** `docs/system/informe_de_sistemas_rag_corp.md` §4.2  
+**Source of Truth:** `docs/project/informe_de_sistemas_rag_corp.md` §4.2  
 **Standard:** ISO/IEC 25010
 
 ---
@@ -37,7 +37,7 @@ Este documento define los **requerimientos no funcionales** del sistema RAG Corp
 **Límite de Upload (AS-IS):**
 
 ```
-# Evidencia: apps/backend/app/crosscutting/config.py:107
+# Evidencia: apps/backend/app/crosscutting/config.py
 max_body_bytes: int = 10 * 1024 * 1024  # 10MB
 ```
 
@@ -83,6 +83,6 @@ Los siguientes RNF NO están en alcance para v6:
 
 ## Referencias
 
-- Contrato v6: `docs/system/informe_de_sistemas_rag_corp.md` §4.2
+- Contrato v6: `docs/project/informe_de_sistemas_rag_corp.md` §4.2
 - ISO/IEC 25010: https://www.iso.org/standard/35733.html
 - ADR-001: `docs/architecture/adr/ADR-001-clean-architecture.md`

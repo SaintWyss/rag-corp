@@ -11,12 +11,8 @@ Este directorio contiene el runtime de **Alembic** para versionar el esquema de 
 - Mantiene el estado de migración en la tabla `alembic_version`.
 
 ### Qué NO hace (y por qué)
-- No genera migraciones automáticamente.
-  - Razón: `target_metadata` es `None` (la app usa SQL directo).
-  - Consecuencia: las migraciones se escriben a mano y se revisan como código.
-- No define reglas de negocio.
-  - Razón: solo contiene DDL y decisiones de esquema.
-  - Consecuencia: la lógica vive en `app/` y en los repositorios.
+- No genera migraciones automáticamente. Razón: `target_metadata` es `None` (la app usa SQL directo). Consecuencia: las migraciones se escriben a mano y se revisan como código.
+- No define reglas de negocio. Razón: solo contiene DDL y decisiones de esquema. Consecuencia: la lógica vive en `app/` y en los repositorios.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -24,17 +20,16 @@ Este directorio contiene el runtime de **Alembic** para versionar el esquema de 
 | `README.md` | Documento | Guía operativa de migraciones. |
 | `env.py` | Archivo Python | Runtime de Alembic (URL, online/offline, configuración). |
 | `script.py.mako` | Documento | Template de nuevas revisiones. |
-| `versions/` | Carpeta | Revisiones versionadas del esquema. |
-
+| `versions` | Carpeta | Revisiones versionadas del esquema. |
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
 
 - **Input:** comando `alembic ...` + `DATABASE_URL`.
 - **Proceso:**
-  - `env.py` resuelve URL y configura el contexto.
-  - Offline: genera SQL sin conectar.
-  - Online: crea engine con `NullPool` y aplica migraciones en transacción.
-  - `target_metadata` es `None`, por eso no se usa autogenerate.
+- `env.py` resuelve URL y configura el contexto.
+- Offline: genera SQL sin conectar.
+- Online: crea engine con `NullPool` y aplica migraciones en transacción.
+- `target_metadata` es `None`, por eso no se usa autogenerate.
 - **Output:** esquema actualizado y `alembic_version` sincronizada.
 
 ## 🔗 Conexiones y roles
@@ -74,30 +69,31 @@ command.current(cfg)
 - No edites revisiones ya aplicadas en entornos compartidos; crea una correctiva.
 - Preferí DDL explícito (`op.create_table`, `op.add_column`, `op.create_index`).
 - Si necesitás operaciones especiales, usá `op.execute(...)` y documentalo.
+- Si el cambio requiere nuevas dependencias runtime, cablealas en `app/container.py`.
 - Validación mínima antes de merge: `alembic upgrade head` en DB limpia.
 - Tests: si el cambio impacta repos, agregá pruebas en `apps/backend/tests/integration/`.
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `Target database is not up to date`.
-  - **Causa probable:** DB atrasada respecto del repo.
-  - **Dónde mirar:** `alembic heads`.
-  - **Solución:** `alembic upgrade head`.
+- **Causa probable:** DB atrasada respecto del repo.
+- **Dónde mirar:** `alembic heads`.
+- **Solución:** `alembic upgrade head`.
 - **Síntoma:** no conecta o conecta a una DB “equivocada”.
-  - **Causa probable:** `DATABASE_URL` ausente/incorrecta.
-  - **Dónde mirar:** `.env` y `env.py` (`get_url`).
-  - **Solución:** setear `DATABASE_URL` correcto.
+- **Causa probable:** `DATABASE_URL` ausente/incorrecta.
+- **Dónde mirar:** `.env` y `env.py` (`get_url`).
+- **Solución:** setear `DATABASE_URL` correcto.
 - **Síntoma:** `No module named psycopg`.
-  - **Causa probable:** dependencias no instaladas.
-  - **Dónde mirar:** `requirements.txt`.
-  - **Solución:** instalar deps del backend.
+- **Causa probable:** dependencias no instaladas.
+- **Dónde mirar:** `requirements.txt`.
+- **Solución:** instalar deps del backend.
 - **Síntoma:** `permission denied to create extension "vector"`.
-  - **Causa probable:** usuario sin permisos o pgvector no instalado.
-  - **Dónde mirar:** logs de Postgres.
-  - **Solución:** habilitar extensión o usar DB con pgvector.
+- **Causa probable:** usuario sin permisos o pgvector no instalado.
+- **Dónde mirar:** logs de Postgres.
+- **Solución:** habilitar extensión o usar DB con pgvector.
 - **Síntoma:** downgrade no funciona.
-  - **Causa probable:** baseline no soporta `downgrade()`.
-  - **Dónde mirar:** `versions/001_foundation.py`.
-  - **Solución:** recrear DB de entorno (por ejemplo con reset local).
+- **Causa probable:** baseline no soporta `downgrade()`.
+- **Dónde mirar:** `versions/001_foundation.py`.
+- **Solución:** recrear DB de entorno (por ejemplo con reset local).
 
 ## 🔎 Ver también
 - `../README.md`

@@ -12,12 +12,8 @@ Este módulo construye la aplicación FastAPI y expone los entrypoints ASGI que 
 - Enriquecen OpenAPI con seguridad dual (API key + JWT) y ajustes de parámetros.
 
 ### Qué NO hace (y por qué)
-- No implementa reglas de negocio.
-  - Razón: las decisiones viven en `application/`.
-  - Consecuencia: este módulo solo compone HTTP, no decide permisos/estados.
-- No accede a DB para lógica funcional.
-  - Razón: el IO real está en `infrastructure/`.
-  - Consecuencia: la API solo usa repos mínimos para health/seed.
+- No implementa reglas de negocio. Razón: las decisiones viven en `application/`. Consecuencia: este módulo solo compone HTTP, no decide permisos/estados.
+- No accede a DB para lógica funcional. Razón: el IO real está en `infrastructure/`. Consecuencia: la API solo usa repos mínimos para health/seed.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -28,16 +24,15 @@ Este módulo construye la aplicación FastAPI y expone los entrypoints ASGI que 
 | `exception_handlers.py` | Archivo Python | Handlers de excepciones y mapeo a RFC7807. |
 | `main.py` | Archivo Python | Composición FastAPI, middlewares y endpoints operativos. |
 | `versioning.py` | Archivo Python | Alias `/api/v1` sobre el router principal. |
-
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
 
 - **Input:** requests HTTP.
 - **Proceso:**
-  - `create_fastapi_app()` registra middlewares y routers.
-  - `lifespan()` inicializa y cierra el pool de DB.
-  - `app = RateLimitMiddleware(fastapi_app)` envuelve el ASGI final.
-  - `_custom_openapi()` agrega esquemas de seguridad y marca `workspace_id` requerido en rutas `/v1/*`.
+- `create_fastapi_app()` registra middlewares y routers.
+- `lifespan()` inicializa y cierra el pool de DB.
+- `app = RateLimitMiddleware(fastapi_app)` envuelve el ASGI final.
+- `_custom_openapi()` agrega esquemas de seguridad y marca `workspace_id` requerido en rutas `/v1/*`.
 - **Output:** respuestas HTTP (JSON o RFC7807) y endpoints operativos.
 
 ## 🔗 Conexiones y roles
@@ -71,25 +66,25 @@ uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `/metrics` devuelve 401/403.
-  - **Causa probable:** `metrics_require_auth=true`.
-  - **Dónde mirar:** `app/crosscutting/config.py` y `app/api/main.py`.
-  - **Solución:** enviar `X-API-Key` con permiso o desactivar el flag.
+- **Causa probable:** `metrics_require_auth=true`.
+- **Dónde mirar:** `app/crosscutting/config.py` y `app/api/main.py`.
+- **Solución:** enviar `X-API-Key` con permiso o desactivar el flag.
 - **Síntoma:** `/healthz` reporta `db=disconnected`.
-  - **Causa probable:** `DATABASE_URL` incorrecta o DB caída.
-  - **Dónde mirar:** logs del startup y `infrastructure/db/pool.py`.
-  - **Solución:** corregir URL y reiniciar.
+- **Causa probable:** `DATABASE_URL` incorrecta o DB caída.
+- **Dónde mirar:** logs del startup y `infrastructure/db/pool.py`.
+- **Solución:** corregir URL y reiniciar.
 - **Síntoma:** CORS bloquea requests.
-  - **Causa probable:** origen no permitido.
-  - **Dónde mirar:** `crosscutting/config.py` (`allowed_origins`).
-  - **Solución:** ajustar settings y reiniciar.
+- **Causa probable:** origen no permitido.
+- **Dónde mirar:** `crosscutting/config.py` (`allowed_origins`).
+- **Solución:** ajustar settings y reiniciar.
 - **Síntoma:** OpenAPI muestra seguridad incorrecta.
-  - **Causa probable:** reglas de `_custom_openapi()` no cubren la ruta.
-  - **Dónde mirar:** `app/api/main.py`.
-  - **Solución:** ajustar reglas por path/prefijo.
+- **Causa probable:** reglas de `_custom_openapi()` no cubren la ruta.
+- **Dónde mirar:** `app/api/main.py`.
+- **Solución:** ajustar reglas por path/prefijo.
 - **Síntoma:** 429 frecuentes.
-  - **Causa probable:** límites bajos en rate limit.
-  - **Dónde mirar:** `crosscutting/config.py` (`rate_limit_rps`, `rate_limit_burst`).
-  - **Solución:** ajustar límites o enviar API key.
+- **Causa probable:** límites bajos en rate limit.
+- **Dónde mirar:** `crosscutting/config.py` (`rate_limit_rps`, `rate_limit_burst`).
+- **Solución:** ajustar límites o enviar API key.
 
 ## 🔎 Ver también
 - `../interfaces/api/http/README.md`

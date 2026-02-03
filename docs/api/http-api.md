@@ -1,5 +1,4 @@
-# HTTP API
+# OBSOLETO — HTTP API
+Este documento fue movido a `docs/reference/api/http-api.md`.
 
-Este documento fue movido a [../reference/api/http-api.md](../reference/api/http-api.md).
-
-➡️ Ir al documento actual: [../reference/api/http-api.md](../reference/api/http-api.md)
+➡️ Ver documento actual: `../reference/api/http-api.md`

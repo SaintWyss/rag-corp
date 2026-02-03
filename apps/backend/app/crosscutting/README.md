@@ -12,12 +12,8 @@ Este módulo agrupa preocupaciones transversales que no pertenecen al negocio: c
 - Ofrece utilidades como paginación, timings, streaming SSE y tracing opcional.
 
 ### Qué NO hace (y por qué)
-- No implementa reglas de negocio.
-  - Razón: el negocio vive en Domain/Application.
-  - Consecuencia: acá solo se normaliza y observa.
-- No contiene IO de infraestructura (DB/Redis/S3).
-  - Razón: el IO real está en `infrastructure/`.
-  - Consecuencia: este módulo no habla con servicios externos directos.
+- No implementa reglas de negocio. Razón: el negocio vive en Domain/Application. Consecuencia: acá solo se normaliza y observa.
+- No contiene IO de infraestructura (DB/Redis/S3). Razón: el IO real está en `infrastructure/`. Consecuencia: este módulo no habla con servicios externos directos.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -40,16 +36,16 @@ Este módulo agrupa preocupaciones transversales que no pertenecen al negocio: c
 Input → Proceso → Output.
 
 - **Settings**
-  - Input: env + `.env`.
-  - Proceso: `get_settings()` valida y cachea.
-  - Output: objeto Settings por proceso.
+- Input: env + `.env`.
+- Proceso: `get_settings()` valida y cachea.
+- Output: objeto Settings por proceso.
 - **Middlewares**
-  - Request context: genera/propaga `X-Request-Id`, setea contextvars y métricas.
-  - Body limit: corta payloads grandes con 413 RFC7807.
+- Request context: genera/propaga `X-Request-Id`, setea contextvars y métricas.
+- Body limit: corta payloads grandes con 413 RFC7807.
 - **Errores RFC7807**
-  - Factories en `error_responses.py` construyen Problem Details uniformes.
+- Factories en `error_responses.py` construyen Problem Details uniformes.
 - **Observabilidad**
-  - Logs estructurados + métricas Prometheus best-effort.
+- Logs estructurados + métricas Prometheus best-effort.
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** Crosscutting (utilities compartidas).
@@ -59,16 +55,19 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.crosscutting.config import get_settings
 settings = get_settings()
 ```
 
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.crosscutting.error_responses import bad_request
 raise bad_request("Payload inválido")
 ```
 
 ```python
+# Por qué: deja visible el flujo principal.
 from app.crosscutting.timing import StageTimings
 
 t = StageTimings()
@@ -85,21 +84,21 @@ with t.measure("db"):
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `/metrics` muestra “prometheus_client no instalado”.
-  - **Causa probable:** dependencia opcional ausente.
-  - **Dónde mirar:** `requirements.txt`.
-  - **Solución:** instalar `prometheus_client` o aceptar el no-op.
+- **Causa probable:** dependencia opcional ausente.
+- **Dónde mirar:** `requirements.txt`.
+- **Solución:** instalar `prometheus_client` o aceptar el no-op.
 - **Síntoma:** 413 al subir archivos.
-  - **Causa probable:** `max_body_bytes` bajo.
-  - **Dónde mirar:** `config.py` y `middleware.py`.
-  - **Solución:** ajustar settings.
+- **Causa probable:** `max_body_bytes` bajo.
+- **Dónde mirar:** `config.py` y `middleware.py`.
+- **Solución:** ajustar settings.
 - **Síntoma:** no aparece `X-Request-Id`.
-  - **Causa probable:** middleware no registrado.
-  - **Dónde mirar:** `app/api/main.py`.
-  - **Solución:** registrar `RequestContextMiddleware`.
+- **Causa probable:** middleware no registrado.
+- **Dónde mirar:** `app/api/main.py`.
+- **Solución:** registrar `RequestContextMiddleware`.
 - **Síntoma:** 429 frecuentes.
-  - **Causa probable:** rate limit bajo.
-  - **Dónde mirar:** `config.py` y `rate_limit.py`.
-  - **Solución:** ajustar `rate_limit_rps`/`rate_limit_burst`.
+- **Causa probable:** rate limit bajo.
+- **Dónde mirar:** `config.py` y `rate_limit.py`.
+- **Solución:** ajustar `rate_limit_rps`/`rate_limit_burst`.
 
 ## 🔎 Ver también
 - `../api/README.md`

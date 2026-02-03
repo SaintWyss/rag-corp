@@ -10,12 +10,8 @@ Este directorio contiene tests de integración que verifican el backend con depe
 - Ejecuta pruebas marcadas como `integration`.
 
 ### Qué NO hace (y por qué)
-- No reemplaza unit tests.
-  - Razón: el unit test es el primer guardián de lógica aislada.
-  - Consecuencia: si falta un unit test, integración no lo compensa.
-- No cubre infraestructura completa (worker/colas) salvo que se agregue explícitamente.
-  - Razón: el alcance es Postgres + composición.
-  - Consecuencia: flujos full-stack quedan para `tests/e2e/`.
+- No reemplaza unit tests. Razón: el unit test es el primer guardián de lógica aislada. Consecuencia: si falta un unit test, integración no lo compensa.
+- No cubre infraestructura completa (worker/colas) salvo que se agregue explícitamente. Razón: el alcance es Postgres + composición. Consecuencia: flujos full-stack quedan para `tests/e2e/`.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -26,7 +22,6 @@ Este directorio contiene tests de integración que verifican el backend con depe
 | `test_api_endpoints.py` | Test | Endpoints HTTP con TestClient. |
 | `test_postgres_document_repo.py` | Test | Repositorios Postgres reales. |
 | `test_rag_security_pack.py` | Test | Reglas de seguridad RAG. |
-
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
 
@@ -69,21 +64,21 @@ pytest -m integration tests/integration/test_api_endpoints.py
 
 ## 🆘 Troubleshooting
 - **Síntoma:** tests se skipean.
-  - **Causa probable:** falta `RUN_INTEGRATION=1` o `GOOGLE_API_KEY`.
-  - **Dónde mirar:** encabezados de `test_api_endpoints.py`.
-  - **Solución:** setear variables y reintentar.
+- **Causa probable:** falta `RUN_INTEGRATION=1` o `GOOGLE_API_KEY`.
+- **Dónde mirar:** encabezados de `test_api_endpoints.py`.
+- **Solución:** setear variables y reintentar.
 - **Síntoma:** `UndefinedTable`.
-  - **Causa probable:** migraciones no aplicadas.
-  - **Dónde mirar:** `apps/backend/alembic/README.md`.
-  - **Solución:** `alembic upgrade head`.
+- **Causa probable:** migraciones no aplicadas.
+- **Dónde mirar:** `apps/backend/alembic/README.md`.
+- **Solución:** `alembic upgrade head`.
 - **Síntoma:** conexión rechazada.
-  - **Causa probable:** DB apagada o URL incorrecta.
-  - **Dónde mirar:** `DATABASE_URL` y `docker compose`.
-  - **Solución:** levantar DB y corregir URL.
+- **Causa probable:** DB apagada o URL incorrecta.
+- **Dónde mirar:** `DATABASE_URL` y `docker compose`.
+- **Solución:** levantar DB y corregir URL.
 - **Síntoma:** 401/403 en endpoints.
-  - **Causa probable:** auth activa sin credenciales.
-  - **Dónde mirar:** fixtures de auth y settings.
-  - **Solución:** usar headers/tokens válidos en el test.
+- **Causa probable:** auth activa sin credenciales.
+- **Dónde mirar:** fixtures de auth y settings.
+- **Solución:** usar headers/tokens válidos en el test.
 
 ## 🔎 Ver también
 - `../README.md`

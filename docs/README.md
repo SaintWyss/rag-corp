@@ -1,21 +1,24 @@
-# RAG Corp Documentation Portal
+# Portal de documentación
+Guía principal para navegar el backend y sus contratos sin duplicar detalle técnico.
 
-Welcome to the RAG Corp documentation.
+## Empezar por intención
+- Backend (mapa por capas) → `index/backend.md`
+- API y contratos → `index/api.md`
+- Operación y runbooks → `index/ops.md`
+- Datos y migraciones → `index/data.md`
+- Seguridad y control de acceso → `index/security.md`
+- Calidad y testing → `index/quality.md`
 
-## Start Here
+## Mapas rápidos del backend (fuente de verdad)
+- Arquitectura general y capas → `../apps/backend/app/README.md`
+- Casos de uso (Application) → `../apps/backend/app/application/README.md`
+- HTTP (routers + schemas) → `../apps/backend/app/interfaces/api/http/README.md`
+- Infraestructura (DB, repos, colas, servicios) → `../apps/backend/app/infrastructure/README.md`
+- Worker y jobs → `../apps/backend/app/worker/README.md`
+- Prompts versionados → `../apps/backend/app/prompts/README.md`
 
-- **[Backend Map](index/backend.md)**: Explore the backend by intention (API, Use Cases, Infra).
-- **[Operations](index/ops.md)**: Deployment, maintenance, and troubleshooting.
-
-## Reference
-
-- **[API & Contracts](index/api.md)**: HTTP API, RBAC, Errors.
-- **[Data & Schema](index/data.md)**: Postgres schema, migrations.
-- **[Configuration](reference/config.md)**: Environment variables and settings.
-
-## Governance
-
-- **[Security](index/security.md)**: Access control, hardening, prompt policy.
-- **[Quality](index/quality.md)**: Testing strategy.
-- **[Architecture](architecture/overview.md)**: High-level overview and diagrams.
-- **[Project](project/README.md)**: Contributing, release notes.
+## Referencias transversales
+- Configuración y variables → `reference/config.md`
+- Errores RFC7807 y códigos → `reference/errors.md`
+- Control de acceso (JWT/API keys/RBAC) → `reference/access-control.md`
+- Límites del sistema → `reference/limits.md`

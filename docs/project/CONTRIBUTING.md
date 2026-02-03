@@ -269,14 +269,14 @@ k6 run api.k6.js --env BASE_URL=http://localhost:8000
 
 ### Doc Locations
 
-| Topic             | Location                                 |
-| ----------------- | ---------------------------------------- |
-| Architecture      | `docs/architecture/overview.md`          |
-| API Reference     | `docs/reference/api/http-api.md`         |
-| Database Schema   | `docs/reference/data/postgres-schema.md` |
-| Local Development | `docs/runbook/local-dev.md`              |
-| Deployment        | `docs/runbook/deployment.md`             |
-| Troubleshooting   | `docs/runbook/troubleshooting.md`        |
+| Topic             | Location                          |
+| ----------------- | --------------------------------- |
+| Architecture      | `docs/architecture/overview.md`   |
+| API Reference     | `docs/reference/api/http-api.md`            |
+| Database Schema   | `docs/reference/data/postgres-schema.md`    |
+| Local Development | `docs/runbook/local-dev.md`       |
+| Deployment        | `docs/runbook/deployment.md`      |
+| Troubleshooting   | `docs/runbook/troubleshooting.md` |
 
 ## Questions?
 

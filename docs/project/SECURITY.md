@@ -1,157 +1,44 @@
-# Security Policy
+# Seguridad
+Fuente de verdad: `apps/backend/app/` (config, identity, prompts, métricas).
 
-## Supported Versions
+## Autenticación y autorización
+- API Keys (`X-API-Key`) → `apps/backend/app/identity/auth.py`.
+- RBAC para API keys → `apps/backend/app/identity/rbac.py`.
+- JWT para usuarios (roles `admin`/`employee`) → `apps/backend/app/identity/users.py` y `apps/backend/app/identity/auth_users.py`.
+- Principal unificado (USER/SERVICE) → `apps/backend/app/identity/dual_auth.py`.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+## Límites y validaciones
+Fuente: `apps/backend/app/crosscutting/config.py`.
+- `max_body_bytes` (body HTTP)
+- `max_upload_bytes` (uploads)
+- `max_query_chars`
+- `max_ingest_chars`
 
-## Reporting a Vulnerability
+## Prompt policy
+- Prompt de policy (asset) → `apps/backend/app/prompts/policy/secure_contract_es.md`.
+- Loader de prompts → `apps/backend/app/infrastructure/prompts/loader.py`.
+- LLM real consume `PromptLoader` → `apps/backend/app/infrastructure/services/llm/google_llm_service.py`.
 
-We take the security of RAG Corp seriously. If you believe you have found a security vulnerability, please report it to us as described below.
+## Prompt injection (detección)
+- Detector → `apps/backend/app/application/prompt_injection_detector.py`.
+- Uso en ingesta → `apps/backend/app/application/usecases/ingestion/ingest_document.py` y `process_uploaded_document.py`.
 
-### How to Report
-
-**Please do NOT report security vulnerabilities through public GitHub issues.**
-
-Instead, please report them via email to: **security@ragcorp.example.com**
-
-You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
-
-### What to Include
-
-Please include the following information in your report:
-
-- Type of issue (e.g., buffer overflow, SQL injection, cross-site scripting, etc.)
-- Full paths of source file(s) related to the manifestation of the issue
-- The location of the affected source code (tag/branch/commit or direct URL)
-- Any special configuration required to reproduce the issue
-- Step-by-step instructions to reproduce the issue
-- Proof-of-concept or exploit code (if possible)
-- Impact of the issue, including how an attacker might exploit it
-
-### What to Expect
-
-- **Acknowledgment**: We will acknowledge your email within 48 hours
-- **Communication**: We will keep you informed of the progress towards a fix
-- **Disclosure**: We will coordinate the public disclosure date with you
-- **Credit**: We will credit you in our release notes (unless you prefer to remain anonymous)
-
-## Security Best Practices
-
-### API Authentication
-
-RAG Corp uses API key authentication with scoped permissions:
-
-```
-X-API-Key: <your-api-key>
-```
-
-**Scopes:**
-- `ingest` - Document ingestion operations
-- `ask` - Query and RAG operations  
-- `metrics` - Prometheus metrics access
-
-### Rate Limiting
-
-The API implements token bucket rate limiting:
-- Default: 10 requests/second per IP
-- Configurable via `RATE_LIMIT_RPS` environment variable
-
-### Security Headers
-
-All responses include security headers:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-- `Content-Security-Policy: default-src 'self'`
-- `X-XSS-Protection: 1; mode=block`
-
-### Input Validation
-
-- All inputs are validated using Pydantic with strict type checking
-- Query strings are limited to 2000 characters
-- Document content is limited to 1MB
-- File uploads are restricted to allowed MIME types
-
-### CORS Configuration
-
-CORS is configured with explicit origins:
-```
-ALLOWED_ORIGINS=https://app.ragcorp.example.com,https://admin.ragcorp.example.com
-```
-
-### Database Security
-
-- Connection pooling with limited connections
-- Parameterized queries (no raw SQL interpolation)
-- Credentials stored in environment variables (never in code)
-
-## Known Security Considerations
-
-### Prompt Injection
-
-The RAG system includes protections against prompt injection:
-- Context is clearly delimited in prompts
-- System instructions cannot be overridden by document content
-- User input is sanitized before embedding
-
-#### Prompt Policy Contract
-- Policy central: `apps/backend/app/prompts/policy_contract_es.md`
-- Orden de instrucciones: system/developer > user > retrieved content
-- Contenido recuperado es input NO CONFIABLE
-- Respuestas deben citar fuentes [S#] y terminar con “Fuentes”
-- Sin evidencia suficiente: responder el mensaje estándar y pedir precisión
-
-#### Workspace Scoping
-- Scope estricto por `workspace_id` en API, use cases y repositorio
-- No existe `section_id` (no hay scoping por sección)
-- Cualquier operación sin `workspace_id` válido se rechaza
-
-#### Prompt Injection Detection (ingest)
-- Detector heurístico en `apps/backend/app/application/prompt_injection_detector.py`
-- Metadata en chunks:
-  - `security_flags`, `risk_score`, `detected_patterns`
-- Modos de filtrado en retrieval:
-  - `off` (default), `downrank`, `exclude`
-  - Config vía `RAG_INJECTION_FILTER_MODE`, `RAG_INJECTION_RISK_THRESHOLD`
-
-#### Observabilidad mínima
-- `rag_policy_refusal_total{reason}`
-- `rag_prompt_injection_detected_total{pattern}`
+## Métricas de seguridad
+Definidas en `apps/backend/app/crosscutting/metrics.py`:
+- `rag_policy_refusal_total`
+- `rag_prompt_injection_detected_total`
 - `rag_cross_scope_block_total`
 - `rag_answer_without_sources_total`
 - `rag_sources_returned_count`
 
-#### Tests relevantes
-Unit:
-```
-pytest -q apps/backend/tests/unit
-```
-Integration:
-```
-RUN_INTEGRATION=1 pytest -q apps/backend/tests/integration/test_postgres_document_repo.py
-RUN_INTEGRATION=1 pytest -q apps/backend/tests/integration/test_rag_security_pack.py
-```
+## /metrics protegido
+- Protección por API key/RBAC según `metrics_require_auth` → `apps/backend/app/crosscutting/config.py`.
+- Dependencia en API → `apps/backend/app/identity/rbac.py` (`require_metrics_permission`).
+- En worker → `apps/backend/app/worker/worker_server.py`.
 
-### Data Privacy
+## Tests relevantes
+- Unit tests: `apps/backend/tests/unit/README.md`.
+- Integration tests: `apps/backend/tests/integration/README.md`.
 
-- Documents are stored with embeddings in PostgreSQL
-- No data is sent to external services except Google Gemini API
-- Logs are structured JSON and do not contain sensitive content
-
-## Security Updates
-
-Security updates will be released as patch versions (0.1.x) and announced via:
-- GitHub Security Advisories
-- Release notes
-
-## Compliance
-
-This project follows security best practices aligned with:
-- OWASP Top 10
-- CWE/SANS Top 25
-
----
-
-*Last updated: 2026-01-29*
+## OBSOLETO (no verificado)
+Se eliminaron secciones anteriores con claims no verificadas (p. ej. “1MB”, scopes por endpoint, fuentes externas). Consultar OpenAPI y README de backend para la versión vigente.

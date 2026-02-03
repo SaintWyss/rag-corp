@@ -735,19 +735,19 @@ classDiagram
 
 1. Ser la fuente de verdad documental de v6 (contrato, arquitectura, runbooks).
 2. Mantener coherencia con `shared/contracts/openapi.json` y el código.  
-   **Collaborators:** `shared/contracts/openapi.json`, `apps/backend/app/**`, `.github/workflows/ci.yml`  
+   **Collaborators:** `shared/contracts/openapi.json`, `apps/backend/app/`, `.github/workflows/ci.yml`  
    **Constraints:** no inventar endpoints; todo path debe existir en OpenAPI.
 
 ### 9.2 Docs Map (Source of Truth)
 
-| Tema         | Documento canónico                            | Secundarios                      |
-| ------------ | --------------------------------------------- | -------------------------------- |
-| Contrato API | `shared/contracts/openapi.json`               | `docs/reference/api/http-api.md` |
-| Sistema v6   | `docs/system/informe_de_sistemas_rag_corp.md` | `docs/system/release-notes.md`   |
-| Arquitectura | `docs/architecture/overview.md`               | `docs/architecture/adr/*`        |
-| Datos        | `docs/reference/data/postgres-schema.md`      | `apps/backend/alembic/*`         |
-| Operación    | `docs/runbook/*`                              | `infra/*`                        |
-| Testing/CI   | `docs/quality/testing.md`                     | `.github/workflows/ci.yml`       |
+| Tema         | Documento canónico                             | Secundarios                      |
+| ------------ | ---------------------------------------------- | -------------------------------- |
+| Contrato API | `shared/contracts/openapi.json`                | `docs/reference/api/http-api.md` |
+| Sistema v6   | `docs/project/informe_de_sistemas_rag_corp.md` | `docs/project/release-notes.md`   |
+| Arquitectura | `docs/architecture/overview.md`                | `docs/architecture/adr/*`        |
+| Datos        | `docs/reference/data/postgres-schema.md`       | `apps/backend/alembic/`         |
+| Operación    | `docs/runbook/*`                               | `infra/*`                        |
+| Testing/CI   | `docs/quality/testing.md`                      | `.github/workflows/ci.yml`       |
 
 ---
 

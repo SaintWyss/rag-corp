@@ -19,12 +19,8 @@ Si venís con una intención concreta, estas son las rutas rápidas:
 - Centraliza configuración operativa del backend (dependencias, pytest y Alembic).
 
 ### Qué NO hace (y por qué)
-- No define lógica de negocio.
-  - Razón: el negocio vive en `app/` por capas (Domain/Application/Infrastructure/Interfaces).
-  - Consecuencia: los cambios funcionales se implementan en `app/`, no en scripts o configuración.
-- No describe infraestructura completa de despliegue.
-  - Razón: el entorno (compose/infra/CI) puede variar por deployment.
-  - Consecuencia: este directorio es “app + tooling”, no “infra como código”.
+- No define lógica de negocio. Razón: el negocio vive en `app/` por capas (Domain/Application/Infrastructure/Interfaces). Consecuencia: los cambios funcionales se implementan en `app/`, no en scripts o configuración.
+- No describe infraestructura completa de despliegue. Razón: el entorno (compose/infra/CI) puede variar por deployment. Consecuencia: este directorio es “app + tooling”, no “infra como código”.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -33,34 +29,33 @@ Si venís con una intención concreta, estas son las rutas rápidas:
 | `.env` | Config | Variables locales de entorno para el backend (no es código). |
 | `Dockerfile` | Config | Construye la imagen del backend. |
 | `README.md` | Documento | Portada y mapa operativo del backend. |
-| `alembic/` | Carpeta | Migraciones del esquema de base de datos. |
+| `alembic` | Carpeta | Migraciones del esquema de base de datos. |
 | `alembic.ini` | Config | Configuración de Alembic (CLI de migraciones). |
-| `app/` | Carpeta | Código del backend por capas y entrypoints. |
+| `app` | Carpeta | Código del backend por capas y entrypoints. |
 | `pytest.ini` | Config | Configuración de Pytest (markers, coverage, warnings). |
 | `rag-corp.lnk` | Documento | Acceso directo local (Windows); no participa del runtime. |
 | `requirements.txt` | Config | Dependencias Python del backend. |
-| `scripts/` | Carpeta | Scripts operativos (bootstrap, export de contratos). |
-| `tests/` | Carpeta | Tests unit/integration/e2e y fixtures compartidas. |
-
+| `scripts` | Carpeta | Scripts operativos (bootstrap, export de contratos). |
+| `tests` | Carpeta | Tests unit/integration/e2e y fixtures compartidas. |
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output, a nivel de operación del backend.
 
 - **API (ASGI)**
-  - Input: requests HTTP.
-  - Proceso: FastAPI compone routers → use cases → repos/adapters.
-  - Output: JSON, streaming o errores RFC7807.
+- Input: requests HTTP.
+- Proceso: FastAPI compone routers → use cases → repos/adapters.
+- Output: JSON, streaming o errores RFC7807.
 - **Worker (RQ + Redis)**
-  - Input: jobs en Redis (paths estables).
-  - Proceso: consume jobs y ejecuta casos de uso pesados (ingesta, parsing, embeddings).
-  - Output: persistencia, logs y métricas.
+- Input: jobs en Redis (paths estables).
+- Proceso: consume jobs y ejecuta casos de uso pesados (ingesta, parsing, embeddings).
+- Output: persistencia, logs y métricas.
 - **Migraciones (Alembic)**
-  - Input: comando `alembic ...`.
-  - Proceso: aplica revisiones en orden y actualiza `alembic_version`.
-  - Output: esquema actualizado.
+- Input: comando `alembic ...`.
+- Proceso: aplica revisiones en orden y actualiza `alembic_version`.
+- Output: esquema actualizado.
 - **Testing (Pytest)**
-  - Input: comando `pytest` con markers.
-  - Proceso: carga fixtures, ejecuta unit/integration/e2e según markers.
-  - Output: reporte + coverage (si está habilitado).
+- Input: comando `pytest` con markers.
+- Proceso: carga fixtures, ejecuta unit/integration/e2e según markers.
+- Output: reporte + coverage (si está habilitado).
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** root operativo del backend (runtime + tooling + pruebas).
@@ -90,6 +85,11 @@ alembic upgrade head
 pytest -q
 ```
 
+Variables de entorno comunes (según entorno/compose):
+- `DATABASE_URL` (Postgres).
+- `REDIS_URL` (Redis/RQ).
+- `GOOGLE_API_KEY` (LLM/embeddings si se usan providers reales).
+
 ## 🧩 Cómo extender sin romper nada
 - Si agregás un caso de uso, cablealo en `app/container.py` y expone su entrypoint desde `app/application/usecases/`.
 - Si agregás infraestructura nueva (DB/cola/storage), creá el adapter en `app/infrastructure/` y conéctalo en el container.
@@ -98,25 +98,25 @@ pytest -q
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `ModuleNotFoundError: No module named 'app'`.
-  - **Causa probable:** ejecutás desde un directorio incorrecto.
-  - **Dónde mirar:** `pwd` / `PYTHONPATH`.
-  - **Solución:** ejecutar comandos desde `apps/backend/`.
+- **Causa probable:** ejecutás desde un directorio incorrecto.
+- **Dónde mirar:** `pwd` / `PYTHONPATH`.
+- **Solución:** ejecutar comandos desde `apps/backend/`.
 - **Síntoma:** migraciones fallan por conexión.
-  - **Causa probable:** `DATABASE_URL` ausente o incorrecta.
-  - **Dónde mirar:** `.env` y `alembic/env.py`.
-  - **Solución:** setear `DATABASE_URL` válido y reintentar.
+- **Causa probable:** `DATABASE_URL` ausente o incorrecta.
+- **Dónde mirar:** `.env` y `alembic/env.py`.
+- **Solución:** setear `DATABASE_URL` válido y reintentar.
 - **Síntoma:** worker no consume jobs.
-  - **Causa probable:** `REDIS_URL` incorrecta o worker apagado.
-  - **Dónde mirar:** settings y logs del worker.
-  - **Solución:** corregir Redis y levantar worker.
+- **Causa probable:** `REDIS_URL` incorrecta o worker apagado.
+- **Dónde mirar:** settings y logs del worker.
+- **Solución:** corregir Redis y levantar worker.
 - **Síntoma:** `/metrics` devuelve 401/403.
-  - **Causa probable:** auth de métricas habilitada.
-  - **Dónde mirar:** `app/crosscutting/config.py` (`metrics_require_auth`).
-  - **Solución:** enviar `X-API-Key` con permiso o desactivar el flag.
+- **Causa probable:** auth de métricas habilitada.
+- **Dónde mirar:** `app/crosscutting/config.py` (`metrics_require_auth`).
+- **Solución:** enviar `X-API-Key` con permiso o desactivar el flag.
 - **Síntoma:** `UndefinedTable` en tests de integración.
-  - **Causa probable:** migraciones no aplicadas en la DB de test.
-  - **Dónde mirar:** `alembic/README.md` y `tests/integration/README.md`.
-  - **Solución:** aplicar migraciones antes de correr tests.
+- **Causa probable:** migraciones no aplicadas en la DB de test.
+- **Dónde mirar:** `alembic/README.md` y `tests/integration/README.md`.
+- **Solución:** aplicar migraciones antes de correr tests.
 
 ## 🔎 Ver también
 - `./app/README.md`

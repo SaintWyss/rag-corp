@@ -1,5 +1,4 @@
 # db
-
 Como una **central eléctrica**: entrega conexiones a Postgres de forma segura, medible y reutilizable para todo el backend.
 
 ## 🎯 Misión
@@ -21,23 +20,19 @@ Recorridos rápidos por intención:
 
 ### Qué NO hace (y por qué)
 
-- No contiene SQL de negocio.
-  - **Razón:** las queries pertenecen a `infrastructure/repositories/`.
-  - **Impacto:** si aparece SQL acá, se rompe la separación por capas y se hace difícil testear/mantener.
+- No contiene SQL de negocio. Razón: ** las queries pertenecen a `infrastructure/repositories/`. Impacto: ** si aparece SQL acá, se rompe la separación por capas y se hace difícil testear/mantener.
 
-- No define modelos del dominio.
-  - **Razón:** el dominio vive en `app/domain/`.
-  - **Impacto:** este módulo se limita a “conectividad e instrumentación”, sin reglas de negocio.
+- No define modelos del dominio. Razón: ** el dominio vive en `app/domain/`. Impacto: ** este módulo se limita a “conectividad e instrumentación”, sin reglas de negocio.
 
 ## 🗺️ Mapa del territorio
 
-| Recurso              | Tipo           | Responsabilidad (en humano)                                                                |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :------------------- | :------------- | :----------------------------------------------------------------------------------------- |
-| `__init__.py`        | Archivo Python | Exporta el pool y errores públicos para imports estables.                                  |
-| `errors.py`          | Archivo Python | Errores tipados del pool (no inicializado, doble init, conectividad).                      |
-| `instrumentation.py` | Archivo Python | Wrapper/proxy de conexión/pool: métricas, timings y detección de consultas lentas.         |
-| `pool.py`            | Archivo Python | Inicialización y ciclo de vida del pool singleton (`init_pool`, `get_pool`, `close_pool`). |
-| `README.md`          | Documento      | Portada + guía operativa del pool de DB.                                                   |
+| `__init__.py` | Archivo Python | Exporta el pool y errores públicos para imports estables. |
+| `errors.py` | Archivo Python | Errores tipados del pool (no inicializado, doble init, conectividad). |
+| `instrumentation.py` | Archivo Python | Wrapper/proxy de conexión/pool: métricas, timings y detección de consultas lentas. |
+| `pool.py` | Archivo Python | Inicialización y ciclo de vida del pool singleton (`init_pool`, `get_pool`, `close_pool`). |
+| `README.md` | Documento | Portada + guía operativa del pool de DB. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -86,111 +81,63 @@ Conceptos mínimos en contexto:
 - **Rol arquitectónico:** Infrastructure adapter (DB access / conectividad).
 
 - **Recibe órdenes de:**
-  - Bootstrap de API (startup/lifespan).
-  - Bootstrap del worker.
+- Bootstrap de API (startup/lifespan).
+- Bootstrap del worker.
 
 - **Llama a:**
-  - Librería de pool/driver (ej. `psycopg_pool`) y extensiones/tipos necesarios (ej. pgvector si aplica).
-  - `app/crosscutting/metrics.py` para métricas best-effort.
+- Librería de pool/driver (ej. `psycopg_pool`) y extensiones/tipos necesarios (ej. pgvector si aplica).
+- `app/crosscutting/metrics.py` para métricas best-effort.
 
 - **Reglas de límites (imports/ownership):**
-  - Este módulo no conoce repositorios ni casos de uso.
-  - Repositorios consumen el pool; el pool no conoce SQL de negocio.
-  - No expone detalles del vendor hacia Domain/Application: solo ofrece un pool listo.
+- Este módulo no conoce repositorios ni casos de uso.
+- Repositorios consumen el pool; el pool no conoce SQL de negocio.
+- No expone detalles del vendor hacia Domain/Application: solo ofrece un pool listo.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Ciclo de vida manual (scripts / pruebas)
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.infrastructure.db.pool import init_pool, get_pool, close_pool
 
 init_pool(database_url="postgresql://...", min_size=1, max_size=5)
-
 with get_pool().connection() as conn:
     conn.execute("SELECT 1")
-
 close_pool()
 ```
 
-### 2) Integración en FastAPI (startup/shutdown)
-
 ```python
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-
-from app.crosscutting.config import get_settings
-from app.infrastructure.db.pool import init_pool, close_pool
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    settings = get_settings()
-    init_pool(
-        database_url=settings.database_url,
-        min_size=settings.db_pool_min_size,
-        max_size=settings.db_pool_max_size,
-    )
-    try:
-        yield
-    finally:
-        close_pool()
-
-app = FastAPI(lifespan=lifespan)
-```
-
-### 3) Uso en repositorios (patrón recomendado)
-
-```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.infrastructure.db.pool import get_pool
 
-class ExampleRepository:
-    def ping(self) -> int:
-        with get_pool().connection() as conn:
-            row = conn.execute("SELECT 1").fetchone()
-            return int(row[0])
-```
-
-### 4) Medición por etapas (si el repo captura timings)
-
-```python
-from app.crosscutting.timing import StageTimings
-from app.infrastructure.db.pool import get_pool
-
-timings = StageTimings()
-
-with timings.measure("db"):
-    with get_pool().connection() as conn:
-        conn.execute("SELECT 1")
-
-print(timings.to_dict())
+with get_pool().connection() as conn:
+    conn.execute("SELECT 1")
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. **Singleton real:** `init_pool()` debe ser idempotente (o fallar con error tipado) y `get_pool()` no debe crear pools implícitos.
-2. **Instrumentación en un solo lugar:** cualquier wrapper/metrics va en `instrumentation.py`, no en repositorios.
-3. **Errores tipados:** para escenarios previsibles (no init, doble init, conexión fallida), usar excepciones de `errors.py`.
-4. **Sin SQL de negocio:** este módulo solo gestiona conectividad; queries y transacciones viven en repos.
-5. **Parámetros por settings:** cuando se agregue un parámetro nuevo (timeouts, sslmode, statement timeout), exponerlo vía `crosscutting/config.py`.
-6. **Tests:**
-   - integration: validar init/close + `SELECT 1` contra Postgres real.
-   - unit: wrappers de instrumentación sin conectar a DB (fakes/mocks).
+- Si agregás parámetros de pool, exponerlos en `crosscutting/config.py`.
+- Mantener instrumentación dentro de `instrumentation.py`.
+- Wiring: init/cierre se hace en `app/api/main.py` y `app/worker/worker.py`.
+- Si necesitás exponer el pool a otros componentes, cablealo vía `app/container.py`.
+- Tests: integration en `apps/backend/tests/integration/` contra Postgres real.
 
 ## 🆘 Troubleshooting
-
-- **`PoolNotInitializedError`** → no se llamó `init_pool()` → revisar startup/lifespan (API) o bootstrap (worker) y `pool.py`.
-- **`PoolAlreadyInitializedError`** → doble init (tests o reload) → revisar que startup no corra dos veces y que los tests cierren el pool en teardown.
-- **`DatabaseConnectionError`** → DB inaccesible / credenciales mal → revisar `DATABASE_URL`, red, puerto y logs del contenedor.
-- **TimeOut al obtener conexión** → `max_size` bajo o conexiones colgadas → revisar métricas de pool y ajustar sizes/timeouts.
-- **Slow queries reportadas** → índice faltante o query pesada (en repos) → revisar el repositorio que la ejecuta y planes de ejecución (EXPLAIN).
-- **Errores de tipo pgvector** → extensión/tipo no disponible en DB → verificar migraciones/extension en Postgres y configuración del entorno.
+- **Síntoma:** `PoolNotInitializedError`.
+- **Causa probable:** no se llamó `init_pool()`.
+- **Dónde mirar:** `app/api/main.py` y `app/worker/worker.py`.
+- **Solución:** inicializar pool en startup.
+- **Síntoma:** `PoolAlreadyInitializedError`.
+- **Causa probable:** doble init en tests o reload.
+- **Dónde mirar:** `pool.py`.
+- **Solución:** cerrar pool en teardown.
+- **Síntoma:** `DatabaseConnectionError`.
+- **Causa probable:** DB caída o URL inválida.
+- **Dónde mirar:** `DATABASE_URL`.
+- **Solución:** corregir URL y conexión.
+- **Síntoma:** slow queries.
+- **Causa probable:** índice faltante.
+- **Dónde mirar:** logs y repositorio que ejecuta la query.
+- **Solución:** optimizar SQL/índices.
 
 ## 🔎 Ver también
-
-- `../repositories/README.md` (SQL de negocio y repositorios)
-- `../../crosscutting/metrics.py` (métricas best-effort)
-- `../../crosscutting/timing.py` (StageTimings)
-- `../../api/main.py` (startup y composición, si aplica)
+- `../repositories/README.md`
+- `../../crosscutting/metrics.py`
+- `../../api/main.py`

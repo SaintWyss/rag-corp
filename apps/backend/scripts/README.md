@@ -10,12 +10,8 @@ Este directorio agrupa scripts CLI para operaciones administrativas y de documen
 - Permite tareas operativas sin levantar la API completa.
 
 ### Qué NO hace (y por qué)
-- No reemplaza flujos de negocio.
-  - Razón: los contratos públicos viven en HTTP/use cases.
-  - Consecuencia: los scripts son tooling, no API pública.
-- No ejecuta migraciones.
-  - Razón: las migraciones se gestionan con Alembic.
-  - Consecuencia: si falta schema, primero correr Alembic.
+- No reemplaza flujos de negocio. Razón: los contratos públicos viven en HTTP/use cases. Consecuencia: los scripts son tooling, no API pública.
+- No ejecuta migraciones. Razón: las migraciones se gestionan con Alembic. Consecuencia: si falta schema, primero correr Alembic.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -23,18 +19,17 @@ Este directorio agrupa scripts CLI para operaciones administrativas y de documen
 | `README.md` | Documento | Guía de scripts operativos. |
 | `create_admin.py` | Script Python | Crea un usuario (default admin) en `users` con password hasheado. |
 | `export_openapi.py` | Script Python | Genera `openapi.json` desde la app FastAPI. |
-
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
 
 - **create_admin.py**
-  - Input: `--email`, `--password`, `--role`, `--inactive` (o prompts interactivos).
-  - Proceso: valida `DATABASE_URL`, normaliza email, hashea password y hace `INSERT` si no existe.
-  - Output: imprime “Created user …” o “User already exists …”.
+- Input: `--email`, `--password`, `--role`, `--inactive` (o prompts interactivos).
+- Proceso: valida `DATABASE_URL`, normaliza email, hashea password y hace `INSERT` si no existe.
+- Output: imprime “Created user …” o “User already exists …”.
 - **export_openapi.py**
-  - Input: `--out <path>`.
-  - Proceso: importa `app.api.main.app`, genera schema y lo escribe como JSON.
-  - Output: archivo JSON con el OpenAPI.
+- Input: `--out <path>`.
+- Proceso: importa `app.api.main.app`, genera schema y lo escribe como JSON.
+- Output: archivo JSON con el OpenAPI.
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** Operational tooling.
@@ -66,21 +61,21 @@ python scripts/export_openapi.py --out /tmp/openapi.json
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `DATABASE_URL is required`.
-  - **Causa probable:** variable de entorno ausente.
-  - **Dónde mirar:** `.env` y entorno de ejecución.
-  - **Solución:** exportar `DATABASE_URL` y reintentar.
+- **Causa probable:** variable de entorno ausente.
+- **Dónde mirar:** `.env` y entorno de ejecución.
+- **Solución:** exportar `DATABASE_URL` y reintentar.
 - **Síntoma:** `ModuleNotFoundError: No module named 'app'`.
-  - **Causa probable:** cwd o `PYTHONPATH` incorrecto.
-  - **Dónde mirar:** `pwd` y `sys.path`.
-  - **Solución:** ejecutar desde `apps/backend/`.
+- **Causa probable:** cwd o `PYTHONPATH` incorrecto.
+- **Dónde mirar:** `pwd` y `sys.path`.
+- **Solución:** ejecutar desde `apps/backend/`.
 - **Síntoma:** export de OpenAPI falla por settings.
-  - **Causa probable:** `app.api.main` requiere settings/DB no disponibles.
-  - **Dónde mirar:** logs del import en `export_openapi.py`.
-  - **Solución:** setear variables requeridas o usar un entorno de dev.
+- **Causa probable:** `app.api.main` requiere settings/DB no disponibles.
+- **Dónde mirar:** logs del import en `export_openapi.py`.
+- **Solución:** setear variables requeridas o usar un entorno de dev.
 - **Síntoma:** usuario no se crea pero no hay error.
-  - **Causa probable:** el email ya existe.
-  - **Dónde mirar:** salida del script.
-  - **Solución:** usar otro email o borrar el usuario en DB.
+- **Causa probable:** el email ya existe.
+- **Dónde mirar:** salida del script.
+- **Solución:** usar otro email o borrar el usuario en DB.
 
 ## 🔎 Ver también
 - `../alembic/README.md`

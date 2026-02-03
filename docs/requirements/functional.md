@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Version:** v6 (Definitivo)  
 **Last Updated:** 2026-01-24  
-**Source of Truth:** `docs/system/informe_de_sistemas_rag_corp.md` §4.1
+**Source of Truth:** `docs/project/informe_de_sistemas_rag_corp.md` §4.1  
 
 ---
 
@@ -106,6 +106,6 @@ Este documento define los **requerimientos funcionales** del sistema RAG Corp v6
 
 ## Referencias
 
-- Contrato v6: `docs/system/informe_de_sistemas_rag_corp.md` §4.1
+- Contrato v6: `docs/project/informe_de_sistemas_rag_corp.md` §4.1
 - API HTTP: `docs/reference/api/http-api.md`
 - OpenAPI: `shared/contracts/openapi.json`

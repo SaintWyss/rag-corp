@@ -18,32 +18,27 @@ Rutas rápidas por intención:
 - Mantiene assets versionados de prompts para LLM.
 
 ### Qué NO hace (y por qué)
-- No contiene scripts operativos ni tooling de repo.
-  - Razón: mezclar runtime con tooling genera imports cruzados y side-effects.
-  - Consecuencia: los scripts viven en `apps/backend/scripts/`.
-- No contiene tests.
-  - Razón: tests dependen del runtime; el runtime no depende de tests.
-  - Consecuencia: las suites están en `apps/backend/tests/`.
+- No contiene scripts operativos ni tooling de repo. Razón: mezclar runtime con tooling genera imports cruzados y side-effects. Consecuencia: los scripts viven en `apps/backend/scripts/`.
+- No contiene tests. Razón: tests dependen del runtime; el runtime no depende de tests. Consecuencia: las suites están en `apps/backend/tests/`.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
 | :-- | :-- | :-- |
 | `README.md` | Documento | Portada del paquete `app/`. |
-| `api/` | Carpeta | Composición FastAPI y endpoints operativos. |
-| `application/` | Carpeta | Casos de uso y servicios de aplicación (orquestación). |
+| `api` | Carpeta | Composición FastAPI y endpoints operativos. |
+| `application` | Carpeta | Casos de uso y servicios de aplicación (orquestación). |
 | `audit.py` | Archivo Python | Helpers de auditoría best-effort del runtime. |
 | `container.py` | Archivo Python | Composition root (DI manual, singletons). |
 | `context.py` | Archivo Python | Contexto de request/job con `ContextVar` (request_id, tracing). |
-| `crosscutting/` | Carpeta | Config, errores RFC7807, logging, métricas, middlewares. |
-| `domain/` | Carpeta | Entidades, value objects y puertos (contratos). |
-| `identity/` | Carpeta | Autenticación, autorización y principal unificado (API key/JWT). |
-| `infrastructure/` | Carpeta | Adaptadores concretos (DB, queue, storage, LLM, parsers). |
-| `interfaces/` | Carpeta | Adaptadores entrantes (HTTP). |
+| `crosscutting` | Carpeta | Config, errores RFC7807, logging, métricas, middlewares. |
+| `domain` | Carpeta | Entidades, value objects y puertos (contratos). |
+| `identity` | Carpeta | Autenticación, autorización y principal unificado (API key/JWT). |
+| `infrastructure` | Carpeta | Adaptadores concretos (DB, queue, storage, LLM, parsers). |
+| `interfaces` | Carpeta | Adaptadores entrantes (HTTP). |
 | `jobs.py` | Archivo Python | Entrypoints estables de jobs para RQ. |
 | `main.py` | Archivo Python | Entrypoint ASGI estable (`app.main:app`). |
-| `prompts/` | Carpeta | Assets de prompts versionados (policy + templates). |
-| `worker/` | Carpeta | Runtime del worker (RQ + health/metrics). |
-
+| `prompts` | Carpeta | Assets de prompts versionados (policy + templates). |
+| `worker` | Carpeta | Runtime del worker (RQ + health/metrics). |
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output en el runtime del paquete.
 
@@ -92,25 +87,25 @@ assert callable(process_document_job)
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `ModuleNotFoundError: No module named 'app'`.
-  - **Causa probable:** ejecutás desde un directorio incorrecto.
-  - **Dónde mirar:** `pwd` y `PYTHONPATH`.
-  - **Solución:** correr desde `apps/backend/`.
+- **Causa probable:** ejecutás desde un directorio incorrecto.
+- **Dónde mirar:** `pwd` y `PYTHONPATH`.
+- **Solución:** correr desde `apps/backend/`.
 - **Síntoma:** `/metrics` devuelve 401/403.
-  - **Causa probable:** auth de métricas habilitada.
-  - **Dónde mirar:** `app/crosscutting/config.py` (`metrics_require_auth`).
-  - **Solución:** enviar `X-API-Key` con permiso o desactivar flag.
+- **Causa probable:** auth de métricas habilitada.
+- **Dónde mirar:** `app/crosscutting/config.py` (`metrics_require_auth`).
+- **Solución:** enviar `X-API-Key` con permiso o desactivar flag.
 - **Síntoma:** CORS bloquea requests.
-  - **Causa probable:** `allowed_origins` no incluye el origen.
-  - **Dónde mirar:** `app/crosscutting/config.py` y `app/api/main.py`.
-  - **Solución:** ajustar config y reiniciar.
+- **Causa probable:** `allowed_origins` no incluye el origen.
+- **Dónde mirar:** `app/crosscutting/config.py` y `app/api/main.py`.
+- **Solución:** ajustar config y reiniciar.
 - **Síntoma:** rate limit demasiado agresivo (429).
-  - **Causa probable:** límites bajos.
-  - **Dónde mirar:** `app/crosscutting/config.py` (`rate_limit_rps`, `rate_limit_burst`).
-  - **Solución:** ajustar settings o enviar API key para identificar cliente.
+- **Causa probable:** límites bajos.
+- **Dónde mirar:** `app/crosscutting/config.py` (`rate_limit_rps`, `rate_limit_burst`).
+- **Solución:** ajustar settings o enviar API key para identificar cliente.
 - **Síntoma:** worker no procesa jobs.
-  - **Causa probable:** Redis/cola sin conectar o worker apagado.
-  - **Dónde mirar:** `app/worker/README.md` y logs del worker.
-  - **Solución:** levantar Redis/worker y validar `REDIS_URL`.
+- **Causa probable:** Redis/cola sin conectar o worker apagado.
+- **Dónde mirar:** `app/worker/README.md` y logs del worker.
+- **Solución:** levantar Redis/worker y validar `REDIS_URL`.
 
 ## 🔎 Ver también
 - `./api/README.md`

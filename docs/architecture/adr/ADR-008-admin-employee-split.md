@@ -74,8 +74,8 @@ The middleware will decode the JWT to extract `role` and:
 | P1    | FE Middleware role check              | `apps/frontend/middleware.ts`                               |
 | P2    | FE Admin workspaces page              | New: `apps/frontend/app/(app)/admin/workspaces/`            |
 | P3    | FE Employee page simplification       | `apps/frontend/app/(app)/workspaces/page.tsx`               |
-| P4    | BE ListWorkspacesUseCase optimization | `apps/backend/app/application/usecases/list_workspaces.py`  |
-| P5    | BE CreateWorkspace owner override     | `apps/backend/app/application/usecases/create_workspace.py` |
+| P4    | BE ListWorkspacesUseCase optimization | `apps/backend/app/application/usecases/workspace/list_workspaces.py`  |
+| P5    | BE CreateWorkspace owner override     | `apps/backend/app/application/usecases/workspace/create_workspace.py` |
 | P6    | BE Route reorganization               | `apps/backend/app/api/auth_routes.py`                       |
 | P7    | BE Admin assign endpoint              | New route                                                   |
 | P8    | E2E Tests                             | `tests/e2e/tests/`                                          |
@@ -86,6 +86,6 @@ The middleware will decode the JWT to extract `role` and:
 
 - `apps/frontend/middleware.ts` (L14-63): Current middleware logic
 - `apps/backend/app/domain/workspace_policy.py` (L41-84): Owner-only policy
-- `apps/backend/app/application/usecases/list_workspaces.py` (L38-69): Current listing logic
+- `apps/backend/app/application/usecases/workspace/list_workspaces.py` (L38-69): Current listing logic
 - `apps/backend/app/identity/dual_auth.py` (L167-174): Role decorators
 - `apps/backend/app/api/auth_routes.py` (L162-218): Admin-only endpoints

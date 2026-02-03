@@ -1,5 +1,4 @@
 # repositories
-
 Como un **archivo físico**: guarda y recupera registros con SQL o memoria, sin meter reglas de negocio.
 
 ## 🎯 Misión
@@ -24,22 +23,18 @@ Recorridos rápidos por intención:
 
 ### Qué NO hace (y por qué)
 
-- No contiene reglas de negocio.
-  - **Razón:** las decisiones viven en Domain/Application.
-  - **Impacto:** si un repositorio “decide permisos” o “cambia estados por política”, se rompe trazabilidad y se duplica lógica.
+- No contiene reglas de negocio. Razón: ** las decisiones viven en Domain/Application. Impacto: ** si un repositorio “decide permisos” o “cambia estados por política”, se rompe trazabilidad y se duplica lógica.
 
-- No expone endpoints HTTP ni conoce FastAPI.
-  - **Razón:** el transporte pertenece a Interfaces.
-  - **Impacto:** el repo se usa igual desde API o worker.
+- No expone endpoints HTTP ni conoce FastAPI. Razón: ** el transporte pertenece a Interfaces. Impacto: ** el repo se usa igual desde API o worker.
 
 ## 🗺️ Mapa del territorio
 
-| Recurso       | Tipo           | Responsabilidad (en humano)                                            |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :------------ | :------------- | :--------------------------------------------------------------------- |
-| `__init__.py` | Archivo Python | Facade de exports (imports estables hacia implementaciones).           |
-| `postgres/`   | Carpeta        | Implementaciones sobre Postgres: SQL, mappers, helpers de transacción. |
-| `in_memory/`  | Carpeta        | Implementaciones en memoria para tests/dev (sin DB).                   |
-| `README.md`   | Documento      | Portada + índice de repositorios (este documento).                     |
+| `__init__.py` | Archivo Python | Facade de exports (imports estables hacia implementaciones). |
+| `postgres` | Carpeta | Implementaciones sobre Postgres: SQL, mappers, helpers de transacción. |
+| `in_memory` | Carpeta | Implementaciones en memoria para tests/dev (sin DB). |
+| `README.md` | Documento | Portada + índice de repositorios (este documento). |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -79,79 +74,62 @@ Conceptos mínimos en contexto:
 - **Rol arquitectónico:** Infrastructure adapter (persistencia).
 
 - **Recibe órdenes de:**
-  - Application (use cases), que depende de Protocols de `app/domain/repositories.py`.
+- Application (use cases), que depende de Protocols de `app/domain/repositories.py`.
 
 - **Llama a:**
-  - `app/infrastructure/db/` para obtener conexiones (Postgres).
-  - Estructuras locales (in‑memory).
+- `app/infrastructure/db/` para obtener conexiones (Postgres).
+- Estructuras locales (in‑memory).
 
 - **Reglas de límites (imports/ownership):**
-  - Debe respetar los Protocols del dominio sin cambiar firmas.
-  - Puede depender de `infrastructure/db`, pero no de HTTP.
-  - No importa casos de uso (Application) ni mete decisiones de policy.
+- Debe respetar los Protocols del dominio sin cambiar firmas.
+- Puede depender de `infrastructure/db`, pero no de HTTP.
+- No importa casos de uso (Application) ni mete decisiones de policy.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Crear un repo Postgres (vía Container, recomendado)
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.container import get_document_repository
-
 repo = get_document_repository()
 ```
 
-### 2) Uso directo (tests/integración)
-
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.infrastructure.repositories.postgres import PostgresDocumentRepository
-
 repo = PostgresDocumentRepository()
 ```
 
-### 3) Patrón típico dentro de un método (Postgres)
-
 ```python
-from app.infrastructure.db.pool import get_pool
-
-class ExampleRepository:
-    def ping(self) -> int:
-        with get_pool().connection() as conn:
-            row = conn.execute("SELECT 1").fetchone()
-            return int(row[0])
-```
-
-### 4) In‑memory para unit tests
-
-```python
-from app.infrastructure.repositories.in_memory import InMemoryDocumentRepository
-
-repo = InMemoryDocumentRepository()
+# Por qué: deja visible el flujo principal.
+from app.infrastructure.repositories.in_memory import InMemoryWorkspaceRepository
+repo = InMemoryWorkspaceRepository()
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. **Cambiaste un puerto (Protocol)** → actualizá **todas** las implementaciones (Postgres + in‑memory) y los tests.
-2. **SQL parametrizado siempre** → nada de interpolar strings con inputs.
-3. **Scoping por `workspace_id`** cuando aplique → evitar leaks multi‑tenant.
-4. **Transacciones explícitas** para operaciones compuestas (write + write).
-5. **Mapping estable** → si cambia una entidad, actualizar mapper y tests.
-6. **Integración**:
-   - tests de integración con Postgres real para queries críticas.
-   - tests de unidad para lógica de mapping (sin DB) cuando sea posible.
+- Si agregás un método en un puerto, actualizá Postgres e in-memory.
+- Mantener SQL parametrizado y scoping por `workspace_id`.
+- Cablear repositorios en `app/container.py`.
+- Tests: integration para queries críticas en `apps/backend/tests/integration/`.
 
 ## 🆘 Troubleshooting
-
-- **`relation "..." does not exist`** → migraciones pendientes → revisar `apps/backend/alembic/` y correr migrations.
-- **Resultados vacíos inesperados** → `workspace_id` incorrecto o faltante en el filtro → revisar el use case y el SQL del repo.
-- **Errores de pool / no inicializado** → falta `init_pool()` en startup → revisar `../db/pool.py` y el bootstrap del API/worker.
-- **Violaciones de unique/foreign key** → datos inconsistentes o falta de validación previa → revisar constraints y el orden de writes.
-- **Query lenta** → índice faltante o filtro no selectivo → revisar SQL en `postgres/` y usar EXPLAIN en entorno de DB.
+- **Síntoma:** `relation does not exist`.
+- **Causa probable:** migraciones pendientes.
+- **Dónde mirar:** `apps/backend/alembic/`.
+- **Solución:** `alembic upgrade head`.
+- **Síntoma:** resultados vacíos.
+- **Causa probable:** `workspace_id` incorrecto.
+- **Dónde mirar:** SQL en repositorio.
+- **Solución:** revisar scoping y filtros.
+- **Síntoma:** `PoolNotInitializedError`.
+- **Causa probable:** pool no inicializado.
+- **Dónde mirar:** `db/pool.py`.
+- **Solución:** inicializar pool en startup.
+- **Síntoma:** divergencia entre in-memory y Postgres.
+- **Causa probable:** métodos no alineados.
+- **Dónde mirar:** `in_memory/` vs `postgres/`.
+- **Solución:** mantener paridad en contratos.
 
 ## 🔎 Ver también
-
-- `./postgres/README.md` (repositorios Postgres)
-- `./in_memory/README.md` (repositorios en memoria)
-- `../../domain/repositories.py` (Protocols de persistencia)
-- `../db/README.md` (pool e instrumentación de DB)
+- `./postgres/README.md`
+- `./in_memory/README.md`
+- `../../domain/repositories.py`
+- `../db/README.md`

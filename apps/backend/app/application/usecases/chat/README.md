@@ -11,12 +11,8 @@ Este paquete implementa los casos de uso de chat/RAG: búsqueda semántica, resp
 - Registra feedback y auditoría de respuestas.
 
 ### Qué NO hace (y por qué)
-- No implementa HTTP ni parsing de requests.
-  - Razón: eso vive en `interfaces/`.
-  - Consecuencia: los use cases son invocables desde HTTP o worker.
-- No toca SQL ni SDKs externos directamente.
-  - Razón: el IO está en `infrastructure/`.
-  - Consecuencia: depende de puertos del dominio.
+- No implementa HTTP ni parsing de requests. Razón: eso vive en `interfaces/`. Consecuencia: los use cases son invocables desde HTTP o worker.
+- No toca SQL ni SDKs externos directamente. Razón: el IO está en `infrastructure/`. Consecuencia: depende de puertos del dominio.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -38,19 +34,19 @@ Este paquete implementa los casos de uso de chat/RAG: búsqueda semántica, resp
 Input → Proceso → Output.
 
 - **Retrieval (SearchChunks)**
-  - Requiere `workspace_id` y `query`.
-  - Genera embedding, busca chunks y aplica filtro de prompt injection.
-  - `top_k` se sanitiza con límites defensivos (ver código).
+- Requiere `workspace_id` y `query`.
+- Genera embedding, busca chunks y aplica filtro de prompt injection.
+- `top_k` se sanitiza con límites defensivos (ver código).
 - **Respuesta (AnswerQuery)**
-  - Resuelve acceso al workspace.
-  - Recupera chunks, aplica rerank si está habilitado.
-  - Construye contexto con `ContextBuilder` y llama al LLM.
+- Resuelve acceso al workspace.
+- Recupera chunks, aplica rerank si está habilitado.
+- Construye contexto con `ContextBuilder` y llama al LLM.
 - **Historial (AnswerQueryWithHistory)**
-  - Resuelve/crea conversación, carga historial.
-  - Reescribe query si aplica y persiste mensajes best-effort.
+- Resuelve/crea conversación, carga historial.
+- Reescribe query si aplica y persiste mensajes best-effort.
 - **Streaming**
-  - Emite eventos SSE (`sources`, `token`, `done`, `error`).
-  - No reintenta durante iteración del stream.
+- Emite eventos SSE (`sources`, `token`, `done`, `error`).
+- No reintenta durante iteración del stream.
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** Application (use cases RAG).
@@ -60,6 +56,7 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.container import get_search_chunks_use_case
 from app.application.usecases.chat.search_chunks import SearchChunksInput
 
@@ -68,6 +65,7 @@ result = use_case.execute(SearchChunksInput(query="q", workspace_id="...", actor
 ```
 
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.container import get_answer_query_use_case
 from app.application.usecases.chat.answer_query import AnswerQueryInput
 
@@ -76,6 +74,7 @@ result = use_case.execute(AnswerQueryInput(query="q", workspace_id="...", actor=
 ```
 
 ```python
+# Por qué: deja visible el flujo principal.
 from app.container import get_answer_query_with_history_use_case
 from app.application.usecases.chat.answer_query_with_history import AnswerQueryWithHistoryInput
 
@@ -92,21 +91,21 @@ use_case.execute(AnswerQueryWithHistoryInput(query="q", workspace_id="...", conv
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `FORBIDDEN` al chatear.
-  - **Causa probable:** actor sin acceso al workspace.
-  - **Dónde mirar:** `workspace_access.py`.
-  - **Solución:** construir actor válido o ajustar ACL.
+- **Causa probable:** actor sin acceso al workspace.
+- **Dónde mirar:** `workspace_access.py`.
+- **Solución:** construir actor válido o ajustar ACL.
 - **Síntoma:** retrieval devuelve vacío.
-  - **Causa probable:** embeddings deshabilitados o `top_k` bajo.
-  - **Dónde mirar:** `search_chunks.py` y container.
-  - **Solución:** revisar provider y límites.
+- **Causa probable:** embeddings deshabilitados o `top_k` bajo.
+- **Dónde mirar:** `search_chunks.py` y container.
+- **Solución:** revisar provider y límites.
 - **Síntoma:** streaming falla a mitad.
-  - **Causa probable:** excepción durante el stream.
-  - **Dónde mirar:** `stream_answer_query.py` y `crosscutting/streaming.py`.
-  - **Solución:** manejar error y revisar logs.
+- **Causa probable:** excepción durante el stream.
+- **Dónde mirar:** `stream_answer_query.py` y `crosscutting/streaming.py`.
+- **Solución:** manejar error y revisar logs.
 - **Síntoma:** no se guarda historial.
-  - **Causa probable:** repo de conversación no configurado.
-  - **Dónde mirar:** `container.py`.
-  - **Solución:** cablear repository o usar in-memory.
+- **Causa probable:** repo de conversación no configurado.
+- **Dónde mirar:** `container.py`.
+- **Solución:** cablear repository o usar in-memory.
 
 ## 🔎 Ver también
 - `../README.md`

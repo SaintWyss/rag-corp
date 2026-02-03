@@ -1,5 +1,4 @@
-# RBAC
+# OBSOLETO — RBAC
+Este documento fue movido a `docs/reference/api/rbac.md`.
 
-Este documento fue movido a [../reference/api/rbac.md](../reference/api/rbac.md).
-
-➡️ Ir al documento actual: [../reference/api/rbac.md](../reference/api/rbac.md)
+➡️ Ver documento actual: `../reference/api/rbac.md`

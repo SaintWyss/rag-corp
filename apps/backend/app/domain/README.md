@@ -11,12 +11,8 @@ Este módulo define el lenguaje del negocio del backend: entidades, objetos de v
 - Normaliza metadata de entrada (`allowed_roles`, `tags`).
 
 ### Qué NO hace (y por qué)
-- No accede a DB/colas/storage ni SDKs externos.
-  - Razón: el dominio debe ser portable y testeable.
-  - Consecuencia: el IO se implementa en `infrastructure/`.
-- No depende de FastAPI ni transporte.
-  - Razón: el dominio no conoce HTTP.
-  - Consecuencia: Interfaces solo adapta.
+- No accede a DB/colas/storage ni SDKs externos. Razón: el dominio debe ser portable y testeable. Consecuencia: el IO se implementa en `infrastructure/`.
+- No depende de FastAPI ni transporte. Razón: el dominio no conoce HTTP. Consecuencia: Interfaces solo adapta.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
@@ -37,17 +33,17 @@ Este módulo define el lenguaje del negocio del backend: entidades, objetos de v
 Input → Proceso → Output.
 
 - **Normalización de metadata**
-  - Input: metadata libre.
-  - Proceso: `access.py` y `tags.py` limpian y deduplican.
-  - Output: listas estables.
+- Input: metadata libre.
+- Proceso: `access.py` y `tags.py` limpian y deduplican.
+- Output: listas estables.
 - **Políticas**
-  - Input: actor + workspace/ACL.
-  - Proceso: `workspace_policy.py` decide read/write/share.
-  - Output: booleanos de acceso.
+- Input: actor + workspace/ACL.
+- Proceso: `workspace_policy.py` decide read/write/share.
+- Output: booleanos de acceso.
 - **Puertos (Protocols)**
-  - Input: necesidades del sistema (persistir, embeber, almacenar, encolar).
-  - Proceso: `repositories.py`/`services.py` definen contratos.
-  - Output: interfaces que Infrastructure implementa.
+- Input: necesidades del sistema (persistir, embeber, almacenar, encolar).
+- Proceso: `repositories.py`/`services.py` definen contratos.
+- Output: interfaces que Infrastructure implementa.
 
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** Core Domain.
@@ -57,6 +53,7 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from uuid import uuid4
 from app.domain.entities import Document
 
@@ -65,6 +62,7 @@ doc.mark_deleted()
 ```
 
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.domain.workspace_policy import WorkspaceActor, can_read_workspace
 from app.identity.users import UserRole
 from uuid import UUID
@@ -74,6 +72,7 @@ allowed = can_read_workspace(actor=actor, workspace_visibility="private", actor_
 ```
 
 ```python
+# Por qué: deja visible el flujo principal.
 from app.domain.access import normalize_allowed_roles
 
 allowed_roles = normalize_allowed_roles({"allowed_roles": ["EMPLOYEE", " "]})
@@ -88,21 +87,21 @@ allowed_roles = normalize_allowed_roles({"allowed_roles": ["EMPLOYEE", " "]})
 
 ## 🆘 Troubleshooting
 - **Síntoma:** imports profundos repetidos.
-  - **Causa probable:** falta re-export en `__init__.py`.
-  - **Dónde mirar:** `domain/__init__.py`.
-  - **Solución:** exponer símbolos estables.
+- **Causa probable:** falta re-export en `__init__.py`.
+- **Dónde mirar:** `domain/__init__.py`.
+- **Solución:** exponer símbolos estables.
 - **Síntoma:** `can_read_workspace` devuelve `False` inesperado.
-  - **Causa probable:** actor incompleto o visibilidad no contemplada.
-  - **Dónde mirar:** `workspace_policy.py`.
-  - **Solución:** revisar construcción de `WorkspaceActor` y ACL.
+- **Causa probable:** actor incompleto o visibilidad no contemplada.
+- **Dónde mirar:** `workspace_policy.py`.
+- **Solución:** revisar construcción de `WorkspaceActor` y ACL.
 - **Síntoma:** `allowed_roles` queda vacío.
-  - **Causa probable:** metadata mal formada.
-  - **Dónde mirar:** `access.py`.
-  - **Solución:** validar formato antes de persistir.
+- **Causa probable:** metadata mal formada.
+- **Dónde mirar:** `access.py`.
+- **Solución:** validar formato antes de persistir.
 - **Síntoma:** Application importa infraestructura.
-  - **Causa probable:** contrato faltante en dominio.
-  - **Dónde mirar:** `repositories.py` / `services.py`.
-  - **Solución:** mover el contrato al dominio.
+- **Causa probable:** contrato faltante en dominio.
+- **Dónde mirar:** `repositories.py` / `services.py`.
+- **Solución:** mover el contrato al dominio.
 
 ## 🔎 Ver también
 - `../application/README.md`

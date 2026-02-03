@@ -20,9 +20,12 @@ Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, 
 
 1. **Informe de Sistemas v6 (Definitivo)** (`docs/system/informe_de_sistemas_rag_corp.md`) si existe.
 2. **Contracts**: `shared/contracts/openapi.json` (y client generado si aplica).
-3. **DB/Migraciones**: `backend/alembic/versions/*` + `docs/reference/data/postgres-schema.md`.
+
+3) **DB/Migraciones**: `backend/alembic/versions/*` + `docs/reference/data/postgres-schema.md`.
+
 4. **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
-5. **Decisiones**: `docs/architecture/adr/ADR-*.md`.
+
+5) **Decisiones**: `docs/architecture/adr/ADR-*.md`.
 
 ## Veracidad / No alucinaciones
 

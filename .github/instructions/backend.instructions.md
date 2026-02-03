@@ -22,7 +22,8 @@ Antes de afirmar algo “como cierto” en backend (endpoints, config, tablas, s
 2. `backend/app/main.py`, `backend/app/routes.py`, `backend/app/auth_routes.py`
 3. `backend/alembic/versions/*`
 4. `compose*.yaml`, `package.json`, CI workflows
-5. Docs vigentes v6 (`docs/system/...`, `docs/reference/api/http-api.md`, `docs/reference/data/postgres-schema.md`)
+
+5) Docs vigentes v6 (`docs/project/...`, `docs/reference/api/http-api.md`, `docs/reference/data/postgres-schema.md`)
 
 ## Arquitectura (Clean Architecture real en este repo)
 

@@ -2,6 +2,8 @@
 
 Fecha: 2026-01-29
 
+**OBSOLETO (histórico):** este runbook registra un estado pasado. Algunas rutas listadas pueden no existir tras la reestructuración. Ver `docs/README.md` y `apps/backend/README.md` para el mapa actual.
+
 ## FASE 1 — Inventario (solo lectura)
 
 ### Candidatos basura trackeados
@@ -57,17 +59,10 @@ Fecha: 2026-01-29
 - `apps/backend/app/api/main.py`
 - `apps/backend/app/application/dev_seed_demo.py`
 - `apps/backend/app/identity/dual_auth.py`
-- `apps/backend/app/infrastructure/repositories/postgres_user_repo.py`
+- `apps/backend/app/infrastructure/repositories/postgres/user.py`
 - `apps/backend/app/infrastructure/services/cached_embedding_service.py`
 - `apps/backend/tests/conftest.py`
-- `apps/backend/tests/unit/test_admin_workspace_provisioning.py`
-- `apps/backend/tests/unit/test_dev_seed_admin.py`
-- `apps/backend/tests/unit/test_dual_authz.py`
-- `apps/backend/tests/unit/test_jobs.py`
-- `apps/backend/tests/unit/test_observability.py`
-- `apps/backend/tests/unit/test_rfc7807_errors.py`
-- `apps/backend/tests/unit/test_upload_endpoint.py`
-- `apps/backend/tests/unit/test_user_auth.py`
+- `apps/backend/tests/unit/` (estructura actual; archivos históricos con esos nombres ya no están)
 - `apps/frontend/src/shared/lib/safeNext.ts`
 
 ### Resumen (≤10 bullets)

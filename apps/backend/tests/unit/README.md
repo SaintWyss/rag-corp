@@ -10,24 +10,20 @@ Este directorio contiene tests unitarios: validan funciones, clases y casos de u
 - Provee feedback rápido y determinista.
 
 ### Qué NO hace (y por qué)
-- No toca servicios externos reales.
-  - Razón: el objetivo es aislar lógica.
-  - Consecuencia: la integración con DB/Redis se valida en `tests/integration/`.
-- No cubre flujos end-to-end.
-  - Razón: el alcance de unit es “pieza”, no “sistema”.
-  - Consecuencia: los flujos completos viven en `tests/e2e/`.
+- No toca servicios externos reales. Razón: el objetivo es aislar lógica. Consecuencia: la integración con DB/Redis se valida en `tests/integration/`.
+- No cubre flujos end-to-end. Razón: el alcance de unit es “pieza”, no “sistema”. Consecuencia: los flujos completos viven en `tests/e2e/`.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
 | :-- | :-- | :-- |
 | `README.md` | Documento | Guía de tests unitarios. |
 | `__init__.py` | Archivo Python | Marca el paquete. |
-| `api/` | Carpeta | Unit tests de adaptadores HTTP/schemas. |
-| `application/` | Carpeta | Unit tests de casos de uso. |
-| `domain/` | Carpeta | Unit tests de reglas y entidades. |
-| `identity/` | Carpeta | Unit tests de auth/roles/permisos. |
-| `infrastructure/` | Carpeta | Unit tests de adapters con fakes. |
-| `worker/` | Carpeta | Unit tests de jobs y builders. |
+| `api` | Carpeta | Unit tests de adaptadores HTTP/schemas. |
+| `application` | Carpeta | Unit tests de casos de uso. |
+| `domain` | Carpeta | Unit tests de reglas y entidades. |
+| `identity` | Carpeta | Unit tests de auth/roles/permisos. |
+| `infrastructure` | Carpeta | Unit tests de adapters con fakes. |
+| `worker` | Carpeta | Unit tests de jobs y builders. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
@@ -44,6 +40,7 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```bash
+# Por qué: comando directo para validar el flujo.
 cd apps/backend
 pytest -m unit tests/unit
 ```
@@ -68,21 +65,21 @@ pytest.main(["-v", "tests/unit", "-m", "unit"])
 
 ## 🆘 Troubleshooting
 - **Síntoma:** tests lentos.
-  - **Causa probable:** IO real accidental.
-  - **Dónde mirar:** fixtures y dobles en `tests/conftest.py`.
-  - **Solución:** reemplazar dependencias por fakes/mocks.
+- **Causa probable:** IO real accidental.
+- **Dónde mirar:** fixtures y dobles en `tests/conftest.py`.
+- **Solución:** reemplazar dependencias por fakes/mocks.
 - **Síntoma:** fixtures no encontradas.
-  - **Causa probable:** nombre o scope incorrecto.
-  - **Dónde mirar:** `tests/conftest.py`.
-  - **Solución:** corregir nombre/scope.
+- **Causa probable:** nombre o scope incorrecto.
+- **Dónde mirar:** `tests/conftest.py`.
+- **Solución:** corregir nombre/scope.
 - **Síntoma:** `ModuleNotFoundError: app`.
-  - **Causa probable:** cwd incorrecto.
-  - **Dónde mirar:** `pwd`.
-  - **Solución:** ejecutar desde `apps/backend/`.
+- **Causa probable:** cwd incorrecto.
+- **Dónde mirar:** `pwd`.
+- **Solución:** ejecutar desde `apps/backend/`.
 - **Síntoma:** tests flaky.
-  - **Causa probable:** dependencia de orden o tiempo.
-  - **Dónde mirar:** tests afectados.
-  - **Solución:** fijar seeds y eliminar estado global.
+- **Causa probable:** dependencia de orden o tiempo.
+- **Dónde mirar:** tests afectados.
+- **Solución:** fijar seeds y eliminar estado global.
 
 ## 🔎 Ver también
 - `../README.md`

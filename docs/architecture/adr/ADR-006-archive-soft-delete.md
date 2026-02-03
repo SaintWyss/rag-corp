@@ -37,4 +37,4 @@
 
 - `pnpm test:backend:unit` (Fuente: `docs/quality/testing.md`, "Unit tests (Docker, recomendado)")
 - `pnpm --filter web test` (Fuente: `docs/quality/testing.md`, "Todos los tests")
-- `pnpm e2e` (Fuente: `docs/quality/testing.md`, "Ejecutar E2E con apps/backend/frontend locales")
+- `pnpm e2e` (ver `docs/quality/testing.md` y `tests/e2e/README.md`)

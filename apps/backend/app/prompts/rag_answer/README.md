@@ -1,5 +1,4 @@
 # rag_answer
-
 Como un **guion de respuesta**: define el formato y las reglas con las que el asistente arma respuestas RAG con citas.
 
 ## 🎯 Misión
@@ -20,29 +19,25 @@ Recorridos rápidos por intención:
 
 ### Qué NO hace (y por qué)
 
-- No ejecuta lógica de aplicación.
-  - **Razón:** es un asset estático; la orquestación vive en Application y el loader en Infrastructure.
-  - **Impacto:** los cambios se prueban vía `PromptLoader.format(...)`, no “corriendo” este módulo.
+- No ejecuta lógica de aplicación. Razón: ** es un asset estático; la orquestación vive en Application y el loader en Infrastructure. Impacto: ** los cambios se prueban vía `PromptLoader.format(...)`, no “corriendo” este módulo.
 
-- No decide qué versión usar.
-  - **Razón:** la elección es configuración (`settings.prompt_version`).
-  - **Impacto:** si falta el archivo de la versión, el loader puede hacer fallback (según implementación).
+- No decide qué versión usar. Razón: ** la elección es configuración (`settings.prompt_version`). Impacto: ** si falta el archivo de la versión, el loader puede hacer fallback (según implementación).
 
 ## 🗺️ Mapa del territorio
 
-| Recurso     | Tipo      | Responsabilidad (en humano)                                                |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :---------- | :-------- | :------------------------------------------------------------------------- |
-| `README.md` | Documento | Portada + índice de prompts `rag_answer` y reglas de extensión.            |
-| `v1_es.md`  | Documento | Prompt base en español: estructura mínima, citas y reglas centrales.       |
-| `v2_es.md`  | Documento | Prompt avanzado: formato más estricto y directrices de confianza/claridad. |
+| `README.md` | Documento | Portada + índice de prompts `rag_answer` y reglas de extensión. |
+| `v1_es.md` | Documento | Prompt base en español: estructura mínima, citas y reglas centrales. |
+| `v2_es.md` | Documento | Prompt avanzado: formato más estricto y directrices de confianza/claridad. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
 Input → Proceso → Output (flujo real del loader).
 
 - **Input:**
-  - `context`: contexto RAG ya construido (chunks, citas, metadata relevante).
-  - `query`: pregunta del usuario (posiblemente reescrita por el pipeline).
+- `context`: contexto RAG ya construido (chunks, citas, metadata relevante).
+- `query`: pregunta del usuario (posiblemente reescrita por el pipeline).
 
 - **Proceso:**
   1. `PromptLoader` carga el contrato global `policy`.
@@ -63,38 +58,23 @@ Conceptos en contexto:
 - **Rol arquitectónico:** Static Assets / Configuration.
 
 - **Recibe órdenes de:**
-  - `PromptLoader` (infraestructura) y el servicio LLM que finalmente envía el prompt.
+- `PromptLoader` (infraestructura) y el servicio LLM que finalmente envía el prompt.
 
 - **Llama a:** no aplica.
 
 - **Reglas de límites (contratos):**
-  - Cada versión debe incluir `{context}` y `{query}` en el cuerpo.
-  - El frontmatter debe declarar `inputs: [context, query]`.
-  - Naming esperado: `vN_{lang}.md` (ej. `v3_es.md`).
+- Cada versión debe incluir `{context}` y `{query}` en el cuerpo.
+- El frontmatter debe declarar `inputs: [context, query]`.
+- Naming esperado: `vN_{lang}.md` (ej. `v3_es.md`).
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Cargar una versión específica
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.infrastructure.prompts.loader import PromptLoader
 
 loader = PromptLoader(version="v2", capability="rag_answer", lang="es")
-prompt = loader.format(context="...", query="...")
-```
-
-### 2) Test rápido de sanidad (tokens reemplazables)
-
-```python
-from app.infrastructure.prompts.loader import PromptLoader
-
-loader = PromptLoader(version="v1", capability="rag_answer", lang="es")
 prompt = loader.format(context="CTX", query="Q")
-assert "CTX" in prompt
-assert "Q" in prompt
 ```
-
-### 3) Esqueleto mínimo de un prompt (frontmatter + tokens)
 
 ```text
 ---
@@ -106,10 +86,6 @@ inputs:
   - query
 ---
 
-Instrucciones:
-- Respondé usando solo el contexto.
-- Citá fragmentos cuando corresponda.
-
 Contexto:
 {context}
 
@@ -118,27 +94,31 @@ Pregunta:
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. **Cambio grande → nueva versión**: creá `v3_es.md` (no rompas una versión estable si ya está en uso).
-2. **Respetá naming**: `vN_es.md` para español (alineado a `settings.prompt_version`).
-3. **Respetá tokens**: `{context}` y `{query}` deben estar en el cuerpo.
-4. **Frontmatter coherente**: `type`, `version`, `lang` e `inputs` alineados con lo que el loader reemplaza.
-5. **Compatibilidad**: si cambiás formato de citas/estructura, verificá que el consumidor (post-processing) no dependa del layout anterior.
-6. **Validación manual**: probá con 2 contextos:
-   - uno con evidencia clara (debería citar y responder directo).
-   - uno incompleto (debería declarar incertidumbre y pedir dato faltante).
+- Para cambios grandes, crear `vN_es.md` nuevo.
+- Mantener `{context}` y `{query}` en el cuerpo.
+- Actualizar `settings.prompt_version` para activar la versión.
+- Si el consumo cambia, cablear el loader desde `app/container.py`.
+- Tests: unit en `apps/backend/tests/unit/` con `PromptLoader`.
 
 ## 🆘 Troubleshooting
-
-- **No existe la versión pedida** → falta `vN_es.md` con el nombre exacto → crear el archivo o corregir `settings.prompt_version`.
-- **`{context}` o `{query}` quedan sin reemplazar** → se está usando el template crudo o el token no está presente → revisar que se llame a `format(...)` y que el cuerpo contenga los tokens.
-- **Error por “missing required tokens”** → el template no incluye ambos tokens → agregarlos en el cuerpo.
-- **El prompt no refleja cambios** → loader cacheado en runtime → reiniciar proceso o invalidar cache (según implementación del loader).
+- **Síntoma:** versión no encontrada.
+- **Causa probable:** archivo `vN_es.md` ausente.
+- **Dónde mirar:** este directorio.
+- **Solución:** crear el archivo con el nombre exacto.
+- **Síntoma:** tokens quedan literales.
+- **Causa probable:** template sin tokens o uso incorrecto del loader.
+- **Dónde mirar:** template y `PromptLoader`.
+- **Solución:** agregar tokens y usar `format()`.
+- **Síntoma:** cambios no se reflejan.
+- **Causa probable:** loader cacheado.
+- **Dónde mirar:** `get_prompt_loader()`.
+- **Solución:** reiniciar proceso.
+- **Síntoma:** output no respeta formato.
+- **Causa probable:** template modificado sin actualizar policy.
+- **Dónde mirar:** `policy/`.
+- **Solución:** alinear policy y template.
 
 ## 🔎 Ver también
-
-- `../policy/README.md` (contrato global de seguridad)
-- `../../infrastructure/prompts/README.md` (selección, cache, validación y formato)
-- `../README.md` (índice de p
+- `../README.md`
+- `../policy/README.md`
+- `../../infrastructure/prompts/README.md`

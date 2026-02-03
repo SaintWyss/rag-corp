@@ -1,5 +1,4 @@
 # prompts
-
 Como un **bibliotecario**: trae el prompt correcto del estante, lo valida y lo deja listo para formatear.
 
 ## 🎯 Misión
@@ -23,21 +22,17 @@ Recorridos rápidos por intención:
 
 ### Qué NO hace (y por qué)
 
-- No contiene los prompts en sí.
-  - **Razón:** los prompts son recursos versionados en `app/prompts/`.
-  - **Impacto:** este módulo solo sabe “cargar y componer”; editar contenido se hace en los `.md` del directorio de prompts.
+- No contiene los prompts en sí. Razón: ** los prompts son recursos versionados en `app/prompts/`. Impacto: ** este módulo solo sabe “cargar y componer”; editar contenido se hace en los `.md` del directorio de prompts.
 
-- No decide el contenido del prompt.
-  - **Razón:** el contenido es parte del producto y evoluciona por versión.
-  - **Impacto:** el loader no “opina”; si hay cambios de wording, son cambios en los archivos de prompts.
+- No decide el contenido del prompt. Razón: ** el contenido es parte del producto y evoluciona por versión. Impacto: ** el loader no “opina”; si hay cambios de wording, son cambios en los archivos de prompts.
 
 ## 🗺️ Mapa del territorio
 
-| Recurso       | Tipo           | Responsabilidad (en humano)                                                     |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :------------ | :------------- | :------------------------------------------------------------------------------ |
-| `__init__.py` | Archivo Python | Exporta `PromptLoader` y helpers públicos para imports estables.                |
-| `loader.py`   | Archivo Python | Carga desde filesystem, cachea, valida frontmatter y compone policy + template. |
-| `README.md`   | Documento      | Portada + guía operativa del loader.                                            |
+| `__init__.py` | Archivo Python | Exporta `PromptLoader` y helpers públicos para imports estables. |
+| `loader.py` | Archivo Python | Carga desde filesystem, cachea, valida frontmatter y compone policy + template. |
+| `README.md` | Documento | Portada + guía operativa del loader. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -57,9 +52,9 @@ Input → Proceso → Output con pasos reales del módulo.
 
 - **Input:** contenido del archivo `.md`.
 - **Proceso:**
-  - separa frontmatter y body (template), y parsea el bloque de metadatos.
-  - valida que los metadatos declaren los **inputs** requeridos (ej. `context`, `query`) y opcionales.
-  - valida que el body contenga los tokens declarados (evita prompts con placeholders rotos).
+- separa frontmatter y body (template), y parsea el bloque de metadatos.
+- valida que los metadatos declaren los **inputs** requeridos (ej. `context`, `query`) y opcionales.
+- valida que el body contenga los tokens declarados (evita prompts con placeholders rotos).
 
 - **Output:** `PromptTemplate(frontmatter, body)` (o equivalente) listo para composición.
 
@@ -67,8 +62,8 @@ Input → Proceso → Output con pasos reales del módulo.
 
 - **Input:** plantilla de policy + plantilla de capacidad.
 - **Proceso:**
-  - concatena en el orden establecido (policy primero, luego template) con separadores estables.
-  - preserva los tokens del template final.
+- concatena en el orden establecido (policy primero, luego template) con separadores estables.
+- preserva los tokens del template final.
 
 - **Output:** un string de prompt “completo” listo para formatear.
 
@@ -76,9 +71,9 @@ Input → Proceso → Output con pasos reales del módulo.
 
 - **Input:** `**kwargs` de formato (ej. `context=...`, `query=...`).
 - **Proceso:**
-  - valida que se proporcionen todos los tokens requeridos.
-  - reemplaza placeholders `{token}` por valores.
-  - opcional: recorta valores muy grandes o normaliza whitespace si el loader lo implementa.
+- valida que se proporcionen todos los tokens requeridos.
+- reemplaza placeholders `{token}` por valores.
+- opcional: recorta valores muy grandes o normaliza whitespace si el loader lo implementa.
 
 - **Output:** prompt string listo para enviar al LLM.
 
@@ -93,88 +88,61 @@ Conceptos mínimos en contexto:
 - **Rol arquitectónico:** Infrastructure adapter (filesystem prompts).
 
 - **Recibe órdenes de:**
-  - `LLMService` o servicios de infraestructura que construyen prompts.
-  - Casos de uso que piden “versión + capability” para una operación.
+- `LLMService` o servicios de infraestructura que construyen prompts.
+- Casos de uso que piden “versión + capability” para una operación.
 
 - **Llama a:**
-  - filesystem local (lectura desde `app/prompts/`).
+- filesystem local (lectura desde `app/prompts/`).
 
 - **Reglas de límites (imports/ownership):**
-  - No importa Domain/Application; es una utilidad de infraestructura.
-  - No conoce HTTP ni repositorios.
-  - Valida paths para evitar traversal.
+- No importa Domain/Application; es una utilidad de infraestructura.
+- No conoce HTTP ni repositorios.
+- Valida paths para evitar traversal.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Cargar y formatear un prompt RAG
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.infrastructure.prompts.loader import PromptLoader
 
-loader = PromptLoader(version="v1", capability="rag_answer")
-prompt = loader.format(context="...", query="...")
-print(prompt[:200])
+loader = PromptLoader(version="v1", capability="rag_answer", lang="es")
+prompt = loader.format(context="CTX", query="Q")
 ```
 
-### 2) Reutilizar la misma instancia (cache en memoria)
-
 ```python
-from app.infrastructure.prompts.loader import PromptLoader
+# Por qué: ejemplo de integración sin infraestructura real.
+from app.infrastructure.prompts.loader import get_prompt_loader
 
-loader = PromptLoader(version="v2", capability="rag_answer")
-
-# primera vez lee de disco
-p1 = loader.format(context="A", query="Q")
-
-# siguientes llamadas reutilizan template cacheado
-p2 = loader.format(context="B", query="Q")
-```
-
-### 3) Obtener el template compuesto (policy + template) sin formatear
-
-```python
-from app.infrastructure.prompts.loader import PromptLoader
-
-loader = PromptLoader(version="v1", capability="rag_answer")
-raw_template = loader.get_template()
-print(raw_template)
-```
-
-### 4) Manejo de errores típico (prompt faltante / tokens)
-
-```python
-from app.infrastructure.prompts.loader import PromptLoader
-
-try:
-    loader = PromptLoader(version="v9", capability="rag_answer")
-    loader.format(context="...", query="...")
-except Exception as exc:
-    # El módulo debe lanzar errores tipados (ver loader.py)
-    raise RuntimeError(str(exc))
+loader = get_prompt_loader()
+text = loader.format(context="...", query="...")
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. **Nuevo prompt/capability:** crear carpeta/archivo en `app/prompts/<capability>/` con versionado `vN`.
-2. **Frontmatter:** declarar inputs requeridos y mantener tokens del body consistentes.
-3. **Compatibilidad:** cuando cambies estructura o wording fuerte, subí versión (`v2`, `v3`) en vez de editar `v1`.
-4. **Policy:** si una capability requiere policy, mantener el punto de composición estable (policy primero).
-5. **Tests:**
-   - unit: cargar un prompt real y validar que `format()` reemplaza tokens.
-   - negativa: versión inexistente, capability inválida, token faltante.
+- Agregá nuevas versiones en `app/prompts/rag_answer/` como `vN_es.md`.
+- Mantené `{context}` y `{query}` en el cuerpo del template.
+- Si cambiás el formato, actualizá `settings.prompt_version`.
+- Wiring: si querés otra capability, actualizá el loader en este módulo.
+- Si un servicio consume prompts, inyectalo desde `app/container.py`.
+- Tests: unit en `apps/backend/tests/unit/` para cargar y formatear prompts.
 
 ## 🆘 Troubleshooting
-
-- **Prompt no encontrado** → versión/capability inválida o archivo no existe → revisar rutas en `loader.py` y estructura en `app/prompts/`.
-- **Tokens sin reemplazar (`{context}` queda literal)** → faltan kwargs o el frontmatter no declara ese input → revisar frontmatter del `.md` y el llamado a `format()`.
-- **Frontmatter inválido** → formato roto (separadores, claves) → revisar encabezado del `.md` y el parser en `loader.py`.
-- **Se carga la versión equivocada** → `version` no llega desde settings o se hardcodeó mal → revisar el punto donde se construye `PromptLoader`.
-- **Cambios rompen producción** → se editó una versión usada → crear `vN+1` y apuntar el setting a la nueva versión.
+- **Síntoma:** `Invalid prompt version`.
+- **Causa probable:** versión no cumple `vN`.
+- **Dónde mirar:** `loader.py`.
+- **Solución:** usar `v1`, `v2`, etc.
+- **Síntoma:** fallback a `v1`.
+- **Causa probable:** archivo de versión inexistente.
+- **Dónde mirar:** `app/prompts/rag_answer/`.
+- **Solución:** crear el archivo o corregir versión.
+- **Síntoma:** `Prompt template missing required tokens`.
+- **Causa probable:** faltan `{context}` o `{query}`.
+- **Dónde mirar:** template `.md`.
+- **Solución:** agregar tokens.
+- **Síntoma:** cambios no se reflejan.
+- **Causa probable:** loader cacheado.
+- **Dónde mirar:** `get_prompt_loader()`.
+- **Solución:** reiniciar proceso o crear loader nuevo.
 
 ## 🔎 Ver también
-
-- `../../prompts/README.md` (catálogo de prompts)
-- `../../prompts/rag_answer/README.md` (prompts de respuesta RAG)
-- `../../infrastructure/llm/README.md` (servicio que consume prompts, si aplica)
+- `../../prompts/README.md`
+- `../../prompts/policy/README.md`
+- `../../prompts/rag_answer/README.md`

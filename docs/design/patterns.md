@@ -1,5 +1,4 @@
-# Design Patterns
+# OBSOLETO — Design Patterns
+Este documento fue movido a `docs/reference/design/patterns.md`.
 
-Este documento fue movido a [../reference/design/patterns.md](../reference/design/patterns.md).
-
-➡️ Ir al documento actual: [../reference/design/patterns.md](../reference/design/patterns.md)
+➡️ Ver documento actual: `../reference/design/patterns.md`

@@ -1,14 +1,9 @@
-# Security Documentation
+# Índice de seguridad
+Controles, políticas y hardening.
 
-## References
-
-- [Access Control](../reference/access-control.md)
-- [RBAC](../reference/api/rbac.md)
-- [Production Hardening](../security/production-hardening.md)
-- [Prompt Policy](../security/prompt-policy.md)
-- [ADR-010: Prompt Policy](../architecture/adr/ADR-010-prompt-policy-and-hard-scoping.md)
-
-## Top Risks
-
-- Prompt Injection
-- Data Leaks
+- Control de acceso (JWT/API key/RBAC) → `../reference/access-control.md`
+- Configuración sensible → `../reference/config.md`
+- Límites del sistema → `../reference/limits.md`
+- Hardening (runbook) → `../runbook/production-hardening.md`
+- Prompt policy → `../security/prompt-policy.md`
+- Security policy del proyecto → `../project/SECURITY.md`

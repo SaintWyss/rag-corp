@@ -1,13 +1,13 @@
-# Data Documentation
+# Índice de datos
+Referencias de almacenamiento, esquema y migraciones.
 
-## References
+## Esquema y migraciones
+- Schema Postgres → `../reference/data/postgres-schema.md`
+- Política de migraciones → `../reference/data/migrations-policy.md`
+- Runbook de migraciones → `../runbook/migrations.md`
+- Alembic (backend) → `../../apps/backend/alembic/README.md`
 
-- [Postgres Schema](../reference/data/postgres-schema.md)
-- [Migrations Policy](../reference/data/migrations-policy.md)
-- [ADR-002: pgvector](../architecture/adr/ADR-002-pgvector.md)
-
-## Checklist (if touching DB)
-
-- [ ] Has migration?
-- [ ] Indexes added?
-- [ ] Rollback plan?
+## Acceso a datos (backend)
+- Infra DB (pool/queries) → `../../apps/backend/app/infrastructure/db/README.md`
+- Repositorios (hub) → `../../apps/backend/app/infrastructure/repositories/README.md`
+- Repositorio Postgres → `../../apps/backend/app/infrastructure/repositories/postgres/README.md`

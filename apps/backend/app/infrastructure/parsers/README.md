@@ -1,5 +1,4 @@
 # parsers
-
 Como un **lector**: convierte archivos (PDF/DOCX/TXT) en **texto plano** listo para el pipeline.
 
 ## 🎯 Misión
@@ -25,28 +24,24 @@ Recorridos rápidos por intención:
 
 ### Qué NO hace (y por qué)
 
-- No genera embeddings ni hace chunking.
-  - **Razón:** chunking y embeddings viven en el pipeline de texto (y casos de uso de ingesta).
-  - **Impacto:** este módulo solo devuelve texto; el tamaño final/fragmentación se decide en `infrastructure/text/`.
+- No genera embeddings ni hace chunking. Razón: ** chunking y embeddings viven en el pipeline de texto (y casos de uso de ingesta). Impacto: ** este módulo solo devuelve texto; el tamaño final/fragmentación se decide en `infrastructure/text/`.
 
-- No persiste nada en DB ni marca estados.
-  - **Razón:** persistencia/transiciones son responsabilidad de repos y use cases.
-  - **Impacto:** ante fallos, este módulo lanza/retorna errores tipados; Application decide `FAILED`.
+- No persiste nada en DB ni marca estados. Razón: ** persistencia/transiciones son responsabilidad de repos y use cases. Impacto: ** ante fallos, este módulo lanza/retorna errores tipados; Application decide `FAILED`.
 
 ## 🗺️ Mapa del territorio
 
-| Recurso                      | Tipo           | Responsabilidad (en humano)                                                          |
+| Recurso | Tipo | Responsabilidad (en humano) |
 | :--------------------------- | :------------- | :----------------------------------------------------------------------------------- |
-| `__init__.py`                | Archivo Python | Exporta el extractor y componentes públicos (imports estables).                      |
-| `contracts.py`               | Archivo Python | DTOs/contratos: opciones de parsing (límites) y resultados normalizados.             |
-| `document_text_extractor.py` | Archivo Python | Adaptador que implementa `DocumentTextExtractor` del dominio (entrada unificada).    |
-| `docx_parser.py`             | Archivo Python | Parser DOCX (python-docx) con manejo defensivo de errores.                           |
-| `errors.py`                  | Archivo Python | Errores tipados: MIME no soportado, parse fallido, archivo corrupto, etc.            |
-| `mime_types.py`              | Archivo Python | Catálogo + normalización de MIME types (alias, defaults, comparaciones seguras).     |
-| `normalize.py`               | Archivo Python | Normalización y truncado: whitespace, límites de caracteres y protección de memoria. |
-| `pdf_parser.py`              | Archivo Python | Parser PDF (pypdf) con extracción página a página y límites.                         |
-| `registry.py`                | Archivo Python | Registry/Strategy: mapea MIME → parser y define el fallback/errores.                 |
-| `README.md`                  | Documento      | Portada + guía operativa de parsers.                                                 |
+| `__init__.py` | Archivo Python | Exporta el extractor y componentes públicos (imports estables). |
+| `contracts.py` | Archivo Python | DTOs/contratos: opciones de parsing (límites) y resultados normalizados. |
+| `document_text_extractor.py` | Archivo Python | Adaptador que implementa `DocumentTextExtractor` del dominio (entrada unificada). |
+| `docx_parser.py` | Archivo Python | Parser DOCX (python-docx) con manejo defensivo de errores. |
+| `errors.py` | Archivo Python | Errores tipados: MIME no soportado, parse fallido, archivo corrupto, etc. |
+| `mime_types.py` | Archivo Python | Catálogo + normalización de MIME types (alias, defaults, comparaciones seguras). |
+| `normalize.py` | Archivo Python | Normalización y truncado: whitespace, límites de caracteres y protección de memoria. |
+| `pdf_parser.py` | Archivo Python | Parser PDF (pypdf) con extracción página a página y límites. |
+| `registry.py` | Archivo Python | Registry/Strategy: mapea MIME → parser y define el fallback/errores. |
+| `README.md` | Documento | Portada + guía operativa de parsers. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -67,23 +62,23 @@ Input → Proceso → Output con pasos reales del diseño.
 
 - **Input:** MIME type normalizado.
 - **Proceso:**
-  - El registry mantiene un mapa MIME → `BaseParser`.
-  - Si el MIME no está registrado, lanza `UnsupportedMimeTypeError` con el MIME observado.
+- El registry mantiene un mapa MIME → `BaseParser`.
+- Si el MIME no está registrado, lanza `UnsupportedMimeTypeError` con el MIME observado.
 
 - **Output:** instancia del parser correcto o error tipado.
 
 ### 3) Parsers concretos
 
 - **PDF (`pdf_parser.py`)**
-  - extrae texto página a página (para controlar memoria).
-  - maneja PDFs sin texto (scans) devolviendo vacío o error (según contrato).
+- extrae texto página a página (para controlar memoria).
+- maneja PDFs sin texto (scans) devolviendo vacío o error (según contrato).
 
 - **DOCX (`docx_parser.py`)**
-  - recorre párrafos/celdas y junta texto con separadores estables.
-  - ignora objetos no textuales.
+- recorre párrafos/celdas y junta texto con separadores estables.
+- ignora objetos no textuales.
 
 - **TXT (si aplica vía registry)**
-  - decodifica con fallback (utf-8) y reemplazo controlado.
+- decodifica con fallback (utf-8) y reemplazo controlado.
 
 ### 4) Normalización y límites defensivos
 
@@ -96,89 +91,60 @@ Input → Proceso → Output con pasos reales del diseño.
 - **Rol arquitectónico:** Infrastructure adapter (parsing de archivos).
 
 - **Recibe órdenes de:**
-  - Casos de uso de ingesta (ej. `ProcessUploadedDocumentUseCase`) que necesitan texto para chunking.
+- Casos de uso de ingesta (ej. `ProcessUploadedDocumentUseCase`) que necesitan texto para chunking.
 
 - **Llama a:**
-  - `pypdf` (PDF) y `python-docx` (DOCX), más normalizadores locales.
+- `pypdf` (PDF) y `python-docx` (DOCX), más normalizadores locales.
 
 - **Contratos y límites:**
-  - Implementa el puerto `DocumentTextExtractor` definido en `app/domain/services.py`.
-  - No debe importar repositorios ni use cases.
-  - No decide política ni status; solo devuelve texto o error.
+- Implementa el puerto `DocumentTextExtractor` definido en `app/domain/services.py`.
+- No debe importar repositorios ni use cases.
+- No decide política ni status; solo devuelve texto o error.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Extraer texto directo (runtime)
-
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.infrastructure.parsers import SimpleDocumentTextExtractor
 
 extractor = SimpleDocumentTextExtractor()
 text = extractor.extract_text("text/plain", b"hola mundo")
-print(text)
 ```
 
-### 2) PDF con MIME normalizado
-
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
+from app.infrastructure.parsers.contracts import ParserOptions
 from app.infrastructure.parsers import SimpleDocumentTextExtractor
 
-extractor = SimpleDocumentTextExtractor()
+extractor = SimpleDocumentTextExtractor(options=ParserOptions(max_chars=200_000))
 text = extractor.extract_text("application/pdf", pdf_bytes)
-print(text[:200])
-```
-
-### 3) Forzar opciones/límites (si `contracts.py` lo expone)
-
-```python
-from app.infrastructure.parsers import SimpleDocumentTextExtractor
-from app.infrastructure.parsers.contracts import ParseOptions
-
-extractor = SimpleDocumentTextExtractor()
-text = extractor.extract_text(
-    "application/pdf",
-    pdf_bytes,
-    options=ParseOptions(max_chars=200_000),
-)
-```
-
-### 4) Registro de un parser custom (test o extensión)
-
-```python
-from app.infrastructure.parsers.registry import ParserRegistry
-from app.infrastructure.parsers.contracts import BaseParser
-
-class MarkdownParser(BaseParser):
-    def parse(self, content: bytes) -> str:
-        return content.decode("utf-8", errors="replace")
-
-registry = ParserRegistry.default()
-registry.register("text/markdown", MarkdownParser())
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. **Nuevo parser**: implementá `BaseParser` (contrato en `contracts.py`).
-2. **Registro**: agregalo en `registry.py` (o en la construcción default del registry).
-3. **MIME**: sumá el MIME/alias en `mime_types.py`.
-4. **Normalización**: mantené `normalize.py` como único lugar para whitespace/truncado.
-5. **Errores**: lanzá errores tipados de `errors.py` (no `Exception` genérica).
-6. **Tests**:
-   - unit: parser con archivos pequeños y casos corruptos.
-   - integración: flujo de ingesta que use `DocumentTextExtractor`.
+- Implementá un `BaseParser` y registralo en `ParserRegistry`.
+- Sumá el MIME en `mime_types.py`.
+- Mantené límites en `ParserOptions` y normalización en `normalize.py`.
+- Wiring: si el extractor cambia, se cablea en `app/container.py`.
+- Tests: unit en `apps/backend/tests/unit/infrastructure/`, integration en `apps/backend/tests/integration/`.
 
 ## 🆘 Troubleshooting
-
-- **`UnsupportedMimeTypeError`** → MIME no registrado/normalizado → revisar `mime_types.py` y `registry.py` → agregar alias o registrar parser.
-- **Texto vacío en PDF** → PDF es imagen (scan) o extractor no encuentra texto → revisar `pdf_parser.py` → considerar OCR (en otro módulo/paso del pipeline).
-- **Texto truncado** → `max_chars` bajo → revisar `contracts.py`/`normalize.py` y los settings que inyectan ese límite.
-- **`ParseError` / archivo corrupto** → bytes inválidos o contenido incompleto → revisar origen de upload y validar tamaño/hash.
-- **DOCX devuelve texto raro** → contenido en tablas/headers no considerado → revisar `docx_parser.py` y el join de párrafos/celdas.
+- **Síntoma:** `UnsupportedMimeTypeError`.
+- **Causa probable:** MIME no registrado.
+- **Dónde mirar:** `registry.py` y `mime_types.py`.
+- **Solución:** registrar el parser/alias.
+- **Síntoma:** texto vacío en PDF.
+- **Causa probable:** PDF sin texto (scan) o parser falló.
+- **Dónde mirar:** `pdf_parser.py`.
+- **Solución:** evaluar OCR o revisar archivo.
+- **Síntoma:** texto truncado.
+- **Causa probable:** `max_chars` bajo.
+- **Dónde mirar:** `ParserOptions`.
+- **Solución:** ajustar límites.
+- **Síntoma:** UnicodeDecodeError en text/plain.
+- **Causa probable:** encoding incorrecto.
+- **Dónde mirar:** `ParserOptions.encoding`.
+- **Solución:** ajustar encoding o usar `errors=replace`.
 
 ## 🔎 Ver también
-
-- `../../application/usecases/ingestion/README.md` (pipeline: extract → chunk → embed)
-- `../text/README.md` (chunking y utilidades de texto)
-- `../storage/README.md` (de dónde vienen los bytes: storage ports)
+- `../../application/usecases/ingestion/README.md`
+- `../text/README.md`
+- `../storage/README.md`

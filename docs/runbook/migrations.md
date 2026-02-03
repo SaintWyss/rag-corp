@@ -1,19 +1,7 @@
-# Database Migrations (Alembic) - v6
+# Migraciones de base de datos (Alembic)
+Fuente de verdad: `apps/backend/alembic/`.
 
-**Project:** RAG Corp
-**Last Updated:** 2026-01-22
-
----
-
-## Overview
-
-RAG Corp usa Alembic para versionar el schema PostgreSQL.
-El source of truth es `apps/backend/alembic/`.
-
----
-
-## Ubicacion
-
+## Ubicación
 ```
 apps/backend/
 ├── alembic.ini
@@ -21,27 +9,13 @@ apps/backend/
     ├── env.py
     ├── script.py.mako
     └── versions/
-        ├── 001_initial.py
-        ├── 002_add_users.py
-        ├── 003_add_document_file_metadata.py
-        ├── 004_add_processing_status.py
-        ├── 005_add_document_tags.py
-        ├── 006_add_audit_events_and_acl.py
-        ├── 007_add_workspaces_and_acl.py
-        └── 008_docs_workspace_id.py
+        └── 001_foundation.py
 ```
 
----
-
 ## Requisitos previos
-
-- `DATABASE_URL` configurado
-- Para `008_docs_workspace_id.py`, debe existir al menos un usuario (admin recomendado). Si no, la migracion falla con mensaje explicito.
-
----
+- `DATABASE_URL` configurado (ver `apps/backend/app/crosscutting/config.py`).
 
 ## Comandos comunes
-
 ```bash
 cd apps/backend
 alembic current
@@ -50,41 +24,19 @@ alembic upgrade head
 alembic downgrade -1
 ```
 
-Con Docker Compose (canonico):
-
+Con Docker Compose:
 ```bash
 pnpm db:migrate
 ```
 
----
-
 ## Troubleshooting
+- **Síntoma:** `Target database is not up to date`.
+- **Solución:** `alembic upgrade head`.
 
-### "Target database is not up to date"
-
-```bash
-alembic current
-alembic upgrade head
-```
-
-### "Can't locate revision"
-
-```bash
-alembic history --verbose
-alembic stamp <revision_id>
-```
-
-### Reset destructivo (solo dev)
-
-```bash
-alembic downgrade base
-alembic upgrade head
-```
-
----
+- **Síntoma:** `Can't locate revision`.
+- **Solución:** `alembic history --verbose` y `alembic stamp <revision_id>`.
 
 ## Notas
-
-- `infra/postgres/init.sql` solo habilita `pgvector`.
-- El schema completo se aplica via Alembic.
-- Ver `docs/reference/data/postgres-schema.md` para detalle de tablas e indices.
+- `infra/postgres/init.sql` habilita `pgvector`.
+- El schema completo se aplica via Alembic (`apps/backend/alembic/`).
+- Ver `docs/reference/data/postgres-schema.md` para detalle de tablas e índices.

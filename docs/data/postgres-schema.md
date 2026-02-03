@@ -1,5 +1,4 @@
-# Postgres Schema
+# OBSOLETO — Postgres Schema
+Este documento fue movido a `docs/reference/data/postgres-schema.md`.
 
-Este documento fue movido a [../reference/data/postgres-schema.md](../reference/data/postgres-schema.md).
-
-➡️ Ir al documento actual: [../reference/data/postgres-schema.md](../reference/data/postgres-schema.md)
+➡️ Ver documento actual: `../reference/data/postgres-schema.md`

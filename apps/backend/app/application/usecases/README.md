@@ -11,22 +11,18 @@ Este paquete organiza los casos de uso por bounded context (`chat`, `documents`,
 - Publica barrel exports en `usecases/__init__.py`.
 
 ### Qué NO hace (y por qué)
-- No ejecuta IO directo (DB/Redis/S3/LLM).
-  - Razón: el IO se implementa en `infrastructure/`.
-  - Consecuencia: los use cases dependen de puertos del dominio.
-- No expone endpoints HTTP.
-  - Razón: el transporte pertenece a `interfaces/`.
-  - Consecuencia: los routers solo adaptan y delegan.
+- No ejecuta IO directo (DB/Redis/S3/LLM). Razón: el IO se implementa en `infrastructure/`. Consecuencia: los use cases dependen de puertos del dominio.
+- No expone endpoints HTTP. Razón: el transporte pertenece a `interfaces/`. Consecuencia: los routers solo adaptan y delegan.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
 | :-- | :-- | :-- |
 | `README.md` | Documento | Guía del paquete de casos de uso. |
 | `__init__.py` | Archivo Python | Exports públicos de Inputs/UseCases/Results. |
-| `chat/` | Carpeta | RAG, conversación y feedback. |
-| `documents/` | Carpeta | CRUD de documentos + errores/resultados. |
-| `ingestion/` | Carpeta | Upload/processing/ingesta + estado. |
-| `workspace/` | Carpeta | Gestión de workspaces + acceso. |
+| `chat` | Carpeta | RAG, conversación y feedback. |
+| `documents` | Carpeta | CRUD de documentos + errores/resultados. |
+| `ingestion` | Carpeta | Upload/processing/ingesta + estado. |
+| `workspace` | Carpeta | Gestión de workspaces + acceso. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 Input → Proceso → Output.
@@ -43,6 +39,7 @@ Input → Proceso → Output.
 
 ## 👩‍💻 Guía de uso (Snippets)
 ```python
+# Por qué: muestra el contrato mínimo del módulo.
 from app.application.usecases import SearchChunksInput
 from app.container import get_search_chunks_use_case
 
@@ -51,6 +48,7 @@ result = use_case.execute(SearchChunksInput(query="q", workspace_id="...", actor
 ```
 
 ```python
+# Por qué: ejemplo de integración sin infraestructura real.
 from app.application.usecases import UploadDocumentInput
 from app.container import get_upload_document_use_case
 
@@ -67,21 +65,21 @@ use_case.execute(UploadDocumentInput(workspace_id="...", actor=None, title="Doc"
 
 ## 🆘 Troubleshooting
 - **Síntoma:** `ImportError` al importar desde `app.application.usecases`.
-  - **Causa probable:** falta export en `__init__.py`.
-  - **Dónde mirar:** `usecases/__init__.py`.
-  - **Solución:** exportar el símbolo.
+- **Causa probable:** falta export en `__init__.py`.
+- **Dónde mirar:** `usecases/__init__.py`.
+- **Solución:** exportar el símbolo.
 - **Síntoma:** `FORBIDDEN` inesperado.
-  - **Causa probable:** actor ausente o sin rol.
-  - **Dónde mirar:** `workspace_access.py` en `workspace/`.
-  - **Solución:** construir actor válido desde auth.
+- **Causa probable:** actor ausente o sin rol.
+- **Dónde mirar:** `workspace_access.py` en `workspace/`.
+- **Solución:** construir actor válido desde auth.
 - **Síntoma:** `VALIDATION_ERROR` por límites.
-  - **Causa probable:** `top_k` o inputs fuera de rango.
-  - **Dónde mirar:** caso de uso específico.
-  - **Solución:** ajustar inputs o límites.
+- **Causa probable:** `top_k` o inputs fuera de rango.
+- **Dónde mirar:** caso de uso específico.
+- **Solución:** ajustar inputs o límites.
 - **Síntoma:** `SERVICE_UNAVAILABLE`.
-  - **Causa probable:** dependencia externa no configurada.
-  - **Dónde mirar:** `app/container.py` y settings.
-  - **Solución:** configurar servicios o habilitar fakes.
+- **Causa probable:** dependencia externa no configurada.
+- **Dónde mirar:** `app/container.py` y settings.
+- **Solución:** configurar servicios o habilitar fakes.
 
 ## 🔎 Ver también
 - `./chat/README.md`
