@@ -1,24 +1,27 @@
 /**
 ===============================================================================
-TARJETA CRC - apps/frontend/app/(app)/chat/page.tsx (Page chat)
+TARJETA CRC - apps/frontend/app/(app)/chat/page.tsx (Compat: chat global)
 ===============================================================================
 Responsabilidades:
-  - Enrutar a la screen de chat.
-  - Mantener el wiring sin logica de producto.
+  - Mantener compatibilidad para la ruta histórica `/chat`.
+  - Redirigir al portal principal (/workspaces) para evitar duplicación de navegación.
 
 Colaboradores:
-  - features/chat/ChatScreen
-  - shared/ui/AppShell
+  - next/navigation (redirect)
+
+Invariantes:
+  - Esta ruta no debe implementar UI ni lógica de producto.
+  - El acceso al chat debe ocurrir dentro del contexto de un workspace.
 ===============================================================================
 */
 
-import { ChatScreen } from "@/features/chat/components/ChatScreen";
-import { AppShell } from "@/shared/ui/AppShell";
+import { redirect } from "next/navigation";
 
+/**
+ * Ruta de compatibilidad: `/chat`.
+ * - Decisión de producto/arquitectura: el chat vive bajo `/workspaces/[id]/chat`.
+ * - Redirigimos server-side para evitar "magia" client-side dentro del AppShell.
+ */
 export default function ChatPage() {
-  return (
-    <AppShell>
-      <ChatScreen />
-    </AppShell>
-  );
+  redirect("/workspaces");
 }

@@ -1,35 +1,27 @@
 /**
 ===============================================================================
-TARJETA CRC - apps/frontend/app/(app)/documents/page.tsx (Page documents)
+TARJETA CRC - apps/frontend/app/(app)/documents/page.tsx (Compat: documents global)
 ===============================================================================
 Responsabilidades:
-  - Enrutar a la screen de documentos.
-  - Mantener el wiring sin logica de producto.
+  - Mantener compatibilidad para la ruta histórica `/documents`.
+  - Redirigir al portal principal (/workspaces) para evitar duplicación de navegación.
 
 Colaboradores:
-  - features/documents/DocumentsScreen
-  - shared/ui/AppShell
+  - next/navigation (redirect)
+
+Invariantes:
+  - Esta ruta no debe implementar UI ni lógica de producto.
+  - La navegación a documentos debe ocurrir dentro del contexto de un workspace.
 ===============================================================================
 */
 
-import { DocumentsScreen } from "@/features/documents/components/DocumentsScreen";
-import { AppShell } from "@/shared/ui/AppShell";
+import { redirect } from "next/navigation";
 
-type PageProps = {
-  searchParams?: {
-    doc?: string | string[];
-  };
-};
-
-export default function DocumentsPage({ searchParams }: PageProps) {
-  const docParam = Array.isArray(searchParams?.doc)
-    ? searchParams?.doc[0]
-    : searchParams?.doc;
-  const preferredDocumentId = docParam?.trim() ? docParam : undefined;
-
-  return (
-    <AppShell>
-      <DocumentsScreen preferredDocumentId={preferredDocumentId} />
-    </AppShell>
-  );
+/**
+ * Ruta de compatibilidad: `/documents`.
+ * - Decisión de producto/arquitectura: documentos vive bajo `/workspaces/[id]/documents`.
+ * - Redirigimos server-side para evitar duplicación de AppShell y estados inconsistentes.
+ */
+export default function DocumentsPage() {
+  redirect("/workspaces");
 }

@@ -1,6 +1,6 @@
 /**
 ===============================================================================
-TARJETA CRC — apps/frontend/config/jest.setup.ts (Jest Setup)
+TARJETA CRC - apps/frontend/config/jest.setup.ts (Jest Setup)
 ===============================================================================
 
 Responsabilidades:
@@ -16,7 +16,7 @@ Colaboradores:
 
 import "@testing-library/jest-dom";
 
-// Mock next/navigation
+// Mock de next/navigation para tests de UI.
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
@@ -28,10 +28,10 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// Mock fetch globally
+// Mock global de fetch para evitar requests reales.
 global.fetch = jest.fn();
 
-// Reset mocks between tests
+// Reset de mocks entre tests para aislar escenarios.
 beforeEach(() => {
   jest.clearAllMocks();
 });

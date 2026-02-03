@@ -1,44 +1,42 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/src/shared/api/api.ts (API client)
+===============================================================================
+Responsabilidades:
+  - Centralizar requests al backend con tipado y manejo de errores.
+  - Proveer parseo seguro y timeout por defecto.
+  - Normalizar errores RFC7807 para el UI.
+
+Colaboradores:
+  - shared/lib/apiKey
+  - fetch
+  - @contracts (tipos generados)
+
+Invariantes:
+  - No se hace JSON.parse ciego sin validar content-type.
+  - Los errores de red y HTTP se reportan como ApiError.
+===============================================================================
+*/
+
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
   AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes,
-    ArchiveWorkspaceRes,
-    CreateWorkspaceReq,
-    DocumentDetailRes,
-    DocumentSummaryRes,
-    DocumentsListRes,
-    IngestBatchReq,
-    IngestBatchRes,
-    IngestTextReq,
-    IngestTextRes,
-    QueryReq,
-    QueryRes,
-    ReprocessDocumentRes,
-    UploadDocumentRes,
-    WorkspacesListRes
+  ArchiveWorkspaceRes,
+  CreateWorkspaceReq,
+  DocumentDetailRes,
+  DocumentSummaryRes,
+  DocumentsListRes,
+  IngestBatchReq,
+  IngestBatchRes,
+  IngestTextReq,
+  IngestTextRes,
+  QueryReq,
+  QueryRes,
+  ReprocessDocumentRes,
+  UploadDocumentRes,
+  WorkspacesListRes,
 } from "@contracts/src/generated";
 
-/**
- * Name: Frontend API Client (shared/api/api)
- *
- * Responsibilities:
- * - Provide typed wrappers for the backend REST endpoints
- * - Attach API key headers when a stored key is available
- * - Parse JSON responses and normalize errors into ApiError
- * - Expose convenience types that align with UI needs
- * - Ensure credentials are included for cookie-based auth
- *
- * Collaborators:
- * - getStoredApiKey for local API key retrieval
- * - fetch for network requests
- * - @contracts generated types for request/response shapes
- * - Backend auth endpoints such as /auth/me and /auth/login
- *
- * Notes/Constraints:
- * - requestJson throws ApiError with status/message on non-2xx responses
- * - getCurrentUser treats 401 as a signed-out state, not an error
- * - Payloads are serialized to JSON where required by the endpoint
- * - This module is UI-facing and should not embed business logic
- */
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
 
 export type DocumentSummary = Omit<DocumentSummaryRes, "status"> & {
@@ -125,109 +123,301 @@ export type QueryWorkspacePayload = QueryReq;
 
 export type QueryWorkspaceResponse = QueryRes;
 
-type ApiError = {
-  status: number;
-  message: string;
+export type ApiProblem = {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  [key: string]: unknown;
 };
 
-function withApiKeyHeaders(headers: HeadersInit = {}): HeadersInit {
-  const apiKey = getStoredApiKey();
-  if (!apiKey) {
-    return headers;
+type ApiErrorOptions = {
+  status: number;
+  problem?: ApiProblem;
+  rawBody?: string;
+  requestId?: string;
+};
+
+export class ApiError extends Error {
+  status: number;
+  problem?: ApiProblem;
+  rawBody?: string;
+  requestId?: string;
+
+  constructor(message: string, options: ApiErrorOptions) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status;
+    this.problem = options.problem;
+    this.rawBody = options.rawBody;
+    this.requestId = options.requestId;
   }
-  return {
-    ...headers,
-    "X-API-Key": apiKey,
-  };
 }
 
-async function requestJson<T>(path: string, options: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...options,
-    headers: withApiKeyHeaders(options.headers),
-    credentials: "include",
-  });
+type RequestOptions = RequestInit & {
+  timeoutMs?: number;
+  includeCredentials?: boolean;
+};
 
-  const text = await res.text();
-  const data = text ? (JSON.parse(text) as unknown) : null;
+type ParsedBody = {
+  contentType: string;
+  isJson: boolean;
+  json?: unknown;
+  rawText?: string;
+};
 
-  if (!res.ok) {
-    const error = data as { detail?: string; message?: string } | null;
-    const message =
-      error?.detail ||
-      error?.message ||
-      `Request failed with status ${res.status}`;
-    const apiError: ApiError = { status: res.status, message };
-    throw apiError;
+const DEFAULT_API_TIMEOUT_MS = parseTimeoutMs(
+  process.env.NEXT_PUBLIC_API_TIMEOUT_MS ?? process.env.API_TIMEOUT_MS,
+  8000
+);
+
+function parseTimeoutMs(raw: unknown, fallbackMs: number): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallbackMs;
+  }
+  const min = 1000;
+  const max = 30000;
+  return Math.min(Math.max(parsed, min), max);
+}
+
+function getRequestId(headers: Headers): string | undefined {
+  return headers.get("x-request-id") ?? headers.get("traceparent") ?? undefined;
+}
+
+function withApiKeyHeaders(headers: HeadersInit = {}): Headers {
+  const nextHeaders = new Headers(headers);
+  const apiKey = getStoredApiKey();
+  if (apiKey) {
+    nextHeaders.set("X-API-Key", apiKey);
+  }
+  return nextHeaders;
+}
+
+function withTimeoutSignal(
+  init: RequestInit,
+  timeoutMs: number
+): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  if (init.signal) {
+    if (init.signal.aborted) {
+      controller.abort();
+    } else {
+      init.signal.addEventListener("abort", () => controller.abort(), {
+        once: true,
+      });
+    }
   }
 
-  return data as T;
+  return { signal: controller.signal, clear: () => clearTimeout(timeoutId) };
+}
+
+async function parseResponseBody(response: Response): Promise<ParsedBody> {
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson =
+    contentType.includes("application/json") ||
+    contentType.includes("application/problem+json");
+
+  const rawText = await response.text();
+  if (!rawText) {
+    return { contentType, isJson };
+  }
+
+  if (isJson) {
+    try {
+      return {
+        contentType,
+        isJson,
+        json: JSON.parse(rawText) as unknown,
+        rawText,
+      };
+    } catch {
+      return { contentType, isJson, rawText };
+    }
+  }
+
+  return { contentType, isJson, rawText };
+}
+
+function normalizeProblem(payload: unknown, status: number): ApiProblem | undefined {
+  if (!payload || typeof payload !== "object") {
+    return undefined;
+  }
+  const problem = payload as Record<string, unknown>;
+  const hasSignals =
+    typeof problem.title === "string" ||
+    typeof problem.detail === "string" ||
+    typeof problem.type === "string";
+  if (!hasSignals) {
+    return undefined;
+  }
+
+  const normalized: ApiProblem = { ...problem };
+  if (typeof normalized.status !== "number") {
+    normalized.status = status;
+  }
+  return normalized;
+}
+
+function resolveErrorMessage(
+  status: number,
+  problem?: ApiProblem,
+  payload?: unknown,
+  rawText?: string
+): string {
+  if (problem?.detail) {
+    return problem.detail;
+  }
+  if (problem?.title) {
+    return problem.title;
+  }
+  if (payload && typeof payload === "object") {
+    const maybe = payload as { message?: unknown; detail?: unknown };
+    if (typeof maybe.detail === "string") {
+      return maybe.detail;
+    }
+    if (typeof maybe.message === "string") {
+      return maybe.message;
+    }
+  }
+  if (rawText) {
+    return rawText;
+  }
+  return `Solicitud fallida (status ${status})`;
+}
+
+function buildApiError(response: Response, body: ParsedBody): ApiError {
+  const problem = normalizeProblem(body.json, response.status);
+  const message = resolveErrorMessage(
+    response.status,
+    problem,
+    body.json,
+    body.rawText
+  );
+  const rawBody = body.rawText && (!body.isJson || !body.json) ? body.rawText : undefined;
+
+  return new ApiError(message, {
+    status: response.status,
+    problem,
+    rawBody,
+    requestId: getRequestId(response.headers),
+  });
+}
+
+async function requestJson<T>(
+  input: RequestInfo | URL,
+  init: RequestOptions = {}
+): Promise<T> {
+  const { timeoutMs, includeCredentials, ...fetchInit } = init;
+  const { signal, clear } = withTimeoutSignal(
+    fetchInit,
+    parseTimeoutMs(timeoutMs, DEFAULT_API_TIMEOUT_MS)
+  );
+
+  const responseInit: RequestInit = {
+    ...fetchInit,
+    headers: withApiKeyHeaders(fetchInit.headers),
+    credentials:
+      includeCredentials === false
+        ? "omit"
+        : fetchInit.credentials ?? "include",
+    signal,
+  };
+
+  try {
+    const response = await fetch(input, responseInit);
+    const body = await parseResponseBody(response);
+
+    if (!response.ok) {
+      throw buildApiError(response, body);
+    }
+
+    if (body.json !== undefined) {
+      return body.json as T;
+    }
+
+    return (body.rawText ?? null) as T;
+  } finally {
+    clear();
+  }
+}
+
+async function requestNoContent(
+  input: RequestInfo | URL,
+  init: RequestOptions = {}
+): Promise<void> {
+  const { timeoutMs, includeCredentials, ...fetchInit } = init;
+  const { signal, clear } = withTimeoutSignal(
+    fetchInit,
+    parseTimeoutMs(timeoutMs, DEFAULT_API_TIMEOUT_MS)
+  );
+
+  const responseInit: RequestInit = {
+    ...fetchInit,
+    headers: withApiKeyHeaders(fetchInit.headers),
+    credentials:
+      includeCredentials === false
+        ? "omit"
+        : fetchInit.credentials ?? "include",
+    signal,
+  };
+
+  try {
+    const response = await fetch(input, responseInit);
+    const body = await parseResponseBody(response);
+
+    if (!response.ok) {
+      throw buildApiError(response, body);
+    }
+  } finally {
+    clear();
+  }
+}
+
+async function requestFormData<T>(
+  input: RequestInfo | URL,
+  init: RequestOptions = {}
+): Promise<T> {
+  return requestJson<T>(input, init);
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
     return await requestJson<CurrentUser>("/auth/me", { method: "GET" });
   } catch (err) {
-    if (typeof err === "object" && err && "status" in err) {
-      const status = (err as ApiError).status;
-      if (status === 401) {
-        return null;
-      }
+    if (err instanceof ApiError && err.status === 401) {
+      return null;
     }
     throw err;
   }
 }
 
-/**
- * Login with email and password.
- * Sets HttpOnly cookie on success (handled by backend).
- * Throws an Error with a user-friendly message on failure.
- */
 export async function login(email: string, password: string): Promise<void> {
-  const res = await fetch("/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!res.ok) {
-    // Try to extract error message from response
-    let message = `Login failed (${res.status})`;
-    const contentType = res.headers.get("content-type");
-
-    if (contentType && contentType.includes("application/json")) {
-      try {
-        const errorData = await res.json();
-        message = errorData.detail || errorData.message || message;
-      } catch {
-        // JSON parsing failed, use default message
-      }
-    } else {
-      try {
-        const text = await res.text();
-        if (text) {
-          message = text;
-        }
-      } catch {
-        // Text reading failed, use default message
-      }
+  try {
+    await requestNoContent("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      throw new Error(err.message);
     }
-
-    throw new Error(message);
+    throw err;
   }
 }
 
-/**
- * Logout current user.
- * Clears HttpOnly cookie (handled by backend).
- */
 export async function logout(): Promise<void> {
-  await fetch("/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
-  // Intentionally doesn't throw on error - logout is best-effort
+  try {
+    await requestNoContent("/auth/logout", {
+      method: "POST",
+    });
+  } catch {
+    // Logout best-effort: se ignora error de red.
+  }
 }
 
 export async function listUsers(): Promise<UsersListResponse> {
@@ -393,16 +583,19 @@ export async function deleteWorkspaceDocument(
   workspaceId: string,
   documentId: string
 ): Promise<void> {
-  await requestJson(`/api/workspaces/${workspaceId}/documents/${documentId}`, {
-    method: "DELETE",
-  });
+  await requestNoContent(
+    `/api/workspaces/${workspaceId}/documents/${documentId}`,
+    {
+      method: "DELETE",
+    }
+  );
 }
 
 export async function uploadWorkspaceDocument(
   workspaceId: string,
   payload: FormData
 ): Promise<UploadDocumentResponse> {
-  return requestJson<UploadDocumentResponse>(
+  return requestFormData<UploadDocumentResponse>(
     `/api/workspaces/${workspaceId}/documents/upload`,
     {
       method: "POST",
@@ -427,11 +620,14 @@ export async function queryWorkspace(
   workspaceId: string,
   payload: QueryWorkspacePayload
 ): Promise<QueryWorkspaceResponse> {
-  return requestJson<QueryWorkspaceResponse>(`/api/workspaces/${workspaceId}/query`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return requestJson<QueryWorkspaceResponse>(
+    `/api/workspaces/${workspaceId}/query`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
 }
 
 export async function listDocuments(
@@ -454,7 +650,7 @@ export async function getDocument(documentId: string): Promise<DocumentDetail> {
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  await requestJson(`/api/documents/${documentId}`, {
+  await requestNoContent(`/api/documents/${documentId}`, {
     method: "DELETE",
   });
 }
@@ -462,7 +658,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
 export async function uploadDocument(
   payload: FormData
 ): Promise<UploadDocumentResponse> {
-  return requestJson<UploadDocumentResponse>("/api/documents/upload", {
+  return requestFormData<UploadDocumentResponse>("/api/documents/upload", {
     method: "POST",
     body: payload,
   });
@@ -479,12 +675,10 @@ export async function reprocessDocument(
   );
 }
 
-export async function ingestText(
-  payload: IngestTextReq
-): Promise<IngestTextRes> {
+export async function ingestText(payload: IngestTextReq): Promise<IngestTextRes> {
   return requestJson<IngestTextRes>("/api/ingest/text", {
     method: "POST",
-    headers: withApiKeyHeaders({ "Content-Type": "application/json" }),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
@@ -494,7 +688,7 @@ export async function ingestBatch(
 ): Promise<IngestBatchRes> {
   return requestJson<IngestBatchRes>("/api/ingest/batch", {
     method: "POST",
-    headers: withApiKeyHeaders({ "Content-Type": "application/json" }),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }

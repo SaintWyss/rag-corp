@@ -8,9 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
     "test": "jest --config ./config/jest.config.js",
+    "test:ci": "jest --config ./config/jest.config.js --ci",
     "test:watch": "jest --config ./config/jest.config.js --watch",
-    "test:coverage": "jest --config ./config/jest.config.js --coverage"
+    "test:coverage": "jest --config ./config/jest.config.js --coverage",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test:ci"
   },
   "dependencies": {
     "@contracts": "workspace:*",

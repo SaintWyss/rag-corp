@@ -1,5 +1,5 @@
 // =============================================================================
-// TARJETA CRC — apps/frontend/jest.config.js (Shim -> config/jest.config.js)
+// TARJETA CRC - apps/frontend/jest.config.js (Adaptador -> config/jest.config.js)
 // =============================================================================
 // Responsabilidades:
 //   - Mantener compatibilidad con herramientas que buscan config en la raiz.

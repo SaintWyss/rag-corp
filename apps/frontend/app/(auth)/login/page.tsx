@@ -1,15 +1,28 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/app/(auth)/login/page.tsx (Login)
+===============================================================================
+Responsabilidades:
+  - Renderizar la pantalla de login y coordinar el submit.
+  - Aplicar redirect seguro despues de autenticar.
+
+Colaboradores:
+  - shared/ui/AuroraBackground
+  - shared/api (auth)
+  - shared/lib/safeNext
+===============================================================================
+*/
 "use client";
 
-import { AuroraBackground } from "@/app/components/ui/aurora-background";
+import { AuroraBackground } from "@/shared/ui/AuroraBackground";
 import { getCurrentUser, login } from "@/shared/api/api";
 import { sanitizeNextPath } from "@/shared/lib/safeNext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
   const sp = useSearchParams();
-  // Default fallback is /workspaces if param missing
   const next = sanitizeNextPath(sp.get("next"));
 
   const [email, setEmail] = useState("");
@@ -17,7 +30,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);

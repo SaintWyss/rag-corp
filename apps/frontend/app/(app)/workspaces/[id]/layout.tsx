@@ -3,48 +3,69 @@
 TARJETA CRC - apps/frontend/app/(app)/workspaces/[id]/layout.tsx (Boundary workspace)
 ===============================================================================
 Responsabilidades:
-  - Validar el parametro `id` del workspace.
-  - Envolver el contenido con AppShell.
-  - Reservar un espacio claro para header/breadcrumbs del workspace.
+  - Validar el parámetro `id` del workspace (fail-fast).
+  - Exponer un contenedor estable del contexto workspace para las rutas hijas.
+  - Reservar un slot claro para header/breadcrumbs del workspace (wiring).
 
 Colaboradores:
-  - shared/ui/AppShell
-  - next/navigation
+  - next/navigation (notFound)
+  - React
+
+Invariantes:
+  - No realiza fetch ni side-effects externos.
+  - No implementa lógica de producto; solo wiring + validaciones.
+  - Si `id` es inválido, responde con 404 del segmento (notFound()).
+  - El AppShell del portal debe aplicarse a nivel /workspaces/layout.tsx para evitar duplicación.
 ===============================================================================
 */
 
-import { AppShell } from "@/shared/ui/AppShell";
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
 
 type WorkspaceLayoutProps = {
   children: ReactNode;
   params: {
+    /**
+     * Param de ruta capturado por Next (segmento dinámico).
+     * Nota: lo tratamos como potencialmente inválido/undefined para fail-fast defensivo.
+     */
     id?: string;
   };
 };
 
+/**
+ * Normaliza el workspace id de forma defensiva.
+ * - Evita strings vacíos o con solo espacios.
+ * - No intenta "corregir" formatos: el contrato de id se valida en capas de dominio/servicio.
+ */
 function normalizeWorkspaceId(raw?: string): string | null {
   if (typeof raw !== "string") {
     return null;
   }
   const trimmed = raw.trim();
-  return trimmed.length ? trimmed : null;
+  return trimmed.length > 0 ? trimmed : null;
 }
 
+/**
+ * Layout del contexto `workspaces/[id]`.
+ * - Se encarga solo del boundary (validación + contenedor).
+ * - El contenido real vive en screens de `src/features/*`.
+ */
 export default function WorkspaceLayout({ children, params }: WorkspaceLayoutProps) {
   const workspaceId = normalizeWorkspaceId(params.id);
+
+  // Fail-fast: si el id es inválido, delegamos a la página 404 del segmento.
   if (!workspaceId) {
     notFound();
   }
 
   return (
-    <AppShell>
-      <div data-workspace-id={workspaceId}>
-        {/* Espacio reservado para header/breadcrumbs del workspace */}
-        <div data-workspace-header="" />
-        {children}
-      </div>
-    </AppShell>
+    <div data-workspace-id={workspaceId}>
+      {/* Slot reservado para header/breadcrumbs del workspace (wiring).
+          Nota: la UI real debe vivir en `src/features/workspaces/*` para evitar acoplamiento con routing. */}
+      <div data-workspace-header="" />
+
+      {children}
+    </div>
   );
 }

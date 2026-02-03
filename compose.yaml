@@ -271,19 +271,22 @@ services:
   # UI: Next.js en contenedor (solo perfiles ui/e2e)
   # Nota importante (pro):
   # - `RAG_BACKEND_URL` se evalúa en build (rewrites/middleware).
-  # - Por eso lo pasamos como build arg.
-  # - Default recomendado: http://localhost:8000 (resoluble por tu browser).
+  # - Por eso lo pasamos como build arg y tambien como env runtime.
+  # - Default recomendado: http://rag-api:8000 (resoluble en red Docker).
   # ==========================================================
   web:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
       args:
-        RAG_BACKEND_URL: ${RAG_BACKEND_URL:-http://localhost:8000}
+        RAG_BACKEND_URL: ${RAG_BACKEND_URL:-http://rag-api:8000}
 
     networks: [rag_net]
     logging: *default_logging
     init: true
+
+    environment:
+      RAG_BACKEND_URL: ${RAG_BACKEND_URL:-http://rag-api:8000}
 
     ports:
       - "3000:3000"

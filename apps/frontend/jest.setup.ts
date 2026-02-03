@@ -1,6 +1,6 @@
 /**
 ===============================================================================
-TARJETA CRC — apps/frontend/jest.setup.ts (Shim -> config/jest.setup.ts)
+TARJETA CRC - apps/frontend/jest.setup.ts (Adaptador -> config/jest.setup.ts)
 ===============================================================================
 
 Responsabilidades:
