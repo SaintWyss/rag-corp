@@ -87,5 +87,4 @@ alembic upgrade head
 
 - `infra/postgres/init.sql` solo habilita `pgvector`.
 - El schema completo se aplica via Alembic.
-- Ver `docs/data/postgres-schema.md` para detalle de tablas e indices.
-
+- Ver `docs/reference/data/postgres-schema.md` para detalle de tablas e indices.

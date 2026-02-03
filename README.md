@@ -79,7 +79,7 @@ pnpm contracts:gen
 - **Alias versionado**: `/api/v1/...` (mismo contrato)
 - **Legacy** (DEPRECATED): `/v1/documents`, `/v1/ask`, `/v1/query`, `/v1/ingest/*` con `workspace_id` obligatorio
 
-Ver `docs/api/http-api.md` y `shared/contracts/openapi.json`.
+Ver `docs/reference/api/http-api.md` y `shared/contracts/openapi.json`.
 
 ---
 
@@ -93,7 +93,7 @@ Fail-fast en `APP_ENV=production` (ver `apps/backend/app/crosscutting/config.py`
 - `API_KEYS_CONFIG` o `RBAC_CONFIG` presentes (protege `/metrics`)
 - CSP sin `unsafe-inline` (ver `apps/backend/app/crosscutting/security.py`)
 
-Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.md`.
+Runbooks: `docs/security/production-hardening.md` y `docs/runbook/observability.md`.
 
 ---
 
@@ -118,12 +118,12 @@ Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.m
 
 - `docs/README.md` (indice)
 - Arquitectura: `docs/architecture/overview.md`
-- ADRs: `docs/architecture/decisions/`
+- ADRs: `docs/architecture/adr/`
 - API: `docs/reference/api/http-api.md`
-- DB: `docs/data/postgres-schema.md`
+- DB: `docs/reference/data/postgres-schema.md`
 - Runbooks: `docs/runbook/`
 - Testing: `docs/quality/testing.md`
-- Informe definitivo v6: `docs/system/informe_de_sistemas_rag_corp.md`
+- Informe definitivo v6: `docs/project/informe_de_sistemas_rag_corp.md`
 
 ---
 

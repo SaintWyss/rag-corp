@@ -3,7 +3,7 @@
 **Project:** RAG Corp  
 **Last Updated:** 2026-01-24  
 **Status:** Active  
-**Source of Truth:** Este documento + ADRs en `docs/architecture/decisions/`
+**Source of Truth:** Este documento + ADRs en `docs/architecture/adr/`
 
 ---
 
@@ -66,7 +66,7 @@ graph TB
     Worker --> Gemini
 ```
 
-**Diagrama completo:** Ver `docs/diagrams/deployment.mmd`
+**Diagrama completo:** Ver `docs/architecture/diagrams/deployment.mmd`
 
 ---
 
@@ -213,7 +213,7 @@ stateDiagram-v2
 4. Worker procesa: extract → chunk → embed → persist
 5. Estado: `PROCESSING` → `READY` / `FAILED`
 
-**Diagrama:** `docs/diagrams/sequence-upload-async.mmd`
+**Diagrama:** `docs/architecture/diagrams/sequence-upload-async.mmd`
 
 ### 3. Ask/Query (Scoped)
 
@@ -222,7 +222,7 @@ stateDiagram-v2
 3. Embed query → Vector search **filtrado por workspace**
 4. Build context → LLM generate → Return answer + sources
 
-**Diagrama:** `docs/diagrams/sequence-ask-scoped.mmd`
+**Diagrama:** `docs/architecture/diagrams/sequence-ask-scoped.mmd`
 
 ---
 
@@ -250,7 +250,7 @@ User → Frontend → API → PostgreSQL (vector search)
 | ------------- | ----------------------------------------- |
 | API Contracts | `shared/contracts/openapi.json`           |
 | DB Schema     | `apps/backend/alembic/versions/`          |
-| Decisiones    | `docs/architecture/decisions/ADR-*.md`    |
+| Decisiones    | `docs/architecture/adr/ADR-*.md`          |
 | Config        | `apps/backend/app/crosscutting/config.py` |
 
 ---
@@ -322,22 +322,22 @@ El sistema ensambla contexto para el LLM con:
 
 ## Diagrams Index
 
-| Diagrama       | Ubicación                                 | Descripción             |
-| -------------- | ----------------------------------------- | ----------------------- |
-| Components     | `docs/diagrams/components.mmd`            | Componentes del sistema |
-| Deployment     | `docs/diagrams/deployment.mmd`            | Stack Docker Compose    |
-| Login          | `docs/diagrams/sequence-login.mmd`        | Flujo de autenticación  |
-| Upload Async   | `docs/diagrams/sequence-upload-async.mmd` | Flujo de upload         |
-| Ask Scoped     | `docs/diagrams/sequence-ask-scoped.mmd`   | Flujo de consulta       |
-| Domain Classes | `docs/diagrams/domain-class.mmd`          | Clases del dominio      |
-| ER             | `docs/diagrams/data-er.mmd`               | Modelo de datos         |
-| Document State | `docs/diagrams/document-state.mmd`        | Estados del documento   |
+| Diagrama       | Ubicación                                              | Descripción             |
+| -------------- | ------------------------------------------------------ | ----------------------- |
+| Components     | `docs/architecture/diagrams/components.mmd`            | Componentes del sistema |
+| Deployment     | `docs/architecture/diagrams/deployment.mmd`            | Stack Docker Compose    |
+| Login          | `docs/architecture/diagrams/sequence-login.mmd`        | Flujo de autenticación  |
+| Upload Async   | `docs/architecture/diagrams/sequence-upload-async.mmd` | Flujo de upload         |
+| Ask Scoped     | `docs/architecture/diagrams/sequence-ask-scoped.mmd`   | Flujo de consulta       |
+| Domain Classes | `docs/architecture/diagrams/domain-class.mmd`          | Clases del dominio      |
+| ER             | `docs/architecture/diagrams/data-er.mmd`               | Modelo de datos         |
+| Document State | `docs/architecture/diagrams/document-state.mmd`        | Estados del documento   |
 
 ---
 
 ## References
 
-- Informe de Sistemas: `docs/system/informe_de_sistemas_rag_corp.md`
+- Informe de Sistemas: `docs/project/informe_de_sistemas_rag_corp.md`
 - API HTTP: `docs/reference/api/http-api.md`
-- PostgreSQL Schema: `docs/data/postgres-schema.md`
-- Design Patterns: `docs/design/patterns.md`
+- PostgreSQL Schema: `docs/reference/data/postgres-schema.md`
+- Design Patterns: `docs/reference/design/patterns.md`

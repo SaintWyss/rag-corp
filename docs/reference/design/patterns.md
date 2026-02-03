@@ -35,12 +35,14 @@ Este documento describe los patrones de diseño **actualmente implementados** en
 ```
 
 **Ubicación:**
+
 - Domain: `apps/backend/app/domain/`
 - Application: `apps/backend/app/application/`
 - Infrastructure: `apps/backend/app/infrastructure/`
 - API: `apps/backend/app/` (main.py, routes.py, etc.)
 
-**Evidencia:** 
+**Evidencia:**
+
 - `apps/backend/app/domain/entities/` no importa FastAPI ni SQLAlchemy
 - `apps/backend/app/domain/repositories.py` define Protocols (interfaces)
 
@@ -55,11 +57,13 @@ Este documento describe los patrones de diseño **actualmente implementados** en
 **Qué:** Interfaces (Protocols) en domain, implementaciones en infrastructure.
 
 **Ubicación:**
+
 - Ports: `domain/repositories.py`, `domain/services.py`
 - Adapters: `infrastructure/repositories/postgres_*.py`
 - Adapters: `infrastructure/services/google_*.py`
 
 **Ejemplo:**
+
 ```python
 # Port (domain/repositories.py)
 class DocumentRepository(Protocol):
@@ -80,6 +84,7 @@ class PostgresDocumentRepository:
 **Qué:** Abstracción sobre persistencia de datos.
 
 **Ubicación:**
+
 - Interface: `domain/repositories.py` → `DocumentRepository`, `WorkspaceRepository`
 - Implementación: `infrastructure/repositories/postgres_document_repo.py`
 
@@ -92,6 +97,7 @@ class PostgresDocumentRepository:
 **Qué:** Orquestación de un flujo de negocio específico.
 
 **Ubicación:**
+
 - `application/use_cases/answer_query.py` → `AnswerQueryUseCase`
 - `application/use_cases/ingest_document.py` → `IngestDocumentUseCase`
 - `application/use_cases/search_chunks.py` → `SearchChunksUseCase`
@@ -106,9 +112,11 @@ class PostgresDocumentRepository:
 **Qué:** Lógica de autorización centralizada.
 
 **Ubicación:**
+
 - `domain/policies/workspace_policy.py` → `WorkspacePolicy`
 
 **Ejemplo:**
+
 ```python
 class WorkspacePolicy:
     def can_read(self, actor: User, workspace: Workspace, acl: List[AclEntry]) -> bool:
@@ -128,10 +136,12 @@ class WorkspacePolicy:
 **Qué:** Agrega retry con backoff exponencial + jitter alrededor de llamadas externas.
 
 **Ubicación:**
+
 - `infrastructure/services/retry.py` → `create_retry_decorator()`
 - Usado en `google_embedding_service.py` y `google_llm_service.py`
 
 **Ejemplo:**
+
 ```python
 @retry(max_attempts=3, backoff_base=1.0, jitter=0.5)
 async def embed(self, text: str) -> List[float]:
@@ -147,10 +157,12 @@ async def embed(self, text: str) -> List[float]:
 **Qué:** Interface unificada para manejo de errores HTTP (RFC 7807).
 
 **Ubicación:**
+
 - `crosscutting/exceptions.py` → `ErrorResponse`, `RAGError` y derivados
 - `main.py` → exception handlers
 
 **Ejemplo respuesta:**
+
 ```json
 {
   "type": "https://api.ragcorp.local/errors/not-found",
@@ -170,6 +182,7 @@ async def embed(self, text: str) -> List[float]:
 **Qué:** Comportamiento configurable via settings.
 
 **Ubicación:**
+
 - `crosscutting/config.py` → `Settings`
 - Settings como `CHUNK_SIZE`, `MAX_CONTEXT_CHARS`, `PROMPT_VERSION`
 - `application/context_builder.py` usa `MAX_CONTEXT_CHARS` como policy
@@ -183,10 +196,12 @@ async def embed(self, text: str) -> List[float]:
 **Qué:** Una sola instancia de servicios costosos.
 
 **Ubicación:**
+
 - `crosscutting/config.py` → `@lru_cache def get_settings()`
 - `crosscutting/container.py` → `@lru_cache` para repositorios y servicios
 
 **Ejemplo:**
+
 ```python
 @lru_cache
 def get_document_repository() -> DocumentRepository:
@@ -202,10 +217,12 @@ def get_document_repository() -> DocumentRepository:
 **Qué:** Wiring centralizado de dependencias.
 
 **Ubicación:**
+
 - `crosscutting/container.py` → Factory functions para dependencias
 - FastAPI `Depends()` para inyección en routes
 
 **Ejemplo:**
+
 ```python
 # container.py
 def get_answer_query_use_case() -> AnswerQueryUseCase:
@@ -231,6 +248,7 @@ async def ask(
 **Qué:** Encapsula lógica de API en un hook React reutilizable.
 
 **Ubicación:**
+
 - `apps/frontend/src/hooks/useRagAsk.ts`
 - `apps/frontend/src/hooks/useDocuments.ts`
 
@@ -243,6 +261,7 @@ async def ask(
 **Qué:** Captura errores de render para mostrar fallback UI.
 
 **Ubicación:**
+
 - `apps/frontend/app/error.tsx`
 
 **Beneficio:** App no crashea por errores de componentes.
@@ -251,14 +270,14 @@ async def ask(
 
 ## Anti-Patterns Evitados
 
-| Anti-Pattern | Cómo se evita |
-|--------------|---------------|
-| God Class | Use cases pequeños y focalizados |
-| Leaky Abstraction | Domain no importa psycopg/fastapi |
-| Hardcoded Config | Todo en `config.py` via env vars |
-| Scattered Error Handling | Centralizado en `exceptions.py` |
-| Callback Hell | async/await consistente |
-| Anemic Domain | Policies y business rules en Domain |
+| Anti-Pattern             | Cómo se evita                       |
+| ------------------------ | ----------------------------------- |
+| God Class                | Use cases pequeños y focalizados    |
+| Leaky Abstraction        | Domain no importa psycopg/fastapi   |
+| Hardcoded Config         | Todo en `config.py` via env vars    |
+| Scattered Error Handling | Centralizado en `exceptions.py`     |
+| Callback Hell            | async/await consistente             |
+| Anemic Domain            | Policies y business rules en Domain |
 
 ---
 
@@ -266,12 +285,12 @@ async def ask(
 
 Los siguientes patrones se mencionan a veces pero **NO están en v6**:
 
-| Patrón | Razón |
-|--------|-------|
-| Observer/PubSub | No hay eventos cross-service |
-| CQRS | Mismo modelo para read/write |
-| Event Sourcing | Solo auditoría append-only |
-| Saga | No hay transacciones distribuidas |
+| Patrón          | Razón                             |
+| --------------- | --------------------------------- |
+| Observer/PubSub | No hay eventos cross-service      |
+| CQRS            | Mismo modelo para read/write      |
+| Event Sourcing  | Solo auditoría append-only        |
+| Saga            | No hay transacciones distribuidas |
 
 ---
 
@@ -280,4 +299,4 @@ Los siguientes patrones se mencionan a veces pero **NO están en v6**:
 - [Clean Architecture - Robert Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
 - [RFC 7807 - Problem Details for HTTP APIs](https://tools.ietf.org/html/rfc7807)
-- ADR-001: `docs/architecture/decisions/ADR-001-clean-architecture.md`
+- ADR-001: `docs/architecture/adr/ADR-001-clean-architecture.md`

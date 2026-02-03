@@ -7,10 +7,10 @@
 
 ## Overview
 
-| Environment | Method | Config |
-|-------------|--------|--------|
-| Development | Docker Compose | `compose.yaml` |
-| Production | Docker Compose | `compose.prod.yaml` |
+| Environment   | Method                 | Config                                      |
+| ------------- | ---------------------- | ------------------------------------------- |
+| Development   | Docker Compose         | `compose.yaml`                              |
+| Production    | Docker Compose         | `compose.prod.yaml`                         |
 | Observability | Docker Compose profile | `compose.prod.yaml --profile observability` |
 
 ---
@@ -61,6 +61,7 @@ docker compose -f compose.prod.yaml --profile observability up -d
 ```
 
 URLs:
+
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3001
 
@@ -70,3 +71,19 @@ URLs:
 
 Ver `infra/k8s/README.md` y `docs/runbook/kubernetes.md`.
 
+## GitHub Actions / CI/CD (Legacy deploy.md info)
+
+El workflow de deploy usa GitHub Environments (`staging` y `production`).
+
+### Variables Required (GitHub Secrets/Vars)
+
+| Variable             | Descripción                                 |
+| -------------------- | ------------------------------------------- |
+| `PROD_BASE_URL`      | Base URL para health checks en prod         |
+| `PROD_SMOKE_PATH`    | Path para smoke test (opcional)             |
+| `PROD_SMOKE_API_KEY` | Header X-API-Key para smoke test (opcional) |
+
+### Rollback
+
+- **Kubernetes**: `kubectl rollout undo deployment/<name>`
+- **Docker Compose**: `docker compose pull <prev-tag> && docker compose up -d`

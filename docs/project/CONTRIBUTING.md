@@ -75,6 +75,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 **Examples:**
+
 ```
 feat(backend): add semantic chunking with section awareness
 fix(frontend): handle empty query submission gracefully
@@ -87,6 +88,7 @@ test(e2e): add document upload flow tests
 ### Making Changes
 
 1. **Create a branch** from `main`:
+
    ```bash
    git checkout -b feat/your-feature
    ```
@@ -94,13 +96,14 @@ test(e2e): add document upload flow tests
 2. **Make your changes** following the style guidelines
 
 3. **Run tests** to ensure nothing is broken:
+
    ```bash
    # Backend
    cd apps/backend && pytest
-   
+
    # Frontend
    cd apps/frontend && pnpm test
-   
+
    # E2E (requires services running)
    pnpm e2e
    ```
@@ -125,16 +128,20 @@ Use this template:
 
 ```markdown
 ## Summary
+
 Brief description of what this PR does.
 
 ## Changes
+
 - Change 1
 - Change 2
 
 ## Testing
+
 How was this tested?
 
 ## Checklist
+
 - [ ] Tests added/updated
 - [ ] Documentation updated
 - [ ] CHANGELOG updated
@@ -256,20 +263,20 @@ k6 run api.k6.js --env BASE_URL=http://localhost:8000
 ### When to Update Docs
 
 - New features → Update relevant docs
-- API changes → Update `docs/api/http-api.md`
+- API changes → Update `docs/reference/api/http-api.md`
 - Architecture changes → Update `docs/architecture/overview.md`
 - New environment variables → Update `docs/runbook/local-dev.md`
 
 ### Doc Locations
 
-| Topic | Location |
-|-------|----------|
-| Architecture | `docs/architecture/overview.md` |
-| API Reference | `docs/api/http-api.md` |
-| Database Schema | `docs/data/postgres-schema.md` |
-| Local Development | `docs/runbook/local-dev.md` |
-| Deployment | `docs/runbook/deployment.md` |
-| Troubleshooting | `docs/runbook/troubleshooting.md` |
+| Topic             | Location                                 |
+| ----------------- | ---------------------------------------- |
+| Architecture      | `docs/architecture/overview.md`          |
+| API Reference     | `docs/reference/api/http-api.md`         |
+| Database Schema   | `docs/reference/data/postgres-schema.md` |
+| Local Development | `docs/runbook/local-dev.md`              |
+| Deployment        | `docs/runbook/deployment.md`             |
+| Troubleshooting   | `docs/runbook/troubleshooting.md`        |
 
 ## Questions?
 
