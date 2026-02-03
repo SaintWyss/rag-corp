@@ -1,77 +1,89 @@
 # scripts
-
-Llaves de servicio para ejecutar tareas puntuales del backend (bootstrap de admin y export de contratos OpenAPI).
+Como **llaves de servicio**: ejecutan tareas puntuales fuera del flujo HTTP.
 
 ## 🎯 Misión
-Este directorio agrupa **scripts CLI** para tareas administrativas y de documentación que conviene ejecutar **fuera del flujo HTTP**.
-
-Recorridos rápidos por intención:
-- **Quiero crear el primer admin en la DB** → `create_admin.py` (también: `pnpm admin:bootstrap`)
-- **Quiero exportar el OpenAPI a JSON** → `export_openapi.py` (también: `pnpm contracts:export`)
+Este directorio agrupa scripts CLI para operaciones administrativas y de documentación que conviene ejecutar como procesos puntuales (no como endpoints).
 
 ### Qué SÍ hace
-- Crea usuarios (por defecto **admin**) directamente en Postgres, de forma **idempotente por email**.
-- Exporta el esquema **OpenAPI** desde la app FastAPI a un archivo JSON.
-- Permite operaciones operativas sin levantar el servidor HTTP (se ejecuta como proceso puntual).
+- Crea usuarios de forma idempotente en Postgres (`create_admin.py`).
+- Exporta el OpenAPI desde la app FastAPI (`export_openapi.py`).
+- Permite tareas operativas sin levantar la API completa.
 
 ### Qué NO hace (y por qué)
-- No reemplaza flujos de negocio ni endpoints HTTP.
-  - **Razón:** estos scripts son tooling; no son parte del contrato público de la API.
-  - **Impacto:** si necesitás validaciones/ACL/observabilidad del runtime, usá casos de uso + routers.
-- No maneja migraciones de DB.
-  - **Razón:** las migraciones son responsabilidad de `alembic/` y del servicio `migrate`.
-  - **Impacto:** si la tabla `users`/esquema no existe, primero corré `pnpm db:migrate`.
+- No reemplaza flujos de negocio.
+  - Razón: los contratos públicos viven en HTTP/use cases.
+  - Consecuencia: los scripts son tooling, no API pública.
+- No ejecuta migraciones.
+  - Razón: las migraciones se gestionan con Alembic.
+  - Consecuencia: si falta schema, primero correr Alembic.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
-| :--- | :--- | :--- |
-| `create_admin.py` | Script Python | Crea un usuario (por defecto admin) en `users` con password hasheado (Argon2) y chequeo de existencia por email. |
-| `export_openapi.py` | Script Python | Genera `openapi.json` desde `app.api.main` y lo escribe con `indent=2` (UTF-8). |
-| `README.md` | Documento | Portada + guía de uso de los scripts de este directorio. |
+| :-- | :-- | :-- |
+| `README.md` | Documento | Guía de scripts operativos. |
+| `create_admin.py` | Script Python | Crea un usuario (default admin) en `users` con password hasheado. |
+| `export_openapi.py` | Script Python | Genera `openapi.json` desde la app FastAPI. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
-Input → Proceso → Output, con los pasos reales del código.
+Input → Proceso → Output.
 
-### `create_admin.py`
-- **Input:** flags CLI (`--email`, `--password`, `--role`, `--inactive`) o prompts interactivos si faltan.
-- **Proceso:**
-  1) Lee `DATABASE_URL` (sin eso corta en fail-fast).
-  2) Normaliza email (trim + lower).
-  3) Si no hay `--password`, solicita password con `getpass` y confirma.
-  4) Abre conexión con `psycopg` y consulta `users` por email.
-  5) Si existe, imprime “User already exists …” y termina (idempotencia por email).
-  6) Si no existe, genera `uuid4()`, hashea el password con `hash_password(...)` y hace `INSERT` en `users`.
-- **Output:** prints de resultado (creado / ya existía) + filas persistidas en Postgres.
-
-Notas operativas:
-- El script ajusta `sys.path` para poder importar módulos del backend al ejecutarlo como archivo suelto.
-- Si falla por imports (`ModuleNotFoundError`), revisar “Troubleshooting”.
-
-### `export_openapi.py`
-- **Input:** `--out <path>`.
-- **Proceso:**
-  1) Importa la app desde `app.api.main` y resuelve la instancia que expone `.openapi()` (si viene envuelta, la “desenvuelve”).
-  2) Genera el schema con `openapi()`.
-  3) Escribe JSON con `ensure_ascii=False` e `indent=2`.
-- **Output:** archivo JSON en la ruta indicada.
-
-Notas operativas:
-- Importar `app.api.main` ejecuta la carga de settings; normalmente requiere `DATABASE_URL` disponible en el entorno.
-- El script **no valida** el JSON contra el spec OpenAPI 3.x; solo serializa lo que FastAPI expone.
+- **create_admin.py**
+  - Input: `--email`, `--password`, `--role`, `--inactive` (o prompts interactivos).
+  - Proceso: valida `DATABASE_URL`, normaliza email, hashea password y hace `INSERT` si no existe.
+  - Output: imprime “Created user …” o “User already exists …”.
+- **export_openapi.py**
+  - Input: `--out <path>`.
+  - Proceso: importa `app.api.main.app`, genera schema y lo escribe como JSON.
+  - Output: archivo JSON con el OpenAPI.
 
 ## 🔗 Conexiones y roles
-- **Rol arquitectónico:** Operational tooling (fuera de Domain/Application/Interfaces).
-- **Recibe órdenes de:** desarrolladores/operadores por CLI (local o dentro de contenedores).
-- **Llama a:**
-  - Postgres vía `psycopg` (SQL directo) en `create_admin.py`.
-  - Composición FastAPI `app.api.main` para generar OpenAPI en `export_openapi.py`.
-- **Reglas de límites:**
-  - Evitar importar infraestructura pesada o casos de uso para “hacer lo mismo que la API”.
-  - Mantener side-effects (conexiones, writes, IO) dentro de `main()`.
+- **Rol arquitectónico:** Operational tooling.
+- **Recibe órdenes de:** CLI local o CI.
+- **Llama a:** Postgres (create_admin) y FastAPI app (export_openapi).
+- **Reglas de límites:** evitar lógica de negocio; usar APIs estables del runtime.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Crear admin (recomendado: vía docker compose)
 ```bash
-pnpm admin:bootstrap
-# interactivo: pide Email + Password si no se pasan flags
+# Crear admin (interactivo)
+python scripts/create_admin.py
+```
+
+```bash
+# Crear admin con flags
+python scripts/create_admin.py --email admin@corp.com --password "Secret" --role admin
+```
+
+```bash
+# Exportar OpenAPI
+python scripts/export_openapi.py --out /tmp/openapi.json
+```
+
+## 🧩 Cómo extender sin romper nada
+- Si un script necesita dependencias del runtime, obtenelas desde `app/container.py` (no instancies infra a mano).
+- Mantené los scripts idempotentes cuando escriban en DB (ej. por email/ID).
+- Documentá variables de entorno requeridas en este README.
+- Tests: unit en `apps/backend/tests/unit/`, integration si toca DB en `apps/backend/tests/integration/`, e2e si integra con API completa en `apps/backend/tests/e2e/`.
+
+## 🆘 Troubleshooting
+- **Síntoma:** `DATABASE_URL is required`.
+  - **Causa probable:** variable de entorno ausente.
+  - **Dónde mirar:** `.env` y entorno de ejecución.
+  - **Solución:** exportar `DATABASE_URL` y reintentar.
+- **Síntoma:** `ModuleNotFoundError: No module named 'app'`.
+  - **Causa probable:** cwd o `PYTHONPATH` incorrecto.
+  - **Dónde mirar:** `pwd` y `sys.path`.
+  - **Solución:** ejecutar desde `apps/backend/`.
+- **Síntoma:** export de OpenAPI falla por settings.
+  - **Causa probable:** `app.api.main` requiere settings/DB no disponibles.
+  - **Dónde mirar:** logs del import en `export_openapi.py`.
+  - **Solución:** setear variables requeridas o usar un entorno de dev.
+- **Síntoma:** usuario no se crea pero no hay error.
+  - **Causa probable:** el email ya existe.
+  - **Dónde mirar:** salida del script.
+  - **Solución:** usar otro email o borrar el usuario en DB.
+
+## 🔎 Ver también
+- `../alembic/README.md`
+- `../app/api/README.md`
+- `../app/container.py`
+- `../tests/README.md`

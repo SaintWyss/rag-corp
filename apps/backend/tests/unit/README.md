@@ -1,138 +1,91 @@
 # unit
-
-Como un **microscopio**: valida piezas individuales del backend con dobles, sin tocar IO real.
+Como un **microscopio**: valida piezas individuales sin IO real.
 
 ## 🎯 Misión
-
-Este directorio contiene **tests unitarios**: validan comportamientos de funciones, clases y casos de uso en aislamiento, con dependencias reemplazadas por **mocks/fakes** definidos en fixtures.
-
-Recorridos rápidos por intención:
-
-- **Quiero testear un router/DTO sin levantar FastAPI** → `api/`
-- **Quiero validar un use case sin DB/Redis/S3** → `application/`
-- **Quiero validar reglas puras de negocio** → `domain/`
-- **Quiero validar permisos/roles/autenticación** → `identity/`
-- **Quiero validar adaptadores con dobles (sin IO)** → `infrastructure/`
-- **Quiero validar jobs sin cola real** → `worker/`
+Este directorio contiene tests unitarios: validan funciones, clases y casos de uso en aislamiento usando mocks/fakes.
 
 ### Qué SÍ hace
-
-- Prueba módulos en aislamiento (una unidad por test, foco en comportamiento).
-- Usa dobles controlados (mocks/fakes/stubs) desde `tests/conftest.py`.
-- Corre rápido y determinista (ideal para feedback continuo y CI).
-- Aporta cobertura útil: ramas de error, validaciones y límites (fail-fast).
+- Prueba lógica aislada sin DB/Redis/S3.
+- Usa dobles desde `tests/conftest.py`.
+- Provee feedback rápido y determinista.
 
 ### Qué NO hace (y por qué)
-
-- No requiere DB real ni servicios externos.
-  - **Razón:** el objetivo es aislar lógica; el IO se valida en `tests/integration/`.
-  - **Impacto:** si el comportamiento depende de SQL/Redis/S3 reales, este no es el nivel correcto.
-
-- No prueba flujos end-to-end.
-  - **Razón:** el E2E tiene otro alcance y otra latencia.
-  - **Impacto:** acá se prueban piezas; el “camino completo” vive en `tests/e2e/` (cuando aplique).
+- No toca servicios externos reales.
+  - Razón: el objetivo es aislar lógica.
+  - Consecuencia: la integración con DB/Redis se valida en `tests/integration/`.
+- No cubre flujos end-to-end.
+  - Razón: el alcance de unit es “pieza”, no “sistema”.
+  - Consecuencia: los flujos completos viven en `tests/e2e/`.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso           | Tipo           | Responsabilidad (en humano)                                         |
-| :---------------- | :------------- | :------------------------------------------------------------------ |
-| `__init__.py`     | Archivo Python | Marca el paquete de tests unitarios.                                |
-| `api/`            | Carpeta        | Tests unitarios de la capa de interfaces (mappers/DTOs/handlers).   |
-| `application/`    | Carpeta        | Tests unitarios de casos de uso y orquestación (puertos mockeados). |
-| `domain/`         | Carpeta        | Tests unitarios de reglas puras del dominio (sin infraestructura).  |
-| `identity/`       | Carpeta        | Tests unitarios de auth, roles, claims y decisiones de permisos.    |
-| `infrastructure/` | Carpeta        | Tests unitarios de adaptadores usando fakes (sin IO real).          |
-| `worker/`         | Carpeta        | Tests unitarios de jobs/builders del worker (sin cola real).        |
-| `README.md`       | Documento      | Esta documentación.                                                 |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :-- | :-- | :-- |
+| `README.md` | Documento | Guía de tests unitarios. |
+| `__init__.py` | Archivo Python | Marca el paquete. |
+| `api/` | Carpeta | Unit tests de adaptadores HTTP/schemas. |
+| `application/` | Carpeta | Unit tests de casos de uso. |
+| `domain/` | Carpeta | Unit tests de reglas y entidades. |
+| `identity/` | Carpeta | Unit tests de auth/roles/permisos. |
+| `infrastructure/` | Carpeta | Unit tests de adapters con fakes. |
+| `worker/` | Carpeta | Unit tests de jobs y builders. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
-
 Input → Proceso → Output.
 
 - **Input:** `pytest tests/unit -m unit`.
-- **Proceso:**
-  1. Pytest descubre tests bajo `tests/unit/`.
-  2. Carga fixtures globales de `tests/conftest.py`.
-  3. Cada test instancia la unidad bajo prueba con dobles:
-     - repositorios como `Mock` o fakes en memoria.
-     - servicios externos (LLM/embeddings/storage/queue) como stubs.
-
-  4. Se validan salidas y efectos **observables** (resultado, llamadas, errores tipados).
-
-- **Output:** reporte rápido y determinista + coverage (si está habilitado).
-
-Tecnologías/librerías usadas acá:
-
-- `pytest`, `unittest.mock`.
+- **Proceso:** carga `tests/conftest.py`, reemplaza puertos por fakes/mocks y ejecuta pruebas por carpeta.
+- **Output:** reporte rápido y determinista.
 
 ## 🔗 Conexiones y roles
-
-- **Rol arquitectónico:** Tests (unit).
-- **Recibe órdenes de:** desarrolladores/CI.
+- **Rol arquitectónico:** tests unitarios.
+- **Recibe órdenes de:** desarrolladores y CI.
 - **Llama a:** módulos de `app/` con dependencias reemplazadas.
-- **Reglas de límites:**
-  - no tocar DB/Redis/S3 reales.
-  - no hacer llamadas de red.
-  - no depender de reloj/aleatoriedad sin control (usar seeds o fakes).
+- **Reglas de límites:** no IO real, no red, no tiempo real sin control.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Correr toda la suite unit
-
 ```bash
 cd apps/backend
 pytest -m unit tests/unit
 ```
 
-### 2) Correr una carpeta (ej: application)
-
 ```bash
-cd apps/backend
+# Ejecutar solo application
 pytest -m unit tests/unit/application -q
 ```
 
-### 3) Correr un test puntual
-
-```bash
-cd apps/backend
-pytest -m unit -v tests/unit/application/test_upload_document_use_case.py
-```
-
-### 4) Ejecutar pytest desde Python (útil en debugging)
-
 ```python
+# Ejecutar desde Python
 import pytest
-
-exit_code = pytest.main(["-v", "tests/unit", "-m", "unit"])
-assert exit_code == 0
+pytest.main(["-v", "tests/unit", "-m", "unit"])
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. Elegí la ubicación por capa (`api/`, `application/`, `domain/`, `identity/`, `infrastructure/`, `worker/`).
-2. Escribí tests **pequeños y específicos** (un comportamiento por caso).
-3. Mockeá puertos del dominio con `Mock(spec=...)` o fakes explícitos.
-4. Reutilizá fixtures de `tests/conftest.py` antes de crear nuevas.
-5. Validá contratos, no implementación:
-   - `result.error.code` y `result.status`, no “strings mágicos”.
-   - llamadas clave (ej: `enqueue(...)`) con argumentos mínimos.
-
-6. Mantené velocidad:
-   - nada de sleeps.
-   - nada de IO real.
+- Ubicá el test en la carpeta de la capa correspondiente.
+- Usá fakes/mocks para puertos del dominio.
+- Evitá sleeps y dependencias de tiempo real.
+- Si necesitás wiring, usá `app/container.py` pero overrideá con fakes en el test.
+- Tests: este módulo en `apps/backend/tests/unit/`.
 
 ## 🆘 Troubleshooting
-
-- **Tests lentos** → hay IO real accidental (DB/red/FS) → revisar `conftest.py` y reemplazar dependencias por fakes/mocks.
-- **Fixtures no encontradas** → import path o nombre de fixture incorrecto → revisar `tests/conftest.py` y el scope de fixtures.
-- **`ModuleNotFoundError: app`** → estás fuera de `apps/backend/` → correr `pytest` desde ese directorio.
-- **Flaky tests** → dependencia de tiempo/orden → fijar seeds, evitar estado global y usar fixtures `autouse` solo cuando haga falta.
+- **Síntoma:** tests lentos.
+  - **Causa probable:** IO real accidental.
+  - **Dónde mirar:** fixtures y dobles en `tests/conftest.py`.
+  - **Solución:** reemplazar dependencias por fakes/mocks.
+- **Síntoma:** fixtures no encontradas.
+  - **Causa probable:** nombre o scope incorrecto.
+  - **Dónde mirar:** `tests/conftest.py`.
+  - **Solución:** corregir nombre/scope.
+- **Síntoma:** `ModuleNotFoundError: app`.
+  - **Causa probable:** cwd incorrecto.
+  - **Dónde mirar:** `pwd`.
+  - **Solución:** ejecutar desde `apps/backend/`.
+- **Síntoma:** tests flaky.
+  - **Causa probable:** dependencia de orden o tiempo.
+  - **Dónde mirar:** tests afectados.
+  - **Solución:** fijar seeds y eliminar estado global.
 
 ## 🔎 Ver también
-
-- `../README.md` (índice de tests)
-- `../integration/README.md` (DB real y migraciones)
-- `../e2e/README.md` (flujos completos)
-- `../../conftest.py` (fixtures compartidas)
+- `../README.md`
+- `../integration/README.md`
+- `../e2e/README.md`
+- `../../conftest.py`

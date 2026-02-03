@@ -1,150 +1,92 @@
 # integration
-
-Como un **ensayo general**: valida el backend con piezas reales (Postgres + composición de API) sin ir al “full stack” externo.
+Como un **ensayo general**: valida integración real con DB y composición de API.
 
 ## 🎯 Misión
-
-Este directorio contiene **tests de integración**: verifican que el backend funcione con dependencias reales (principalmente **Postgres**) y que flujos críticos se ejecuten de punta a punta **a nivel de componentes** (API + repos + seguridad RAG).
-
-Recorridos rápidos por intención:
-
-- **Quiero validar endpoints HTTP sin levantar un servidor** → `test_api_endpoints.py`
-- **Quiero validar repositorios Postgres reales** → `test_postgres_document_repo.py`
-- **Quiero validar controles de seguridad en búsquedas RAG** → `test_rag_security_pack.py`
+Este directorio contiene tests de integración que verifican el backend con dependencias reales (principalmente Postgres) y composición real de la API.
 
 ### Qué SÍ hace
-
-- Prueba endpoints HTTP usando `FastAPI TestClient` sobre la app compuesta.
-- Verifica repositorios reales contra Postgres (incluye constraints, índices y consultas reales).
-- Valida el paquete de seguridad RAG (filtros/guardrails aplicados a queries y/o chunks).
-- Asegura que las migraciones estén aplicadas antes de ejecutar casos que dependen del esquema.
+- Usa FastAPI `TestClient` para endpoints sin levantar servidor.
+- Verifica repositorios Postgres reales.
+- Ejecuta pruebas marcadas como `integration`.
 
 ### Qué NO hace (y por qué)
-
-- No sustituye los tests unitarios.
-  - **Razón:** el unit test es el guardián principal de lógica en aislamiento.
-  - **Impacto:** si un caso falla en integración, suele haber un unit que también debería existir.
-
-- No cubre escenarios full e2e con infraestructura externa completa.
-  - **Razón:** acá el foco es Postgres + composición; servicios externos pueden estar fakeados.
-  - **Impacto:** flujos con worker/cola/storage reales (si aplican) viven en `tests/e2e/`.
+- No reemplaza unit tests.
+  - Razón: el unit test es el primer guardián de lógica aislada.
+  - Consecuencia: si falta un unit test, integración no lo compensa.
+- No cubre infraestructura completa (worker/colas) salvo que se agregue explícitamente.
+  - Razón: el alcance es Postgres + composición.
+  - Consecuencia: flujos full-stack quedan para `tests/e2e/`.
 
 ## 🗺️ Mapa del territorio
-
-| Recurso                          | Tipo           | Responsabilidad (en humano)                                                                          |
-| :------------------------------- | :------------- | :--------------------------------------------------------------------------------------------------- |
-| `__init__.py`                    | Archivo Python | Marca el paquete de integración.                                                                     |
-| `conftest.py`                    | Archivo Python | Fixtures de integración: DB real, pool/conexión, app compuesta para TestClient, helpers de limpieza. |
-| `test_api_endpoints.py`          | Test           | Verifica endpoints HTTP clave (status codes, contratos, validaciones, auth básica).                  |
-| `test_postgres_document_repo.py` | Test           | Prueba repositorios Postgres reales (persistencia/lectura, queries e invariantes).                   |
-| `test_rag_security_pack.py`      | Test           | Valida reglas de seguridad RAG (filtros anti-inyección, políticas por rol, sanitización).            |
-| `README.md`                      | Documento      | Esta documentación.                                                                                  |
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :-- | :-- | :-- |
+| `README.md` | Documento | Guía de integración. |
+| `__init__.py` | Archivo Python | Marca el paquete. |
+| `conftest.py` | Archivo Python | Fixtures de integración (DB/app). |
+| `test_api_endpoints.py` | Test | Endpoints HTTP con TestClient. |
+| `test_postgres_document_repo.py` | Test | Repositorios Postgres reales. |
+| `test_rag_security_pack.py` | Test | Reglas de seguridad RAG. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
-
 Input → Proceso → Output.
 
-- **Input:** `pytest tests/integration -m integration`.
-- **Proceso:**
-  1. Pytest descubre tests bajo `tests/integration/`.
-  2. Carga `tests/conftest.py` (global) y luego `tests/integration/conftest.py` (específico).
-  3. Se prepara una DB real (según `DATABASE_URL`) y se asegura el esquema:
-     - si el entorno está pensado para integración, aplica migraciones (Alembic `upgrade head`).
-     - si la DB no está lista, falla con error explícito (`UndefinedTable`, conexión, etc.).
-
-  4. Se construye la app FastAPI para `TestClient` usando la composición real (container/settings) y dobles donde aplique.
-  5. Cada test ejecuta requests HTTP o llamadas a repositorios reales y valida:
-     - status codes + payloads.
-     - invariantes del modelo en DB.
-     - reglas de seguridad en el pipeline RAG.
-
-- **Output:** reporte de integración (más lento que unit) y evidencia de que “la pieza Postgres” funciona.
-
-Tecnologías/librerías usadas acá:
-
-- `pytest`, `fastapi.testclient`, `psycopg`.
+- **Input:** `pytest -m integration tests/integration`.
+- **Proceso:** carga `tests/conftest.py` y fixtures locales, prepara DB real y ejecuta tests.
+- **Output:** reporte de integración.
 
 ## 🔗 Conexiones y roles
-
-- **Rol arquitectónico:** Tests (integration).
-
+- **Rol arquitectónico:** tests de integración.
 - **Recibe órdenes de:** desarrolladores/CI.
-
-- **Llama a:**
-  - Postgres real (y extensiones requeridas por el esquema).
-  - composición de API (FastAPI app) vía imports del backend.
-  - servicios que el container configure (algunos pueden ser fakes según settings).
-
-- **Reglas de límites:**
-  - requiere DB accesible y con migraciones aplicadas.
-  - no debe depender de red externa (LLM/embeddings reales) salvo que el repo lo habilite explícitamente con un flag.
+- **Llama a:** Postgres real y composición FastAPI.
+- **Reglas de límites:** no depender de red externa salvo flags explícitos.
 
 ## 👩‍💻 Guía de uso (Snippets)
-
-### 1) Correr integración desde `apps/backend/`
-
 ```bash
+# Ejecutar integración
 cd apps/backend
 pytest -m integration tests/integration
 ```
 
-### 2) Apuntar a una DB de integración (ejemplo)
-
 ```bash
+# Habilitar integración en tests que lo requieren
+export RUN_INTEGRATION=1
 export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rag"
-cd apps/backend
 pytest -m integration tests/integration -v
 ```
 
-### 3) Correr un test puntual
-
 ```bash
-cd apps/backend
-pytest -m integration -v tests/integration/test_postgres_document_repo.py
-```
-
-### 4) Ejecutar pytest desde Python
-
-```python
-import pytest
-
-exit_code = pytest.main(["-v", "tests/integration", "-m", "integration"])
-assert exit_code == 0
+# Tests de API (requieren GOOGLE_API_KEY)
+export GOOGLE_API_KEY=... 
+pytest -m integration tests/integration/test_api_endpoints.py
 ```
 
 ## 🧩 Cómo extender sin romper nada
-
-Checklist práctico:
-
-1. Elegí la forma de integración:
-   - endpoint HTTP → agregar caso en `test_api_endpoints.py` (o crear `test_api_<feature>.py`).
-   - repos Postgres → agregar casos en `test_postgres_*_repo.py`.
-   - seguridad RAG → agregar casos en `test_rag_security_pack.py`.
-
-2. Mantené los tests idempotentes:
-   - datos de prueba propios por test.
-   - limpiar tablas/fixtures cuando aplique.
-
-3. Si agregás tablas/campos:
-   - asegurá migración Alembic.
-   - actualizá factories/fixtures de integración.
-
-4. Si necesitás un fake para un servicio externo:
-   - habilitalo por settings/feature flag (no hardcode en el test).
-   - documentalo en este README.
+- Agregá tests nuevos en este directorio y marcá con `@pytest.mark.integration`.
+- Reutilizá fixtures de `tests/conftest.py` y `tests/integration/conftest.py`.
+- Si agregás tablas/campos, agregá migración en `apps/backend/alembic/`.
+- Wiring: si necesitás servicios reales, obtenelos desde `app/container.py`.
+- Tests: este módulo en `apps/backend/tests/integration/`.
 
 ## 🆘 Troubleshooting
-
-- **`UndefinedTable`** → migraciones faltantes → correr Alembic (`../../alembic/README.md`) o levantar el servicio de migración y reintentar.
-- **Conexión rechazada / timeout** → DB apagada o URL incorrecta → revisar `DATABASE_URL` y `docker compose ps`.
-- **Errores de pgvector / extensión faltante** → Postgres sin extensiones requeridas → usar la DB del compose o instalar extensiones en el servidor.
-- **Endpoints 401/403** → auth activa o credenciales inválidas → revisar settings de test (tokens/API keys) y fixtures de auth.
-- **Fallas intermitentes (flaky)** → datos compartidos entre tests → aislar por test (transacciones/cleanup) y evitar orden-dependencia.
+- **Síntoma:** tests se skipean.
+  - **Causa probable:** falta `RUN_INTEGRATION=1` o `GOOGLE_API_KEY`.
+  - **Dónde mirar:** encabezados de `test_api_endpoints.py`.
+  - **Solución:** setear variables y reintentar.
+- **Síntoma:** `UndefinedTable`.
+  - **Causa probable:** migraciones no aplicadas.
+  - **Dónde mirar:** `apps/backend/alembic/README.md`.
+  - **Solución:** `alembic upgrade head`.
+- **Síntoma:** conexión rechazada.
+  - **Causa probable:** DB apagada o URL incorrecta.
+  - **Dónde mirar:** `DATABASE_URL` y `docker compose`.
+  - **Solución:** levantar DB y corregir URL.
+- **Síntoma:** 401/403 en endpoints.
+  - **Causa probable:** auth activa sin credenciales.
+  - **Dónde mirar:** fixtures de auth y settings.
+  - **Solución:** usar headers/tokens válidos en el test.
 
 ## 🔎 Ver también
-
-- `../README.md` (índice de tests)
-- `../unit/README.md` (aislamiento y dobles)
-- `../e2e/README.md` (flujos completos)
-- `../../alembic/README.md` (migraciones)
-- `../../../scripts/README.md` (bootstrap y tooling)
+- `../README.md`
+- `../unit/README.md`
+- `../e2e/README.md`
+- `../../alembic/README.md`
