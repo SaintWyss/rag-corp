@@ -1,8 +1,8 @@
-# Informe de Sistemas — RAG Corp v6 (Definitivo)
+# Informe de Sistemas — RAG Corp (Definitivo)
 
 **Autor:** Santiago Scacciaferro  
 **Fecha:** 2026-01-21 (America/Argentina/Cordoba)  
-**Repo:** `rag-corp` (v6)  
+**Repo:** `rag-corp`  
 **Fuente de verdad (producto, Especificación Base):** `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`  
 **Fuente de verdad (arquitectura / decisiones):** `docs/architecture/overview.md` + `docs/architecture/adr/ADR-001..ADR-007`  
 **Fuente de verdad (contratos):** `shared/contracts/openapi.json` + `docs/reference/api/http-api.md`  
@@ -47,7 +47,7 @@ Construir una “**NotebookLM empresarial**” donde el conocimiento se gestione
 
 ### 1.3 Alcance (Scope)
 
-**In-Scope (v6):**
+**In-Scope:**
 
 - Workspaces (técnicamente “Workspace”; “Sección” solo copy de UI).
 - Gobernanza: owner/admin write; viewers read+chat.
@@ -292,7 +292,7 @@ erDiagram
 ### 4.1 Matriz de Requerimientos Funcionales (RF)
 
 > Fuente base: `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`.  
-> Priorización MoSCoW enfocada en “100% v6”.
+> Priorización MoSCoW enfocada en el alcance actual.
 
 | ID    | Nombre               | Descripción                                        | Prioridad | Criterios de aceptación (DoD del requisito)                                                              |
 | ----- | -------------------- | -------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------- |
@@ -726,14 +726,14 @@ classDiagram
 
 ---
 
-## 9. CRC + Mapa de Docs (v6)
+## 9. CRC + Mapa de Docs
 
-### 9.1 CRC (Documentación v6)
+### 9.1 CRC (Documentación)
 
 **Componente:** `docs/`  
 **Responsibilities:**
 
-1. Ser la fuente de verdad documental de v6 (contrato, arquitectura, runbooks).
+1. Ser la fuente de verdad documental del sistema (contrato, arquitectura, runbooks).
 2. Mantener coherencia con `shared/contracts/openapi.json` y el código.  
    **Collaborators:** `shared/contracts/openapi.json`, `apps/backend/app/`, `.github/workflows/ci.yml`  
    **Constraints:** no inventar endpoints; todo path debe existir en OpenAPI.
@@ -741,17 +741,17 @@ classDiagram
 ### 9.2 Docs Map (Source of Truth)
 
 | Tema         | Documento canónico                             | Secundarios                      |
-| ------------ | ---------------------------------------------- | -------------------------------- |
+| ------------ | ---------------------------------------------- | -------------------------------- | --- |
 | Contrato API | `shared/contracts/openapi.json`                | `docs/reference/api/http-api.md` |
-| Sistema v6   | `docs/project/informe_de_sistemas_rag_corp.md` | `docs/project/release-notes.md`   |
+| Sistema      | `docs/project/informe_de_sistemas_rag_corp.md` | `docs/project/release-notes.md`  |     |
 | Arquitectura | `docs/architecture/overview.md`                | `docs/architecture/adr/*`        |
-| Datos        | `docs/reference/data/postgres-schema.md`       | `apps/backend/alembic/`         |
+| Datos        | `docs/reference/data/postgres-schema.md`       | `apps/backend/alembic/`          |
 | Operación    | `docs/runbook/*`                               | `infra/*`                        |
 | Testing/CI   | `docs/quality/testing.md`                      | `.github/workflows/ci.yml`       |
 
 ---
 
-## Apéndice A — Criterio “100% v6” (Definition of Done global)
+## Apéndice A — Criterio de Completitud (Definition of Done global)
 
 El proyecto se considera **100%** cuando se cumplen todos:
 

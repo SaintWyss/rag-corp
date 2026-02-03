@@ -88,7 +88,7 @@ cp .env.example .env
 ### 2. Levantar la Infraestructura
 
 ```bash
-pnpm docker:up
+pnpm stack:core
 ```
 
 ### 3. Instalar Dependencias
@@ -131,8 +131,8 @@ pnpm dev
 Si ya tenías una DB corriendo, necesitás recrearla para aplicar el índice:
 
 ```bash
-pnpm docker:down
-pnpm docker:up
+pnpm stack:reset
+pnpm stack:core
 ```
 
 ### Desarrollo Local Sin Docker

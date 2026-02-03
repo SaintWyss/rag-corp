@@ -1,4 +1,4 @@
-# Observability Runbook — RAG Corp v6
+# Observability Runbook — RAG Corp
 
 **Project:** RAG Corp  
 **Last Updated:** 2026-01-24  
@@ -33,26 +33,28 @@ RAG Corp expone métricas Prometheus, health checks, y dashboards Grafana para m
 
 ### Backend API (puerto 8000)
 
-| Endpoint | Propósito | Auth |
-|----------|-----------|------|
-| `GET /healthz` | Liveness (siempre 200 si proceso vivo) | No |
-| `GET /readyz` | Readiness (DB conectada) | No |
-| `GET /metrics` | Prometheus metrics | Condicional* |
+| Endpoint       | Propósito                              | Auth          |
+| -------------- | -------------------------------------- | ------------- |
+| `GET /healthz` | Liveness (siempre 200 si proceso vivo) | No            |
+| `GET /readyz`  | Readiness (DB conectada)               | No            |
+| `GET /metrics` | Prometheus metrics                     | Condicional\* |
 
-*`/metrics` requiere auth si `METRICS_REQUIRE_AUTH=true`:
+\*`/metrics` requiere auth si `METRICS_REQUIRE_AUTH=true`:
+
 ```bash
 curl -H "X-API-Key: <key_con_scope_metrics>" http://localhost:8000/metrics
 ```
 
 ### Worker (puerto 8001)
 
-| Endpoint | Propósito | Auth |
-|----------|-----------|------|
-| `GET /healthz` | Liveness | No |
-| `GET /readyz` | Readiness (Redis conectado) | No |
-| `GET /metrics` | Prometheus metrics | Condicional* |
+| Endpoint       | Propósito                   | Auth          |
+| -------------- | --------------------------- | ------------- |
+| `GET /healthz` | Liveness                    | No            |
+| `GET /readyz`  | Readiness (Redis conectado) | No            |
+| `GET /metrics` | Prometheus metrics          | Condicional\* |
 
 **Verificación rápida:**
+
 ```bash
 curl http://localhost:8000/healthz
 curl http://localhost:8000/readyz
@@ -76,22 +78,22 @@ pnpm stack:full
 
 ### Servicios incluidos
 
-| Servicio | Puerto | Propósito |
-|----------|--------|-----------|
-| Prometheus | 9090 | Recolección de métricas |
-| Grafana | 3001 | Visualización y dashboards |
-| postgres-exporter | 9187 | Métricas de PostgreSQL |
+| Servicio          | Puerto | Propósito                  |
+| ----------------- | ------ | -------------------------- |
+| Prometheus        | 9090   | Recolección de métricas    |
+| Grafana           | 3001   | Visualización y dashboards |
+| postgres-exporter | 9187   | Métricas de PostgreSQL     |
 
 ---
 
 ## URLs Locales
 
-| Servicio | URL |
-|----------|-----|
-| Prometheus UI | http://localhost:9090 |
-| Grafana | http://localhost:3001 |
-| Grafana login | `admin` / `admin` (o `GRAFANA_PASSWORD`) |
-| postgres-exporter | http://localhost:9187/metrics |
+| Servicio          | URL                                      |
+| ----------------- | ---------------------------------------- |
+| Prometheus UI     | http://localhost:9090                    |
+| Grafana           | http://localhost:3001                    |
+| Grafana login     | `admin` / `admin` (o `GRAFANA_PASSWORD`) |
+| postgres-exporter | http://localhost:9187/metrics            |
 
 ---
 
@@ -100,12 +102,12 @@ pnpm stack:full
 Los dashboards se provisionan automáticamente desde `infra/grafana/dashboards/`:
 Ver `infra/grafana/dashboards/README.md` para el inventario y el flujo de export.
 
-| Dashboard | Contenido |
-|-----------|-----------|
-| RAG Corp - Overview | Estado general del sistema |
-| RAG Corp - API Performance | Latencia, throughput, errores |
-| RAG Corp - Operations | Documentos, queries, worker |
-| RAG Corp - PostgreSQL | Conexiones, cache, transacciones |
+| Dashboard                  | Contenido                        |
+| -------------------------- | -------------------------------- |
+| RAG Corp - Overview        | Estado general del sistema       |
+| RAG Corp - API Performance | Latencia, throughput, errores    |
+| RAG Corp - Operations      | Documentos, queries, worker      |
+| RAG Corp - PostgreSQL      | Conexiones, cache, transacciones |
 
 ### Acceder a dashboards
 
@@ -119,51 +121,55 @@ Ver `infra/grafana/dashboards/README.md` para el inventario y el flujo de export
 
 ### API Metrics
 
-| Métrica | Tipo | Descripción |
-|---------|------|-------------|
-| `rag_requests_total` | Counter | Total de requests por endpoint/status |
-| `rag_request_latency_seconds` | Histogram | Latencia de requests |
-| `rag_llm_latency_seconds` | Histogram | Latencia de llamadas a LLM |
-| `rag_embed_latency_seconds` | Histogram | Latencia de embeddings |
+| Métrica                       | Tipo      | Descripción                           |
+| ----------------------------- | --------- | ------------------------------------- |
+| `rag_requests_total`          | Counter   | Total de requests por endpoint/status |
+| `rag_request_latency_seconds` | Histogram | Latencia de requests                  |
+| `rag_llm_latency_seconds`     | Histogram | Latencia de llamadas a LLM            |
+| `rag_embed_latency_seconds`   | Histogram | Latencia de embeddings                |
 
 ### Worker Metrics
 
-| Métrica | Tipo | Descripción |
-|---------|------|-------------|
-| `rag_worker_jobs_processed_total` | Counter | Jobs procesados |
-| `rag_worker_jobs_failed_total` | Counter | Jobs fallidos |
+| Métrica                           | Tipo      | Descripción      |
+| --------------------------------- | --------- | ---------------- |
+| `rag_worker_jobs_processed_total` | Counter   | Jobs procesados  |
+| `rag_worker_jobs_failed_total`    | Counter   | Jobs fallidos    |
 | `rag_worker_job_duration_seconds` | Histogram | Duración de jobs |
 
 ### PostgreSQL Metrics (via exporter)
 
-| Métrica | Descripción |
-|---------|-------------|
-| `pg_stat_database_tup_fetched` | Tuplas leídas |
-| `pg_stat_database_tup_inserted` | Tuplas insertadas |
-| `pg_stat_user_tables_n_live_tup` | Filas por tabla |
+| Métrica                          | Descripción       |
+| -------------------------------- | ----------------- |
+| `pg_stat_database_tup_fetched`   | Tuplas leídas     |
+| `pg_stat_database_tup_inserted`  | Tuplas insertadas |
+| `pg_stat_user_tables_n_live_tup` | Filas por tabla   |
 
 ---
 
 ## Queries PromQL Útiles
 
 ### Requests por segundo
+
 ```promql
 rate(rag_requests_total[5m])
 ```
 
 ### Latencia p95
+
 ```promql
 histogram_quantile(0.95, rate(rag_request_latency_seconds_bucket[5m]))
 ```
 
 ### Tasa de errores (5xx)
+
 ```promql
-sum(rate(rag_requests_total{status=~"5.."}[5m])) 
-/ 
+sum(rate(rag_requests_total{status=~"5.."}[5m]))
+/
 sum(rate(rag_requests_total[5m]))
 ```
 
 ### Jobs de worker por minuto
+
 ```promql
 rate(rag_worker_jobs_processed_total[1m]) * 60
 ```
@@ -174,13 +180,13 @@ rate(rag_worker_jobs_processed_total[1m]) * 60
 
 Las alertas están definidas en `infra/prometheus/alerts.yml`:
 
-| Alerta | Condición | Severidad |
-|--------|-----------|-----------|
-| HighErrorRate | >5% errores 5xx por 5m | critical |
-| HighLatencyP95 | p95 > 2s por 5m | warning |
-| APIDown | up == 0 por 1m | critical |
-| PostgreSQLDown | pg_up == 0 por 1m | critical |
-| HighMemoryUsage | >90% por 5m | warning |
+| Alerta          | Condición              | Severidad |
+| --------------- | ---------------------- | --------- |
+| HighErrorRate   | >5% errores 5xx por 5m | critical  |
+| HighLatencyP95  | p95 > 2s por 5m        | warning   |
+| APIDown         | up == 0 por 1m         | critical  |
+| PostgreSQLDown  | pg_up == 0 por 1m      | critical  |
+| HighMemoryUsage | >90% por 5m            | warning   |
 
 **Nota:** Alertmanager no está desplegado por defecto. Para recibir notificaciones, configurar Alertmanager.
 
@@ -193,6 +199,7 @@ Las alertas están definidas en `infra/prometheus/alerts.yml`:
 **Síntoma:** Target aparece como "down" en http://localhost:9090/targets
 
 **Verificar:**
+
 ```bash
 # Target accesible?
 curl http://localhost:8000/metrics
@@ -202,6 +209,7 @@ docker compose exec prometheus cat /etc/prometheus/prometheus.yml
 ```
 
 **Causas comunes:**
+
 1. Hostname incorrecto (usar nombre del service: `backend`, no `localhost`)
 2. Puerto incorrecto
 3. `METRICS_REQUIRE_AUTH=true` sin credenciales en Prometheus
@@ -209,6 +217,7 @@ docker compose exec prometheus cat /etc/prometheus/prometheus.yml
 ### Grafana no muestra datos
 
 **Verificar:**
+
 1. Prometheus está corriendo: http://localhost:9090/-/healthy
 2. Datasource configurado: Grafana → Configuration → Data Sources
 3. Query funciona en Prometheus UI
@@ -225,12 +234,12 @@ docker compose exec prometheus cat /etc/prometheus/prometheus.yml
 
 ### Variables de entorno relevantes
 
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `METRICS_REQUIRE_AUTH` | `false` | Proteger /metrics |
-| `OTEL_ENABLED` | `0` | Habilitar OpenTelemetry |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | Endpoint OTLP |
-| `GRAFANA_PASSWORD` | `admin` | Password de Grafana |
+| Variable                      | Default | Descripción             |
+| ----------------------------- | ------- | ----------------------- |
+| `METRICS_REQUIRE_AUTH`        | `false` | Proteger /metrics       |
+| `OTEL_ENABLED`                | `0`     | Habilitar OpenTelemetry |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | —       | Endpoint OTLP           |
+| `GRAFANA_PASSWORD`            | `admin` | Password de Grafana     |
 
 ### Tracing (OpenTelemetry)
 
@@ -238,12 +247,14 @@ El backend inicializa tracing cuando `OTEL_ENABLED=1` (ver `apps/backend/app/cro
 Los logs incluyen `trace_id` y `span_id` para correlación cuando el tracer está activo.
 
 **Quickstart (local):**
+
 ```bash
 export OTEL_ENABLED=1
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 ```
 
 **Correlación:**
+
 - Buscar `trace_id` en logs JSON (campo `trace_id`).
 - Usar el mismo `trace_id` en la UI del collector/observability stack para navegar spans.
 
@@ -262,6 +273,7 @@ my_counter.inc()
 ## Qué Mirar Primero en un Incidente
 
 1. **¿Servicios vivos?**
+
    ```bash
    curl http://localhost:8000/healthz
    curl http://localhost:8001/healthz

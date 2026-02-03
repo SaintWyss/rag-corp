@@ -1,4 +1,4 @@
-# Deployment Guide (v6)
+# Deployment Guide
 
 **Project:** RAG Corp
 **Last Updated:** 2026-01-22

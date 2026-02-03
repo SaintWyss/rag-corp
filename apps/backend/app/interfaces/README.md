@@ -1,4 +1,5 @@
 # Interfaces (adaptadores entrantes)
+
 Como la **recepción del backend**: recibe requests HTTP, los convierte a DTOs del sistema, llama a casos de uso y devuelve respuestas (incluyendo errores RFC7807).
 
 ## 🎯 Misión
@@ -13,7 +14,7 @@ Recorridos rápidos por intención:
 - **Quiero ver endpoints de workspaces/documents/query** → `./api/http/routers/` (subrouters por feature)
 - **Quiero ver schemas (requests/responses) y validación** → `./api/http/schemas/`
 - **Quiero ver cómo se mapean errores a RFC7807** → `./api/http/error_mapping.py` (y `app/crosscutting/error_responses.py`)
-- **Quiero ver auth/headers/permisos en el borde** → `./api/http/dependencies/` (si existe en el repo)
+- **Quiero ver auth/headers/permisos en el borde** → `./api/http/dependencies.py`
 - **Quiero ver SSE/streaming de respuestas** → router de query/chat en `./api/http/routers/` y helpers SSE (si existen)
 
 ### Qué SÍ hace
@@ -43,10 +44,10 @@ Recorridos rápidos por intención:
 
 ## 🗺️ Mapa del territorio
 
-| Recurso | Tipo | Responsabilidad (en humano) |
+| Recurso     | Tipo      | Responsabilidad (en humano)                                                  |
 | :---------- | :-------- | :--------------------------------------------------------------------------- |
-| `api` | Carpeta | Adaptador HTTP (FastAPI): routers, schemas, dependencias y mapeo de errores. |
-| `README.md` | Documento | Portada + guía de navegación de la capa de interfaces (este archivo). |
+| `api`       | Carpeta   | Adaptador HTTP (FastAPI): routers, schemas, dependencias y mapeo de errores. |
+| `README.md` | Documento | Portada + guía de navegación de la capa de interfaces (este archivo).        |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -103,6 +104,7 @@ Ejemplo mental (sin asumir nombres exactos):
 - No decidir políticas de negocio: si hay permisos, se pasa `actor` y se deja decidir al use case.
 
 ## 👩‍💻 Guía de uso (Snippets)
+
 ```python
 # Por qué: muestra el contrato mínimo del módulo.
 from app.interfaces.api.http.router import router
@@ -122,12 +124,14 @@ use_case.execute(CreateWorkspaceInput(name="Legal", actor=None, owner_user_id=".
 ```
 
 ## 🧩 Cómo extender sin romper nada
+
 - Agregá schemas en `api/http/schemas/` y routers en `api/http/routers/`.
 - Registrá el router en `api/http/router.py`.
 - Cableá dependencias en `app/container.py`.
 - Tests: unit de schemas en `apps/backend/tests/unit/api/`, integration en `apps/backend/tests/integration/`.
 
 ## 🆘 Troubleshooting
+
 - **Síntoma:** 422 inesperado.
 - **Causa probable:** schema no coincide con payload.
 - **Dónde mirar:** `api/http/schemas/`.
@@ -146,6 +150,7 @@ use_case.execute(CreateWorkspaceInput(name="Legal", actor=None, owner_user_id=".
 - **Solución:** manejar cancelación/errores.
 
 ## 🔎 Ver también
+
 - `./api/README.md`
 - `../application/README.md`
 - `../crosscutting/README.md`

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-1. Backend running (`pnpm docker:up`)
+1. Backend running (`pnpm stack:core`)
 2. Frontend running (`cd apps/frontend && pnpm dev`)
 3. At least one admin user and one employee user in the database
 
@@ -61,7 +61,7 @@
 
 ```bash
 # Check backend is responding
-curl -s http://localhost:8000/health | jq .
+curl -s http://localhost:8000/healthz | jq .
 
 # Check auth/me requires authentication
 curl -s http://localhost:3000/auth/me

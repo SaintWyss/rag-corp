@@ -1,4 +1,5 @@
 # Interfaces API
+
 Como el **acceso principal** al backend: agrupa los adaptadores de API (hoy HTTP) y su estructura interna (routers, schemas, dependencias).
 
 ## 🎯 Misión
@@ -12,7 +13,7 @@ Recorridos rápidos por intención:
 - **Quiero ver el adaptador HTTP completo** → `./http/README.md`
 - **Quiero endpoints (routers) por feature** → `./http/routers/`
 - **Quiero request/response schemas (Pydantic)** → `./http/schemas/`
-- **Quiero dependencias (auth/actor/context)** → `./http/dependencies/` (si existe)
+- **Quiero dependencias (auth/actor/context)** → `./http/dependencies.py`
 - **Quiero ver mapeo de errores a RFC7807** → `./http/error_mapping.py`
 - **Quiero ver composición del router raíz** → `./http/router.py`
 - **Quiero ver dónde se monta en FastAPI** → `../../api/README.md` y `app/api/main.py`
@@ -38,10 +39,10 @@ Recorridos rápidos por intención:
 
 ## 🗺️ Mapa del territorio
 
-| Recurso | Tipo | Responsabilidad (en humano) |
+| Recurso     | Tipo      | Responsabilidad (en humano)                                                                            |
 | :---------- | :-------- | :----------------------------------------------------------------------------------------------------- |
-| `http` | Carpeta | Adaptador HTTP (FastAPI): routers por feature, schemas Pydantic, dependencies y helpers (RFC7807/SSE). |
-| `README.md` | Documento | Portada + guía de navegación de `interfaces/api` (este archivo). |
+| `http`      | Carpeta   | Adaptador HTTP (FastAPI): routers por feature, schemas Pydantic, dependencies y helpers (RFC7807/SSE). |
+| `README.md` | Documento | Portada + guía de navegación de `interfaces/api` (este archivo).                                       |
 
 ## ⚙️ ¿Cómo funciona por dentro?
 
@@ -84,6 +85,7 @@ Recorridos rápidos por intención:
 - no contener reglas de negocio; solo adaptar y mapear.
 
 ## 👩‍💻 Guía de uso (Snippets)
+
 ```python
 # Por qué: muestra el contrato mínimo del módulo.
 from app.interfaces.api.http.router import router
@@ -95,12 +97,14 @@ from app.interfaces.api.http.schemas.workspaces import CreateWorkspaceRequest
 ```
 
 ## 🧩 Cómo extender sin romper nada
+
 - Si agregás transporte nuevo, creá un submódulo hermano de `http/`.
 - Mantener contrato: adaptar transporte → llamar use cases → mapear errores.
 - Cableá dependencias en `app/container.py`.
 - Tests: unit en `apps/backend/tests/unit/api/`, integration en `apps/backend/tests/integration/`.
 
 ## 🆘 Troubleshooting
+
 - **Síntoma:** endpoint no aparece.
 - **Causa probable:** router no incluido.
 - **Dónde mirar:** `http/router.py`.
@@ -119,6 +123,7 @@ from app.interfaces.api.http.schemas.workspaces import CreateWorkspaceRequest
 - **Solución:** ajustar schema.
 
 ## 🔎 Ver también
+
 - `./http/README.md`
 - `../../api/README.md`
 - `../../application/usecases/README.md`

@@ -1,4 +1,4 @@
-# RAG Corp v6
+# RAG Corp
 
 Sistema de **Retrieval-Augmented Generation (RAG)** empresarial para ingestar documentos, buscarlos semanticamente y responder con fuentes citadas. La unidad tecnica de scoping es el **Workspace** ("Seccion" solo si el copy UI lo requiere).
 
@@ -7,7 +7,7 @@ Sistema de **Retrieval-Augmented Generation (RAG)** empresarial para ingestar do
 
 ---
 
-## Estado v6 (resumen)
+## Estado actual (resumen)
 
 - **Workspace-first**: CRUD y visibilidad `PRIVATE | ORG_READ | SHARED` con `workspace_acl`.
 - **Scoping total**: documentos, chunks, retrieval y ask siempre por `workspace_id`.
@@ -18,7 +18,7 @@ Sistema de **Retrieval-Augmented Generation (RAG)** empresarial para ingestar do
 
 ---
 
-## Quickstart local (v6)
+## Quickstart local
 
 ### Requisitos
 
@@ -41,7 +41,7 @@ Editar `.env` con valores minimos:
 
 ```bash
 pnpm install
-pnpm docker:up
+pnpm stack:core
 pnpm db:migrate
 pnpm admin:bootstrap -- --email "<ADMIN_EMAIL>" --password "<ADMIN_PASSWORD>"
 ```
@@ -99,22 +99,22 @@ Runbooks: `docs/security/production-hardening.md` y `docs/runbook/observability.
 
 ## Scripts utiles
 
-| Script                      | Uso                               |
-| --------------------------- | --------------------------------- |
-| `pnpm dev`                  | Dev server (turbo)                |
-| `pnpm docker:up`            | db + rag-api                      |
-| `pnpm stack:full`           | db + api + redis + worker + minio |
-| `pnpm docker:observability` | Prometheus + Grafana              |
-| `pnpm db:migrate`           | Alembic upgrade head              |
-| `pnpm admin:bootstrap`      | Crear admin JWT                   |
-| `pnpm contracts:export`     | Export OpenAPI                    |
-| `pnpm contracts:gen`        | Generar cliente TS                |
-| `pnpm test:backend:unit`    | Tests unit backend (Docker)       |
-| `pnpm e2e`                  | Playwright                        |
+| Script                   | Uso                               |
+| ------------------------ | --------------------------------- |
+| `pnpm dev`               | Dev server (turbo)                |
+| `pnpm stack:core`        | db + rag-api                      |
+| `pnpm stack:full`        | db + api + redis + worker + minio |
+| `pnpm stack:obs`         | Prometheus + Grafana              |
+| `pnpm db:migrate`        | Alembic upgrade head              |
+| `pnpm admin:bootstrap`   | Crear admin JWT                   |
+| `pnpm contracts:export`  | Export OpenAPI                    |
+| `pnpm contracts:gen`     | Generar cliente TS                |
+| `pnpm test:backend:unit` | Tests unit backend (Docker)       |
+| `pnpm e2e`               | Playwright                        |
 
 ---
 
-## Documentacion v6 (portal)
+## Documentacion (portal)
 
 - `docs/README.md` (indice)
 - Arquitectura: `docs/architecture/overview.md`
@@ -123,14 +123,14 @@ Runbooks: `docs/security/production-hardening.md` y `docs/runbook/observability.
 - DB: `docs/reference/data/postgres-schema.md`
 - Runbooks: `docs/runbook/`
 - Testing: `docs/quality/testing.md`
-- Informe definitivo v6: `docs/project/informe_de_sistemas_rag_corp.md`
+- Informe definitivo: `docs/project/informe_de_sistemas_rag_corp.md`
 
 ---
 
 ## Versionado
 
-- **v6**: version actual del sistema y la documentacion.
-- **HISTORICAL v4**: especificacion de origen y reportes historicos (`TODO(verify)`).
+- **Actual**: version actual del sistema y la documentacion.
+- **HISTORICAL**: especificacion de origen y reportes historicos (`TODO(verify)`).
 
 ---
 

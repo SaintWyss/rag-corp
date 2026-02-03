@@ -1,15 +1,15 @@
-# Requerimientos Funcionales (RF) — RAG Corp v6
+# Requerimientos Funcionales (RF) — RAG Corp
 
 **Project:** RAG Corp  
-**Version:** v6 (Definitivo)  
+**Version:** Definitivo  
 **Last Updated:** 2026-01-24  
-**Source of Truth:** `docs/project/informe_de_sistemas_rag_corp.md` §4.1  
+**Source of Truth:** `docs/project/informe_de_sistemas_rag_corp.md` §4.1
 
 ---
 
 ## TL;DR
 
-Este documento define los **requerimientos funcionales** del sistema RAG Corp v6. Cada RF tiene un ID único, descripción, prioridad (MoSCoW), y criterios de aceptación verificables.
+Este documento define los **requerimientos funcionales** del sistema RAG Corp. Cada RF tiene un ID único, descripción, prioridad (MoSCoW), y criterios de aceptación verificables.
 
 ---
 

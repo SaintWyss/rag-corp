@@ -5,14 +5,14 @@
 
 ---
 
-## v6 (Current) — Workspace-First Architecture
+## Current Release — Workspace-First Architecture
 
 **Release Date:** 2026-01-22  
 **Status:** Production Ready
 
 ### Summary
 
-v6 introduce **Workspaces** como unidad central de organización. Todas las operaciones de documentos y RAG ahora están scoped por `workspace_id`.
+Esta versión introduce **Workspaces** como unidad central de organización. Todas las operaciones de documentos y RAG ahora están scoped por `workspace_id`.
 
 ### New Features
 
@@ -26,20 +26,20 @@ v6 introduce **Workspaces** como unidad central de organización. Todas las oper
 
 ### Breaking Changes
 
-| Area | v5 | v6 | Migration |
-|------|----|----|-----------|
-| Documents | `/v1/documents/*` | `/v1/workspaces/{ws_id}/documents/*` | Agregar `workspace_id` a todas las llamadas |
-| Ask/Query | `/v1/ask`, `/v1/query` | `/v1/workspaces/{ws_id}/ask`, `/query` | Agregar `workspace_id` |
-| Ingest | `/v1/ingest/*` | `/v1/workspaces/{ws_id}/ingest/*` | Agregar `workspace_id` |
+| Area      | v5                     | v6                                     | Migration                                   |
+| --------- | ---------------------- | -------------------------------------- | ------------------------------------------- |
+| Documents | `/v1/documents/*`      | `/v1/workspaces/{ws_id}/documents/*`   | Agregar `workspace_id` a todas las llamadas |
+| Ask/Query | `/v1/ask`, `/v1/query` | `/v1/workspaces/{ws_id}/ask`, `/query` | Agregar `workspace_id`                      |
+| Ingest    | `/v1/ingest/*`         | `/v1/workspaces/{ws_id}/ingest/*`      | Agregar `workspace_id`                      |
 
 **Legacy endpoints:** Siguen funcionando pero requieren `?workspace_id=...` y están marcados como **DEPRECATED**.
 
 ### Database Migrations
 
-| Migration | Description |
-|-----------|-------------|
-| `007_add_workspaces_and_acl.py` | Crea tablas `workspaces`, `workspace_acl` |
-| `008_docs_workspace_id.py` | Agrega `workspace_id` a documents, crea workspace Legacy para backfill |
+| Migration                       | Description                                                            |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| `007_add_workspaces_and_acl.py` | Crea tablas `workspaces`, `workspace_acl`                              |
+| `008_docs_workspace_id.py`      | Agrega `workspace_id` a documents, crea workspace Legacy para backfill |
 
 ### Known Issues
 
@@ -131,9 +131,11 @@ Refactor a Clean Architecture (Domain/Application/Infrastructure).
 ### v5 → v6
 
 1. **Migraciones:**
+
    ```bash
    pnpm db:migrate
    ```
+
    Esto crea workspace "Legacy" y backfillea documents existentes.
 
 2. **Actualizar llamadas API:**
@@ -157,9 +159,9 @@ alembic downgrade 006
 
 ## Deprecations
 
-| Deprecated | Replacement | Removal Target |
-|------------|-------------|----------------|
-| `/v1/documents` | `/v1/workspaces/{ws_id}/documents` | v8 |
-| `/v1/ask` | `/v1/workspaces/{ws_id}/ask` | v8 |
-| `/v1/query` | `/v1/workspaces/{ws_id}/query` | v8 |
-| `/v1/ingest/*` | `/v1/workspaces/{ws_id}/ingest/*` | v8 |
+| Deprecated      | Replacement                        | Removal Target |
+| --------------- | ---------------------------------- | -------------- |
+| `/v1/documents` | `/v1/workspaces/{ws_id}/documents` | v8             |
+| `/v1/ask`       | `/v1/workspaces/{ws_id}/ask`       | v8             |
+| `/v1/query`     | `/v1/workspaces/{ws_id}/query`     | v8             |
+| `/v1/ingest/*`  | `/v1/workspaces/{ws_id}/ingest/*`  | v8             |
