@@ -1,126 +1,309 @@
+# Reescritura completa (v6)
+
+Este documento contiene **dos archivos completos** listos para copiar/pegar:
+
+1. `.github/copilot-instructions.md`
+2. `docs/project/informe_de_sistemas_rag_corp.md`
+
+---
+
+## 1) `.github/copilot-instructions.md`
+
+```md
+# <!--
+
+# TARJETA CRC (Class / Responsibilities / Collaborators)
+
+Class (Artefacto): .github/copilot-instructions.md (Instrucciones v6)
+
+Responsibilities (Responsabilidades):
+
+- Evitar drift: definir fuentes de verdad y el orden de verificación.
+- Fijar reglas de calidad Pro‑Senior (capas, tipado, errores, seguridad, observabilidad).
+- Guiar el modo de trabajo: cambios pequeños, verificables y sin alucinaciones.
+
+Collaborators (Colaboradores):
+
+- docs/: documentación canónica (especialmente docs/project + docs/reference + docs/architecture).
+- shared/contracts/openapi.json + cliente generado.
+- # apps/backend + apps/frontend + compose.yaml + workflows.
+  -->
+
+# Instrucciones del proyecto — RAG Corp (v6)
+
+## Estado / Versión
+
+- La versión vigente del proyecto/documentación es **v6**.
+- Cualquier referencia a “v4” debe marcarse como **HISTORICAL** (origen/especificación pasada).
+
+---
+
+## Source of Truth (anti-drift)
+
+Antes de afirmar algo “como cierto”, verificar **en este orden**:
+
+1. **Sistema v6 (contrato funcional + alcance + invariantes)**
+   - `docs/project/informe_de_sistemas_rag_corp.md`
+   - Portales de navegación (sin duplicar detalle): `docs/README.md` + `docs/index/*.md`
+
+2. **Contratos (anti-drift FE/BE)**
+   - **OpenAPI canónico:** `shared/contracts/openapi.json`
+   - **Cliente generado (Orval):** `shared/contracts/src/generated.ts`
+   - Nota: `docs/reference/api/http-api.md` es guía transversal; si contradice al OpenAPI, **manda OpenAPI**.
+
+3. **Datos y migraciones (la DB manda)**
+   - Migraciones: `apps/backend/alembic/versions/*`
+   - Esquema canónico: `docs/reference/data/postgres-schema.md`
+   - Políticas: `docs/reference/data/migrations-policy.md`
+   - Stubs **OBSOLETO** (solo redirección): `docs/data/*`
+
+4. **Runtime real (lo que corre en serio)**
+   - Compose y perfiles: `compose.yaml` + `.env.example`
+   - Backend runtime:
+     - Entrypoint ASGI: `apps/backend/app/main.py`
+     - Router raíz / prefijos: `apps/backend/app/api/main.py` + `apps/backend/app/api/versioning.py`
+     - HTTP adapters: `apps/backend/app/interfaces/api/http/router.py` + `apps/backend/app/interfaces/api/http/routers/*`
+     - DI/wiring: `apps/backend/app/container.py`
+   - Frontend runtime:
+     - Next config: `apps/frontend/next.config.mjs`
+   - CI/CD:
+     - Workflows: `.github/workflows/*.yml`
+
+5. **Decisiones (ADRs)**
+   - Vista: `docs/architecture/overview.md`
+   - ADRs: `docs/architecture/adr/*.md`
+
+---
+
+## Contrato de Calidad Pro‑Senior (obligatorio)
+
+### Estilo y documentación en código
+
+- Cada archivo nuevo o modificado debe empezar con **Tarjeta CRC** (comentario) indicando:
+  - Artefacto, responsabilidades, colaboradores.
+- Comentarios y docstrings **en español**.
+
+### Capas (separación estricta)
+
+- **Domain**: puro (sin FastAPI/SQLAlchemy/Redis/SDKs). Define entidades, objetos de valor, policies y puertos.
+- **Application**: orquesta casos de uso (inputs/outputs tipados, validación de invariantes).
+- **Infrastructure**: implementa puertos (DB/queue/storage/LLM/embeddings). No filtrar errores de vendor: mapearlos a errores propios.
+- **Interfaces**: adapta HTTP (schemas/routers) y traduce errores → RFC7807.
+
+### Calidad de diseño
+
+- SOLID / Clean Code: SRP, OCP, ISP, DIP.
+- Contratos/DTOs separados (no mezclar schemas HTTP con DTOs de Application).
+- Errores tipados (no `Exception` genérico como contrato). Mantener un mapa consistente hacia RFC7807.
+
+### Seguridad, límites y robustez
+
+- Fail-fast en prod: defaults inseguros deben romper startup (ver `apps/backend/app/crosscutting/config.py`).
+- Límites explícitos (tamaño upload, paginación, timeouts). Evitar anti‑OOM.
+- Permisos: negar por default, permitir por regla explícita.
+- `/metrics` protegido según configuración.
+
+### Observabilidad
+
+- Logs estructurados donde aporta valor (actor/target/workspace_id/trace_id si aplica).
+- Métricas Prometheus donde ya existe soporte.
+- Auditoría best-effort para eventos críticos (no romper la operación por falla de auditoría, salvo que el requisito diga lo contrario).
+
+### Compatibilidad
+
+- Compatibilidad mediante shims/alias **sin mencionar “legacy”** ni versiones internas como “v4/v6”.
+- Si hay endpoints alternativos, documentarlos como **DEPRECATED** con plan de retiro.
+
+---
+
+## Veracidad / No alucinaciones
+
+- No inventar features/tests/carpetas/paths. Si no existe en el repo, marcar como **TODO/Planned**.
+- Para rutas/endpoints/comandos: verificar en **OpenAPI**, `compose.yaml`, y código real.
+- Si no se puede verificar, asumir lo mínimo y declarar la suposición en **1 línea**.
+
+---
+
+## Modo de trabajo (ejecución)
+
+- Cambios **incrementales**: pequeños, revisables y con evidencia.
+- Preferir **diff/patch** al editar archivos.
+- Si falta una decisión menor, elegir la opción más segura y coherente con el repo.
+- Solo pedir aclaración si hay ambigüedad bloqueante, cambio destructivo o riesgo de seguridad.
+
+---
+
+## Naming / Semántica v6 (consistencia)
+
+- “Workspace” es el término técnico (API/DB/código). “Sección” es **solo copy de UI**.
+- Visibilidad (si aplica): `PRIVATE | ORG_READ | SHARED` (+ `workspace_acl`).
+- Prefijo canónico: `/v1`.
+- Alias de compatibilidad: `/api/v1`.
+- Endpoints alternativos no-nested: **DEPRECATED** y deben requerir `workspace_id` explícito.
+
+---
+
+## Documentación (reglas)
+
+- Portal raíz: `README.md`.
+- Portal docs: `docs/README.md` + `docs/index/*`.
+- Arquitectura: `docs/architecture/overview.md` + `docs/architecture/adr/*`.
+- API: `shared/contracts/openapi.json` (fuente) + `docs/reference/api/http-api.md` (guía).
+- Datos: `docs/reference/data/postgres-schema.md` (fuente) + migraciones en `apps/backend/alembic/`.
+- Seguridad: `docs/reference/access-control.md` + `docs/security/*`.
+- Operación: `docs/runbook/*` + `compose.yaml` + `.github/workflows/*`.
+- Si un cambio impacta docs/contratos/operación, **actualizar en el mismo commit**.
+- Si hay docs viejos que contradicen v6, dejarlos como stubs **OBSOLETO** que apunten a la ruta nueva.
+
+---
+
+## Testing / Comandos (mínimo)
+
+- Backend unit: `pnpm test:backend:unit`
+- CI local full core: `pnpm stack:core`
+- CI e2e: `pnpm e2e`
+- Export/regen contratos:
+  - `pnpm contracts:export`
+  - `pnpm contracts:gen`
+
+---
+
+## Git (flujo v6)
+
+- No crear ramas/PRs por defecto. Trabajar en la rama actual.
+- 1 tarea/prompt = 1 commit (salvo que el prompt pida dividir).
+- Usar Conventional Commits.
+- No hacer push salvo pedido explícito.
+```
+
+---
+
+## 2) `docs/project/informe_de_sistemas_rag_corp.md`
+
+````md
 # Informe de Sistemas — RAG Corp (Definitivo)
 
 **Autor:** Santiago Scacciaferro  
-**Fecha:** 2026-01-21 (America/Argentina/Cordoba)  
-**Repo:** `rag-corp`  
-**Fuente de verdad (producto, Especificación Base):** `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`  
-**Fuente de verdad (arquitectura / decisiones):** `docs/architecture/overview.md` + `docs/architecture/adr/ADR-001..ADR-007`  
-**Fuente de verdad (contratos):** `shared/contracts/openapi.json` + `docs/reference/api/http-api.md`  
-**Fuente de verdad (datos):** `apps/backend/alembic/` + `docs/reference/data/postgres-schema.md`
+**Fecha:** 2026-02-03 (America/Argentina/Cordoba)  
+**Repo:** `rag-corp`
+
+## Fuente de verdad (anti-drift)
+
+> Regla: si un documento contradice a otro, manda el de **prioridad más alta**.
+
+1. **Sistema v6 (este documento)**: `docs/project/informe_de_sistemas_rag_corp.md`
+2. **Contrato API**: `shared/contracts/openapi.json` (+ `shared/contracts/src/generated.ts`)
+3. **Datos**: `apps/backend/alembic/versions/*` + `docs/reference/data/postgres-schema.md`
+4. **Runtime real**: `compose.yaml`, `.github/workflows/*`, `apps/frontend/next.config.mjs`, `apps/backend/app/main.py` + `apps/backend/app/api/*`
+5. **Decisiones**: `docs/architecture/overview.md` + `docs/architecture/adr/*.md`
+
+## Fuentes base (HISTORICAL)
+
+- Producto/Especificación base (origen v4):
+  - `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md`
+  - `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`
 
 ---
 
 ## 1. Introducción y Alcance (El “Contrato”)
 
-### 1.1 Definición del problema (AS-IS)
+### 1.1 Problema (AS-IS)
 
-En su baseline actual, RAG Corp ya resuelve la parte “técnica pesada” de un sistema RAG:
+RAG Corp ya resuelve la parte “técnica pesada” de un sistema RAG:
 
-- UI Next.js tipo “Sources” (estilo NotebookLM) para documentos y Q&A.
-- Backend FastAPI con **Clean Architecture** (Domain / Application / Infrastructure).
+- UI Next.js tipo “Sources” (estilo NotebookLM) para documentos + Q&A.
+- Backend FastAPI con **Clean Architecture** (Domain / Application / Infrastructure + Interfaces).
 - PostgreSQL + pgvector para chunks y embeddings.
-- Ingesta y upload (PDF/DOCX) con pipeline **asíncrono** (Redis/RQ/worker).
-- Dual auth (JWT para usuarios + API keys con RBAC para integraciones).
-- Observabilidad y CI con E2E.
+- Ingesta/upload con pipeline **asíncrono** (Redis/RQ/worker) cuando se activa el perfil.
+- Dual auth: JWT para usuarios + API keys con RBAC para integraciones.
+- Observabilidad y CI con suites unit/integration/e2e.
 
-**Pain points (negocio/seguridad):**
+**Pain points de negocio/seguridad** (lo que hace “empresa” a un RAG):
 
-- No existía (históricamente) el concepto de **Workspace** (\"Sección\" solo UI) como unidad de organización y gobernanza.
-- Sin Workspaces, el conocimiento quedaba “global”, lo que:
-  - rompe el modelo mental empresarial (áreas/periodos),
-  - dificulta ownership (“no tocar lo de otro”),
-  - y eleva el riesgo de mezcla de fuentes (fuga de información).
-- En producción, hay requisitos explícitos de hardening (fail-fast, CSP, métricas protegidas, etc.) que deben quedar auditables.
+- Sin **Workspaces** como unidad real de gobernanza, el conocimiento tiende a quedar “global”.
+- Eso rompe el modelo mental empresarial (áreas/periodos), dificulta ownership y aumenta el riesgo de mezcla de fuentes.
+- En producción, hay requisitos explícitos de hardening (fail‑fast, métricas protegidas, límites, auditoría) que deben ser verificables.
 
-### 1.2 Objetivos del proyecto (SMART)
+### 1.2 Objetivo (visión)
 
-**Objetivo general (visión):**
-Construir una “**NotebookLM empresarial**” donde el conocimiento se gestione por **Workspaces** (\"Sección\" solo UI) con permisos claros (owner/admin vs viewers), consultas siempre acotadas a un workspace, y trazabilidad operable (auditoría + observabilidad + CI).
+Construir una “**NotebookLM empresarial**” donde el conocimiento se gestione por **Workspaces** ("Sección" es solo copy de UI) con:
 
-**Objetivos específicos (medibles):**
+- permisos claros (admin/owner vs viewers),
+- consultas siempre acotadas al workspace,
+- trazabilidad operable (auditoría + observabilidad + CI),
+- y contratos OpenAPI como anti‑drift FE/BE.
 
-1. Implementar Workspaces completos (CRUD + publish/share + archive) con visibilidad `PRIVATE | ORG_READ | SHARED`.
-2. Garantizar **scoping total** por workspace: documentos, chunks, retrieval y ask/chat.
-3. Implementar y centralizar políticas de acceso (Domain) con matriz exhaustiva de tests.
-4. Cumplir RNF de seguridad en prod: **fail-fast** para defaults inseguros, cookies secure, CSP sin `unsafe-inline` (o nonces/hashes), `/metrics` protegido.
-5. CI con `e2e-full` cubriendo flujo end-to-end (admin): `login → create workspace → upload → READY → ask scoped`.
+### 1.3 Alcance
 
-### 1.3 Alcance (Scope)
+**In‑Scope**
 
-**In-Scope:**
+- Workspaces: CRUD + publish/share + archive.
+- Scoping total por workspace: documentos, chunks, retrieval, ask/chat.
+- Permisos: owner/admin write; viewers read+chat.
+- Documentos: upload/list/get/delete/reprocess (scoped) + estados `PENDING/PROCESSING/READY/FAILED`.
+- Auditoría de eventos críticos (auth/workspace/doc) con metadata utilizable.
+- Operación: health/ready/metrics + runbooks.
+- Contratos OpenAPI + cliente generado (Orval).
 
-- Workspaces (técnicamente “Workspace”; “Sección” solo copy de UI).
-- Gobernanza: owner/admin write; viewers read+chat.
-- Visibilidad: `PRIVATE`, `ORG_READ`, `SHARED` (+ `workspace_acl`).
-- Documentos dentro de workspace: upload/list/get/delete/reprocess (scoped) + estados `PENDING/PROCESSING/READY/FAILED`.
-- RAG acotado: ask/query/stream siempre con `workspace_id` y filtrado en retrieval.
-- Auditoría de eventos críticos (auth/workspace/doc) con trazabilidad por workspace.
-- Observabilidad (health/ready/metrics/logs) para API y worker.
-- Contratos OpenAPI + cliente generado (Orval) como anti-drift FE/BE.
+**Out‑of‑Scope (por ahora)**
 
-**Out-of-Scope (por ahora):**
-
-- Multi-tenant por empresa.
+- Multi‑tenant por empresa.
 - SSO/LDAP.
 - OCR avanzado obligatorio para PDFs escaneados.
-- Agente de escritorio / sincronización automática de carpetas locales.
+- Agente de escritorio/sync automático de carpetas.
 - Workflows complejos de aprobación/firma.
 
 ### 1.4 Supuestos y restricciones
 
-**Supuestos:**
+**Supuestos**
 
-- Organización única (single-tenant) con usuarios `admin/employee`.
-- Embeddings y LLM se proveen por Google GenAI (con fakes habilitables para tests/desarrollo).
-- Los binarios pueden vivir en S3-compatible (MinIO on-prem o S3 cloud).
+- Organización única (single‑tenant) con usuarios `admin/employee`.
+- LLM y embeddings provistos por Google GenAI, con fakes habilitables en dev/test.
+- Binarios en storage S3‑compatible (MinIO on‑prem o S3 cloud).
 
-**Restricciones:**
+**Restricciones**
 
-- El sistema debe mantenerse compatible con operación local vía Docker Compose.
-- Debe respetarse Clean Architecture + ports/adapters (no “atajos” acoplados a FastAPI/DB en Domain).
-- Errores HTTP deben seguir RFC7807 (`application/problem+json`).
+- Operación local reproducible vía Docker Compose.
+- Clean Architecture con límites estrictos (Domain puro; Infrastructure implementa puertos; Interfaces adapta HTTP).
+- Errores HTTP siguiendo RFC7807 (`application/problem+json`).
 
 ### 1.5 Glosario mínimo
 
-- **Workspace (\"Sección\" solo UI):** contenedor lógico de documentos y chat; unidad de permisos y scoping.
-- **Owner:** usuario asignado al workspace (provisionado por admin); controla escritura/borrado/reprocess (junto a admin).
+- **Workspace ("Sección" solo UI):** contenedor lógico de documentos y chat; unidad de permisos y scoping.
+- **Owner:** usuario dueño del workspace; controla escritura (junto a admin).
 - **Visibility:** `PRIVATE | ORG_READ | SHARED`.
-- **ACL:** lista explícita (`workspace_acl`) para visibilidad `SHARED`.
+- **ACL:** lista explícita (`workspace_acl`) para `SHARED`.
 - **RAG:** retrieval de chunks + LLM para responder con fuentes.
 - **Chunk:** fragmento de documento con embedding vectorial.
-- **RFC7807:** formato estándar de error JSON.
+- **RFC7807:** estándar de error JSON.
 
 ---
 
-## 2. Stack Tecnológico y Arquitectura (Los Cimientos)
+## 2. Stack y Arquitectura (Los Cimientos)
 
 ### 2.1 Arquitectura de software
 
-**Patrón:** Clean Architecture (capas Domain / Application / Infrastructure + API).  
-**Justificación:**
+**Patrón:** Clean Architecture (Domain / Application / Infrastructure / Interfaces).  
+**Evidencia:** `apps/backend/app/README.md` y READMEs hoja por capa.
 
-- Aísla reglas de negocio (política de acceso, invariantes de workspace) de frameworks.
-- Permite reemplazar proveedores (LLM, embeddings, storage, queue) con adapters.
-- Facilita tests unitarios por capa y evita drift (contratos explícitos).
+**Regla de dependencia**
 
-**Límites (regla de dependencia):**
-
-- Domain no depende de Application/Infrastructure/API.
-- Application depende de Domain, pero no de Infrastructure.
-- Infrastructure implementa ports definidos por Domain/Application.
-- API usa DI (container) y orquesta casos de uso.
+- Domain no depende de Application/Infrastructure/Interfaces.
+- Application depende de Domain, no de Infrastructure.
+- Infrastructure implementa puertos definidos por Domain.
+- Interfaces adapta HTTP y traduce errores a RFC7807.
 
 ### 2.2 Componentes principales
 
-- **Frontend (Next.js)**: navegación, selector de workspace, UI Sources/Chat, panel admin.
+- **Frontend (Next.js)**: navegación, selector de workspace, Sources/Chat, panel admin.
 - **Backend API (FastAPI)**: auth, workspaces, documents, ask/query/stream, métricas.
 - **Worker (RQ)**: procesamiento asíncrono de documentos (extract → chunk → embed → persist).
 - **PostgreSQL + pgvector**: almacenamiento relacional + vector store.
 - **Redis**: cola RQ (y opcional cache).
 - **S3/MinIO**: almacenamiento de binarios.
-- **Observabilidad**: Prometheus/Grafana (perfil opcional).
+- **Observabilidad**: Prometheus/Grafana (+ exporter) por perfil.
 
-### 2.3 Diagrama de despliegue (Deployment)
+### 2.3 Diagrama de despliegue (modelo Compose)
 
 ```mermaid
 flowchart LR
@@ -130,14 +313,15 @@ flowchart LR
   end
 
   subgraph Docker[Docker Compose / Infra]
-    W[web :3000\n(profile e2e)]
+    W[web :3000\n(profile ui/e2e)]
     API[rag-api :8000]
-    WK[worker :8001 (readyz)]
-    R[(redis :6379\n(profile worker/full))]
+    WK[worker :8001 (readyz)\n(profile worker/rag/full)]
+    R[(redis :6379\n(profile worker/rag/full))]
     DB[(postgres+pgvector :5432)]
     S3[(minio :9000\nconsole :9001\n(profile storage/full))]
     P[prometheus :9090\n(profile observability/full)]
-    G[grafana :3001->3000\n(profile observability/full)]
+    G[grafana :3000\n(profile observability/full)]
+    X[postgres-exporter\n(profile observability/full)]
   end
 
   B -->|HTTP| W
@@ -152,62 +336,74 @@ flowchart LR
   WK -->|dequeue jobs| R
   WK -->|get object| S3
 
+  DB --> X
   API -->|/metrics| P
   WK -->|/metrics (si aplica)| P
+  X --> P
   P --> G
 ```
+````
 
-### 2.4 Stack tecnológico (versiones)
+### 2.4 Stack tecnológico (evidencia en repo)
 
-**Frontend:**
+**Tooling / monorepo**
+
+- Node: `>=20.11.0` (`package.json`)
+- pnpm: `10.x` (`package.json`)
+- Turbo: `2.0.0` (`package.json`)
+
+**Frontend** (`apps/frontend/package.json`)
 
 - Next.js `16.1.1`
 - React `19.2.3`
 - TypeScript `^5`
 - Tailwind `^4`
 
-**Backend:**
+**Backend** (`apps/backend/requirements.txt`)
 
-- Python `3.11` (target)
+- Python target `3.11` (CI)
 - FastAPI `0.128.0`
 - Uvicorn `0.40.0`
 - SQLAlchemy `>=2.0`
 - Alembic `>=1.13`
 - psycopg `3.3.2`
 
-**Datos:**
+**Datos** (`compose.yaml`)
 
-- PostgreSQL `16`
-- pgvector `0.8.1` (imagen compose)
+- PostgreSQL `16` (imagen pg16)
+- pgvector (imagen `pgvector/pgvector:0.8.1-pg16-trixie`)
 
-**IA:**
+**IA** (`apps/backend/requirements.txt`)
 
 - google-genai `1.57.0`
-- Embeddings: `text-embedding-004` (768D)
+- Embeddings: `text-embedding-004` (según implementación de servicios)
 
-**Queue/Cache:**
+**Queue/Storage/Observabilidad** (`compose.yaml`)
 
 - Redis `7-alpine`
 - RQ `>=1.16.0`
+- MinIO (S3-compatible)
+- Prometheus + Grafana + postgres-exporter (perfil observability/full)
 
-**Observabilidad (opcional):**
+### 2.5 Decisiones de arquitectura (ADRs)
 
-- Prometheus `v2.47.0`
-- Grafana `10.2.0`
+Referencia: `docs/architecture/adr/*.md`.
 
-### 2.5 Decisiones de arquitectura relevantes (ADRs)
-
-- **ADR-001:** Clean Architecture como guía.
-- **ADR-002:** Postgres + pgvector como vector store.
-- **ADR-003:** Google Gemini/GenAI como provider.
-- **ADR-004:** Naming: “Workspace” técnico; “Sección” UI-only.
-- **ADR-005:** Unicidad: `unique(owner_user_id, name)`; 409 en conflicto.
-- **ADR-006:** Archive/soft-delete: `archived_at` en workspaces; docs soft-delete; excluidos por defecto.
-- **ADR-007:** Legacy endpoints: nested es canónico; legacy sobrevive temporalmente pero requiere `workspace_id` explícito (sin “workspace implícito”).
+- ADR-001: Clean Architecture.
+- ADR-002: Postgres + pgvector.
+- ADR-003: Google GenAI.
+- ADR-004: Naming “Workspace” técnico; “Sección” UI-only.
+- ADR-005: Unicidad `unique(owner_user_id, name)` → 409.
+- ADR-006: Archive/soft-delete.
+- ADR-007: Endpoints alternativos (no-nested) como DEPRECATED.
+- ADR-008/009: separación admin/employee.
+- ADR-010: política de prompts + hard scoping.
 
 ---
 
 ## 3. Modelo de Datos (El Corazón)
+
+> Fuente canónica: `docs/reference/data/postgres-schema.md` + `apps/backend/alembic/versions/*`.
 
 ### 3.1 DER lógico (conceptual)
 
@@ -220,259 +416,50 @@ erDiagram
   DOCUMENTS ||--o{ CHUNKS : splits
 ```
 
-### 3.2 Modelo físico (tablas, PK/FK)
+### 3.2 Tablas núcleo (resumen)
 
-**Tablas núcleo:**
+- `users`
+- `workspaces`
+- `workspace_acl`
+- `documents`
+- `chunks`
+- `audit_events`
 
-- `users(id PK)`
-- `workspaces(id PK, owner_user_id FK users.id)`
-- `workspace_acl(workspace_id FK workspaces.id, user_id FK users.id, UNIQUE(workspace_id,user_id))`
-- `documents(id PK, workspace_id FK workspaces.id, uploaded_by_user_id FK users.id)`
-- `chunks(id PK, document_id FK documents.id)`
-- `audit_events(id PK)` (+ metadata)
+### 3.3 Invariantes clave (de negocio)
 
-### 3.3 Diccionario de datos (resumen)
-
-> Referencia completa: `docs/reference/data/postgres-schema.md`
-
-**users**
-
-- `email (TEXT, UNIQUE, NOT NULL)`: identificador de login.
-- `role (TEXT, NOT NULL)`: `admin|employee`.
-- `is_active (BOOLEAN)`: soft-disable.
-
-**workspaces**
-
-- `name (TEXT, NOT NULL)`: nombre visible.
-- `visibility (TEXT, NOT NULL, DEFAULT PRIVATE)`: `PRIVATE|ORG_READ|SHARED`.
-- `owner_user_id (UUID, NOT NULL)`: dueño.
-- `archived_at (TIMESTAMPTZ, NULL)`: archivado.
-- `UNIQUE(owner_user_id, name)`.
-
-**workspace_acl**
-
-- `workspace_id (UUID, NOT NULL)`: referencia.
-- `user_id (UUID, NOT NULL)`: usuario invitado.
-- `access (TEXT, DEFAULT READ)`: por ahora solo READ.
-
-**documents**
-
-- `workspace_id (UUID, NOT NULL)`: scoping obligatorio.
-- `status (TEXT)`: `PENDING|PROCESSING|READY|FAILED`.
-- `storage_key (TEXT)`: ubicación binario en S3/MinIO.
-- `tags (TEXT[])`: filtros.
-- `deleted_at (TIMESTAMPTZ)`: soft delete.
-
-**chunks**
-
-- `embedding vector(768)`: vector para búsqueda.
-- `content TEXT`: texto chunk.
-
-### 3.4 Índices y performance
-
-Índices recomendados/clave:
-
-- `ix_documents_workspace_id` (scoping).
-- Índices por `workspaces(visibility, archived_at)`.
-- Índices por `workspace_acl(workspace_id)` y `workspace_acl(user_id)`.
-- Índices por `chunks(embedding)` (pgvector) y `chunks(document_id)`.
-
-### 3.5 Estrategia legacy / backfill
-
-- Se define un workspace “**Legacy**” para backfillear documentos pre-workspace.
-- La migración debe:
-  - asegurar que exista al menos un admin o usuario inicial,
-  - crear/reusar Legacy,
-  - asignar `documents.workspace_id` y luego hacerlo NOT NULL.
+- Todo workspace tiene `owner_user_id`.
+- Visibilidad: `PRIVATE` (owner/admin), `ORG_READ` (empleados leen + chat), `SHARED` (ACL explícita).
+- Escritura: upload/delete/reprocess solo owner/admin.
+- Admin override total.
+- Scoping explícito: documentos y RAG se acotan por `workspace_id`.
+- Archive/soft-delete: archivados excluidos por default; docs soft-delete según ADR.
 
 ---
 
-## 4. Requerimientos (La Ley)
+## 4. Contratos HTTP y Flujos (La Dinámica)
 
-### 4.1 Matriz de Requerimientos Funcionales (RF)
+> Fuente de verdad del contrato: `shared/contracts/openapi.json`.
 
-> Fuente base: `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md` + `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`.  
-> Priorización MoSCoW enfocada en el alcance actual.
+### 4.1 Prefijos y versionado
 
-| ID    | Nombre               | Descripción                                        | Prioridad | Criterios de aceptación (DoD del requisito)                                                              |
-| ----- | -------------------- | -------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------- |
-| RF-A1 | Auth JWT             | Login/logout/me con JWT.                           | Must      | Login correcto crea sesión; credenciales inválidas → 401 RFC7807; `/auth/me` devuelve usuario.           |
-| RF-A2 | Cookies httpOnly     | UI usa cookies httpOnly para auth.                 | Must      | Cookie httpOnly; logout invalida cookie; no requiere almacenar JWT en localStorage.                      |
-| RF-A3 | API keys + RBAC      | API keys para CI/integraciones con RBAC.           | Must      | Endpoint protegido exige permisos; sin RBAC usa fallback de scopes legacy; actor service queda auditado. |
-| RF-B1 | CRUD Workspaces      | Crear/listar/ver/editar/archivar workspaces.       | Must      | `PRIVATE` por default; unicidad `owner+name`; archivados no aparecen por defecto.                        |
-| RF-B2 | Visibilidad + Share  | `ORG_READ` y `SHARED` (ACL).                       | Must      | ORG_READ visible a empleados; SHARED visible solo en ACL; cambios generan auditoría.                     |
-| RF-B3 | Permisos owner/admin | Owner/admin write; viewers read+chat.              | Must      | Viewer no puede upload/delete/reprocess; 403 RFC7807; admin override funciona.                           |
-| RF-C1 | Upload a workspace   | Upload PDF/DOCX asociado a workspace.              | Must      | Upload crea doc PENDING en workspace; valida MIME/size; encola job.                                      |
-| RF-C2 | Estados documento    | PENDING/PROCESSING/READY/FAILED.                   | Must      | Worker transiciona; FAILED guarda error_message; UI muestra estado.                                      |
-| RF-C3 | CRUD docs scoped     | list/get/delete/reprocess filtrados por workspace. | Must      | Un usuario sin acceso al workspace no puede ver docs ni operar.                                          |
-| RF-C4 | Filtros              | tags + búsqueda + paginación.                      | Should    | Listado filtra por tag/status/q; paginación estable y testeada.                                          |
-| RF-D1 | Ask/query scoped     | ask/query/stream reciben workspace_id.             | Must      | Sin workspace_id → 400; sin acceso → 403; no hay fuentes cruzadas.                                       |
-| RF-D2 | Retrieval scoped     | retrieval solo del workspace.                      | Must      | Test cross-workspace: WS1 nunca devuelve chunks de WS2.                                                  |
-| RF-E1 | Auditoría            | eventos críticos (auth/workspace/doc).             | Must      | Se registran acciones con actor y target; workspace_id en metadata/columna cuando aplica.                |
-| RF-E2 | Consulta auditoría   | admin puede consultar auditoría.                   | Should    | Endpoint admin-only permite filtrar por workspace/actor/acción y paginar.                                |
-| RF-F1 | UI por workspace     | Sources/Chat por workspace.                        | Must      | Existe `/workspaces`; selector; navegación al workspace y sus docs/chat.                                 |
-| RF-F2 | Selector + filtros   | selector global + filtros de sources.              | Should    | Selector persistente; filtros funcionan; estados y permisos visibles.                                    |
-| RF-F3 | UI permission-aware  | acciones visibles solo si corresponde.             | Must      | Owner/admin ven upload/delete/reprocess; viewer no ve acciones o quedan disabled.                        |
+- Prefijo canónico: `/v1`.
+- Alias: `/api/v1` (compatibilidad) en `apps/backend/app/api/versioning.py`.
 
-### 4.2 Matriz de Requerimientos No Funcionales (RNF) — ISO/IEC 25010
+### 4.2 Endpoints operativos
 
-| ID         | Categoría (ISO 25010)   | Requisito                                                 | Métrica / Criterio de aceptación                                                              |
-| ---------- | ----------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| RNF-SEC1   | Security                | JWT_SECRET obligatorio en prod (no default).              | En `ENV=prod`, si secret default/vacío → proceso falla al arrancar (fail-fast).               |
-| RNF-SEC2   | Security                | Si auth queda deshabilitada en prod → fail-fast.          | `ENV=prod` + auth off → abort startup.                                                        |
-| RNF-SEC3   | Security                | Cookies secure en prod.                                   | En prod: `Secure` activo; `SameSite` definido; httpOnly.                                      |
-| RNF-SEC4   | Security                | CSP sin unsafe-inline (o con nonces/hashes).              | Header CSP cumple política definida; test smoke valida header.                                |
-| RNF-SEC5   | Security                | API key no como mecanismo humano en prod.                 | UI no depende de API key persistida; documentación advierte; CI/E2E pueden usar service keys. |
-| RNF-SEC6   | Security                | /metrics protegido en prod.                               | Sin auth → 401/403; con rol/permiso → 200.                                                    |
-| RNF-PERF1  | Performance efficiency  | Pipeline asíncrono.                                       | Upload responde rápido (202) y delega extracción/embeddings al worker.                        |
-| RNF-PERF2  | Performance efficiency  | Límites de upload.                                        | 413 al exceder; 415 mime inválido; valores configurables.                                     |
-| RNF-OPS1   | Reliability/Operability | /healthz y /readyz en API y worker.                       | health/ready responden; CI smoke verifica.                                                    |
-| RNF-OPS2   | Operability             | Métricas Prometheus (API + worker).                       | Métricas exportadas; dashboards opcionales.                                                   |
-| RNF-OPS3   | Operability             | Runbooks y troubleshooting.                               | Existe `docs/runbook/*` actualizado con comandos reproducibles.                               |
-| RNF-MAINT1 | Maintainability         | Respetar capas Clean Architecture.                        | Revisión + tests: Domain no importa FastAPI/SQLAlchemy.                                       |
-| RNF-MAINT2 | Maintainability         | ports/adapters para infra (LLM/embeddings/storage/queue). | Cambiar provider no rompe casos de uso; interfaces estables.                                  |
-| RNF-MAINT3 | Maintainability         | tests unit + e2e-full.                                    | Suite verde: unit + e2e + e2e-full.                                                           |
+Definidos en `apps/backend/app/api/main.py`:
 
-### 4.3 Reglas de negocio (Business Rules)
+- `/healthz`
+- `/readyz`
+- `/metrics` (protegido si `METRICS_REQUIRE_AUTH=1`)
 
-| ID    | Regla                                                                                                                                 |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| RB-01 | Todo Workspace tiene `owner_user_id` (ownership).                                                                                     |
-| RB-02 | Visibilidad: `PRIVATE` (owner/admin), `ORG_READ` (todos leen + chat), `SHARED` (ACL explícita).                                       |
-| RB-03 | Escritura (upload/delete/reprocess) solo owner/admin.                                                                                 |
-| RB-04 | Admin override total (puede operar en workspaces ajenos).                                                                             |
-| RB-05 | Contexto explícito: toda operación de documentos y RAG es scoped por `workspace_id`.                                                  |
-| RB-06 | Archive/soft-delete: workspace archivado se excluye por defecto; docs asociados se soft-deletean o quedan inaccesibles según ADR-006. |
-| RB-07 | Unicidad: `unique(owner_user_id, name)`; colisión → 409.                                                                              |
-| RB-08 | Provisionamiento de workspaces es admin-only (ADR-009).                                                                               |
+### 4.3 Rutas canónicas vs alternativos
 
-### 4.4 Trazabilidad (RF ↔ UC ↔ Endpoints ↔ Tests)
+- Canónico (nested): `/v1/workspaces/{workspace_id}/...`
+- Alternativos no-nested existen para compatibilidad: `/v1/documents/...`, `/v1/ask`, `/v1/query`.
+  - Deben requerir `workspace_id` explícito (en path o body) y se consideran **DEPRECATED**.
 
-| RF          | UC principales     | Endpoints canónicos              | Tests                                   |
-| ----------- | ------------------ | -------------------------------- | --------------------------------------- |
-| RF-B1/B2/B3 | UC-02..UC-07/UC-11 | `/v1/workspaces*`                | unit: policy/use_cases; e2e: workspaces |
-| RF-C1..C3   | UC-05/UC-06/UC-12  | `/v1/workspaces/{id}/documents*` | unit: doc use cases; e2e: upload scoped |
-| RF-D1/D2    | UC-07              | `/v1/workspaces/{id}/ask*`       | unit: answer_query; e2e: ask scoped     |
-| RF-E1/E2    | UC transversales   | `/v1/admin/audit`                | unit: audit repo; integration smoke     |
-| RF-A\*      | UC-01/UC-09        | `/auth/*`                        | unit: auth; e2e: login                  |
-
----
-
-## 5. Modelo Funcional (La Dinámica)
-
-### 5.1 Diagrama de casos de uso (alto nivel)
-
-```mermaid
-flowchart TB
-  Admin((Admin))
-  Emp((Employee))
-  Worker((Worker))
-  Service((Service API Key))
-
-  UC1[UC-01 Login/Me/Logout]
-  UC2[UC-02 Crear Workspace]
-  UC3[UC-03 Publicar ORG_READ]
-  UC4[UC-04 Compartir SHARED]
-  UC10[UC-10 Listar Workspaces visibles]
-  UC11[UC-11 Archivar/Unarchivar Workspace]
-
-  UC5[UC-05 Upload documento]
-  UC6[UC-06 Procesar documento (async)]
-  UC12[UC-12 List/Get/Delete/Reprocess docs]
-
-  UC7[UC-07 Ask/Chat scoped]
-
-  UC9[UC-09 Admin: gestión usuarios]
-  UC8[UC-08 Auditoría]
-
-  Emp --> UC1
-  Emp --> UC2
-  Emp --> UC10
-  Emp --> UC7
-  Emp --> UC5
-
-  Admin --> UC1
-  Admin --> UC2
-  Admin --> UC3
-  Admin --> UC4
-  Admin --> UC9
-  Admin --> UC11
-  Admin --> UC12
-  Admin --> UC8
-
-  Service --> UC5
-  Service --> UC7
-
-  Worker --> UC6
-  UC5 --> UC6
-```
-
-### 5.2 Especificación de casos de uso (plantilla + principales)
-
-> Formato resumido: precondiciones / flujo / alternativos / postcondiciones / aceptación.
-
-#### UC-01 — Login (Employee/Admin)
-
-- **Pre:** usuario activo.
-- **Flujo:** enviar credenciales → validar password (Argon2) → emitir JWT cookie → sesión activa.
-- **Alternativos:** credenciales inválidas → 401 RFC7807.
-- **Post:** actor autenticado.
-
-#### UC-02 — Crear Workspace (Admin)
-
-- **Pre:** autenticado con rol admin.
-- **Flujo:** enviar name/description (+ opcional `owner_user_id`) → validar → crear con `visibility=PRIVATE` y `owner_user_id` asignado por admin → auditar `workspace.create`.
-- **Alternativos:** name inválido → 400; conflicto unique → 409; no admin → 403.
-- **Post:** workspace creado.
-
-#### UC-03 — Publicar a ORG_READ (Owner/Admin)
-
-- **Pre:** workspace existe y no archivado.
-- **Flujo:** cambiar visibility→ORG_READ → auditar `workspace.publish`.
-- **Alternativos:** no owner/admin → 403; workspace archivado → 404/409 según regla.
-- **Post:** todos los employees pueden ver + chatear.
-
-#### UC-04 — Compartir (SHARED) (Owner/Admin)
-
-- **Pre:** workspace existe.
-- **Flujo:** recibir lista de user_ids → validar → reemplazar ACL → set visibility=SHARED → auditar `workspace.share`.
-- **Alternativos:** user_ids inválidos → 400; no owner/admin → 403.
-- **Post:** solo usuarios listados pueden ver/chatear.
-
-#### UC-05 — Upload documento (Owner/Admin)
-
-- **Pre:** workspace existe; actor con permiso write.
-- **Flujo:** upload → validar MIME/size → guardar binario (S3) → crear doc `PENDING` → encolar job → responder 202.
-- **Alternativos:** 403 sin permiso; 415 mime; 413 size; 503 storage.
-- **Post:** doc PENDING.
-
-#### UC-06 — Procesar documento (Worker)
-
-- **Pre:** doc PENDING.
-- **Flujo:** set PROCESSING → descargar binario → extraer texto → chunk+embed → persist chunks → set READY.
-- **Alternativos:** error → FAILED con error_message; idempotencia si ya READY/PROCESSING.
-- **Post:** READY/FAILED.
-
-#### UC-07 — Ask/Chat scoped (Employee/Admin)
-
-- **Pre:** acceso al workspace; docs READY opcionales.
-- **Flujo:** enviar query con workspace_id → retrieval filtrado por workspace → LLM responde → retorna answer + sources.
-- **Alternativos:** sin acceso → 403; sin docs → respuesta válida sin fuentes.
-- **Post:** respuesta sin contaminación cross-workspace.
-
-#### UC-09 — Admin: gestión usuarios (Admin)
-
-- **Pre:** rol admin.
-- **Flujo:** listar/crear/desactivar/reset-password → auditar `admin.user.*`.
-- **Alternativos:** no admin → 403.
-
-#### UC-11 — Archivar workspace (Owner/Admin)
-
-- **Pre:** workspace existe.
-- **Flujo:** set `archived_at` → excluir de listados default → auditar `workspace.archive`.
-- **Post:** workspace no aparece en paths “activos”.
-
-### 5.3 Diagramas de actividades (swimlanes)
+### 4.4 Flujos principales
 
 #### Upload asíncrono
 
@@ -509,7 +496,7 @@ flowchart LR
 ```mermaid
 flowchart LR
   subgraph U[Usuario/Cliente]
-    A[Escribe pregunta en workspace]
+    A[Pregunta en workspace]
     B[POST /ask (workspace_id)]
   end
 
@@ -525,7 +512,7 @@ flowchart LR
   A --> B --> C --> D --> E --> F --> G --> H
 ```
 
-### 5.4 Máquina de estados (Document)
+#### Máquina de estados (Document)
 
 ```mermaid
 stateDiagram-v2
@@ -539,219 +526,106 @@ stateDiagram-v2
 
 ---
 
-## 6. Modelo Estructural (El Código)
+## 5. Seguridad y Control de Acceso
 
-### 6.1 Diagrama de clases (núcleo Domain + políticas)
+Fuente de verdad: `docs/reference/access-control.md` + `apps/backend/app/identity/*`.
 
-```mermaid
-classDiagram
-  class User {
-    +UUID id
-    +str email
-    +Role role
-    +bool is_active
-  }
+### 5.1 Mecanismos
 
-  class Workspace {
-    +UUID id
-    +str name
-    +str? description
-    +Visibility visibility
-    +UUID owner_user_id
-    +datetime? archived_at
-  }
+- **JWT (usuarios)** con roles `admin/employee`.
+- **API Keys** (`X-API-Key`) para integraciones.
+- **RBAC** para API keys (roles + permisos) configurable.
+- **Principal unificado** (USER/SERVICE).
 
-  class WorkspaceAclEntry {
-    +UUID workspace_id
-    +UUID user_id
-    +Access access
-  }
+### 5.2 Políticas de acceso a Workspaces
 
-  class Document {
-    +UUID id
-    +UUID workspace_id
-    +str title
-    +Status status
-    +str? storage_key
-    +datetime? deleted_at
-    +list[str] tags
-  }
+Fuente de verdad: `apps/backend/app/domain/workspace_policy.py`.
 
-  class Chunk {
-    +UUID id
-    +UUID document_id
-    +int chunk_index
-    +str content
-    +vector embedding
-  }
+Reglas esperadas:
 
-  class WorkspacePolicy {
-    +can_read(actor, workspace, acl) bool
-    +can_write(actor, workspace) bool
-  }
+- Read: según `visibility` + ACL + rol.
+- Write: owner o admin.
+- Admin override.
 
-  class DocumentRepository {
-    <<interface>>
-    +list_documents(workspace_id, ...)
-    +get_document(workspace_id, document_id)
-    +create_document(...)
-    +delete_document(...)
-  }
+### 5.3 Hardening y fail-fast
 
-  class WorkspaceRepository {
-    <<interface>>
-    +create_workspace(...)
-    +list_workspaces(...)
-    +get_workspace(...)
-    +update_workspace(...)
-    +archive_workspace(...)
-  }
-
-  class WorkspaceAclRepository {
-    <<interface>>
-    +replace_workspace_acl(workspace_id, user_ids)
-    +list_workspace_acl(workspace_id)
-  }
-
-  User "1" --> "0..*" Workspace : owns
-  Workspace "1" --> "0..*" Document : contains
-  Document "1" --> "0..*" Chunk : splits
-  Workspace "1" --> "0..*" WorkspaceAclEntry : shares
-  WorkspacePolicy ..> Workspace
-  WorkspacePolicy ..> WorkspaceAclEntry
-  WorkspaceRepository ..> Workspace
-  DocumentRepository ..> Document
-  WorkspaceAclRepository ..> WorkspaceAclEntry
-```
-
-### 6.2 Patrones de diseño usados
-
-- **Repository**: repositorios (Postgres) para persistencia.
-- **Ports & Adapters**: `EmbeddingService`, `LLMService`, `FileStoragePort`, `Queue`.
-- **Policy (Domain Service)**: `WorkspacePolicy` centraliza autorización.
-- **Dependency Injection**: `container.py` resuelve wiring.
-- **Template/Strategy**: prompts versionados y estrategias de retrieval (MMR opcional).
-
-### 6.3 Reglas de calidad
-
-- SOLID + separación de responsabilidades.
-- Inputs/Outputs tipados en Application.
-- Errores consistentes (RFC7807) desde API.
-- Contratos OpenAPI exportados y consumidos por FE.
+- Validación de seguridad en producción: `apps/backend/app/crosscutting/config.py`.
+- Métricas protegidas si aplica (`METRICS_REQUIRE_AUTH=1`).
+- Límites y validaciones: ver `docs/reference/limits.md`.
 
 ---
 
-## 7. Diseño de Interfaz (La Experiencia)
+## 6. Operación, CI y Runbooks
 
-### 7.1 Mapa de navegación (Sitemap)
+### 6.1 Docker Compose (perfiles)
 
-- `/login`
-- `/workspaces`
-  - Crear workspace (solo admin)
-  - Listar workspaces visibles
-- `/workspaces/{id}` (Sources)
-  - Listar documentos (scoped)
-  - Upload (solo owner/admin)
-  - Reprocess/Delete (solo owner/admin)
-  - Filtros (status/tag/q)
-- `/workspaces/{id}/chat`
-  - Ask / Stream scoped
-- `/admin/users` (solo admin)
+Fuente de verdad: `compose.yaml`.
 
-### 7.2 User flows (texto)
+- default: `db + migrate + rag-api`
+- ui: agrega `web`
+- worker/rag: agrega `redis + worker (+ minio + minio-init según perfil)`
+- observability: `prometheus + grafana + postgres-exporter`
+- full: suma rag + observability
+- e2e: stack para Playwright
 
-**Employee (owner):** login → acceder workspace asignado → upload docs → esperar READY → chat → publish/share (opcional) → auditoría.
+### 6.2 CI
 
-**Employee (viewer):** login → ver ORG_READ/SHARED → chat → ver sources → (sin acciones de escritura).
+Fuente de verdad: `.github/workflows/ci.yml`.
 
-**Admin:** login → admin/users → gestionar usuarios → ver/operar en cualquier workspace → auditoría.
+Incluye:
 
-### 7.3 Wireframes (baja fidelidad, ASCII)
+- lint + tests backend
+- lint + tests frontend
+- contracts-check (export OpenAPI + regen cliente + `git diff --exit-code`)
+- e2e / e2e-full con docker compose
 
-**/workspaces**
+### 6.3 Runbooks
 
-```
-+---------------------------------------------------+
-| Workspaces  [+ Nuevo]                             |
-| [Buscar...]                                       |
-|---------------------------------------------------|
-| (chip) PRIVATE/ORG_READ/SHARED  (owner?)           |
-|  - Contaduría — Enero   [Abrir]   [Archive]        |
-|  - Ventas — Q1          [Abrir]                    |
-+---------------------------------------------------+
-```
-
-**/workspaces/{id} (Sources)**
-
-```
-+---------------------------------------------------+
-| < Selector workspace >    [Upload]* [Share]*       |
-| Filtros: [status] [tag] [q...]                    |
-|---------------------------------------------------|
-| Doc A   READY   [Ver] [Reprocess]* [Delete]*       |
-| Doc B   FAILED  [Ver error] [Reprocess]*           |
-+---------------------------------------------------+
-* solo owner/admin
-```
-
-**/workspaces/{id}/chat**
-
-```
-+---------------------------------------------------+
-| Workspace: Contaduría — Enero                      |
-|---------------------------------------------------|
-| Chat                                               |
-| Q: ...                                              |
-| A: ...                                              |
-| Sources: [DocA#3] [DocA#5]                          |
-+---------------------------------------------------+
-```
+- `docs/runbook/*` (local-dev, troubleshooting, etc.)
+- Logs/observabilidad: `docs/index/ops.md` y `infra/*`.
 
 ---
 
-## 8. Análisis de Riesgos (La Previsión)
+## 7. Calidad y Testing (DoD técnico)
 
-### 8.1 Matriz de riesgos
+Fuente de verdad: `docs/quality/*` + `apps/backend/pytest.ini` + `apps/frontend/config/*` + `tests/e2e/*`.
 
-| Riesgo                                | Prob. | Impacto | Mitigación (preventiva)                                        | Contingencia (reactiva)                                               |
-| ------------------------------------- | ----- | ------- | -------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Mezcla de fuentes entre workspaces    | Media | Crítico | Scoping obligatorio en DB + repos + use cases + tests cross-WS | Hotfix: bloquear legacy endpoints hasta pasar tests; rollback release |
-| Defaults inseguros en prod            | Media | Crítico | Fail-fast en startup + checklist deploy                        | Rotación de secretos + invalidate sesiones                            |
-| Cambios en SDK/proveedor GenAI        | Media | Alto    | Adapter + contract tests + fakes                               | Switch provider vía adapter; feature flag                             |
-| Costos/latencia por embeddings/LLM    | Media | Alto    | Cache embeddings + límites + observabilidad                    | Throttling + degradación (top_k menor)                                |
-| Archiving/borrado inconsistente       | Baja  | Alto    | ADR-006 + tests de archivo + queries excluyen archivados       | Script de reparación / reindex                                        |
-| Saturación por uploads grandes        | Media | Medio   | MAX_UPLOAD_BYTES + cola + backpressure                         | Pausar uploads; aumentar workers                                      |
-| Drift FE/BE (contratos)               | Media | Alto    | OpenAPI export + Orval + CI gates                              | Bloquear merge si contratos no coinciden                              |
-| Pérdida de historial chat (in-memory) | Alta  | Medio   | (Post-100%) persistencia en Redis/Postgres                     | Aviso en UI; TTL; migración gradual                                   |
+- Unit tests backend: `apps/backend/tests/unit/*` (marker `unit`).
+- Integration tests backend: `apps/backend/tests/integration/*`.
+- Frontend tests: `apps/frontend/__tests__/*` (Jest).
+- E2E: `tests/e2e/tests/*.spec.ts` (Playwright).
+
+Regla anti-drift:
+
+- Si cambia el contrato o rutas, se actualiza OpenAPI y se regenera el cliente.
 
 ---
 
-## 9. CRC + Mapa de Docs
+## 8. Riesgos (la previsión)
 
-### 9.1 CRC (Documentación)
-
-**Componente:** `docs/`  
-**Responsibilities:**
-
-1. Ser la fuente de verdad documental del sistema (contrato, arquitectura, runbooks).
-2. Mantener coherencia con `shared/contracts/openapi.json` y el código.  
-   **Collaborators:** `shared/contracts/openapi.json`, `apps/backend/app/`, `.github/workflows/ci.yml`  
-   **Constraints:** no inventar endpoints; todo path debe existir en OpenAPI.
-
-### 9.2 Docs Map (Source of Truth)
-
-| Tema         | Documento canónico                             | Secundarios                      |
-| ------------ | ---------------------------------------------- | -------------------------------- | --- |
-| Contrato API | `shared/contracts/openapi.json`                | `docs/reference/api/http-api.md` |
-| Sistema      | `docs/project/informe_de_sistemas_rag_corp.md` | `docs/project/release-notes.md`  |     |
-| Arquitectura | `docs/architecture/overview.md`                | `docs/architecture/adr/*`        |
-| Datos        | `docs/reference/data/postgres-schema.md`       | `apps/backend/alembic/`          |
-| Operación    | `docs/runbook/*`                               | `infra/*`                        |
-| Testing/CI   | `docs/quality/testing.md`                      | `.github/workflows/ci.yml`       |
+| Riesgo                            | Prob. | Impacto | Mitigación                                         |
+| --------------------------------- | ----- | ------- | -------------------------------------------------- |
+| Mezcla de fuentes cross-workspace | Media | Crítico | scoping en DB + repos + use cases + tests cross-WS |
+| Drift FE/BE (contratos)           | Media | Alto    | export OpenAPI + Orval + contracts-check en CI     |
+| Defaults inseguros en prod        | Media | Crítico | fail-fast en settings + checklist deploy           |
+| Saturación por uploads grandes    | Media | Medio   | límites + cola + backpressure                      |
+| Cambios de provider GenAI         | Media | Alto    | adapter + fakes + contract tests                   |
 
 ---
 
-## Apéndice A — Criterio de Completitud (Definition of Done global)
+## 9. Mapa de documentación (para navegar sin duplicar)
+
+- Portal docs: `docs/README.md`
+- Backend por capas: `docs/index/backend.md` y `apps/backend/app/README.md`
+- API/contratos: `docs/index/api.md` + `shared/contracts/openapi.json`
+- Datos/migraciones: `docs/index/data.md` + `docs/reference/data/postgres-schema.md`
+- Operación: `docs/index/ops.md` + `docs/runbook/*`
+- Seguridad: `docs/index/security.md` + `docs/reference/access-control.md`
+- Calidad: `docs/index/quality.md`
+
+---
+
+## Apéndice — Definition of Done (global)
 
 El proyecto se considera **100%** cuando se cumplen todos:
 
@@ -760,18 +634,9 @@ El proyecto se considera **100%** cuando se cumplen todos:
 3. Permisos: owner/admin write; viewers read+chat.
 4. UI: Workspaces + Sources/Chat por workspace.
 5. Auditoría por workspace.
-6. Hardening prod: secrets/config, métricas protegidas.
-7. CI `e2e-full` (admin): login → crear workspace → upload → READY → chat.
+6. Hardening prod: secrets/config, métricas protegidas, límites.
+7. CI `e2e-full`: login → crear workspace → upload → READY → ask scoped.
 
----
+```
 
-## Apéndice B — Referencias internas (docs)
-
-- Producto: `.github/informe_de_producto_y_analisis_rag_corp_v4_workspaces_secciones_gobernanza_y_roadmap.md`
-- Análisis: `.github/rag_corp_informe_de_analisis_y_especificacion_v4_secciones.md`
-- Arquitectura: `docs/architecture/overview.md`
-- ADRs: `docs/architecture/adr/ADR-001..ADR-007`
-- API: `docs/reference/api/http-api.md`, `shared/contracts/openapi.json`
-- Datos: `docs/reference/data/postgres-schema.md`, `apps/backend/alembic/`
-- Runbooks: `docs/runbook/*`
-- Calidad: `docs/quality/testing.md`
+```
