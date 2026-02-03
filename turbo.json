@@ -13,7 +13,7 @@
   ],
   "globalEnv": [
     "APP_ENV",
-    "NEXT_PUBLIC_API_URL",
+    "RAG_BACKEND_URL",
     "FAKE_LLM",
     "FAKE_EMBEDDINGS"
   ],

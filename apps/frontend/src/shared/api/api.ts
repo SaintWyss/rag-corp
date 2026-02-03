@@ -1,5 +1,6 @@
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
+  AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes,
     ArchiveWorkspaceRes,
     CreateWorkspaceReq,
     DocumentDetailRes,

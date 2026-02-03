@@ -1,55 +1,113 @@
 /**
- * Name: Next.js Configuration (Development Proxy)
- * 
- * Responsibilities:
- *   - Configure rewrites for transparent proxy to backend
- *   - Avoid CORS in development (same origin for /api/*)
- * 
- * Collaborators:
- *   - Next.js rewrites API
- *   - Backend at http://127.0.0.1:8000
- * 
- * Constraints:
- *   - Defaults to localhost (set NEXT_PUBLIC_API_URL for production)
- * 
- * Notes:
- *   - :path* captures everything after /api/ (greedy match)
- *   - 127.0.0.1 preferred over localhost (avoids IPv6 lookup)
- * 
- * Production:
- *   - Set NEXT_PUBLIC_API_URL to your backend base URL
- *   - Or deploy frontend/backend on same domain
- */
+===============================================================================
+TARJETA CRC — apps/frontend/next.config.mjs (Proxy/Rewrites Next.js)
+===============================================================================
+
+Responsabilidades:
+  - Definir rewrites para proxy transparente hacia el backend.
+  - Evitar CORS en desarrollo usando mismo origen para /api y /auth.
+  - Centralizar el "contrato" de rutas reservadas del frontend: /api, /auth, /v1.
+
+Colaboradores:
+  - Next.js (rewrites API)
+  - Backend API (HTTP)
+
+Patrones aplicados:
+  - Reverse proxy por rewrites (BFF liviano desde el edge del frontend).
+
+Errores y respuestas:
+  - Si el backend no responde, el cliente recibe el error HTTP resultante.
+  - Si falta `RAG_BACKEND_URL`, se usa el fallback según entorno.
+
+Invariantes:
+  - Solo se proxyean prefijos reservados (/api, /auth, /v1).
+  - El browser siempre habla con el mismo origen (no expone URL externa).
+
+Notas:
+  - Server-only: usar `RAG_BACKEND_URL` para no depender de variables públicas.
+  - `/api` y `/auth` quedan reservadas por estos rewrites.
+  - `/v1` es un shim opcional de compatibilidad (si no lo necesitás, se elimina).
+===============================================================================
+*/
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // R: Produce standalone output for the production Docker image.
-  // output: "standalone",
-  // R: Configure URL rewrites for development proxy
+  output: "standalone",
+  /**
+   * Rewrites:
+   * - Permiten que el browser hable "con el mismo origen" (frontend) y Next.js
+   *   reenvía al backend internamente.
+   * - Resultado: evita CORS, simplifica cookies httpOnly (SameSite/Lax) y reduce
+   *   configuración en el backend.
+   *
+   * Importante:
+   * - Este mapping define qué prefijos quedan "reservados" en el frontend.
+   * - El backend debe ser quien implemente auth + política real; aquí solo
+   *   enrutamos (proxy).
+   */
   async rewrites() {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      (process.env.NODE_ENV === "production" ? "http://rag-api:8000" : "http://127.0.0.1:8000");
+    // Fallback razonable para entorno local y docker-compose.
+    // - production: nombre de servicio en red docker.
+    // - dev: localhost.
+    const fallback =
+      process.env.NODE_ENV === "production"
+        ? "http://rag-api:8000"
+        : "http://127.0.0.1:8000";
+
+    /**
+     * `RAG_BACKEND_URL`:
+     * - Variable server-only (preferida).
+     * - Evita usar `NEXT_PUBLIC_*` (que sugiere exposición al cliente).
+     */
+    const backendUrl = (process.env.RAG_BACKEND_URL || fallback).replace(/\/$/, "");
+
+    /**
+     * Orden de rewrites:
+     * - Se evalúan en orden.
+     * - Primero rutas más específicas, luego más generales.
+     */
     return [
+      /**
+       * Auth:
+       * - Mantiene el prefijo /auth en el mismo origen (frontend)
+       * - Forward al backend /auth/*
+       * - Útil para cookies httpOnly en mismo site/origin.
+       */
       {
-        // R: Proxy auth routes directly to backend
-        source: "/auth/:path*",  // R: Match pattern (greedy)
-        destination: `${backendUrl}/auth/:path*`,  // R: Backend URL
+        source: "/auth/:path*",
+        destination: `${backendUrl}/auth/:path*`,
       },
+
+      /**
+       * Admin API:
+       * - En el frontend usamos /api/admin/* pero en backend puede ser /admin/*
+       * - Esto evita “mezclar” en el cliente los prefijos del backend.
+       */
       {
-        // R: Proxy admin routes directly to backend (ADR-008, no /v1 prefix)
         source: "/api/admin/:path*",
         destination: `${backendUrl}/admin/:path*`,
       },
+
+      /**
+       * API pública versionada:
+       * - Frontend llama /api/* y se mapea a /v1/*
+       * - Ventaja: el cliente nunca conoce /v1 (o conoce, pero no depende).
+       */
       {
-        // R: Proxy clean /api/* requests to backend /v1/*
-        source: "/api/:path*",  // R: Match pattern (greedy)
-        destination: `${backendUrl}/v1/:path*`,  // R: Backend URL
+        source: "/api/:path*",
+        destination: `${backendUrl}/v1/:path*`,
       },
+
+      /**
+       * Shim opcional:
+       * - Si alguien consume directamente /v1 desde el frontend (por compat),
+       *   se forwardea igual.
+       * - Si querés mínima superficie, eliminá este rewrite.
+       */
       {
-        // R: Backwards compatibility for any legacy /v1/* usage
-        source: "/v1/:path*",  // R: Match pattern (greedy)
-        destination: `${backendUrl}/v1/:path*`,  // R: Backend URL
+        source: "/v1/:path*",
+        destination: `${backendUrl}/v1/:path*`,
       },
     ];
   },

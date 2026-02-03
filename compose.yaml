@@ -270,7 +270,7 @@ services:
   # ==========================================================
   # UI: Next.js en contenedor (solo perfiles ui/e2e)
   # Nota importante (pro):
-  # - "NEXT_PUBLIC_*" suele quedar embebido en build.
+  # - `RAG_BACKEND_URL` se evalúa en build (rewrites/middleware).
   # - Por eso lo pasamos como build arg.
   # - Default recomendado: http://localhost:8000 (resoluble por tu browser).
   # ==========================================================
@@ -279,7 +279,7 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        RAG_BACKEND_URL: ${RAG_BACKEND_URL:-http://localhost:8000}
 
     networks: [rag_net]
     logging: *default_logging

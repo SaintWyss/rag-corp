@@ -38,7 +38,7 @@ spec:
               containerPort: 3000
               protocol: TCP
           env:
-            - name: NEXT_PUBLIC_API_URL
+            - name: RAG_BACKEND_URL
               value: "http://ragcorp-backend:8000"
           resources:
             requests:

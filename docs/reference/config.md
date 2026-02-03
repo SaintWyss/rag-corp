@@ -73,3 +73,8 @@ Cada fila corresponde a un campo de `Settings` y su variable de entorno asociada
 Estas variables no están en `Settings`, pero son leídas directamente por módulos del backend:
 - `RBAC_CONFIG` (JSON) se lee en `apps/backend/app/identity/rbac.py` y se valida en producción desde `apps/backend/app/crosscutting/config.py`.
 - `DOCUMENT_QUEUE_NAME` y `WORKER_HTTP_PORT` se leen en `apps/backend/app/worker/worker.py` para configurar el worker.
+
+## Variables del frontend
+Estas variables son leídas por el frontend:
+- `RAG_BACKEND_URL` define el backend para `next.config.mjs` (rewrites).
+- `JWT_COOKIE_DOMAIN` (opcional) permite borrar cookies con `Domain` desde el middleware.

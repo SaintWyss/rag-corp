@@ -1,21 +1,15 @@
-import "@testing-library/jest-dom";
+/**
+===============================================================================
+TARJETA CRC — apps/frontend/jest.setup.ts (Shim -> config/jest.setup.ts)
+===============================================================================
 
-// Mock next/navigation
-jest.mock("next/navigation", () => ({
-    useRouter: () => ({
-        push: jest.fn(),
-        replace: jest.fn(),
-        prefetch: jest.fn(),
-        back: jest.fn(),
-    }),
-    usePathname: () => "/",
-    useSearchParams: () => new URLSearchParams(),
-}));
+Responsabilidades:
+  - Mantener compatibilidad con setup en la raiz.
+  - Importar el setup real desde /config.
 
-// Mock fetch globally
-global.fetch = jest.fn();
+Colaboradores:
+  - Jest
+===============================================================================
+*/
 
-// Reset mocks between tests
-beforeEach(() => {
-    jest.clearAllMocks();
-});
+import "./config/jest.setup";

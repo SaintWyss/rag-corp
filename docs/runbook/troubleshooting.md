@@ -57,7 +57,7 @@ curl http://localhost:8000/healthz
 ```
 
 **Soluciones:**
-- Ver `NEXT_PUBLIC_API_URL`
+- Ver `RAG_BACKEND_URL`
 - Verificar CORS (`ALLOWED_ORIGINS`)
 
 ---
@@ -103,4 +103,3 @@ Usar rutas canonicas `/v1/workspaces/{workspace_id}/...`.
 docker compose logs -f rag-api
 docker compose logs -f worker
 ```
-

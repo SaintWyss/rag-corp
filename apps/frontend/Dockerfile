@@ -4,9 +4,10 @@
 # Class: apps/frontend/Dockerfile (Build + Runtime de Next.js en monorepo pnpm)
 #
 # Responsibilities:
-# - Construir la app Next.js (stage builder) con pnpm workspaces.
-# - Generar una imagen final (stage production) con solo dependencias runtime.
-# - Inyectar NEXT_PUBLIC_API_URL en build para variables públicas del frontend.
+# - Construir la app Next.js (standalone) con pnpm workspaces.
+# - Proveer target dev con hot reload para uso local.
+# - Generar imagen final minima (standalone) y no-root.
+# - Inyectar RAG_BACKEND_URL en build para rewrites/middleware.
 #
 # Collaborators:
 # - pnpm (workspaces + lockfile)
@@ -15,23 +16,28 @@
 # - Docker buildkit (cache de capas)
 # ============================================================
 
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.6
+
+# Pinned pnpm version for deterministic builds (aligns with root package.json)
+ARG PNPM_VERSION=10.0.0
 
 # ============================================================
-# STAGE 1: builder
-# - Instala deps (incluye dev) para compilar Next.
-# - Copia fuentes y ejecuta `next build`.
+# STAGE: deps
+# - Instala deps del workspace frontend (cacheable).
 # ============================================================
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS deps
+
+ARG PNPM_VERSION
 
 # ----------------------------
-# Configuración de pnpm
+# Configuracion de pnpm
 # ----------------------------
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Habilita corepack para que pnpm quede versionado/gestionado
-RUN corepack enable
+# Habilita corepack y fija version exacta de pnpm
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 # Fija el store de pnpm dentro del contenedor (mejor cache de capas)
 RUN pnpm config set store-dir /pnpm/store
@@ -40,86 +46,92 @@ WORKDIR /app
 
 # ----------------------------
 # Manifiestos del monorepo
-# (primero manifests → mejor cache)
+# (primero manifests -> mejor cache)
 # ----------------------------
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/frontend/package.json apps/frontend/package.json
 COPY shared/contracts/package.json shared/contracts/package.json
 
 # Instala deps necesarias para build (dev + prod)
-# Nota: Podrías hacerlo más eficiente con `--filter` (ver mejoras)
-RUN pnpm install --frozen-lockfile
+# - Filtra solo el workspace frontend y sus deps
+# - Cachea store de pnpm entre builds (BuildKit)
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,sharing=locked \
+    pnpm install --frozen-lockfile --filter ./apps/frontend...
+
+# ============================================================
+# STAGE: builder
+# - Copia fuentes y ejecuta `next build` (standalone).
+# ============================================================
+FROM deps AS builder
 
 # ----------------------------
-# Código fuente
+# Variables server-only para rewrites/middleware (bakeadas en build)
+# ----------------------------
+ARG RAG_BACKEND_URL=http://rag-api:8000
+ENV RAG_BACKEND_URL=${RAG_BACKEND_URL}
+
+# ----------------------------
+# Codigo fuente
 # ----------------------------
 COPY apps/frontend/ ./apps/frontend/
 COPY shared/ ./shared/
 
 # Elimina archivos .env locales para forzar que el build dependa
 # de variables inyectadas por Docker (ARG/ENV) y no por archivos
-RUN rm -f apps/frontend/.env apps/frontend/.env.local
+RUN rm -f apps/frontend/.env apps/frontend/.env.local apps/frontend/.env.* || true
 
-# ----------------------------
-# Variables públicas de Next (bakeadas en build)
-# IMPORTANTE:
-# - NEXT_PUBLIC_* se embebe en el bundle cliente.
-# - Debe pasarse al build si querés que sea efectiva.
-# ----------------------------
-ARG NEXT_PUBLIC_API_URL=http://rag-api:8000
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
-# Compilación de Next.js (desde workspace)
+# Compilacion de Next.js (desde workspace)
 RUN pnpm -C apps/frontend build
 
+# ============================================================
+# STAGE: dev
+# - Hot reload para desarrollo local (no es la imagen final).
+# ============================================================
+FROM deps AS dev
+
+ARG RAG_BACKEND_URL=http://rag-api:8000
+ENV RAG_BACKEND_URL=${RAG_BACKEND_URL}
+
+COPY apps/frontend/ ./apps/frontend/
+COPY shared/ ./shared/
+
+EXPOSE 3000
+CMD ["pnpm", "-C", "apps/frontend", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
 
 # ============================================================
-# STAGE 2: production
-# - Imagen runtime liviana.
-# - Instala solo deps de producción para el workspace frontend.
-# - Copia artefactos build (.next) y static (public).
+# STAGE: production
+# - Runtime minimo usando output: "standalone".
 # ============================================================
 FROM node:20-alpine AS production
-
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-
-RUN corepack enable
-RUN pnpm config set store-dir /pnpm/store
-
-WORKDIR /app
 
 # ----------------------------
 # Variables runtime
 # ----------------------------
+ARG RAG_BACKEND_URL=http://rag-api:8000
+ENV RAG_BACKEND_URL=${RAG_BACKEND_URL}
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME="0.0.0.0"
 
-# ----------------------------
-# Manifiestos mínimos para instalar deps runtime
-# (workspace-aware: frontend + deps del workspace)
-# ----------------------------
-COPY apps/frontend/next.config.mjs ./apps/frontend/next.config.mjs
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/frontend/package.json apps/frontend/package.json
-COPY shared/contracts/package.json shared/contracts/package.json
+# Seguridad: correr como usuario no-root
+RUN addgroup -g 1001 -S app && adduser -S app -u 1001 -G app
 
-# Instala SOLO dependencias de producción para el frontend
-# - `--filter ./apps/frontend...` incluye el workspace y sus deps workspace
-# - Esto asegura que `next` exista en runtime para `pnpm start`
-RUN pnpm install --prod --frozen-lockfile --filter ./apps/frontend...
+WORKDIR /app/apps/frontend
 
 # ----------------------------
-# Copia artefactos build desde builder
+# Copia artefactos standalone desde builder
 # ----------------------------
-COPY --from=builder /app/apps/frontend/.next ./apps/frontend/.next
-COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder --chown=app:app /app/apps/frontend/.next/standalone ./
+COPY --from=builder --chown=app:app /app/apps/frontend/.next/static ./.next/static
+COPY --from=builder --chown=app:app /app/apps/frontend/public ./public
+
+USER app
 
 EXPOSE 3000
 
 # ----------------------------
 # Runtime
 # ----------------------------
-CMD ["pnpm", "-C", "apps/frontend", "start", "--port", "3000", "--hostname", "0.0.0.0"]
+CMD ["node", "server.js"]
