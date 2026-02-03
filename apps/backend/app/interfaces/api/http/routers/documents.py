@@ -503,9 +503,7 @@ def ingest_text(
     if result.error is not None:
         _raise_document_error(result.error)
 
-    return IngestTextRes(
-        document_id=result.document_id, chunks=result.chunks_created
-    )
+    return IngestTextRes(document_id=result.document_id, chunks=result.chunks_created)
 
 
 @router.post(
@@ -543,7 +541,9 @@ def ingest_batch(
         )
         if r.error is not None:
             _raise_document_error(r.error)
-        results.append(IngestTextRes(document_id=r.document_id, chunks=r.chunks_created))
+        results.append(
+            IngestTextRes(document_id=r.document_id, chunks=r.chunks_created)
+        )
         total_chunks += r.chunks_created
 
     return IngestBatchRes(documents=results, total_chunks=total_chunks)

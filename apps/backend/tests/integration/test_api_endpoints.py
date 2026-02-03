@@ -213,7 +213,9 @@ class TestIngestTextEndpoint:
         data = response.json()
         assert data["chunks"] >= 1
 
-    def test_ingest_text_missing_required_field(self, client, workspace_id, auth_headers):
+    def test_ingest_text_missing_required_field(
+        self, client, workspace_id, auth_headers
+    ):
         """R: Should return 422 for missing required fields."""
         # Arrange
         payload = {

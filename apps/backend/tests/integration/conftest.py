@@ -128,9 +128,9 @@ if os.getenv("RUN_INTEGRATION") == "1":
 def pytest_configure(config) -> None:
     if os.getenv("RUN_INTEGRATION") == "1" and hasattr(config.option, "cov_fail_under"):
         config.option.cov_fail_under = 0
-        cov_plugin = config.pluginmanager.getplugin("cov") or config.pluginmanager.getplugin(
-            "_cov"
-        )
+        cov_plugin = config.pluginmanager.getplugin(
+            "cov"
+        ) or config.pluginmanager.getplugin("_cov")
         if cov_plugin is not None:
             if hasattr(cov_plugin, "cov_fail_under"):
                 cov_plugin.cov_fail_under = 0
