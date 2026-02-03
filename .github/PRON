@@ -642,3 +642,41 @@ SALIDA FINAL (en `docs/runbook/repo-cleanup-v6.md`):
 - comandos corridos + resultado
 - TODOs que quedaron
 ------------------------------------------------------------------------------------------------------------
+Actuá como ingeniero senior de frontend (Next.js App Router) y aplicá estrictamente estas normas:
+
+NORMAS OBLIGATORIAS
+- Cada archivo .ts/.tsx/.js/.mjs/.css/.yaml/.yml/.dockerignore/.gitignore debe comenzar con TARJETA CRC (excepto *.json y README.md).
+- Comentarios en español, explicando intención y decisiones. Evitar comentarios obvios.
+- Arquitectura: app/ solo routing+wiring; lógica de API en src/shared/api.
+- No agregar dependencias nuevas.
+- Mantener compatibilidad: si hay shims, re-exportar sin mencionar “legacy”.
+
+OBJETIVO (P0 FIXES)
+1) Corregir Jest para que imports `@/shared/...` apunten a `src/` y no fallen los tests.
+2) Corregir compose.yaml para que por defecto `RAG_BACKEND_URL` dentro del contenedor apunte a `http://rag-api:8000` (no localhost).
+3) Endurecer `src/shared/api/api.ts`: parseo seguro (no JSON.parse ciego), timeout con AbortController, normalización de error RFC7807 y un ApiError como clase.
+
+TAREAS DETALLADAS
+
+A) Jest (config real + shims)
+- Asegurar que haya UN solo “source of truth” para la config real (preferir config/jest.config.js o jest.config.js, pero no duplicar lógica).
+- Si hay shims en la raíz (jest.config.js y jest.setup.ts) deben delegar a la config real.
+- En la config real:
+  - moduleNameMapper:
+      '^@/(.*)$' => '<rootDir>/src/$1'
+  - collectCoverageFrom debe incluir:
+      'src/**/*.{ts,tsx}'
+      'app/**/*.{ts,tsx}'
+    y excluir:
+      '**/*.d.ts'
+      '**/__tests__/**'
+      '**/*.test.{ts,tsx}'
+      '**/*.spec.{ts,tsx}'
+  - testEnvironment: 'jsdom'
+  - setupFilesAfterEnv: que apunte al setup real.
+- Alinear tsconfig.json (archivo JSON, NO requiere CRC) para que:
+  - compilerOptions.paths incluya:
+      "@/*": ["src/*"]
+- Actualizar package.json scripts para usar el config real de jest (si corresponde), e incluir:
+  - "typecheck"
+  - "

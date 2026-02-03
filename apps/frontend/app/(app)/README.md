@@ -33,7 +33,7 @@ Para uso diario de empleados/usuarios.
 
 # =============================================================================
 
-# TARJETA CRC — apps/frontend/app/(app) (Main App Group)
+# TARJETA CRC - apps/frontend/app/(app) (Main App Group)
 
 # =============================================================================
 

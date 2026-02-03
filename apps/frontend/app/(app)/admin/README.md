@@ -18,7 +18,7 @@ Sección dedicada a la **Administración del Sistema**.
 
 # =============================================================================
 
-# TARJETA CRC — apps/frontend/app/(app)/admin (Admin Portal)
+# TARJETA CRC - apps/frontend/app/(app)/admin (Admin Portal)
 
 # =============================================================================
 

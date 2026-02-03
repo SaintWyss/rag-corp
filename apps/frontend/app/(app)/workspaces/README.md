@@ -24,7 +24,7 @@ Rutas anidadas dinámicas bajo `/workspaces/[id]`. El `[id]` corresponde al UUID
 
 # =============================================================================
 
-# TARJETA CRC — apps/frontend/app/(app)/workspaces (User Portal)
+# TARJETA CRC - apps/frontend/app/(app)/workspaces (User Portal)
 
 # =============================================================================
 
