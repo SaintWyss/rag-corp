@@ -1,65 +1,77 @@
-# Scripts de mantenimiento
+# scripts
+
+Llaves de servicio para ejecutar tareas puntuales del backend (bootstrap de admin y export de contratos OpenAPI).
 
 ## 🎯 Misión
-Este directorio contiene herramientas de línea de comandos para tareas administrativas y de documentación del backend.
+Este directorio agrupa **scripts CLI** para tareas administrativas y de documentación que conviene ejecutar **fuera del flujo HTTP**.
 
-**Qué SÍ hace**
-- Crea usuarios admin directamente en Postgres.
-- Exporta el esquema OpenAPI desde la app FastAPI.
-- Permite tareas operativas sin levantar toda la API.
+Recorridos rápidos por intención:
+- **Quiero crear el primer admin en la DB** → `create_admin.py` (también: `pnpm admin:bootstrap`)
+- **Quiero exportar el OpenAPI a JSON** → `export_openapi.py` (también: `pnpm contracts:export`)
 
-**Qué NO hace**
+### Qué SÍ hace
+- Crea usuarios (por defecto **admin**) directamente en Postgres, de forma **idempotente por email**.
+- Exporta el esquema **OpenAPI** desde la app FastAPI a un archivo JSON.
+- Permite operaciones operativas sin levantar el servidor HTTP (se ejecuta como proceso puntual).
+
+### Qué NO hace (y por qué)
 - No reemplaza flujos de negocio ni endpoints HTTP.
-- No contiene migraciones de DB (eso está en `alembic/`).
-
-**Analogía (opcional)**
-- Son “llaves de servicio” para tareas específicas del backend.
+  - **Razón:** estos scripts son tooling; no son parte del contrato público de la API.
+  - **Impacto:** si necesitás validaciones/ACL/observabilidad del runtime, usá casos de uso + routers.
+- No maneja migraciones de DB.
+  - **Razón:** las migraciones son responsabilidad de `alembic/` y del servicio `migrate`.
+  - **Impacto:** si la tabla `users`/esquema no existe, primero corré `pnpm db:migrate`.
 
 ## 🗺️ Mapa del territorio
 | Recurso | Tipo | Responsabilidad (en humano) |
 | :--- | :--- | :--- |
-| 🧰 `create_admin.py` | Script | Crea un usuario admin en la tabla `users` (idempotente). |
-| 🧰 `export_openapi.py` | Script | Exporta el esquema OpenAPI a un archivo JSON. |
-| 📄 `README.md` | Documento | Esta documentación. |
+| `create_admin.py` | Script Python | Crea un usuario (por defecto admin) en `users` con password hasheado (Argon2) y chequeo de existencia por email. |
+| `export_openapi.py` | Script Python | Genera `openapi.json` desde `app.api.main` y lo escribe con `indent=2` (UTF-8). |
+| `README.md` | Documento | Portada + guía de uso de los scripts de este directorio. |
 
 ## ⚙️ ¿Cómo funciona por dentro?
-Input → Proceso → Output:
-- **Input**: argumentos CLI (email, password, output path).
-- **Proceso**: conexión directa a Postgres o generación de OpenAPI desde `app.api.main`.
-- **Output**: usuario creado en DB o archivo JSON con el schema.
+Input → Proceso → Output, con los pasos reales del código.
 
-Tecnologías/librerías usadas aquí:
-- argparse, psycopg, FastAPI (solo para exportar OpenAPI).
+### `create_admin.py`
+- **Input:** flags CLI (`--email`, `--password`, `--role`, `--inactive`) o prompts interactivos si faltan.
+- **Proceso:**
+  1) Lee `DATABASE_URL` (sin eso corta en fail-fast).
+  2) Normaliza email (trim + lower).
+  3) Si no hay `--password`, solicita password con `getpass` y confirma.
+  4) Abre conexión con `psycopg` y consulta `users` por email.
+  5) Si existe, imprime “User already exists …” y termina (idempotencia por email).
+  6) Si no existe, genera `uuid4()`, hashea el password con `hash_password(...)` y hace `INSERT` en `users`.
+- **Output:** prints de resultado (creado / ya existía) + filas persistidas en Postgres.
 
-Flujo típico:
-- `create_admin.py` valida env y escribe en `users`.
-- `export_openapi.py` carga la app y serializa el schema.
+Notas operativas:
+- El script ajusta `sys.path` para poder importar módulos del backend al ejecutarlo como archivo suelto.
+- Si falla por imports (`ModuleNotFoundError`), revisar “Troubleshooting”.
+
+### `export_openapi.py`
+- **Input:** `--out <path>`.
+- **Proceso:**
+  1) Importa la app desde `app.api.main` y resuelve la instancia que expone `.openapi()` (si viene envuelta, la “desenvuelve”).
+  2) Genera el schema con `openapi()`.
+  3) Escribe JSON con `ensure_ascii=False` e `indent=2`.
+- **Output:** archivo JSON en la ruta indicada.
+
+Notas operativas:
+- Importar `app.api.main` ejecuta la carga de settings; normalmente requiere `DATABASE_URL` disponible en el entorno.
+- El script **no valida** el JSON contra el spec OpenAPI 3.x; solo serializa lo que FastAPI expone.
 
 ## 🔗 Conexiones y roles
-- Rol arquitectónico: Tooling.
-- Recibe órdenes de: operadores/desarrolladores por CLI.
-- Llama a: Postgres (psycopg) y `app.api.main`.
-- Contratos y límites: scripts no deben importar infraestructura compleja ni casos de uso.
+- **Rol arquitectónico:** Operational tooling (fuera de Domain/Application/Interfaces).
+- **Recibe órdenes de:** desarrolladores/operadores por CLI (local o dentro de contenedores).
+- **Llama a:**
+  - Postgres vía `psycopg` (SQL directo) en `create_admin.py`.
+  - Composición FastAPI `app.api.main` para generar OpenAPI en `export_openapi.py`.
+- **Reglas de límites:**
+  - Evitar importar infraestructura pesada o casos de uso para “hacer lo mismo que la API”.
+  - Mantener side-effects (conexiones, writes, IO) dentro de `main()`.
 
 ## 👩‍💻 Guía de uso (Snippets)
-```python
-from scripts.export_openapi import _resolve_app
-from app.api.main import app
 
-schema = _resolve_app(app).openapi()
-```
-
-## 🧩 Cómo extender sin romper nada
-- Crea un script nuevo con `argparse` y una función `main()`.
-- Usa imports explícitos y evita side‑effects al importar.
-- Documenta variables de entorno requeridas en este README.
-- Mantén los scripts idempotentes cuando escriban en DB.
-
-## 🆘 Troubleshooting
-- Síntoma: `DATABASE_URL is required` → Causa probable: env faltante → Mirar `.env` y `create_admin.py`.
-- Síntoma: export OpenAPI falla → Causa probable: import error en la app → Mirar `app/api/main.py`.
-- Síntoma: permisos insuficientes en DB → Causa probable: credenciales → Mirar `.env`.
-
-## 🔎 Ver también
-- [API composition](../app/api/README.md)
-- [Alembic](../alembic/README.md)
+### 1) Crear admin (recomendado: vía docker compose)
+```bash
+pnpm admin:bootstrap
+# interactivo: pide Email + Password si no se pasan flags

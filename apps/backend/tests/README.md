@@ -1,55 +1,93 @@
-# Tests (root)
+# tests
+
+El laboratorio del backend: corre suites por nivel y comparte un set único de fixtures/configuración.
 
 ## 🎯 Misión
-Centralizar la estrategia de pruebas del backend: unitarias, integración y e2e con una configuración común (`conftest.py`).
 
-**Qué SÍ hace**
-- Define fixtures compartidas.
-- Organiza tests por nivel (unit/integration/e2e).
-- Configura Pytest para el backend.
+Este directorio centraliza la **estrategia de pruebas del backend** (unit/integration/e2e) y la **configuración compartida** de Pytest para que todas las suites corran con el mismo contrato.
 
-**Qué NO hace**
-- No contiene código de aplicación.
-- No sustituye la documentación de ejecución del backend.
+Recorridos rápidos por intención:
 
-**Analogía (opcional)**
-- Es el “laboratorio” donde se valida que todo funcione.
+* **Quiero feedback rápido sin IO** → `unit/`
+* **Quiero validar DB real + migraciones** → `integration/`
+* **Quiero reservar espacio para flujos completos** → `e2e/`
+
+### Qué SÍ hace
+
+* Define fixtures compartidas en `conftest.py`.
+* Organiza tests por nivel: `unit/`, `integration/`, `e2e/`.
+* Se apoya en `../pytest.ini` para discovery, markers y coverage.
+
+### Qué NO hace (y por qué)
+
+* No contiene código de aplicación.
+
+  * **Razón:** tests solo consumen `app/` como caja negra.
+  * **Impacto:** cambios de negocio van en `app/`; acá solo se validan comportamientos.
+* No sustituye la documentación de ejecución del backend.
+
+  * **Razón:** el setup del stack y los comandos viven en el README del backend.
+  * **Impacto:** si el entorno (DB/settings) está mal, acá solo vas a ver el fallo.
 
 ## 🗺️ Mapa del territorio
-| Recurso | Tipo | Responsabilidad (en humano) |
-| :--- | :--- | :--- |
-| 🐍 `__init__.py` | Archivo Python | Marca el paquete de tests. |
-| 🐍 `conftest.py` | Archivo Python | Fixtures y configuración compartida de Pytest. |
-| 📁 `e2e/` | Carpeta | Tests end‑to‑end (pocos o por definir). |
-| 📁 `integration/` | Carpeta | Tests de integración con DB real. |
-| 📄 `README.md` | Documento | Esta documentación. |
-| 📁 `unit/` | Carpeta | Tests unitarios por capa. |
+
+| Recurso        | Tipo           | Responsabilidad (en humano)                                                |
+| :------------- | :------------- | :------------------------------------------------------------------------- |
+| `__init__.py`  | Archivo Python | Marca el paquete de tests.                                                 |
+| `conftest.py`  | Archivo Python | Fixtures y configuración global de Pytest (env de test, factories, mocks). |
+| `unit/`        | Carpeta        | Tests unitarios (rápidos) por capa.                                        |
+| `integration/` | Carpeta        | Tests de integración con DB real y migraciones.                            |
+| `e2e/`         | Carpeta        | Tests end-to-end (espacio reservado).                                      |
+| `README.md`    | Documento      | Esta documentación.                                                        |
 
 ## ⚙️ ¿Cómo funciona por dentro?
-Input → Proceso → Output:
-- **Input**: comando `pytest`.
-- **Proceso**: Pytest carga fixtures de `conftest.py` y ejecuta tests por carpeta.
-- **Output**: reporte de resultados y coverage según `pytest.ini`.
 
-Tecnologías/librerías usadas aquí:
-- pytest, pytest-cov, pytest-asyncio.
+Input → Proceso → Output, siguiendo el flujo real de Pytest.
 
-Flujo típico:
-- `pytest` descubre tests en `tests/`.
-- Fixtures configuran env y mocks.
-- Coverage se genera según `pytest.ini`.
+* **Input:** comando `pytest ...`.
+* **Proceso:**
+
+  1. Pytest descubre tests en `tests/` según patrones `test_*.py`.
+  2. Carga `tests/conftest.py` y registra fixtures compartidas.
+  3. Ejecuta tests por carpeta (unit/integration/e2e) y aplica markers.
+  4. Genera coverage según `../pytest.ini`.
+* **Output:** reporte en terminal + artefactos de coverage (si están habilitados).
+
+Tecnologías/librerías usadas acá:
+
+* `pytest`, `pytest-cov`, `pytest-asyncio`.
 
 ## 🔗 Conexiones y roles
-- Rol arquitectónico: Tests.
-- Recibe órdenes de: desarrolladores/CI.
-- Llama a: código en `app/` y recursos reales en integración.
-- Contratos y límites: tests no deben modificar la lógica de producción.
+
+* **Rol arquitectónico:** Tests.
+* **Recibe órdenes de:** desarrolladores y CI.
+* **Llama a:** código en `app/` y (en integración) recursos reales como DB.
+* **Reglas de límites:** tests validan comportamiento; no modifican lógica de producción.
 
 ## 👩‍💻 Guía de uso (Snippets)
-Comandos típicos:
-- `pytest`
-- `pytest tests/unit -m unit`
-- `pytest tests/integration -m integration`
+
+### 1) Correr todo desde `apps/backend/`
+
+```bash
+cd apps/backend
+pytest
+```
+
+### 2) Unit tests
+
+```bash
+cd apps/backend
+pytest -m unit tests/unit
+```
+
+### 3) Integration tests
+
+```bash
+cd apps/backend
+pytest -m integration tests/integration
+```
+
+### 4) Ejecutar pytest desde Python
 
 ```python
 import pytest
@@ -59,17 +97,22 @@ assert exit_code == 0
 ```
 
 ## 🧩 Cómo extender sin romper nada
-- Agrega tests en la carpeta del nivel adecuado.
-- Reutiliza fixtures de `conftest.py`.
-- Etiqueta tests con markers (`unit`, `integration`).
-- Mantén tests de integración aislados y con DB disponible.
+
+* Agregá tests en la carpeta del nivel adecuado (`unit/`, `integration/`, `e2e/`).
+* Reutilizá fixtures de `conftest.py` antes de crear nuevas.
+* Etiquetá tests con markers existentes (`unit`, `integration`, `e2e`) y declaralos en `../pytest.ini` si agregás uno nuevo.
+* En integración: mantené aislamiento (DB preparada, datos por test, cleanup cuando aplique).
 
 ## 🆘 Troubleshooting
-- Síntoma: `UndefinedTable` → Causa probable: migraciones no aplicadas → Ejecutar Alembic.
-- Síntoma: `ModuleNotFoundError: app` → Causa probable: cwd incorrecto → Ejecutar desde `apps/backend/`.
-- Síntoma: warnings de numpy → Causa probable: reload de numpy → Ver `pytest.ini`.
+
+* **`UndefinedTable`** → migraciones no aplicadas → correr Alembic (ver `../alembic/README.md`) y reintentar.
+* **`ModuleNotFoundError: app`** → cwd incorrecto → ejecutar `pytest` desde `apps/backend/`.
+* **Warnings de NumPy** → ruido del entorno → revisar `../pytest.ini` y el venv.
+* **Tests de integración fallan conectando a DB** → DB caída/URL incorrecta → revisar variables de entorno y `docker compose`.
 
 ## 🔎 Ver también
-- [Unit tests](./unit/README.md)
-- [Integration tests](./integration/README.md)
-- [E2E tests](./e2e/README.md)
+
+* `./unit/README.md`
+* `./integration/README.md`
+* `./e2e/README.md`
+* `../pytest.ini`
