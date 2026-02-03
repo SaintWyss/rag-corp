@@ -99,18 +99,18 @@ Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.m
 
 ## Scripts utiles
 
-| Script | Uso |
-|--------|-----|
-| `pnpm dev` | Dev server (turbo) |
-| `pnpm docker:up` | db + rag-api |
-| `pnpm stack:full` | db + api + redis + worker + minio |
-| `pnpm docker:observability` | Prometheus + Grafana |
-| `pnpm db:migrate` | Alembic upgrade head |
-| `pnpm admin:bootstrap` | Crear admin JWT |
-| `pnpm contracts:export` | Export OpenAPI |
-| `pnpm contracts:gen` | Generar cliente TS |
-| `pnpm test:backend:unit` | Tests unit backend (Docker) |
-| `pnpm e2e` | Playwright |
+| Script                      | Uso                               |
+| --------------------------- | --------------------------------- |
+| `pnpm dev`                  | Dev server (turbo)                |
+| `pnpm docker:up`            | db + rag-api                      |
+| `pnpm stack:full`           | db + api + redis + worker + minio |
+| `pnpm docker:observability` | Prometheus + Grafana              |
+| `pnpm db:migrate`           | Alembic upgrade head              |
+| `pnpm admin:bootstrap`      | Crear admin JWT                   |
+| `pnpm contracts:export`     | Export OpenAPI                    |
+| `pnpm contracts:gen`        | Generar cliente TS                |
+| `pnpm test:backend:unit`    | Tests unit backend (Docker)       |
+| `pnpm e2e`                  | Playwright                        |
 
 ---
 
@@ -119,7 +119,7 @@ Runbooks: `docs/runbook/production-hardening.md` y `docs/runbook/observability.m
 - `docs/README.md` (indice)
 - Arquitectura: `docs/architecture/overview.md`
 - ADRs: `docs/architecture/decisions/`
-- API: `docs/api/http-api.md`
+- API: `docs/reference/api/http-api.md`
 - DB: `docs/data/postgres-schema.md`
 - Runbooks: `docs/runbook/`
 - Testing: `docs/quality/testing.md`

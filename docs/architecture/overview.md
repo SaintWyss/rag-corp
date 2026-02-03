@@ -10,6 +10,7 @@
 ## TL;DR
 
 RAG Corp es un sistema de Retrieval-Augmented Generation (RAG) empresarial con:
+
 - **Workspaces** como unidad de organización y permisos
 - **Clean Architecture** (Domain/Application/Infrastructure)
 - **Procesamiento asíncrono** de documentos (RQ Worker)
@@ -20,6 +21,7 @@ RAG Corp es un sistema de Retrieval-Augmented Generation (RAG) empresarial con:
 ## System Purpose
 
 RAG Corp permite a organizaciones:
+
 1. **Organizar conocimiento** en workspaces con control de acceso
 2. **Ingestar documentos** (PDF, DOCX, texto) con procesamiento automático
 3. **Consultar** con lenguaje natural obteniendo respuestas basadas en fuentes
@@ -70,15 +72,15 @@ graph TB
 
 ## Core Components
 
-| Component | Technology | Purpose | Port |
-|-----------|------------|---------|------|
-| Frontend | Next.js 16.1.1 | UI para workspaces, documentos y chat | 3000 |
-| Backend | FastAPI (Python 3.11) | API HTTP y orquestación | 8000 |
-| Worker | RQ + Redis | Procesamiento async de uploads | 8001 |
-| Vector DB | PostgreSQL 16 + pgvector 0.8.1 | Chunks + embeddings | 5432 |
-| Queue | Redis 7 | Cola de jobs | 6379 |
-| Storage | S3/MinIO | Archivos binarios | 9000 |
-| Observability | Prometheus/Grafana | Métricas y dashboards | 9090/3001 |
+| Component     | Technology                     | Purpose                               | Port      |
+| ------------- | ------------------------------ | ------------------------------------- | --------- |
+| Frontend      | Next.js 16.1.1                 | UI para workspaces, documentos y chat | 3000      |
+| Backend       | FastAPI (Python 3.11)          | API HTTP y orquestación               | 8000      |
+| Worker        | RQ + Redis                     | Procesamiento async de uploads        | 8001      |
+| Vector DB     | PostgreSQL 16 + pgvector 0.8.1 | Chunks + embeddings                   | 5432      |
+| Queue         | Redis 7                        | Cola de jobs                          | 6379      |
+| Storage       | S3/MinIO                       | Archivos binarios                     | 9000      |
+| Observability | Prometheus/Grafana             | Métricas y dashboards                 | 9090/3001 |
 
 ---
 
@@ -169,11 +171,11 @@ Capa de presentación HTTP.
 
 ### Visibilidad
 
-| Visibility | Quién puede ver | Quién puede escribir |
-|------------|-----------------|----------------------|
-| `PRIVATE` | Solo owner + admin | Owner + admin |
-| `ORG_READ` | Todos en la org | Owner + admin |
-| `SHARED` | Solo en ACL + admin | Owner + admin |
+| Visibility | Quién puede ver     | Quién puede escribir |
+| ---------- | ------------------- | -------------------- |
+| `PRIVATE`  | Solo owner + admin  | Owner + admin        |
+| `ORG_READ` | Todos en la org     | Owner + admin        |
+| `SHARED`   | Solo en ACL + admin | Owner + admin        |
 
 ### Política de acceso
 
@@ -230,11 +232,11 @@ stateDiagram-v2
 User → Frontend → API → PostgreSQL (metadata)
                       → S3/MinIO (binarios)
                       → Redis (jobs)
-                      
+
 Redis → Worker → S3 (download)
               → GenAI (embeddings)
               → PostgreSQL (chunks + vectors)
-              
+
 User → Frontend → API → PostgreSQL (vector search)
                       → GenAI (LLM)
                       → Response
@@ -244,26 +246,26 @@ User → Frontend → API → PostgreSQL (vector search)
 
 ## Source of Truth
 
-| Aspecto | Fuente |
-|---------|--------|
-| API Contracts | `shared/contracts/openapi.json` |
-| DB Schema | `apps/backend/alembic/versions/` |
-| Decisiones | `docs/architecture/decisions/ADR-*.md` |
-| Config | `apps/backend/app/crosscutting/config.py` |
+| Aspecto       | Fuente                                    |
+| ------------- | ----------------------------------------- |
+| API Contracts | `shared/contracts/openapi.json`           |
+| DB Schema     | `apps/backend/alembic/versions/`          |
+| Decisiones    | `docs/architecture/decisions/ADR-*.md`    |
+| Config        | `apps/backend/app/crosscutting/config.py` |
 
 ---
 
 ## ADRs (Architecture Decision Records)
 
-| ADR | Título | Estado |
-|-----|--------|--------|
-| ADR-001 | Clean Architecture | Accepted |
-| ADR-002 | PostgreSQL + pgvector | Accepted |
-| ADR-003 | Google Gemini | Accepted |
+| ADR     | Título                       | Estado   |
+| ------- | ---------------------------- | -------- |
+| ADR-001 | Clean Architecture           | Accepted |
+| ADR-002 | PostgreSQL + pgvector        | Accepted |
+| ADR-003 | Google Gemini                | Accepted |
 | ADR-004 | Naming: Workspace vs Sección | Accepted |
-| ADR-005 | Workspace Uniqueness | Accepted |
-| ADR-006 | Archive / Soft Delete | Accepted |
-| ADR-007 | Legacy Endpoints | Accepted |
+| ADR-005 | Workspace Uniqueness         | Accepted |
+| ADR-006 | Archive / Soft Delete        | Accepted |
+| ADR-007 | Legacy Endpoints             | Accepted |
 
 ---
 
@@ -282,12 +284,13 @@ El sistema ensambla contexto para el LLM con:
 
 ## Observability
 
-| Componente | Endpoints |
-|------------|-----------|
-| API | `/healthz`, `/readyz`, `/metrics` |
-| Worker | `/healthz`, `/readyz`, `/metrics` (puerto 8001) |
+| Componente | Endpoints                                       |
+| ---------- | ----------------------------------------------- |
+| API        | `/healthz`, `/readyz`, `/metrics`               |
+| Worker     | `/healthz`, `/readyz`, `/metrics` (puerto 8001) |
 
 **Perfiles Compose:**
+
 - `observability`: Prometheus + Grafana
 - `full`: Todo incluyendo worker + storage + observability
 
@@ -319,22 +322,22 @@ El sistema ensambla contexto para el LLM con:
 
 ## Diagrams Index
 
-| Diagrama | Ubicación | Descripción |
-|----------|-----------|-------------|
-| Components | `docs/diagrams/components.mmd` | Componentes del sistema |
-| Deployment | `docs/diagrams/deployment.mmd` | Stack Docker Compose |
-| Login | `docs/diagrams/sequence-login.mmd` | Flujo de autenticación |
-| Upload Async | `docs/diagrams/sequence-upload-async.mmd` | Flujo de upload |
-| Ask Scoped | `docs/diagrams/sequence-ask-scoped.mmd` | Flujo de consulta |
-| Domain Classes | `docs/diagrams/domain-class.mmd` | Clases del dominio |
-| ER | `docs/diagrams/data-er.mmd` | Modelo de datos |
-| Document State | `docs/diagrams/document-state.mmd` | Estados del documento |
+| Diagrama       | Ubicación                                 | Descripción             |
+| -------------- | ----------------------------------------- | ----------------------- |
+| Components     | `docs/diagrams/components.mmd`            | Componentes del sistema |
+| Deployment     | `docs/diagrams/deployment.mmd`            | Stack Docker Compose    |
+| Login          | `docs/diagrams/sequence-login.mmd`        | Flujo de autenticación  |
+| Upload Async   | `docs/diagrams/sequence-upload-async.mmd` | Flujo de upload         |
+| Ask Scoped     | `docs/diagrams/sequence-ask-scoped.mmd`   | Flujo de consulta       |
+| Domain Classes | `docs/diagrams/domain-class.mmd`          | Clases del dominio      |
+| ER             | `docs/diagrams/data-er.mmd`               | Modelo de datos         |
+| Document State | `docs/diagrams/document-state.mmd`        | Estados del documento   |
 
 ---
 
 ## References
 
 - Informe de Sistemas: `docs/system/informe_de_sistemas_rag_corp.md`
-- API HTTP: `docs/api/http-api.md`
+- API HTTP: `docs/reference/api/http-api.md`
 - PostgreSQL Schema: `docs/data/postgres-schema.md`
 - Design Patterns: `docs/design/patterns.md`

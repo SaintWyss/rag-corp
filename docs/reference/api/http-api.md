@@ -37,11 +37,11 @@ RAG Corp soporta dos mecanismos de autenticación:
 
 Autenticación basada en cookies httpOnly. Ideal para el frontend.
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/auth/login` | POST | Login con email/password |
-| `/auth/me` | GET | Usuario actual |
-| `/auth/logout` | POST | Cerrar sesión |
+| Endpoint       | Método | Descripción              |
+| -------------- | ------ | ------------------------ |
+| `/auth/login`  | POST   | Login con email/password |
+| `/auth/me`     | GET    | Usuario actual           |
+| `/auth/logout` | POST   | Cerrar sesión            |
 
 **Ejemplo completo:**
 
@@ -60,6 +60,7 @@ curl -X POST http://localhost:8000/auth/logout -b cookies.txt
 ```
 
 **Cookies emitidas:**
+
 - `access_token`: JWT token (httpOnly, Secure en prod)
 - `SameSite`: Lax (configurable)
 
@@ -79,12 +80,12 @@ RBAC_CONFIG='{"roles":{"admin":{"permissions":["*"]},"readonly":{"permissions":[
 
 #### Scopes disponibles
 
-| Scope | Endpoints |
-|-------|-----------|
-| `ingest` | `/v1/workspaces/{ws_id}/documents/*`, `/v1/workspaces/{ws_id}/ingest/*` |
-| `ask` | `/v1/workspaces/{ws_id}/query`, `/v1/workspaces/{ws_id}/ask/*` |
-| `metrics` | `/metrics` |
-| `*` | Acceso total |
+| Scope     | Endpoints                                                               |
+| --------- | ----------------------------------------------------------------------- |
+| `ingest`  | `/v1/workspaces/{ws_id}/documents/*`, `/v1/workspaces/{ws_id}/ingest/*` |
+| `ask`     | `/v1/workspaces/{ws_id}/query`, `/v1/workspaces/{ws_id}/ask/*`          |
+| `metrics` | `/metrics`                                                              |
+| `*`       | Acceso total                                                            |
 
 #### Ejemplo con API Key
 
@@ -97,22 +98,24 @@ curl http://localhost:8000/v1/workspaces \
 
 #### Diferencias entre JWT y API Key
 
-| Aspecto | JWT (Cookies) | API Key |
-|---------|---------------|---------|
-| Uso típico | UI/Browser | Scripts/CI |
-| Expiración | ~24h | Sin expiración |
-| Rotación | Automática | Manual |
-| Auditoría actor | `user:<uuid>` | `service:<hash>` |
-| RBAC | Basado en rol (admin/employee) | Basado en scopes |
+| Aspecto         | JWT (Cookies)                  | API Key          |
+| --------------- | ------------------------------ | ---------------- |
+| Uso típico      | UI/Browser                     | Scripts/CI       |
+| Expiración      | ~24h                           | Sin expiración   |
+| Rotación        | Automática                     | Manual           |
+| Auditoría actor | `user:<uuid>`                  | `service:<hash>` |
+| RBAC            | Basado en rol (admin/employee) | Basado en scopes |
 
 #### Seguridad de API Keys
 
 ⚠️ **Nunca usar API Keys en frontend público.** Son para:
+
 - CI/CD pipelines
 - Integraciones server-to-server
 - Scripts de administración
 
 Para generar/rotar keys:
+
 1. Actualizar `API_KEYS_CONFIG` en variables de entorno
 2. Restart del backend
 
@@ -135,16 +138,16 @@ Todas las respuestas de error usan Problem Details (`application/problem+json`).
 
 ### Códigos de error comunes
 
-| Status | Code | Descripción |
-|--------|------|-------------|
-| 400 | `VALIDATION_ERROR` | Request inválido |
-| 401 | `UNAUTHORIZED` | Sin autenticación |
-| 403 | `FORBIDDEN` | Sin permisos |
-| 404 | `NOT_FOUND` | Recurso no existe |
-| 409 | `CONFLICT` | Conflicto (ej: nombre duplicado) |
-| 413 | `PAYLOAD_TOO_LARGE` | Archivo muy grande |
-| 415 | `UNSUPPORTED_MEDIA_TYPE` | MIME no soportado |
-| 429 | `RATE_LIMITED` | Demasiadas requests |
+| Status | Code                     | Descripción                      |
+| ------ | ------------------------ | -------------------------------- |
+| 400    | `VALIDATION_ERROR`       | Request inválido                 |
+| 401    | `UNAUTHORIZED`           | Sin autenticación                |
+| 403    | `FORBIDDEN`              | Sin permisos                     |
+| 404    | `NOT_FOUND`              | Recurso no existe                |
+| 409    | `CONFLICT`               | Conflicto (ej: nombre duplicado) |
+| 413    | `PAYLOAD_TOO_LARGE`      | Archivo muy grande               |
+| 415    | `UNSUPPORTED_MEDIA_TYPE` | MIME no soportado                |
+| 429    | `RATE_LIMITED`           | Demasiadas requests              |
 
 ---
 
@@ -201,68 +204,68 @@ echo "Sources: $(echo $ANSWER | jq -r '.sources')"
 
 ### Health / Metrics
 
-| Endpoint | Método | Auth | Descripción |
-|----------|--------|------|-------------|
-| `/healthz` | GET | No | Liveness check |
-| `/readyz` | GET | No | Readiness check |
-| `/metrics` | GET | Condicional* | Prometheus metrics |
+| Endpoint   | Método | Auth          | Descripción        |
+| ---------- | ------ | ------------- | ------------------ |
+| `/healthz` | GET    | No            | Liveness check     |
+| `/readyz`  | GET    | No            | Readiness check    |
+| `/metrics` | GET    | Condicional\* | Prometheus metrics |
 
-*`METRICS_REQUIRE_AUTH=true` requiere API Key con scope `metrics`.
+\*`METRICS_REQUIRE_AUTH=true` requiere API Key con scope `metrics`.
 
 ### Auth (JWT)
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/auth/login` | POST | Login |
-| `/auth/me` | GET | Usuario actual |
-| `/auth/logout` | POST | Cerrar sesión |
+| Endpoint       | Método | Descripción    |
+| -------------- | ------ | -------------- |
+| `/auth/login`  | POST   | Login          |
+| `/auth/me`     | GET    | Usuario actual |
+| `/auth/logout` | POST   | Cerrar sesión  |
 
 ### Admin (JWT admin o API Key con `admin:config`)
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/auth/users` | GET | Listar usuarios |
-| `/auth/users` | POST | Crear usuario |
-| `/auth/users/{user_id}/disable` | POST | Deshabilitar usuario |
-| `/auth/users/{user_id}/reset-password` | POST | Reset password |
-| `/v1/admin/audit` | GET | Consultar auditoría |
+| Endpoint                               | Método | Descripción          |
+| -------------------------------------- | ------ | -------------------- |
+| `/auth/users`                          | GET    | Listar usuarios      |
+| `/auth/users`                          | POST   | Crear usuario        |
+| `/auth/users/{user_id}/disable`        | POST   | Deshabilitar usuario |
+| `/auth/users/{user_id}/reset-password` | POST   | Reset password       |
+| `/v1/admin/audit`                      | GET    | Consultar auditoría  |
 
 ### Workspaces
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/v1/workspaces` | GET | Listar workspaces visibles |
-| `/v1/workspaces` | POST | Crear workspace |
-| `/v1/workspaces/{workspace_id}` | GET | Obtener workspace |
-| `/v1/workspaces/{workspace_id}` | PATCH | Actualizar workspace |
-| `/v1/workspaces/{workspace_id}/publish` | POST | Publicar (ORG_READ) |
-| `/v1/workspaces/{workspace_id}/share` | POST | Compartir (SHARED + ACL) |
-| `/v1/workspaces/{workspace_id}/archive` | POST | Archivar |
+| Endpoint                                | Método | Descripción                |
+| --------------------------------------- | ------ | -------------------------- |
+| `/v1/workspaces`                        | GET    | Listar workspaces visibles |
+| `/v1/workspaces`                        | POST   | Crear workspace            |
+| `/v1/workspaces/{workspace_id}`         | GET    | Obtener workspace          |
+| `/v1/workspaces/{workspace_id}`         | PATCH  | Actualizar workspace       |
+| `/v1/workspaces/{workspace_id}/publish` | POST   | Publicar (ORG_READ)        |
+| `/v1/workspaces/{workspace_id}/share`   | POST   | Compartir (SHARED + ACL)   |
+| `/v1/workspaces/{workspace_id}/archive` | POST   | Archivar                   |
 
 ### Documents (Scoped)
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/v1/workspaces/{ws_id}/documents` | GET | Listar documentos |
-| `/v1/workspaces/{ws_id}/documents/{doc_id}` | GET | Obtener documento |
-| `/v1/workspaces/{ws_id}/documents/{doc_id}` | DELETE | Eliminar documento |
-| `/v1/workspaces/{ws_id}/documents/upload` | POST | Upload async |
-| `/v1/workspaces/{ws_id}/documents/{doc_id}/reprocess` | POST | Reprocesar |
+| Endpoint                                              | Método | Descripción        |
+| ----------------------------------------------------- | ------ | ------------------ |
+| `/v1/workspaces/{ws_id}/documents`                    | GET    | Listar documentos  |
+| `/v1/workspaces/{ws_id}/documents/{doc_id}`           | GET    | Obtener documento  |
+| `/v1/workspaces/{ws_id}/documents/{doc_id}`           | DELETE | Eliminar documento |
+| `/v1/workspaces/{ws_id}/documents/upload`             | POST   | Upload async       |
+| `/v1/workspaces/{ws_id}/documents/{doc_id}/reprocess` | POST   | Reprocesar         |
 
 ### Ingest (Scoped)
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/v1/workspaces/{ws_id}/ingest/text` | POST | Ingest texto directo |
-| `/v1/workspaces/{ws_id}/ingest/batch` | POST | Ingest batch |
+| Endpoint                              | Método | Descripción          |
+| ------------------------------------- | ------ | -------------------- |
+| `/v1/workspaces/{ws_id}/ingest/text`  | POST   | Ingest texto directo |
+| `/v1/workspaces/{ws_id}/ingest/batch` | POST   | Ingest batch         |
 
 ### Query / Ask (Scoped)
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/v1/workspaces/{ws_id}/query` | POST | Solo retrieval |
-| `/v1/workspaces/{ws_id}/ask` | POST | RAG completo |
-| `/v1/workspaces/{ws_id}/ask/stream` | POST | RAG streaming (SSE) |
+| Endpoint                            | Método | Descripción         |
+| ----------------------------------- | ------ | ------------------- |
+| `/v1/workspaces/{ws_id}/query`      | POST   | Solo retrieval      |
+| `/v1/workspaces/{ws_id}/ask`        | POST   | RAG completo        |
+| `/v1/workspaces/{ws_id}/ask/stream` | POST   | RAG streaming (SSE) |
 
 ---
 
@@ -278,11 +281,11 @@ curl "/v1/documents?workspace_id=abc-123"
 curl "/v1/workspaces/abc-123/documents"
 ```
 
-| Legacy | Canonical |
-|--------|-----------|
-| `/v1/documents?workspace_id=...` | `/v1/workspaces/{ws_id}/documents` |
-| `/v1/ask?workspace_id=...` | `/v1/workspaces/{ws_id}/ask` |
-| `/v1/query?workspace_id=...` | `/v1/workspaces/{ws_id}/query` |
+| Legacy                             | Canonical                            |
+| ---------------------------------- | ------------------------------------ |
+| `/v1/documents?workspace_id=...`   | `/v1/workspaces/{ws_id}/documents`   |
+| `/v1/ask?workspace_id=...`         | `/v1/workspaces/{ws_id}/ask`         |
+| `/v1/query?workspace_id=...`       | `/v1/workspaces/{ws_id}/query`       |
 | `/v1/ingest/text?workspace_id=...` | `/v1/workspaces/{ws_id}/ingest/text` |
 
 **Removal target:** v8
@@ -291,15 +294,15 @@ curl "/v1/workspaces/abc-123/documents"
 
 ## Upload Limits
 
-| Límite | Valor | Evidencia |
-|--------|-------|-----------|
-| Max body size | 10 MB | `apps/backend/app/crosscutting/config.py:107` |
-| MIME types soportados | PDF, DOCX, TXT | Validación en upload handler |
+| Límite                | Valor          | Evidencia                                     |
+| --------------------- | -------------- | --------------------------------------------- |
+| Max body size         | 10 MB          | `apps/backend/app/crosscutting/config.py:107` |
+| MIME types soportados | PDF, DOCX, TXT | Validación en upload handler                  |
 
 ---
 
 ## References
 
 - OpenAPI spec: `shared/contracts/openapi.json`
-- RBAC docs: `docs/api/rbac.md`
+- RBAC docs: `docs/reference/api/rbac.md`
 - Frontend API client: `apps/frontend/src/shared/api/`
