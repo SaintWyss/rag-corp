@@ -13,8 +13,7 @@ import type {
     QueryRes,
     ReprocessDocumentRes,
     UploadDocumentRes,
-    WorkspaceRes,
-    WorkspacesListRes,
+    WorkspacesListRes
 } from "@contracts/src/generated";
 
 /**
@@ -98,7 +97,7 @@ export type CreateUserPayload = {
   role?: "admin" | "employee";
 };
 
-export type WorkspaceSummary = WorkspaceRes;
+export type WorkspaceSummary = AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes;
 
 export type WorkspacesListResponse = WorkspacesListRes;
 
