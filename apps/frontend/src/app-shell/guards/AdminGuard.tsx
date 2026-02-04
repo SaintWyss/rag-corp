@@ -33,7 +33,7 @@ async function fetchCurrentUser(): Promise<AuthMe | null> {
     return null;
   }
 
-  const reqHeaders = headers();
+  const reqHeaders = await headers();
   const host =
     reqHeaders.get("x-forwarded-host") || reqHeaders.get("host");
   if (!host) {

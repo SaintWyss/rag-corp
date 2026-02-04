@@ -1,4 +1,18 @@
-# OBSOLETO — Postgres Schema
-Este documento fue movido a `docs/reference/data/postgres-schema.md`.
+<!--
+===============================================================================
+TARJETA CRC - docs/data/postgres-schema.md
+===============================================================================
+Responsabilidades:
+- Indicar que el documento fue movido al canon de referencia.
 
-➡️ Ver documento actual: `../reference/data/postgres-schema.md`
+Colaboradores:
+- docs/reference/data/postgres-schema.md
+
+Invariantes:
+- Stub minimo, sin contenido operativo.
+===============================================================================
+-->
+# OBSOLETO — Postgres Schema
+Este documento es historico y fue movido al canon.
+
+-> Ver documento actual: `../reference/data/postgres-schema.md`

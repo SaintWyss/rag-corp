@@ -50,6 +50,8 @@ const nextConfig = {
       "object-src 'none'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
+      // R: Se mantiene 'unsafe-inline' por compatibilidad con scripts/estilos
+      //    embebidos del runtime de Next.js. Reducir requiere nonces/sha.
       `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       `connect-src 'self'${isDev ? " ws: wss:" : ""}`,

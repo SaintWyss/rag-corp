@@ -406,7 +406,7 @@ export function useRagChat({ workspaceId }: UseRagChatOptions) {
         }));
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
-          const reason = abortReasonRef.current;
+          const reason = abortReasonRef.current as AbortReason;
           const message =
             reason === "timeout"
               ? "Tiempo de espera agotado."

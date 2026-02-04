@@ -24,7 +24,6 @@ import { normalizeProblem } from "@/shared/api/contracts";
 import { env } from "@/shared/config/env";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
-  AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes,
   ArchiveWorkspaceRes,
   CreateWorkspaceReq,
   DocumentDetailRes,
@@ -38,6 +37,7 @@ import type {
   QueryRes,
   ReprocessDocumentRes,
   UploadDocumentRes,
+  WorkspaceRes,
   WorkspacesListRes,
 } from "@contracts/src/generated";
 
@@ -100,7 +100,7 @@ export type CreateUserPayload = {
   role?: "admin" | "employee";
 };
 
-export type WorkspaceSummary = AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes;
+export type WorkspaceSummary = WorkspaceRes;
 
 export type WorkspacesListResponse = WorkspacesListRes;
 
@@ -374,7 +374,15 @@ async function requestJson<T>(
     try {
       return await requestJsonOnce<T>(input, init);
     } catch (err) {
-      if (!shouldRetryRequest(method, err, attempt, maxRetries, init.signal)) {
+      if (
+        !shouldRetryRequest(
+          method,
+          err,
+          attempt,
+          maxRetries,
+          init.signal ?? undefined
+        )
+      ) {
         throw err;
       }
       await sleep(backoffMs(attempt));

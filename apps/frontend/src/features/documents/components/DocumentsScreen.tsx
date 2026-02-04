@@ -1004,17 +1004,6 @@ function WorkspaceDocumentsScreen({
                 </div>
               </div>
 
-              {selected.content ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold">
-                    Preview
-                  </p>
-                  <p className="mt-3 whitespace-pre-wrap">
-                    {selected.content}
-                  </p>
-                </div>
-              ) : null}
-
               {isEmployee ? (
                 <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-xs text-amber-100">
                   Tu rol es de solo lectura. Para subir o reprocesar, solicita
