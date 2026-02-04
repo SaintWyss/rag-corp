@@ -26,7 +26,7 @@ Definidos en `apps/backend/app/api/main.py`:
 - JWT (usuarios): roles `admin`/`employee` en `apps/backend/app/identity/users.py`.
 - Ver detalle en `docs/reference/access-control.md`.
 
-## OBSOLETO (no verificado)
-La documentación de endpoints específica quedó desactualizada tras la reestructuración. Usar OpenAPI como fuente única:
-- `../../shared/contracts/openapi.json`
-- Routers actuales: `../../apps/backend/app/interfaces/api/http/routers/`
+## Endpoints de negocio
+Para evitar drift, **no** duplicamos endpoints específicos en este documento. Usar:
+- OpenAPI → `shared/contracts/openapi.json`
+- Routers HTTP → `apps/backend/app/interfaces/api/http/routers/`

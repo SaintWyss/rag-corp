@@ -216,7 +216,7 @@ cd apps/backend
 pytest -m unit
 
 # Integration tests (requires DB + API key)
-RUN_INTEGRATION=1 GOOGLE_API_KEY=key pytest -m integration
+RUN_INTEGRATION=1 GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY_HERE pytest -m integration
 
 # All tests with coverage
 pytest --cov=app --cov-report=html

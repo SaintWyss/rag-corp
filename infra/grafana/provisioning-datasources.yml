@@ -1,3 +1,19 @@
+# =============================================================================
+# TARJETA CRC - infra/grafana/provisioning-datasources.yml
+# =============================================================================
+# Responsabilidades:
+# - Registrar datasources de Grafana (Prometheus).
+# - Configurar acceso para dashboards pre-provisionados.
+#
+# Colaboradores:
+# - infra/prometheus/prometheus.yml
+# - infra/grafana/dashboards/*.json
+#
+# Invariantes:
+# - Mantener nombres/UIDs estables para dashboards.
+# - No incluir secretos en claro.
+# =============================================================================
+
 apiVersion: 1
 
 datasources:

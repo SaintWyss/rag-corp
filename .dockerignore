@@ -1,3 +1,20 @@
+# =============================================================================
+# TARJETA CRC - .dockerignore (Exclusion de build context)
+# =============================================================================
+# Responsabilidades:
+# - Evitar que secretos, caches y artefactos entren al build context.
+# - Reducir tamano del contexto para builds mas rapidos.
+#
+# Colaboradores:
+# - Dockerfiles (apps/backend, apps/frontend)
+# - .gitignore (reglas espejo)
+# - scripts/security/verify_no_secrets.sh
+#
+# Invariantes:
+# - NO incluir .env reales ni secretos en el build context.
+# - Mantener alineado con .gitignore en patrones criticos.
+# =============================================================================
+
 # Root-level dockerignore for repo hygiene
 
 # VCS
@@ -41,6 +58,12 @@ test-results/
 *.log
 *.tmp
 *.bak
+
+# Secret folders / files
+**/secrets/
+*.secret
+*.pem
+*.key
 
 # Cookies
 cookies.txt

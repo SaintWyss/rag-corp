@@ -1,4 +1,18 @@
 # RAG Corp Backend Service
+# =============================================================================
+# TARJETA CRC - infra/k8s/backend-service.yaml
+# =============================================================================
+# Responsabilidades:
+# - Exponer el backend internamente con un Service estable.
+#
+# Colaboradores:
+# - infra/k8s/backend-deployment.yaml
+# - infra/k8s/ingress.yaml
+#
+# Invariantes:
+# - Selector y puertos deben coincidir con el Deployment.
+# =============================================================================
+
 apiVersion: v1
 kind: Service
 metadata:

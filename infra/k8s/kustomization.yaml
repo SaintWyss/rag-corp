@@ -1,6 +1,19 @@
 # Kustomize configuration for RAG Corp K8s manifests
 # Usage: kubectl apply -k infra/k8s/
 
+# =============================================================================
+# TARJETA CRC - infra/k8s/kustomization.yaml
+# =============================================================================
+# Responsabilidades:
+# - Orquestar la lista de manifests para despliegue.
+#
+# Colaboradores:
+# - infra/k8s/*.yaml
+#
+# Invariantes:
+# - Mantener rutas actualizadas y orden coherente.
+# =============================================================================
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

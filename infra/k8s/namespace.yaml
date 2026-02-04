@@ -1,4 +1,17 @@
 # RAG Corp Kubernetes Namespace
+# =============================================================================
+# TARJETA CRC - infra/k8s/namespace.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir el namespace de trabajo para RAG Corp.
+#
+# Colaboradores:
+# - infra/k8s/kustomization.yaml
+#
+# Invariantes:
+# - El nombre del namespace debe ser estable.
+# =============================================================================
+
 apiVersion: v1
 kind: Namespace
 metadata:

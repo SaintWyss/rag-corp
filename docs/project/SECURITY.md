@@ -40,5 +40,5 @@ Definidas en `apps/backend/app/crosscutting/metrics.py`:
 - Unit tests: `apps/backend/tests/unit/README.md`.
 - Integration tests: `apps/backend/tests/integration/README.md`.
 
-## OBSOLETO (no verificado)
-Se eliminaron secciones anteriores con claims no verificadas (p. ej. “1MB”, scopes por endpoint, fuentes externas). Consultar OpenAPI y README de backend para la versión vigente.
+## Notas
+- La fuente de verdad está en el código (`apps/backend/app/`) y en OpenAPI (`shared/contracts/openapi.json`).

@@ -22,3 +22,8 @@ Guía principal para navegar el backend y sus contratos sin duplicar detalle té
 - Errores RFC7807 y códigos → `reference/errors.md`
 - Control de acceso (JWT/API keys/RBAC) → `reference/access-control.md`
 - Límites del sistema → `reference/limits.md`
+
+## Política de stubs
+- Solo mantenemos stubs en rutas históricas de entrada.
+- El contenido canónico vive en `docs/reference/` y `docs/backlog/`.
+- Los stubs deben ser breves y redirigir al canon sin detalle técnico.

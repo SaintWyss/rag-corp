@@ -1,3 +1,19 @@
+# =============================================================================
+# TARJETA CRC - pnpm-workspace.yaml (Workspace PNPM)
+# =============================================================================
+# Responsabilidades:
+# - Declarar los paquetes que pertenecen al workspace.
+# - Mantener rutas alineadas con la estructura del repo.
+#
+# Colaboradores:
+# - package.json (scripts raiz)
+# - apps/frontend / shared/* / tests/e2e
+#
+# Invariantes:
+# - No incluir paths inexistentes.
+# - Mantener consistencia con pnpm-lock.yaml.
+# =============================================================================
+
 packages:
   - "apps/frontend"
   - "shared/*"

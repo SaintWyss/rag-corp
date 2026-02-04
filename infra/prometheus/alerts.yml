@@ -1,6 +1,21 @@
 # RAG Corp Alerting Rules
 # See: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
 
+# =============================================================================
+# TARJETA CRC - infra/prometheus/alerts.yml (Reglas de alertas)
+# =============================================================================
+# Responsabilidades:
+# - Definir alertas Prometheus para API, DB e infraestructura.
+#
+# Colaboradores:
+# - infra/prometheus/prometheus.yml
+# - apps/backend (metricas expuestas)
+#
+# Invariantes:
+# - No incluir secretos ni endpoints sensibles.
+# - Mantener severidades coherentes (warning/critical).
+# =============================================================================
+
 groups:
   - name: ragcorp-api
     interval: 30s

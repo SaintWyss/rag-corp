@@ -1,3 +1,20 @@
+# =============================================================================
+# TARJETA CRC - .github/workflows/deploy.yml (Pipeline de deploy)
+# =============================================================================
+# Responsabilidades:
+# - Construir y publicar imagenes de backend y frontend.
+# - Ejecutar despliegue a staging/production mediante comando externo.
+#
+# Colaboradores:
+# - apps/backend/Dockerfile.prod
+# - apps/frontend/Dockerfile
+# - infra/k8s (si se usa kubectl en deploy command)
+#
+# Invariantes:
+# - NO imprimir secretos en logs.
+# - Requiere vars/secrets definidos en GitHub.
+# =============================================================================
+
 name: Deploy
 
 on:

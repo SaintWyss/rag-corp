@@ -34,5 +34,5 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <AppProviders>
       <AppMain>{children}</AppMain>
     </AppProviders>
-  );
+    );
 }

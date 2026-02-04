@@ -67,7 +67,6 @@ Shape esperado:
 ### Hash de API key
 El hash recortado se calcula con SHA-256 y longitud fija (`_KEY_HASH_LEN`) en `apps/backend/app/identity/auth.py`.
 
-## OBSOLETO (no verificado)
-El detalle de “matrices por endpoint” quedó desactualizado tras la reestructuración. Usar OpenAPI como fuente de verdad:
-- `../../shared/contracts/openapi.json`
-- Routers actuales: `../../apps/backend/app/interfaces/api/http/routers/`
+## Referencias técnicas
+- RBAC → `apps/backend/app/identity/rbac.py`
+- API keys (auth) → `apps/backend/app/identity/auth.py`

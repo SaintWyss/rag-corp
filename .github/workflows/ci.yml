@@ -1,3 +1,21 @@
+# =============================================================================
+# TARJETA CRC - .github/workflows/ci.yml (Pipeline de CI)
+# =============================================================================
+# Responsabilidades:
+# - Ejecutar lint/tests y checks de contratos para backend y frontend.
+# - Verificar que no existan secretos versionados.
+# - Ejecutar e2e y load tests segun reglas.
+#
+# Colaboradores:
+# - scripts/security/verify_no_secrets.sh
+# - shared/contracts (OpenAPI + orval)
+# - apps/backend / apps/frontend
+#
+# Invariantes:
+# - No imprimir secretos en logs (usar redaccion).
+# - Mantener compatibilidad con branches main/develop.
+# =============================================================================
+
 name: CI
 
 on:
@@ -14,6 +32,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify no secrets
+        run: bash scripts/security/verify_no_secrets.sh
+      - name: Gitleaks scan (redacted)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --redact --no-banner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   backend-lint:
     runs-on: ubuntu-latest
     defaults:

@@ -2,6 +2,20 @@
 # Zero-trust networking: deny all by default, allow only necessary traffic
 
 # Backend Network Policy
+# =============================================================================
+# TARJETA CRC - infra/k8s/network-policy.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir politicas de red (zero-trust) en el namespace.
+#
+# Colaboradores:
+# - infra/k8s/namespace.yaml
+#
+# Invariantes:
+# - Mantener reglas explicitas de ingress/egress necesarias.
+# - No abrir trafico innecesario.
+# =============================================================================
+
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

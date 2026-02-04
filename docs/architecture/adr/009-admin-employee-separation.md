@@ -15,7 +15,6 @@ La separación de permisos se aplica en el borde HTTP mediante dependencias de r
 - Las rutas que exigen rol se controlan en el nivel de router (FastAPI) con dependencias explícitas.
 - El detalle de permisos por endpoint se mantiene en OpenAPI (`shared/contracts/openapi.json`) y en los routers actuales.
 
-## OBSOLETO (no verificado)
-Los detalles previos sobre rutas frontend y matrices por endpoint quedaron desactualizados. Ver:
+## Referencias
 - Routers actuales → `apps/backend/app/interfaces/api/http/routers/`
 - OpenAPI → `shared/contracts/openapi.json`

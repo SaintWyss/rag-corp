@@ -1,8 +1,25 @@
-```yaml
+# =============================================================================
+# TARJETA CRC - .github/dependabot.yml (Actualizaciones automaticas)
+# =============================================================================
+# Responsabilidades:
+# - Mantener dependencias actualizadas con PRs automaticas.
+# - Agrupar updates para reducir ruido.
+#
+# Colaboradores:
+# - apps/backend (pip)
+# - apps/frontend (npm)
+# - shared/contracts (npm)
+# - GitHub Actions
+#
+# Invariantes:
+# - Usar paths reales del repo.
+# - No introducir secretos ni credenciales.
+# =============================================================================
+
 version: 2
 updates:
   - package-ecosystem: pip
-    directory: /backend
+    directory: /apps/backend
     schedule:
       interval: weekly
       day: monday
@@ -16,7 +33,7 @@ updates:
       - python
 
   - package-ecosystem: npm
-    directory: /frontend
+    directory: /apps/frontend
     schedule:
       interval: weekly
       day: monday
@@ -52,4 +69,3 @@ updates:
     labels:
       - dependencies
       - ci
-```

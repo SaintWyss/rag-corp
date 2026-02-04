@@ -1,3 +1,20 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/backend-deployment.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar la API backend con probes, recursos y labels.
+# - Exponer /metrics para Prometheus via annotations.
+#
+# Colaboradores:
+# - infra/k8s/backend-service.yaml
+# - infra/k8s/configmap.yaml
+# - infra/k8s/secret.yaml
+#
+# Invariantes:
+# - No incluir secretos en claro (usar Secret).
+# - Labels deben coincidir con Service/Ingress.
+# =============================================================================
+
 # RAG Corp Backend Deployment
 apiVersion: apps/v1
 kind: Deployment

@@ -1,3 +1,19 @@
+# =============================================================================
+# TARJETA CRC - infra/grafana/provisioning-dashboards.yml
+# =============================================================================
+# Responsabilidades:
+# - Provisionar dashboards JSON al iniciar Grafana.
+# - Definir carpeta y ruta de carga.
+#
+# Colaboradores:
+# - infra/grafana/dashboards/*.json
+# - infra/grafana/provisioning-datasources.yml
+#
+# Invariantes:
+# - La ruta de dashboards debe existir.
+# - No editar JSON a mano sin validar en Grafana.
+# =============================================================================
+
 apiVersion: 1
 
 providers:

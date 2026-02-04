@@ -59,6 +59,18 @@ Esta carpeta NO DEBE contener:
 - Configuración de Grafana (va en `provisioning-*.yml`)
 - Alertas (van en `prometheus/alerts.yml`)
 
+### Nota sobre CRC (excepción JSON)
+Los archivos `.json` **no** llevan TARJETA CRC por limitación del formato. La intención e invariantes se documentan aquí.
+
+### Tabla rápida (canon)
+
+| Archivo | Propósito | Invariantes | Cómo importar |
+|--------|-----------|-------------|--------------|
+| `ragcorp-overview.json` | Vista general | UID única | Grafana UI |
+| `ragcorp-api-performance.json` | Latencia/API | Datasource Prometheus | Grafana UI |
+| `ragcorp-operations.json` | Operaciones | Queries válidas | Grafana UI |
+| `ragcorp-postgres.json` | PostgreSQL | UID única | Grafana UI |
+
 ### Estructura de un dashboard JSON
 
 ```json

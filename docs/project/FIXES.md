@@ -10,9 +10,12 @@
 **Acción requerida**:
 
 ```bash
-# Crea un archivo .env en la raíz del proyecto
-echo "GOOGLE_API_KEY=tu_clave_aqui" > .env
+# Crear .env local (NO versionado) desde la plantilla
+cp .env.example .env
+# Editar .env y completar los secretos localmente
 ```
+
+Ver también: `docs/runbook/security-rotation.md`.
 
 ---
 
@@ -82,7 +85,7 @@ CREATE INDEX IF NOT EXISTS chunks_embedding_idx
 
 ```bash
 cp .env.example .env
-# Edita .env y agrega tu GOOGLE_API_KEY
+# Edita .env local y completa GOOGLE_API_KEY
 ```
 
 ### 2. Levantar la Infraestructura

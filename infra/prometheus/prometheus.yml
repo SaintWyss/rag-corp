@@ -1,3 +1,19 @@
+# =============================================================================
+# TARJETA CRC - infra/prometheus/prometheus.yml (Config Prometheus)
+# =============================================================================
+# Responsabilidades:
+# - Definir scrape targets y reglas de evaluacion.
+# - Configurar intervalos y timeouts del collector.
+#
+# Colaboradores:
+# - apps/backend (endpoint /metrics)
+# - infra/prometheus/alerts.yml
+#
+# Invariantes:
+# - Targets deben existir en runtime.
+# - No incluir secretos en claro.
+# =============================================================================
+
 global:
   scrape_interval: 15s
   evaluation_interval: 15s

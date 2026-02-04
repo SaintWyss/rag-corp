@@ -1,4 +1,18 @@
 # RAG Corp Redis Deployment (Cache)
+# =============================================================================
+# TARJETA CRC - infra/k8s/redis-deployment.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar Redis para cache/cola del sistema.
+#
+# Colaboradores:
+# - infra/k8s/namespace.yaml
+#
+# Invariantes:
+# - Persistencia y puertos deben ser coherentes con el runtime.
+# - No incluir secretos en claro.
+# =============================================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

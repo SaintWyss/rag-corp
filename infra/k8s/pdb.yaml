@@ -2,6 +2,20 @@
 # Ensures high availability during node maintenance and cluster upgrades
 
 # Backend PDB - always keep at least 1 pod running
+# =============================================================================
+# TARJETA CRC - infra/k8s/pdb.yaml
+# =============================================================================
+# Responsabilidades:
+# - Proteger disponibilidad minima durante mantenimientos.
+#
+# Colaboradores:
+# - infra/k8s/backend-deployment.yaml
+# - infra/k8s/frontend-deployment.yaml
+#
+# Invariantes:
+# - Selectores deben coincidir con Deployments.
+# =============================================================================
+
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

@@ -51,7 +51,7 @@ pytest -m integration tests/integration -v
 
 ```bash
 # Tests de API (requieren GOOGLE_API_KEY)
-export GOOGLE_API_KEY=... 
+export GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY_HERE
 pytest -m integration tests/integration/test_api_endpoints.py
 ```
 

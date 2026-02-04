@@ -1,4 +1,19 @@
 # RAG Corp Frontend Deployment
+# =============================================================================
+# TARJETA CRC - infra/k8s/frontend-deployment.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar el frontend con recursos y probes.
+#
+# Colaboradores:
+# - infra/k8s/frontend-service.yaml
+# - infra/k8s/ingress.yaml
+#
+# Invariantes:
+# - Labels deben coincidir con el Service.
+# - No incluir secretos en claro.
+# =============================================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

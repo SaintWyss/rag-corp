@@ -1,4 +1,19 @@
 # RAG Corp Configuration
+# =============================================================================
+# TARJETA CRC - infra/k8s/configmap.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir configuracion no sensible para el runtime.
+#
+# Colaboradores:
+# - infra/k8s/backend-deployment.yaml
+# - infra/k8s/frontend-deployment.yaml
+#
+# Invariantes:
+# - NO incluir secretos (usar Secret).
+# - Mantener nombres de keys alineados con Settings.
+# =============================================================================
+
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,4 +1,22 @@
 # =============================================================================
+# TARJETA CRC - .gitignore (Reglas de exclusion)
+# =============================================================================
+# Responsabilidades:
+# - Evitar que se versionen archivos locales, caches y secretos.
+# - Reducir ruido en diffs y PRs.
+# - Proteger artefactos sensibles (keys, dumps, backups).
+#
+# Colaboradores:
+# - scripts/security/verify_no_secrets.sh
+# - .dockerignore
+# - docs/runbook/security-rotation.md
+#
+# Invariantes:
+# - NO versionar .env reales ni secrets locales.
+# - Mantener consistencia con tooling (node/python/test).
+# =============================================================================
+
+# =============================================================================
 # RAG Corp .gitignore
 # =============================================================================
 
@@ -102,6 +120,9 @@ compose.prod.local.yaml
 # -----------------------------------------------------------------------------
 # Security Sensitive (NEVER commit these)
 # -----------------------------------------------------------------------------
+# Folders de secretos locales
+**/secrets/
+
 # Private keys and certificates
 *.pem
 *.key

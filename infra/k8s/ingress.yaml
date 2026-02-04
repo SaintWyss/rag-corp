@@ -1,4 +1,20 @@
 # RAG Corp Ingress
+# =============================================================================
+# TARJETA CRC - infra/k8s/ingress.yaml
+# =============================================================================
+# Responsabilidades:
+# - Exponer rutas HTTP/S del backend y frontend.
+# - Configurar reglas de host/path para NGINX Ingress.
+#
+# Colaboradores:
+# - infra/k8s/backend-service.yaml
+# - infra/k8s/frontend-service.yaml
+#
+# Invariantes:
+# - Mantener paths/hosts coherentes con el entorno.
+# - No incluir secretos en annotations.
+# =============================================================================
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
