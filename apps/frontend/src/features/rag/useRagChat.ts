@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *   - Manage chat messages and streaming state
- *   - Handle SSE streaming via /api/ask/stream
+ *   - Handle SSE streaming via /api/workspaces/{id}/ask/stream
  *   - Maintain conversation_id across turns
  *   - Support cancel and retry flows
  */
@@ -128,11 +128,10 @@ async function loadDocumentTitles(
 }
 
 type UseRagChatOptions = {
-  workspaceId?: string;
+  workspaceId: string;
 };
 
-export function useRagChat(options: UseRagChatOptions = {}) {
-  const { workspaceId } = options;
+export function useRagChat({ workspaceId }: UseRagChatOptions) {
   const [state, setState] = useState<ChatState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastUserMessageRef = useRef<string | null>(null);
@@ -170,6 +169,14 @@ export function useRagChat(options: UseRagChatOptions = {}) {
         setState((prev) => ({
           ...prev,
           error: "Escribi una pregunta antes de enviar.",
+        }));
+        return;
+      }
+
+      if (!workspaceId) {
+        setState((prev) => ({
+          ...prev,
+          error: "Selecciona un workspace antes de preguntar.",
         }));
         return;
       }
@@ -213,41 +220,36 @@ export function useRagChat(options: UseRagChatOptions = {}) {
         payload.conversation_id = state.conversationId;
       }
 
-      if (workspaceId) {
-        void (async () => {
-          try {
-            const result = await queryWorkspace(workspaceId, {
-              query: trimmed,
-              top_k: topK,
-            });
-            const uniqueIds = Array.from(
-              new Set(result.matches.map((match) => match.document_id))
-            );
-            const titles = await loadDocumentTitles(workspaceId, uniqueIds);
-            const verifiedSources: VerifiedSource[] = result.matches.map(
-              (match) => ({
-                ...match,
-                document_title: titles.get(match.document_id) ?? null,
-              })
-            );
-            setState((prev) => ({
-              ...prev,
-              messages: prev.messages.map((msg) =>
-                msg.id === assistantId ? { ...msg, verifiedSources } : msg
-              ),
-            }));
-          } catch {
-            // Best-effort verification; don't interrupt chat flow.
-          }
-        })();
-      }
+      void (async () => {
+        try {
+          const result = await queryWorkspace(workspaceId, {
+            query: trimmed,
+            top_k: topK,
+          });
+          const uniqueIds = Array.from(
+            new Set(result.matches.map((match) => match.document_id))
+          );
+          const titles = await loadDocumentTitles(workspaceId, uniqueIds);
+          const verifiedSources: VerifiedSource[] = result.matches.map(
+            (match) => ({
+              ...match,
+              document_title: titles.get(match.document_id) ?? null,
+            })
+          );
+          setState((prev) => ({
+            ...prev,
+            messages: prev.messages.map((msg) =>
+              msg.id === assistantId ? { ...msg, verifiedSources } : msg
+            ),
+          }));
+        } catch {
+          // Best-effort verification; don't interrupt chat flow.
+        }
+      })();
 
       try {
         const apiKey = getStoredApiKey();
-        const streamPath = workspaceId
-          ? `/api/workspaces/${workspaceId}/ask/stream`
-          : "/api/ask/stream";
-        const response = await fetch(streamPath, {
+        const response = await fetch(`/api/workspaces/${workspaceId}/ask/stream`, {
           method: "POST",
           headers: apiKey
             ? { "Content-Type": "application/json", "X-API-Key": apiKey }

@@ -1,7 +1,7 @@
-# Requerimientos No Funcionales (RNF) — RAG Corp v6
+# Requerimientos No Funcionales (RNF) — RAG Corp
 
 **Project:** RAG Corp  
-**Version:** v6 (Definitivo)  
+**Version:** Definitivo  
 **Last Updated:** 2026-01-24  
 **Source of Truth:** `docs/project/informe_de_sistemas_rag_corp.md` §4.2  
 **Standard:** ISO/IEC 25010
@@ -10,7 +10,7 @@
 
 ## TL;DR
 
-Este documento define los **requerimientos no funcionales** del sistema RAG Corp v6, organizados según ISO/IEC 25010 (Security, Performance, Reliability, Maintainability).
+Este documento define los **requerimientos no funcionales** del sistema RAG Corp, organizados según ISO/IEC 25010 (Security, Performance, Reliability, Maintainability).
 
 ---
 
@@ -41,7 +41,7 @@ Este documento define los **requerimientos no funcionales** del sistema RAG Corp
 max_body_bytes: int = 10 * 1024 * 1024  # 10MB
 ```
 
-**TO-BE v6:** El límite de 10MB es el valor definitivo para v6. Si se requiere aumentar, se hará en v7.
+**TO-BE:** El límite de 10MB es el valor definitivo. Si se requiere aumentar, se ajustará con evidencia y tests.
 
 ### Reliability / Operability (Confiabilidad)
 
@@ -61,7 +61,7 @@ max_body_bytes: int = 10 * 1024 * 1024  # 10MB
 
 ---
 
-## Gaps de Implementación (v6)
+## Gaps de Implementación
 
 | ID       | Gap                                    | Impacto | Acción Sugerida          |
 | -------- | -------------------------------------- | ------- | ------------------------ |
@@ -69,9 +69,9 @@ max_body_bytes: int = 10 * 1024 * 1024  # 10MB
 
 ---
 
-## Out-of-Scope v6
+## Out-of-Scope
 
-Los siguientes RNF NO están en alcance para v6:
+Los siguientes RNF NO están en alcance para el baseline actual:
 
 | ID       | Requisito     | Razón                                 |
 | -------- | ------------- | ------------------------------------- |
@@ -83,6 +83,6 @@ Los siguientes RNF NO están en alcance para v6:
 
 ## Referencias
 
-- Contrato v6: `docs/project/informe_de_sistemas_rag_corp.md` §4.2
+- Contrato: `docs/project/informe_de_sistemas_rag_corp.md` §4.2
 - ISO/IEC 25010: https://www.iso.org/standard/35733.html
 - ADR-001: `docs/architecture/adr/ADR-001-clean-architecture.md`

@@ -30,7 +30,7 @@ class TestRequirePermissions:
         with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
 
             dependency = require_permissions(Permission.QUERY_ASK)
             with pytest.raises(HTTPException) as exc_info:
@@ -49,7 +49,7 @@ class TestRequirePermissions:
         with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
 
             dependency = require_permissions(Permission.QUERY_ASK)
             with pytest.raises(HTTPException) as exc_info:
@@ -69,7 +69,7 @@ class TestRequirePermissions:
         with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ingest"]}
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
 
             dependency = require_permissions(Permission.QUERY_ASK)
             with pytest.raises(HTTPException) as exc_info:
@@ -86,7 +86,7 @@ class TestRequirePermissions:
         with patch("app.identity.auth.get_keys_config") as mock_config:
             mock_config.return_value = {"valid-key": ["ask"]}
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
             mock_request.state = MagicMock()
 
             dependency = require_permissions(Permission.QUERY_ASK)
@@ -114,7 +114,7 @@ class TestRequirePermissions:
             mock_rbac.return_value = rbac_config
 
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ingest/text"
+            mock_request.url.path = "/v1/workspaces/abc/ingest/text"
             mock_request.state = MagicMock()
 
             dependency = require_permissions(Permission.DOCUMENTS_CREATE)
@@ -141,11 +141,11 @@ class TestRoutePermissions:
         importlib.reload(routes)
 
         expected = {
-            "/ingest/text": Permission.DOCUMENTS_CREATE.value,
-            "/ingest/batch": Permission.DOCUMENTS_CREATE.value,
-            "/query": Permission.QUERY_SEARCH.value,
-            "/ask": Permission.QUERY_ASK.value,
-            "/ask/stream": Permission.QUERY_STREAM.value,
+            "/workspaces/{workspace_id}/ingest/text": Permission.DOCUMENTS_CREATE.value,
+            "/workspaces/{workspace_id}/ingest/batch": Permission.DOCUMENTS_CREATE.value,
+            "/workspaces/{workspace_id}/query": Permission.QUERY_SEARCH.value,
+            "/workspaces/{workspace_id}/ask": Permission.QUERY_ASK.value,
+            "/workspaces/{workspace_id}/ask/stream": Permission.QUERY_STREAM.value,
         }
 
         for route in routes.router.routes:

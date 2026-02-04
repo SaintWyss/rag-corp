@@ -62,10 +62,14 @@ def secure_route(principal=Depends(require_principal())):
 
 ```python
 # Requerir scope por API key
+from uuid import UUID
+
 from app.identity.auth import require_scope
 
-@router.post("/ingest")
-def ingest(_auth=Depends(require_scope("ingest"))):
+@router.post("/workspaces/{workspace_id}/ingest/text")
+def ingest_workspace_text(
+    workspace_id: UUID, _auth=Depends(require_scope("ingest"))
+):
     return {"ok": True}
 ```
 

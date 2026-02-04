@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *   - Manage RAG ask query state (query, answer, sources, loading, error)
- *   - Handle API call to backend /api/ask endpoint
+ *   - Handle API call to backend workspace-scoped endpoint
  *   - Provide abort capability for pending requests
  *   - Map HTTP error codes to user-friendly messages (es-AR)
  *   - Cleanup resources on component unmount
@@ -49,6 +49,10 @@ const initialState: AskState = {
   error: "",
 };
 
+type UseRagAskOptions = {
+  workspaceId: string;
+};
+
 /**
  * Get user-friendly error message based on HTTP status code.
  */
@@ -70,7 +74,7 @@ function getErrorMessage(status: number): string {
   }
 }
 
-export function useRagAsk() {
+export function useRagAsk({ workspaceId }: UseRagAskOptions) {
   const [state, setState] = useState<AskState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -106,6 +110,16 @@ export function useRagAsk() {
         return;
       }
 
+      if (!workspaceId) {
+        setState((prev) => ({
+          ...prev,
+          error: "Selecciona un workspace antes de preguntar.",
+          answer: "",
+          sources: [],
+        }));
+        return;
+      }
+
       // Abort previous request if any
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -126,7 +140,7 @@ export function useRagAsk() {
 
       try {
         const apiKey = getStoredApiKey();
-        const response = await fetch("/api/ask", {
+        const response = await fetch(`/api/workspaces/${workspaceId}/ask`, {
           method: "POST",
           headers: apiKey
             ? { "Content-Type": "application/json", "X-API-Key": apiKey }
@@ -176,7 +190,7 @@ export function useRagAsk() {
         setState((prev) => ({ ...prev, loading: false }));
       }
     },
-    [state.query]
+    [state.query, workspaceId]
   );
 
   return {

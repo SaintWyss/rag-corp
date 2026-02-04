@@ -11,31 +11,31 @@ Fecha: 2026-01-29
 - Resultado `git ls-files | rg ...` (caches/build/logs/etc): 0 matches.
 - Archivos >1MB trackeados: 0 matches.
 
-### Candidatos legacy
+### Candidatos obsoletos
 
 - `docs/architecture/decisions/ADR-006-archive-soft-delete.md`
-- `docs/architecture/decisions/ADR-007-legacy-endpoints.md`
+- `docs/architecture/adr/ADR-007-workspace-endpoints.md`
 
 ## Evidencia de no-uso (previo a borrar)
 
 - `rg -n "ADR-006-archive-soft-delete" .` -> 1 match en `docs/README.md`.
-- `rg -n "ADR-007-legacy-endpoints" .` -> 1+ matches en `docs/README.md` y `docs/architecture/decisions/ADR-007-legacy-endpoints.md`.
+- `rg -n "ADR-007-workspace-endpoints" .` -> 1+ matches en `docs/README.md` y `docs/architecture/adr/ADR-007-workspace-endpoints.md`.
 
 ## TODOs dudosos
 
-- Referencias en `docs/architecture/decisions/ADR-007-legacy-endpoints.md` a `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md` no se encontraron en el repo; no se tocó por ser contenido contractual.
+- Referencias en `docs/architecture/adr/ADR-007-workspace-endpoints.md` a informes de producto ya no presentes en el repo; no se tocó por ser contenido contractual.
 
 ## FASE 2 — Plan (máx 10 bullets)
 
 1. Confirmar que no hay basura trackeada para borrar.
 2. Reforzar `.gitignore` con patrones de cookies y artifacts faltantes.
 3. Agregar `.dockerignore` raíz mínimo si falta.
-4. No borrar legacy con referencias activas (documentar decisión).
+4. No borrar docs obsoletos con referencias activas (documentar decisión).
 5. Correr checks mínimos solicitados y reportar resultados.
 
 ## FASE 3 — Ejecución
 
-- No hubo `git rm` (sin basura trackeada ni legacy sin referencias).
+- No hubo `git rm` (sin basura trackeada ni obsoletos sin referencias).
 - Actualicé `.gitignore` para incluir `cookies*.txt`.
 - Agregué `.dockerignore` raíz mínimo.
 
@@ -76,7 +76,7 @@ Fecha: 2026-01-29
 
 ### Resumen (≤10 bullets)
 
-- No se encontró basura trackeada ni legacy sin referencias para borrar.
+- No se encontró basura trackeada ni obsoletos sin referencias para borrar.
 - Se reforzó `.gitignore` para `cookies*.txt`.
 - Se agregó `.dockerignore` raíz mínimo.
 - Se removió un `eslint-disable` innecesario en frontend.
@@ -93,7 +93,7 @@ Fecha: 2026-01-29
 - `git ls-files | rg ...` -> 0 matches (basura trackeada).
 - `git ls-files -z | ... | awk '$1>1000000'` -> 0 matches (>1MB).
 - `rg -n "ADR-006-archive-soft-delete" .` -> 1 match en `docs/README.md`.
-- `rg -n "ADR-007-legacy-endpoints" .` -> matches en docs.
+- `rg -n "ADR-007-workspace-endpoints" .` -> matches en docs.
 - `cd apps/backend && ruff check .` -> OK.
 - `cd apps/backend && ruff format --check .` -> requería formato; luego OK con `ruff format .`.
 - `cd apps/backend && pytest -q` -> OK.
@@ -106,4 +106,4 @@ Fecha: 2026-01-29
 
 ### TODOs que quedaron
 
-- Revisar referencia a `.github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md` (no existe en repo).
+- Revisar referencias a informes de producto ya no presentes en el repo.

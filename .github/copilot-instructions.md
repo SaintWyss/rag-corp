@@ -1,20 +1,20 @@
 ```md
 # Instrucciones del proyecto (RAG Corp)
 
-## Estado / Versión (v6)
+## Estado / Versión
 
-- La versión vigente del proyecto/documentación es **v6**.
-- “v4” solo puede aparecer como **HISTORICAL** (origen/especificación pasada), claramente marcado.
+- Baseline actual: ver `docs/project/informe_de_sistemas_rag_corp.md`.
+- No usar etiquetas internas de versión en documentación o instrucciones.
 
 ## Source of Truth (anti-drift)
 
 Antes de afirmar algo “como cierto”, verificar en este orden:
 
-1. **Informe de Sistemas v6 (Definitivo)** (`docs/system/informe_de_sistemas_rag_corp.md`).
+1. **Informe de Sistemas (Definitivo)**: `docs/project/informe_de_sistemas_rag_corp.md`.
 2. **Contrato API**: `shared/contracts/openapi.json` (y cliente generado si aplica).
-3. **DB/Migraciones**: `backend/alembic/versions/*` + `docs/data/postgres-schema.md`.
-4. **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
-5. **Decisiones**: `docs/architecture/decisions/ADR-*.md`.
+3. **DB/Migraciones**: `apps/backend/alembic/versions/*` + `docs/reference/data/postgres-schema.md`.
+4. **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `apps/frontend/next.config.mjs`, `apps/backend/app/main.py`, `apps/backend/app/api/main.py`, `apps/backend/app/interfaces/api/http/routes.py`.
+5. **Decisiones**: `docs/architecture/adr/ADR-*.md`.
 
 ## Principios
 
@@ -44,24 +44,23 @@ Antes de afirmar algo “como cierto”, verificar en este orden:
   - implique un **cambio destructivo** (pérdida de datos / breaking compat),
   - o haya **riesgo de seguridad**.
 
-## Naming / Semántica v6 (consistencia)
+## Naming / Semántica (consistencia)
 
 - “Workspace” es el término técnico (API/DB/código). “Sección” es **solo UI copy** (si aplica).
-- Visibilidad (si está en v6): `PRIVATE | ORG_READ | SHARED` (+ `workspace_acl`).
-- Endpoints canónicos (si existen): `/v1/workspaces/{id}/...`
-- Endpoints legacy (si existen): **DEPRECATED** y siempre con `workspace_id` explícito (nunca implícito).
+- Visibilidad: `PRIVATE | ORG_READ | SHARED` (+ `workspace_acl`).
+- Endpoints canónicos: `/v1/workspaces/{id}/...`
 
 ## Documentación
 
 - `README.md` raíz como portal y `docs/README.md` como índice.
 - Arquitectura en `docs/architecture/overview.md`.
 - API en `docs/reference/api/http-api.md` (alineado a `shared/contracts/openapi.json`).
-- Datos en `docs/data/postgres-schema.md` (alineado a `backend/alembic/`).
+- Datos en `docs/reference/data/postgres-schema.md` (alineado a `apps/backend/alembic/`).
 - Runbook en `docs/runbook/local-dev.md`.
 - Si un cambio impacta docs, **actualizarlas en el mismo commit**.
-- Si hay docs viejos que contradicen v6, marcarlos como **HISTORICAL/Deprecated** o reemplazarlos.
+- Si hay docs viejos que contradicen el baseline, marcarlos como **OBSOLETO** o reemplazarlos.
 
-## Git (flujo v6)
+## Git (flujo)
 
 - **NO crear ramas ni PRs por defecto.** Trabajar en la rama actual.
 - **1 tarea/prompt = 1 commit** (salvo que el prompt pida explícitamente dividir).

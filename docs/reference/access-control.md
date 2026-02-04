@@ -2,7 +2,7 @@
 Fuente de verdad: `apps/backend/app/identity/` y `apps/backend/app/crosscutting/config.py`.
 
 ## Mecanismos soportados
-- **API Keys** (`X-API-Key`) con scopes legacy en `apps/backend/app/identity/auth.py`.
+- **API Keys** (`X-API-Key`) con scopes en `apps/backend/app/identity/auth.py`.
 - **RBAC para API Keys** (roles + permisos) en `apps/backend/app/identity/rbac.py`.
 - **JWT para usuarios** (roles `admin`/`employee`) en `apps/backend/app/identity/users.py` y `apps/backend/app/identity/auth_users.py`.
 - **Principal unificado (USER/SERVICE)** en `apps/backend/app/identity/dual_auth.py`.

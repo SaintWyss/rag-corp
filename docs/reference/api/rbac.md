@@ -20,7 +20,7 @@ Definidos en `Permission` (`apps/backend/app/identity/rbac.py`):
 - `admin:config`
 - `*` (wildcard)
 
-## Scopes legacy → permisos
+## Scopes → permisos
 Mapeo `SCOPE_PERMISSIONS` (`apps/backend/app/identity/rbac.py`):
 - `ingest` → `documents:create`, `documents:read`, `documents:delete`
 - `ask` → `documents:read`, `query:search`, `query:ask`, `query:stream`

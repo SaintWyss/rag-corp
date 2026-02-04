@@ -50,10 +50,4 @@ Notas:
   para evitar duplicación en pages.
 - El segmento `workspaces/[id]` actúa como boundary del contexto workspace (validación de `id` + slots).
 
-## ♻️ Compatibilidad de rutas históricas
-
-Rutas como `/chat` y `/documents` se mantienen como **compat shims**:
-- Redirigen server-side a `/workspaces`.
-- Evitan duplicación de navegación y estados inconsistentes.
-
 ---

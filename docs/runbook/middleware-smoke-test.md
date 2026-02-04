@@ -15,7 +15,7 @@
 | 1.1  | Open browser, clear cookies                     | Cookies cleared                          |
 | 1.2  | Navigate to `http://localhost:3000/workspaces`  | Redirected to `/login?next=/workspaces`  |
 | 1.3  | Navigate to `http://localhost:3000/admin/users` | Redirected to `/login?next=/admin/users` |
-| 1.4  | Navigate to `http://localhost:3000/documents`   | Redirected to `/login?next=/documents`   |
+| 1.4  | Navigate to `http://localhost:3000/workspaces/some-id/documents`   | Redirected to `/login?next=/workspaces/some-id/documents`   |
 
 ### Test 2: Admin Login and Role Enforcement
 

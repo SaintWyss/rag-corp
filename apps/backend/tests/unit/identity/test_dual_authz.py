@@ -52,14 +52,14 @@ def _build_app() -> FastAPI:
     app = FastAPI()
     register_exception_handlers(app)
 
-    @app.post("/ingest")
+    @app.post("/workspaces/{workspace_id}/ingest/text")
     def ingest(
         _: None = Depends(require_principal(Permission.DOCUMENTS_CREATE)),
         _role: None = Depends(require_admin()),
     ):
         return {"ok": True}
 
-    @app.delete("/documents/{doc_id}")
+    @app.delete("/workspaces/{workspace_id}/documents/{doc_id}")
     def delete_document(
         doc_id: str,
         _: None = Depends(require_principal(Permission.DOCUMENTS_DELETE)),
@@ -67,14 +67,14 @@ def _build_app() -> FastAPI:
     ):
         return {"ok": True, "id": doc_id}
 
-    @app.get("/documents")
+    @app.get("/workspaces/{workspace_id}/documents")
     def list_documents(
         _: None = Depends(require_principal(Permission.DOCUMENTS_READ)),
         _role: None = Depends(require_employee_or_admin()),
     ):
         return {"ok": True}
 
-    @app.post("/ask")
+    @app.post("/workspaces/{workspace_id}/ask")
     def ask(
         _: None = Depends(require_principal(Permission.QUERY_ASK)),
         _role: None = Depends(require_employee_or_admin()),
@@ -94,13 +94,13 @@ def test_jwt_admin_allowed_for_admin_endpoints():
     with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
         with patch("app.identity.auth_users.get_user_by_id", return_value=admin):
             response = client.post(
-                "/ingest",
+                "/workspaces/abc/ingest/text",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 200
 
             response = client.delete(
-                f"/documents/{admin.id}",
+                f"/workspaces/abc/documents/{admin.id}",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 200
@@ -116,13 +116,13 @@ def test_jwt_employee_denied_for_admin_endpoints():
     with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
         with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             response = client.post(
-                "/ingest",
+                "/workspaces/abc/ingest/text",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 403
 
             response = client.delete(
-                f"/documents/{employee.id}",
+                f"/workspaces/abc/documents/{employee.id}",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 403
@@ -138,19 +138,19 @@ def test_jwt_employee_allowed_for_read_endpoints():
     with patch("app.identity.auth_users.get_auth_settings", return_value=settings):
         with patch("app.identity.auth_users.get_user_by_id", return_value=employee):
             response = client.get(
-                "/documents",
+                "/workspaces/abc/documents",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 200
 
             response = client.post(
-                "/ask",
+                "/workspaces/abc/ask",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 200
 
 
-def test_api_key_allows_permissions_legacy_scopes():
+def test_api_key_allows_permissions_scopes():
     app = _build_app()
     client = TestClient(app)
 
@@ -158,10 +158,14 @@ def test_api_key_allows_permissions_legacy_scopes():
         "app.identity.auth.get_keys_config", return_value={"valid-key": ["ask"]}
     ):
         with patch("app.identity.rbac.get_rbac_config", return_value=None):
-            response = client.post("/ask", headers={"X-API-Key": "valid-key"})
+            response = client.post(
+                "/workspaces/abc/ask", headers={"X-API-Key": "valid-key"}
+            )
             assert response.status_code == 200
 
-            response = client.post("/ingest", headers={"X-API-Key": "valid-key"})
+            response = client.post(
+                "/workspaces/abc/ingest/text", headers={"X-API-Key": "valid-key"}
+            )
             assert response.status_code == 403
 
 
@@ -175,5 +179,7 @@ def test_api_key_allows_permissions_rbac():
 
     with patch("app.identity.auth.get_keys_config", return_value={}):
         with patch("app.identity.rbac.get_rbac_config", return_value=rbac_config):
-            response = client.post("/ingest", headers={"X-API-Key": api_key})
+            response = client.post(
+                "/workspaces/abc/ingest/text", headers={"X-API-Key": api_key}
+            )
             assert response.status_code == 200

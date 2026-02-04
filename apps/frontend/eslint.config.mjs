@@ -76,8 +76,8 @@ const BOUNDARIES_ELEMENTS = [
   { type: "services", pattern: "src/services/*", capture: ["segment"] },
   { type: "utils", pattern: "src/utils/*", capture: ["segment"] },
 
-  // Legacy (root /lib)
-  { type: "legacy-lib", pattern: "lib/*", capture: ["segment"] },
+  // Root lib (root /lib)
+  { type: "root-lib", pattern: "lib/*", capture: ["segment"] },
 ];
 
 export default defineConfig([

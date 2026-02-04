@@ -139,13 +139,13 @@ class TestContextVars:
 
         request_id_var.set("test-123")
         http_method_var.set("POST")
-        http_path_var.set("/v1/ask")
+        http_path_var.set("/v1/workspaces/abc/ask")
 
         result = get_context_dict()
 
         assert result["request_id"] == "test-123"
         assert result["method"] == "POST"
-        assert result["path"] == "/v1/ask"
+        assert result["path"] == "/v1/workspaces/{workspace_id}/ask"
 
         # Cleanup
         clear_context()
@@ -300,19 +300,19 @@ class TestMetricsModule:
         """R: Should replace UUIDs in paths."""
         from app.crosscutting.metrics import _normalize_endpoint
 
-        path = "/v1/documents/3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d"
+        path = "/v1/workspaces/abc/documents/3c0b6f96-2f4b-4d67-9aa3-5e5f7a6e9a1d"
         result = _normalize_endpoint(path)
 
-        assert result == "/v1/documents/{id}"
+        assert result == "/v1/workspaces/{workspace_id}/documents/{id}"
 
     def test_normalize_endpoint_numeric(self):
         """R: Should replace numeric IDs in paths."""
         from app.crosscutting.metrics import _normalize_endpoint
 
-        path = "/v1/documents/12345"
+        path = "/v1/workspaces/abc/documents/12345"
         result = _normalize_endpoint(path)
 
-        assert result == "/v1/documents/{id}"
+        assert result == "/v1/workspaces/{workspace_id}/documents/{id}"
 
     def test_status_bucket(self):
         """R: Should bucket status codes correctly."""

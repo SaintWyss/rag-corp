@@ -2,7 +2,7 @@
 
 ## Baseline
 
-- **V6 Foundation** (`001_foundation.py`) is the canonical baseline.
+- **Foundation** (`001_foundation.py`) is the canonical baseline.
 - It creates the complete schema from scratch.
 - Downgrade is blocked by policy (`NotImplementedError`).
 

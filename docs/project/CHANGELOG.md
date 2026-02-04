@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Permission-based access control (documents:*, query:*, admin:*)
   - Role inheritance support
   - Configurable via `RBAC_CONFIG` environment variable
-- SSE streaming endpoint for LLM responses (`POST /v1/ask/stream`)
+- SSE streaming endpoint for LLM responses (`POST /v1/workspaces/{workspace_id}/ask/stream`)
 - Redis cache backend for production (auto-detected via `REDIS_URL`)
 - Maximal Marginal Relevance (MMR) retrieval for diverse search results
 - E2E tests with Playwright

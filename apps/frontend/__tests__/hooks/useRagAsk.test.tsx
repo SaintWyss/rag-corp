@@ -22,7 +22,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("returns initial state", () => {
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         expect(result.current.query).toBe("");
         expect(result.current.answer).toBe("");
@@ -32,7 +32,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("updates query when setQuery is called", () => {
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("test query");
@@ -42,7 +42,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("shows error for empty query", async () => {
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         await act(async () => {
             await result.current.submit();
@@ -54,7 +54,7 @@ describe("useRagAsk Hook", () => {
     it("handles 401 unauthorized error", async () => {
         mockFetch.mockResolvedValueOnce(makeResponse(401));
 
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("test");
@@ -70,7 +70,7 @@ describe("useRagAsk Hook", () => {
     it("handles 429 rate limit error", async () => {
         mockFetch.mockResolvedValueOnce(makeResponse(429));
 
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("test");
@@ -86,7 +86,7 @@ describe("useRagAsk Hook", () => {
     it("handles 503 service unavailable", async () => {
         mockFetch.mockResolvedValueOnce(makeResponse(503));
 
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("test");
@@ -107,7 +107,7 @@ describe("useRagAsk Hook", () => {
             })
         );
 
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("test query");
@@ -125,7 +125,7 @@ describe("useRagAsk Hook", () => {
     it("handles network error", async () => {
         mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("test");
@@ -139,7 +139,7 @@ describe("useRagAsk Hook", () => {
     });
 
     it("resets state when reset is called", () => {
-        const { result } = renderHook(() => useRagAsk());
+        const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
 
         act(() => {
             result.current.setQuery("some query");

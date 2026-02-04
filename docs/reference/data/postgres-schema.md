@@ -601,10 +601,9 @@ SELECT pg_size_pretty(pg_total_relation_size('chunks')) AS total_size;
 
 ## Schema Migrations
 
-### Legacy workspace backfill (v6)
+### Workspace scoping (baseline)
 
-La migracion `008_docs_workspace_id.py` crea un workspace **Legacy** y backfillea `documents.workspace_id`.
-Si no existen usuarios, la migracion falla con un mensaje explicito (se debe crear un admin con `scripts/create_admin.py`).
+`documents.workspace_id` es obligatorio desde el inicio. No hay backfills ni workspaces de compatibilidad.
 
 ### Add New Column
 

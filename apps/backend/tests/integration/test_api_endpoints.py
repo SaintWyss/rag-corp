@@ -163,9 +163,8 @@ class TestIngestTextEndpoint:
 
         # Act
         response = client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -186,9 +185,8 @@ class TestIngestTextEndpoint:
 
         # Act
         response = client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -202,9 +200,8 @@ class TestIngestTextEndpoint:
 
         # Act
         response = client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -225,9 +222,8 @@ class TestIngestTextEndpoint:
 
         # Act
         response = client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -247,18 +243,16 @@ class TestQueryEndpoint:
             "text": "Python is a programming language. " * 30,
         }
         client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=ingest_payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
         # Act
         query_payload = {"query": "programming language", "top_k": 3}
         response = client.post(
-            "/v1/query",
+            f"/v1/workspaces/{workspace_id}/query",
             json=query_payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -275,9 +269,8 @@ class TestQueryEndpoint:
 
         # Act
         response = client.post(
-            "/v1/query",
+            f"/v1/workspaces/{workspace_id}/query",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -293,9 +286,8 @@ class TestQueryEndpoint:
 
         # Act
         response = client.post(
-            "/v1/query",
+            f"/v1/workspaces/{workspace_id}/query",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -321,18 +313,16 @@ class TestAskEndpoint:
             * 20,
         }
         client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=ingest_payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
         # Act
         ask_payload = {"query": "What is FastAPI?", "top_k": 3}
         response = client.post(
-            "/v1/ask",
+            f"/v1/workspaces/{workspace_id}/ask",
             json=ask_payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -355,9 +345,8 @@ class TestAskEndpoint:
 
         # Act
         response = client.post(
-            "/v1/ask",
+            f"/v1/workspaces/{workspace_id}/ask",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -374,9 +363,8 @@ class TestAskEndpoint:
 
         # Act
         response = client.post(
-            "/v1/ask",
+            f"/v1/workspaces/{workspace_id}/ask",
             json=payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -393,17 +381,15 @@ class TestAskEndpoint:
             "text": "This document tests source attribution. " * 30,
         }
         client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             json=ingest_payload,
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
         # Act
         response = client.post(
-            "/v1/ask",
+            f"/v1/workspaces/{workspace_id}/ask",
             json={"query": "source attribution"},
-            params={"workspace_id": str(workspace_id)},
             headers=auth_headers,
         )
 
@@ -438,10 +424,9 @@ class TestErrorHandling:
         """R: Should return 422 for invalid JSON."""
         # Act
         response = client.post(
-            "/v1/ingest/text",
+            f"/v1/workspaces/{workspace_id}/ingest/text",
             data="invalid json{",
             headers={**auth_headers, "Content-Type": "application/json"},
-            params={"workspace_id": str(workspace_id)},
         )
 
         # Assert
@@ -463,7 +448,12 @@ class TestAPIVersioning:
     def test_endpoints_under_v1_prefix(self, client):
         """R: All business endpoints should be under /v1 prefix."""
         # Arrange
-        endpoints = ["/v1/ingest/text", "/v1/query", "/v1/ask"]
+        sample_workspace = "00000000-0000-0000-0000-000000000000"
+        endpoints = [
+            f"/v1/workspaces/{sample_workspace}/ingest/text",
+            f"/v1/workspaces/{sample_workspace}/query",
+            f"/v1/workspaces/{sample_workspace}/ask",
+        ]
 
         # Act & Assert
         for endpoint in endpoints:

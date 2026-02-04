@@ -2,34 +2,34 @@
 
 ## Estado
 
-**Aceptado** (2026-01-15) — Vigente en v6
+**Aceptado** (2026-01-15) — Vigente
 
 ## Contexto
 
-- La especificacion **Especificación Base** define el naming tecnico: en codigo se usa Workspace, en UI se muestra Seccion, y la fuente de verdad tecnica es Workspace. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-- La API propuesta expone rutas bajo `/v1/workspaces`. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-- La UI propuesta usa el label "Workspaces/Secciones" y un selector de workspace. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
+- La especificacion **Especificación Base** define el naming tecnico: en codigo se usa Workspace, en UI se muestra Seccion, y la fuente de verdad tecnica es Workspace. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+- La API propuesta expone rutas bajo `/v1/workspaces`. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+- La UI propuesta usa el label "Workspaces/Secciones" y un selector de workspace. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
 
 ## Decision
 
-- Usar **workspace** como termino tecnico en API/contratos/BE/DB; **seccion** queda solo como copy/label en UI. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-- Documentar el mapping UI -> workspace como convencion de producto para evitar drift entre capas. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
+- Usar **workspace** como termino tecnico en API/contratos/BE/DB; **seccion** queda solo como copy/label en UI. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+- Documentar el mapping UI -> workspace como convencion de producto para evitar drift entre capas. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
 
 ## Alternativas consideradas
 
-1. "Seccion" en API/DB/codigo (descartado porque la decision **Especificación Base** fija Workspace como termino tecnico). (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-2. "Workspace" tambien en UI (descartado porque la **Especificación Base** permite Seccion en UI para ser natural en espanol). (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
+1. "Seccion" en API/DB/codigo (descartado porque la decision **Especificación Base** fija Workspace como termino tecnico). (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+2. "Workspace" tambien en UI (descartado porque la **Especificación Base** permite Seccion en UI para ser natural en espanol). (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
 
 ## Consecuencias
 
-- Las rutas y contratos tecnicos se alinean a `/v1/workspaces` y a la entidad Workspace. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-- La UI mantiene el termino "Seccion" sin cambiar el contrato tecnico. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
+- Las rutas y contratos tecnicos se alinean a `/v1/workspaces` y a la entidad Workspace. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+- La UI mantiene el termino "Seccion" sin cambiar el contrato tecnico. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
 
 ## Impacto FE/BE/DB
 
-- FE: navegacion y copy con "Workspaces/Secciones" y selector de workspace. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-- BE/API: endpoints `/v1/workspaces/...`. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
-- DB: entidad `workspaces` y atributos definidos para Workspace. (Fuente: `TODO(verify: missing .github/informe_de_producto_y_analisis_rag_corp_v_4_workspaces_secciones_gobernanza_y_roadmap.md)`)
+- FE: navegacion y copy con "Workspaces/Secciones" y selector de workspace. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+- BE/API: endpoints `/v1/workspaces/...`. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
+- DB: entidad `workspaces` y atributos definidos para Workspace. (Fuente: `docs/project/informe_de_sistemas_rag_corp.md`)
 
 ## Validacion
 

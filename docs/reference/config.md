@@ -61,7 +61,6 @@ Cada fila corresponde a un campo de `Settings` y su variable de entorno asociada
 | `retry_max_attempts` | `RETRY_MAX_ATTEMPTS` | `3` |
 | `retry_base_delay_seconds` | `RETRY_BASE_DELAY_SECONDS` | `1.0` |
 | `retry_max_delay_seconds` | `RETRY_MAX_DELAY_SECONDS` | `30.0` |
-| `legacy_workspace_id` | `LEGACY_WORKSPACE_ID` | `null` |
 | `dev_seed_admin` | `DEV_SEED_ADMIN` | `false` |
 | `dev_seed_admin_email` | `DEV_SEED_ADMIN_EMAIL` | `admin@local` |
 | `dev_seed_admin_password` | `DEV_SEED_ADMIN_PASSWORD` | `admin` |

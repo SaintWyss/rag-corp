@@ -21,7 +21,7 @@ Este documento define los **requerimientos funcionales** del sistema RAG Corp. C
 | ----- | ---------------- | --------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------- |
 | RF-A1 | Auth JWT         | Login/logout/me con JWT                 | Must      | Login correcto crea sesión; credenciales inválidas → 401 RFC7807; `/auth/me` devuelve usuario           |
 | RF-A2 | Cookies httpOnly | UI usa cookies httpOnly para auth       | Must      | Cookie httpOnly; logout invalida cookie; no requiere almacenar JWT en localStorage                      |
-| RF-A3 | API Keys + RBAC  | API keys para CI/integraciones con RBAC | Must      | Endpoint protegido exige permisos; sin RBAC usa fallback de scopes legacy; actor service queda auditado |
+| RF-A3 | API Keys + RBAC  | API keys para CI/integraciones con RBAC | Must      | Endpoint protegido exige permisos; sin RBAC usa fallback de scopes; actor service queda auditado |
 
 ### B. Workspaces
 
@@ -71,7 +71,7 @@ Este documento define los **requerimientos funcionales** del sistema RAG Corp. C
 | RF-A1..A3 | `/auth/*`                            | `tests/e2e/tests/*.spec.ts`, unit auth   |
 | RF-B1..B3 | `/v1/workspaces*`                    | `tests/e2e/tests/workspace-flow.spec.ts` |
 | RF-C1..C3 | `/v1/workspaces/{id}/documents*`     | `tests/e2e/tests/documents.spec.ts`      |
-| RF-D1..D2 | `/v1/workspaces/{id}/ask*`, `/query` | `tests/e2e/tests/chat.spec.ts`           |
+| RF-D1..D2 | `/v1/workspaces/{id}/ask*`, `/v1/workspaces/{id}/query` | `tests/e2e/tests/chat.spec.ts`           |
 | RF-E1..E2 | `/v1/admin/audit`                    | unit audit tests                         |
 
 ---
@@ -106,6 +106,6 @@ Este documento define los **requerimientos funcionales** del sistema RAG Corp. C
 
 ## Referencias
 
-- Contrato v6: `docs/project/informe_de_sistemas_rag_corp.md` §4.1
+- Contrato: `docs/project/informe_de_sistemas_rag_corp.md` §4.1
 - API HTTP: `docs/reference/api/http-api.md`
 - OpenAPI: `shared/contracts/openapi.json`

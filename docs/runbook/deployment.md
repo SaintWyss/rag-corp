@@ -71,7 +71,7 @@ URLs:
 
 Ver `infra/k8s/README.md` y `docs/runbook/kubernetes.md`.
 
-## GitHub Actions / CI/CD (Legacy deploy.md info)
+## GitHub Actions / CI/CD
 
 El workflow de deploy usa GitHub Environments (`staging` y `production`).
 

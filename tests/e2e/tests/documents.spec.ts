@@ -9,7 +9,7 @@ test.describe("Sources flow", () => {
 
     test.beforeEach(async ({ page }) => {
         await loginAsAdmin(page);
-        await page.goto("/documents");
+        await page.goto("/workspaces");
         await expect(page).toHaveURL(/\/workspaces$/);
         await expect(page.getByTestId("workspaces-page")).toBeVisible();
     });

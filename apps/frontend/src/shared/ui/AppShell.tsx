@@ -86,11 +86,6 @@ export function AppShell({ children }: AppShellProps) {
     void loadWorkspaces();
   }, [loadWorkspaces]);
 
-  useEffect(() => {
-    if (pathname === "/documents" || pathname === "/chat") {
-      router.replace("/workspaces");
-    }
-  }, [pathname, router]);
 
   const visibleWorkspaces = useMemo(
     () => workspaces.filter((workspace) => !workspace.archived_at),
@@ -146,7 +141,7 @@ export function AppShell({ children }: AppShellProps) {
           <header className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-4">
               <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/60 font-bold shadow-sm">
-                RAG Corp · v1
+                RAG Corp
               </div>
               <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-white/60">
                 {navLinks.map((link) => (

@@ -15,7 +15,7 @@ const filePath = path.join(__dirname, "..", "fixtures", "sample.pdf");
 const EMP_USER = { email: "employee1@local", password: "employee1" };
 const ADMIN_USER = { email: "admin@local", password: "admin" };
 
-test.describe("Workspace v4 flow", () => {
+test.describe("Workspace flow", () => {
     const hasAdminEnv = hasAdminCredentials();
     test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
 

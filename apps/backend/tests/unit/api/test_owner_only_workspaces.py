@@ -2,7 +2,7 @@
 CRC — tests/unit/test_owner_only_workspaces.py
 
 Name
-- Workspace Listing / Ownership / Visibility Tests (v6)
+- Workspace Listing / Ownership / Visibility Tests
 
 Responsibilities
 - Validate employee visibility rules for listing and getting workspaces:
@@ -48,7 +48,7 @@ pytestmark = pytest.mark.unit
 
 
 class FakeWorkspaceRepository:
-    """Minimal fake repository implementing the methods required by v6 use cases."""
+    """Minimal fake repository implementing the methods required by use cases."""
 
     def __init__(
         self,
@@ -79,7 +79,7 @@ class FakeWorkspaceRepository:
         *,
         include_archived: bool = False,
     ) -> list[Workspace]:
-        """Reverse helper used by v6 listing logic (e.g., ORG_READ)."""
+        """Reverse helper used by listing logic (e.g., ORG_READ)."""
         result = [ws for ws in self._workspaces.values() if ws.visibility == visibility]
         if not include_archived:
             result = [ws for ws in result if ws.archived_at is None]
@@ -91,7 +91,7 @@ class FakeWorkspaceRepository:
         *,
         include_archived: bool = False,
     ) -> list[Workspace]:
-        """Helper used by v6 listing logic (SHARED workspaces fetched by ACL IDs)."""
+        """Helper used by listing logic (SHARED workspaces fetched by ACL IDs)."""
         if not workspace_ids:
             return []
         wanted = set(workspace_ids)
@@ -158,7 +158,7 @@ class FakeWorkspaceAclRepository:
     def list_workspaces_for_user(self, user_id: UUID) -> list[UUID]:
         """
         Reverse lookup: return workspace IDs where user_id is present.
-        v6 listing uses this to find SHARED workspaces.
+        Listing uses this to find SHARED workspaces.
         """
         workspace_ids = [
             ws_id for ws_id, users in self._acl.items() if user_id in users
@@ -190,12 +190,12 @@ def _workspace(
 
 
 # =============================================================================
-# LIST WORKSPACES - v6 VISIBILITY RULES
+# LIST WORKSPACES - VISIBILITY RULES
 # =============================================================================
 
 
-class TestListWorkspacesV6:
-    """v6: EMPLOYEE sees OWN + ORG_READ + SHARED(if in ACL), but not foreign PRIVATE."""
+class TestListWorkspaces:
+    """EMPLOYEE sees OWN + ORG_READ + SHARED(if in ACL), but not foreign PRIVATE."""
 
     def test_employee_sees_own_plus_org_read_plus_shared_member(self):
         employee_id = uuid4()
@@ -242,7 +242,7 @@ class TestListWorkspacesV6:
     def test_employee_passing_owner_user_id_does_not_expand_privileges(self):
         """
         EMPLOYEE cannot use owner_user_id to see someone else's PRIVATE workspaces.
-        The parameter is ignored for employees by the v6 use case.
+        The parameter is ignored for employees by the use case.
         """
         employee_id = uuid4()
         other_owner = uuid4()
@@ -322,8 +322,8 @@ class TestListWorkspacesV6:
 # =============================================================================
 
 
-class TestGetWorkspaceV6:
-    """v6: EMPLOYEE can get OWN, ORG_READ, and SHARED(if in ACL)."""
+class TestGetWorkspace:
+    """EMPLOYEE can get OWN, ORG_READ, and SHARED(if in ACL)."""
 
     def test_employee_can_get_own_private_workspace(self):
         employee_id = uuid4()
@@ -443,7 +443,7 @@ class TestGetWorkspaceV6:
 
 
 class TestCreateWorkspaceOwnerRules:
-    """v6: workspace provisioning is admin-only (ADR-009)."""
+    """Workspace provisioning is admin-only (ADR-009)."""
 
     def test_employee_cannot_create_workspace(self):
         employee_id = uuid4()

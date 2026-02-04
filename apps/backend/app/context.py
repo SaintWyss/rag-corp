@@ -97,6 +97,12 @@ def get_context_dict() -> dict[str, str]:
     if val := http_method_var.get():
         ctx[_CTX_METHOD] = val
     if val := http_path_var.get():
+        try:
+            from app.crosscutting.metrics import _normalize_endpoint
+
+            val = _normalize_endpoint(val)
+        except Exception:
+            pass
         ctx[_CTX_PATH] = val
 
     return ctx

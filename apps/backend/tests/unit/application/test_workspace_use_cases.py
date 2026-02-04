@@ -7,7 +7,7 @@ Name
 Responsibilities
 - Validate workspace use cases and access policy wiring.
 - Cover read/write/ACL decision matrix.
-- Ensure v6 listing behavior for EMPLOYEE:
+- Ensure baseline listing behavior for EMPLOYEE:
   - OWN workspaces
   - ORG_READ workspaces (global)
   - SHARED workspaces when the user is in ACL
@@ -84,7 +84,7 @@ class FakeWorkspaceRepository:
         include_archived: bool = False,
     ) -> list[Workspace]:
         """
-        R: Helper used by v6 listing logic to fetch ORG_READ workspaces.
+        R: Helper used by listing logic to fetch ORG_READ workspaces.
         """
         result = [ws for ws in self._workspaces.values() if ws.visibility == visibility]
         if not include_archived:
@@ -98,7 +98,7 @@ class FakeWorkspaceRepository:
         include_archived: bool = False,
     ) -> list[Workspace]:
         """
-        R: Helper used by v6 listing logic to fetch SHARED workspaces by ACL IDs.
+        R: Helper used by listing logic to fetch SHARED workspaces by ACL IDs.
         """
         if not workspace_ids:
             return []
@@ -460,7 +460,7 @@ def test_list_workspaces_filters_by_policy():
     acl_repo = FakeWorkspaceAclRepository(acl_map)
     use_case = ListWorkspacesUseCase(repo, acl_repo)
 
-    # v6: EMPLOYEE sees ORG_READ globally + SHARED when in ACL, even if not the owner.
+    # EMPLOYEE sees ORG_READ globally + SHARED when in ACL, even if not the owner.
     member_result = use_case.execute(actor=_actor(shared_member, UserRole.EMPLOYEE))
     assert {ws.id for ws in member_result.workspaces} == {ws_org.id, ws_shared.id}
 

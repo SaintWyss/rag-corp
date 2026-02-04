@@ -2,12 +2,12 @@
 applyTo: "docs/**"
 ---
 
-# Docs — reglas específicas del repo (v6)
+# Docs — reglas específicas del repo
 
-## Estado / Versión (v6)
+## Estado / Versión
 
-- La documentación vigente del proyecto es **v6**.
-- “v4” solo puede aparecer como **HISTORICAL** (origen/especificación pasada), claramente marcado.
+- Baseline actual: `docs/project/informe_de_sistemas_rag_corp.md`.
+- No usar etiquetas internas de versión en documentación.
 
 ## Modo de trabajo
 
@@ -18,23 +18,20 @@ applyTo: "docs/**"
 
 Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, tablas, scripts), verificar en este orden:
 
-1. **Informe de Sistemas v6 (Definitivo)** (`docs/system/informe_de_sistemas_rag_corp.md`) si existe.
+1. **Informe de Sistemas (Definitivo)**: `docs/project/informe_de_sistemas_rag_corp.md`.
 2. **Contracts**: `shared/contracts/openapi.json` (y client generado si aplica).
-
-3) **DB/Migraciones**: `backend/alembic/versions/*` + `docs/reference/data/postgres-schema.md`.
-
-4. **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `frontend/next.config.ts`, `backend/app/main.py`/`routes.py`.
-
-5) **Decisiones**: `docs/architecture/adr/ADR-*.md`.
+3. **DB/Migraciones**: `apps/backend/alembic/versions/*` + `docs/reference/data/postgres-schema.md`.
+4. **Runtime real**: `compose*.yaml`, `package.json`, CI workflows, `apps/frontend/next.config.mjs`, `apps/backend/app/main.py`, `apps/backend/app/api/main.py`, `apps/backend/app/interfaces/api/http/routes.py`.
+5. **Decisiones**: `docs/architecture/adr/ADR-*.md`.
 
 ## Veracidad / No alucinaciones
 
 - No inventar features/endpoints/comandos. Si algo no existe en el repo, marcarlo como **TODO/Planned**.
 - Verificar siempre contra:
-  - API: `shared/contracts/openapi.json` (primario) y luego `backend/app/routes.py`, `backend/app/main.py`.
+  - API: `shared/contracts/openapi.json` (primario) y luego `apps/backend/app/interfaces/api/http/routes.py`, `apps/backend/app/api/main.py`.
   - Docker/Infra: `compose*.yaml` (incluye prod/observability si existen).
   - Scripts: `package.json` (root y workspaces relevantes).
-  - DB: `backend/alembic/versions/*` (primario) + `docs/data/postgres-schema.md`.
+  - DB: `apps/backend/alembic/versions/*` (primario) + `docs/reference/data/postgres-schema.md`.
 
 ## Índices y rutas canónicas
 
@@ -43,7 +40,7 @@ Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, 
 - Documentos “fuente”:
   - Arquitectura: `docs/architecture/overview.md`
   - API HTTP: `docs/reference/api/http-api.md`
-  - Data/schema: `docs/data/postgres-schema.md`
+  - Data/schema: `docs/reference/data/postgres-schema.md`
   - Runbook local: `docs/runbook/local-dev.md`
 
 ## Convenciones de comandos (este repo)
@@ -54,11 +51,10 @@ Antes de afirmar algo “como cierto” en docs (endpoints, comandos, services, 
   - `pnpm contracts:export`
   - `pnpm contracts:gen`
 
-## Regla v6 (si aplica): workspaces + scoping
+## Regla de workspaces + scoping
 
-- Si la documentación describe documentos/chat/RAG, debe reflejar scoping por `workspace_id` si existe en v6.
-- Endpoints canónicos (si existen): `/v1/workspaces/{id}/...`
-- Endpoints legacy (si existen): **DEPRECATED** y siempre con `workspace_id` explícito (nunca implícito).
+- Si la documentación describe documentos/chat/RAG, debe reflejar scoping por `workspace_id`.
+- Endpoints canónicos: `/v1/workspaces/{id}/...`
 
 ## Regla de actualización
 

@@ -223,7 +223,7 @@ class TestRequireScopeErrors:
             mock_config.return_value = {"valid-key": ["ask"]}
 
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
 
             dependency = require_scope("ask")
 
@@ -247,7 +247,7 @@ class TestRequireScopeErrors:
             mock_config.return_value = {"valid-key": ["ask"]}
 
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
 
             dependency = require_scope("ask")
 
@@ -274,7 +274,7 @@ class TestRequireScopeErrors:
             }  # Only has "ask" scope
 
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ingest/text"
+            mock_request.url.path = "/v1/workspaces/abc/ingest/text"
             mock_request.state = MagicMock()
 
             dependency = require_scope("ingest")  # Requires "ingest" scope
@@ -299,7 +299,7 @@ class TestRequireScopeErrors:
             mock_config.return_value = {"valid-key": ["ask", "ingest"]}
 
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
             mock_request.state = MagicMock()
 
             dependency = require_scope("ask")
@@ -319,7 +319,7 @@ class TestRequireScopeErrors:
             mock_config.return_value = {}  # No keys = auth disabled
 
             mock_request = MagicMock()
-            mock_request.url.path = "/v1/ask"
+            mock_request.url.path = "/v1/workspaces/abc/ask"
 
             dependency = require_scope("ask")
 

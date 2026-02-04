@@ -410,7 +410,7 @@ def get_embedding_cache() -> EmbeddingCache:
 
     Rationale:
       - Evita reinstanciar backends (Redis clients) muchas veces.
-      - Simplifica inyección para partes legacy.
+      - Simplifica inyección en componentes transversales.
     """
     global _embedding_cache
     if _embedding_cache is None:

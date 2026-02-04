@@ -77,7 +77,6 @@ pnpm contracts:gen
 
 - **Canonical**: `/v1/workspaces/{workspace_id}/...`
 - **Alias versionado**: `/api/v1/...` (mismo contrato)
-- **Legacy** (DEPRECATED): `/v1/documents`, `/v1/ask`, `/v1/query`, `/v1/ingest/*` con `workspace_id` obligatorio
 
 Ver `docs/reference/api/http-api.md` y `shared/contracts/openapi.json`.
 

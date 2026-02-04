@@ -15,7 +15,7 @@ sequenceDiagram
     Note over User,Gemini: === UPLOAD ASYNC FLOW ===
 
     User->>Frontend: Upload PDF/DOCX
-    Frontend->>API: POST /v1/documents/upload (multipart)
+    Frontend->>API: POST /v1/workspaces/{workspace_id}/documents/upload (multipart)
     API->>Storage: upload_file()
     API->>Repo: save_document(status=PENDING)
     Repo->>PG: INSERT documents
@@ -37,7 +37,7 @@ sequenceDiagram
     Note over User,Gemini: === ASK FLOW ===
 
     User->>Frontend: Submit question
-    Frontend->>API: POST /v1/ask
+    Frontend->>API: POST /v1/workspaces/{workspace_id}/ask
     API->>API: Validate (Pydantic)
     API->>Embed: embed(query)
     Embed->>Gemini: text-embedding-004

@@ -389,6 +389,8 @@ def _normalize_endpoint(path: str) -> str:
 
     Reemplaza UUIDs e IDs numéricos por `{id}`.
     """
+    # Workspace IDs (evita cardinalidad alta en rutas workspace-scoped)
+    path = re.sub(r"/workspaces/[^/]+", "/workspaces/{workspace_id}", path)
     # UUIDs
     path = re.sub(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",

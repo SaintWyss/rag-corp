@@ -1,4 +1,4 @@
-# Troubleshooting Guide (v6)
+# Troubleshooting Guide
 
 **Project:** RAG Corp
 **Last Updated:** 2026-01-22
@@ -90,9 +90,9 @@ curl -H "X-API-Key: <METRICS_KEY>" http://localhost:8000/metrics
 
 ---
 
-### 6) Legacy endpoints fallan sin workspace_id
+### 6) Requests sin workspace_id
 
-Los endpoints `/v1/ask`, `/v1/query`, `/v1/documents*` requieren `workspace_id`.
+Todos los endpoints de documentos y RAG son scoped por workspace.
 Usar rutas canonicas `/v1/workspaces/{workspace_id}/...`.
 
 ---

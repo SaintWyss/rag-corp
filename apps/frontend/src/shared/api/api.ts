@@ -630,65 +630,27 @@ export async function queryWorkspace(
   );
 }
 
-export async function listDocuments(
-  params: ListDocumentsParams = {}
-): Promise<DocumentsListResponse> {
-  const query = buildDocumentsQuery(params);
-
-  return requestJson<DocumentsListResponse>(
-    `/api/documents${query ? `?${query}` : ""}`,
-    {
-      method: "GET",
-    }
-  );
-}
-
-export async function getDocument(documentId: string): Promise<DocumentDetail> {
-  return requestJson<DocumentDetail>(`/api/documents/${documentId}`, {
-    method: "GET",
-  });
-}
-
-export async function deleteDocument(documentId: string): Promise<void> {
-  await requestNoContent(`/api/documents/${documentId}`, {
-    method: "DELETE",
-  });
-}
-
-export async function uploadDocument(
-  payload: FormData
-): Promise<UploadDocumentResponse> {
-  return requestFormData<UploadDocumentResponse>("/api/documents/upload", {
-    method: "POST",
-    body: payload,
-  });
-}
-
-export async function reprocessDocument(
-  documentId: string
-): Promise<ReprocessDocumentResponse> {
-  return requestJson<ReprocessDocumentResponse>(
-    `/api/documents/${documentId}/reprocess`,
-    {
-      method: "POST",
-    }
-  );
-}
-
-export async function ingestText(payload: IngestTextReq): Promise<IngestTextRes> {
-  return requestJson<IngestTextRes>("/api/ingest/text", {
+export async function ingestWorkspaceText(
+  workspaceId: string,
+  payload: IngestTextReq
+): Promise<IngestTextRes> {
+  return requestJson<IngestTextRes>(`/api/workspaces/${workspaceId}/ingest/text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
-export async function ingestBatch(
+export async function ingestWorkspaceBatch(
+  workspaceId: string,
   payload: IngestBatchReq
 ): Promise<IngestBatchRes> {
-  return requestJson<IngestBatchRes>("/api/ingest/batch", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return requestJson<IngestBatchRes>(
+    `/api/workspaces/${workspaceId}/ingest/batch`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
 }

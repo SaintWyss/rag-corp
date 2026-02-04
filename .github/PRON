@@ -10,7 +10,7 @@ Repo layout canonical: apps/backend, apps/frontend, shared/contracts, infra, doc
 -------------------------------------------------------------------------------------------------------
 @workspace
 # PRON — AUDITORÍA + % PROGRESO
-Objetivo: informe maestro v6 verificable (TO-BE vs AS-IS) + % progreso + Top gaps. SIN modificar archivos.
+Objetivo: informe maestro baseline verificable (TO-BE vs AS-IS) + % progreso + Top gaps. SIN modificar archivos.
 
 REGLAS
 - MODO: SIN CAMBIOS (0 edits, 0 commits).
@@ -29,7 +29,7 @@ FUENTES (prioridad, usar en este orden)
 Si alguna ruta “no existe”: reportar NO ENCONTRADO y seguir con la siguiente.
 
 MÉTODO (ejecución mínima)
-A) Extraer TO-BE del contrato v6: 15–25 bullets (máximo).
+A) Extraer TO-BE del contrato baseline: 15–25 bullets (máximo).
 B) Snapshot AS-IS (solo hechos verificables):
    - Stack: FE/BE/DB/Queue/Storage/Obs/CI/Deploy (1–2 bullets c/u)
    - Comandos reales de ejecución (solo scripts existentes en package.json y compose)
@@ -48,21 +48,21 @@ D) % Progreso:
    - Mostrar tabla pesos+score+resultado final.
 E) Top 10 gaps bloqueantes:
    - Formato fijo por gap (1 línea): [Área] Gap — Impacto — Evidencia (ruta) — Fix mínimo.
-F) Checklist DONE v6 (10–15 items):
+F) Checklist DONE baseline (10–15 items):
    - Cada item con evidencia (ruta) + comando de verificación (curl/psql/script) si existe; si no existe: TODO(verify).
 
 SALIDA (formato corto y constante)
-1) CONTRATO v6 (15–25 bullets + citas)
+1) CONTRATO baseline (15–25 bullets + citas)
 2) AS-IS snapshot (stack + comandos + citas)
 3) MATRIZ (tabla)
 4) % PROGRESO (tabla + fórmula)
 5) TOP 10 GAPS (lista 10 líneas)
-6) DONE v6 checklist (10–15 checks)
+6) DONE baseline checklist (10–15 checks)
 7) CIERRE: % total + 3 fortalezas + 3 riesgos + 1 próximo paso (con evidencia)
 -------------------------------------------------------------------------------------------------------
 @workspace
 # PRON DEUDA TÉCNICA + QUICK WINS (SIN CAMBIOS)
-Objetivo: backlog senior v6 basado SOLO en evidencia. SIN edits/commits.
+Objetivo: backlog senior baseline basado SOLO en evidencia. SIN edits/commits.
 
 REGLAS
 - MODO: SIN CAMBIOS.
@@ -71,7 +71,7 @@ REGLAS
 - No leer todo el repo: usar fuentes + búsquedas `rg` puntuales.
 
 FUENTES (prioridad)
-1) docs/system/** (contrato v6 / informe)
+1) docs/system/** (contrato baseline / informe)
 2) .github/workflows/** (CI)
 3) compose*.yaml + infra/** (runtime/ops)
 4) apps/backend/** (especial: app/main.py, app/api/**, app/infrastructure/**, alembic/versions/**)
@@ -111,10 +111,10 @@ RESTRICCIONES DE SALIDA (para ahorrar tokens)
 -------------------------------------------------------------------------------------------------------
 @workspace
 # PRON E2E FULL PIPELINE (WORKSPACES) (1 COMMIT)
-Objetivo: E2E robusto (Playwright) para flujo v6 completo con Workspaces, determinista y sin flakes. 1 commit.
+Objetivo: E2E robusto (Playwright) para flujo baseline completo con Workspaces, determinista y sin flakes. 1 commit.
 
 REGLAS
-- 1 COMMIT, sin rama/PR. Commit: `test(e2e): full pipeline workspace-scoped (v6)`
+- 1 COMMIT, sin rama/PR. Commit: `test(e2e): full pipeline workspace-scoped (baseline)`
 - Solo tocar: `tests/e2e/**` y (si es necesario) `docs/quality/testing.md`.
 - Reusar compose profiles existentes (NO crear nuevos servicios).
 - Determinismo: usar `FAKE_LLM/FAKE_EMBEDDINGS` si existen en `.env.example` o docs. Si no existen: NO inventar, TODO(verify).
@@ -190,14 +190,14 @@ SALIDA FINAL
 -------------------------------------------------------------------------------------------------------
 @workspace
 # PRON OBSERVABILIDAD: MÉTRICAS + AUDIT (1 COMMIT)
-QUIERO COMPLETAR OBSERVABILIDAD v6 (AUDITORÍA + MÉTRICAS) ALINEADA A WORKSPACES, Y HACER 1 SOLO COMMIT.
+QUIERO COMPLETAR OBSERVABILIDAD baseline (AUDITORÍA + MÉTRICAS) ALINEADA A WORKSPACES, Y HACER 1 SOLO COMMIT.
 
 OBJETIVO
 Trazabilidad y métricas accionables: eventos auditables con workspace_id, métricas para ingest/ask/retrieval/worker, sin ruido.
 
 REGLAS
 - No rama/PR. 1 commit final.
-- No inventar eventos/métricas: basarse en flujos reales y docs v6.
+- No inventar eventos/métricas: basarse en flujos reales y docs baseline.
 - Labels razonables (evitar cardinalidad alta).
 - Mantener Clean Architecture: emission en app layer cuando corresponda.
 
@@ -218,15 +218,15 @@ TAREAS
 - `cd backend && pytest -q`
 
 COMMIT
-- `feat(obs): workspace audit + metrics alignment (v6)`
+- `feat(obs): workspace audit + metrics alignment (baseline)`
 
 -------------------------------------------------------------------------------------------------------
 @workspace
-# PRON v6-CI1 — CI HYGIENE + STABILITY (1 COMMIT) [CLÍNICO]
+# PRON baseline-CI1 — CI HYGIENE + STABILITY (1 COMMIT) [CLÍNICO]
 Objetivo: arreglar CI que falla por configuración (paths/scripts/caches/timeouts/perms) SIN tocar producto. 1 commit.
 
 REGLAS
-- 1 COMMIT, sin rama/PR. Commit: `chore(ci): hygiene + stability (v6)`
+- 1 COMMIT, sin rama/PR. Commit: `chore(ci): hygiene + stability (baseline)`
 - PROHIBIDO tocar lógica de negocio. Permitido: .github/workflows/**, docs/quality/testing.md, configs de tooling (solo si afecta CI), scripts si son no-funcionales.
 - No cambiar triggers (on:), ni estrategia/matriz de jobs; solo alinear y estabilizar.
 - CERO INVENCIÓN: cada cambio debe referenciar evidencia (ruta real + error que corrige).
@@ -256,7 +256,7 @@ VALIDACIÓN (obligatoria)
 - Listar comandos locales equivalentes (solo si existen).
 
 COMMIT
-- `chore(ci): hygiene + stability (v6)`
+- `chore(ci): hygiene + stability (baseline)`
 
 SALIDA FINAL
 - Archivos tocados
@@ -264,11 +264,11 @@ SALIDA FINAL
 - Qué NO se pudo verificar (TODOs)
 -------------------------------------------------------------------------------------------------------
 @workspace
-# PRON v6-CI2 — TEST STABILITY (unit/integration/e2e) (1 COMMIT)
+# PRON baseline-CI2 — TEST STABILITY (unit/integration/e2e) (1 COMMIT)
 Objetivo: reducir flakes y hacer tests deterministas para CI. 1 commit.
 
 REGLAS
-- 1 COMMIT, sin rama/PR. Commit: `test(ci): stabilize test suite (v6)`
+- 1 COMMIT, sin rama/PR. Commit: `test(ci): stabilize test suite (baseline)`
 - Permitido: tests/**, config de test (pytest.ini/playwright.config), scripts de test, fixtures/seeds.
 - PROHIBIDO: cambios de producto (endpoints/negocio/UI behavior). Si un test requiere un cambio funcional → NO hacerlo aquí, dejar TODO y pasar a CI3.
 - CERO INVENCIÓN: endpoints/flows deben venir de OpenAPI/routes reales.
@@ -296,7 +296,7 @@ VALIDACIÓN
 - E2E: `pnpm -C tests/e2e test` (si existe script)
 
 COMMIT
-- `test(ci): stabilize test suite (v6)`
+- `test(ci): stabilize test suite (baseline)`
 
 SALIDA FINAL
 - Archivos tocados
@@ -305,11 +305,11 @@ SALIDA FINAL
 
 -------------------------------------------------------------------------------------------------------
 @workspace
-# PRON v6-CI3 — BUGFIXES FOR CI FAILURES (1 COMMIT)
+# PRON baseline-CI3 — BUGFIXES FOR CI FAILURES (1 COMMIT)
 Objetivo: arreglar bugs reales detectados por CI (tests rojos), con cambios mínimos y verificados. 1 commit.
 
 REGLAS
-- 1 COMMIT, sin rama/PR. Commit: `fix(ci): resolve failing tests (v6)`
+- 1 COMMIT, sin rama/PR. Commit: `fix(ci): resolve failing tests (baseline)`
 - Cambios mínimos: tocar solo lo necesario para que tests pasen.
 - No refactors grandes. No cambios de API/contratos/migraciones salvo que el test ya lo exija explícitamente y haya evidencia.
 - Cada fix debe incluir:
@@ -334,7 +334,7 @@ VALIDACIÓN
 - Verificar `git diff` solo incluye cambios necesarios.
 
 COMMIT
-- `fix(ci): resolve failing tests (v6)`
+- `fix(ci): resolve failing tests (baseline)`
 
 SALIDA FINAL
 - Archivos tocados
@@ -349,7 +349,7 @@ Modo: elegir UNO al inicio: AUDIT (SIN CAMBIOS) o APPLY (1 COMMIT).
 
 MODO (seleccionar)
 - AUDIT = SIN CAMBIOS (0 edits/0 commits). Solo reporte.
-- APPLY = SOLO DOCS (README.md + docs/**) y 1 commit final: `docs(v6): align documentation with repo state`
+- APPLY = SOLO DOCS (README.md + docs/**) y 1 commit final: `docs(baseline): align documentation with repo state`
 Regla: Si el modo no está explícito -> asumir AUDIT.
 
 REGLAS GENERALES
@@ -389,7 +389,7 @@ Prioridad de drift:
 5) paths inexistentes
 6) features prometidas pero no implementadas (pasar a TODO/Roadmap)
 
-PASO 3 — DOCS OBJETIVO v6 (siempre)
+PASO 3 — DOCS OBJETIVO baseline (siempre)
 Listar 8–14 docs “mínimos canónicos” (path + propósito 1 línea) y estado ✅/⚠️/❌.
 Incluye mínimo:
 - README.md (portal)
@@ -399,7 +399,7 @@ Incluye mínimo:
 - docs/data/postgres-schema.md
 - docs/architecture/overview.md
 - docs/quality/testing.md
-- docs/system/** (contrato v6)
+- docs/system/** (contrato baseline)
 - docs/observability/** (si aplica)
 
 PASO 4 — APPLY (solo si MODO=APPLY)
@@ -434,22 +434,22 @@ VALIDACIÓN (en APPLY)
 SALIDA FINAL (formato fijo)
 1) INVENTARIO (tabla: ruta | tipo | estado | nota 1 línea)
 2) DRIFT TOP 15–30
-3) DOCS OBJETIVO v6
+3) DOCS OBJETIVO baseline
 4) PRIORIZACIÓN (Top 10 acciones)
 5) Si APPLY:
    - diff/patch (no archivos completos)
    - archivos tocados
    - resumen ≤10 bullets
-   - commit: `docs(v6): align documentation with repo state`
+   - commit: `docs(baseline): align documentation with repo state`
    - TODOs que quedaron
 
 -------------------------------------------------------------------------------------------------------
 @workspace
 # PRON CRC APPLY (INSERTAR EN ARCHIVOS) (1 COMMIT)
-Objetivo: insertar CRC Cards v6 (EN INGLÉS) en archivos críticos BE/FE que NO las tengan. Sin cambios funcionales. 1 commit.
+Objetivo: insertar CRC Cards baseline (EN INGLÉS) en archivos críticos BE/FE que NO las tengan. Sin cambios funcionales. 1 commit.
 
 REGLAS
-- MODO: 1 COMMIT (sin rama/PR). Commit final: `docs(crc): add CRC cards to critical modules (v6)`
+- MODO: 1 COMMIT (sin rama/PR). Commit final: `docs(crc): add CRC cards to critical modules (baseline)`
 - PROHIBIDO: cambios funcionales. Solo comentarios/docstrings/JSDoc.
 - CERO INVENCIÓN: cada CRC debe reflejar responsabilidades reales del archivo (leer código).
 - Idioma: CRC comments en INGLÉS.
@@ -502,7 +502,7 @@ Frontend:
 - cd apps/frontend && pnpm tsc --noEmit
 
 COMMIT ÚNICO
-- `docs(crc): add CRC cards to critical modules (v6)`
+- `docs(crc): add CRC cards to critical modules (baseline)`
 
 SALIDA FINAL (formato corto)
 - Estado: ✅/⚠️
@@ -516,7 +516,7 @@ SALIDA FINAL (formato corto)
 @workspace
 # PRON vClean — LIMPIEZA TOTAL DEL REPO (higiene + consistencia) (1 COMMIT)
 Objetivo: dejar el repo ordenado, consistente y CI-ready SIN CAMBIAR lógica/behavior.
-REGLA CLAVE: todo en 1 solo commit final: `chore(repo): cleanup hygiene (v6)`.
+REGLA CLAVE: todo en 1 solo commit final: `chore(repo): cleanup hygiene (baseline)`.
 
 NO HACER:
 - No cambios funcionales (endpoints, payloads, authz, queries, pipeline, UI behavior).
@@ -541,17 +541,17 @@ FASE 1 — INVENTARIO (SOLO LECTURA, sin borrar todavía)
    - git ls-files | rg -n "__pycache__|\.pytest_cache|\.ruff_cache|\.mypy_cache|(^|/)\.coverage|(^|/)coverage/|coverage\.xml|(^|/)dist/|(^|/)build/|(^|/)\.next/|node_modules|playwright-report|test-results|\.log$|\.tmp$|\.bak$|\.DS_Store$"
    - git ls-files -z | xargs -0 -I{} bash -lc 'test -f "{}" && wc -c "{}" | awk "$1>1000000"' | head
 
-2) Detectar “legacy” (candidatos a BORRAR):
-   Definición LEGACY (en este repo):
-   - Cualquier carpeta o doc claramente vieja: paths que contengan
-     `legacy`, `old`, `deprecated`, `v1`, `v2`, `v3`, `v4`, `archive`, `history` (docs)
+2) Detectar “obsoleto” (candidatos a BORRAR):
+   Definición de obsoleto (en este repo):
+   - Cualquier carpeta o doc claramente viejo: paths que contengan
+     `old`, `deprecated`, `archive`, `history` (docs)
    - PDFs/exports antiguos en docs si existen y no se usan para build/tests.
-   - Archivos “duplicados” de docs que ya tengan reemplazo en v6.
+   - Archivos “duplicados” de docs que ya tengan reemplazo en baseline.
 
    Comandos:
-   - git ls-files | rg -n "(^docs/.*(legacy|old|deprecated|archive|history|v[1-5])|(^|/)(legacy|old|deprecated)/)"
-   - git ls-files | rg -n "(v4|v5|legacy|deprecated)"  # nombres
-   - rg -n "(docs/(legacy|archive|history|v[1-5])|legacy|deprecated|v4|v5)" docs || true
+   - git ls-files | rg -n "(^docs/.*(old|deprecated|archive|history)|(^|/)(old|deprecated)/)"
+   - git ls-files | rg -n "(deprecated)"  # nombres
+   - rg -n "(docs/(archive|history)|deprecated)" docs || true
 
 3) Para CADA candidato a borrar, antes de tocarlo, demostrar NO-USO:
    - rg -n "<nombre_archivo_o_path>" .
@@ -559,17 +559,17 @@ FASE 1 — INVENTARIO (SOLO LECTURA, sin borrar todavía)
    Si hay 1 match relevante -> NO BORRAR (marcar TODO).
 
 Producción de evidencia:
-- Crear un archivo corto: `docs/runbook/repo-cleanup-v6.md` con:
+- Crear un archivo corto: `docs/runbook/repo-cleanup-baseline.md` con:
   - Hallazgos (rutas exactas)
   - Evidencia de no-uso (1–3 líneas por ítem: “rg … → 0 results”)
   - TODOs dudosos (si hubo)
 
 ===============================================================================
-FASE 2 — PLAN (máx 10 bullets, en el mismo `docs/runbook/repo-cleanup-v6.md`)
+FASE 2 — PLAN (máx 10 bullets, en el mismo `docs/runbook/repo-cleanup-baseline.md`)
 Plan ultra acotado:
 - 1) remover basura trackeada + git rm
 - 2) reforzar .gitignore y .dockerignore (sin afectar runtime)
-- 3) limpieza legacy (solo si no hay referencias)
+- 3) limpieza obsoleta (solo si no hay referencias)
 - 4) normalizar docs links (solo links/typos; no cambiar contenido contractual)
 - 5) correr checks mínimos
 
@@ -592,10 +592,10 @@ B) `.gitignore` / `.dockerignore` (higiene)
 - Si hay `.dockerignore` faltante, crear uno mínimo (sin romper builds):
   ignorar node_modules, .next, dist, build, caches, test artifacts, docs pesados opcional.
 
-C) Legacy — BORRADO TOTAL (lo que el usuario pide), PERO con guardrails:
-- Borrar TODO lo “legacy” que cumpla:
-  1) esté en `docs/legacy` o `docs/archive` o `docs/history` o `docs/**/v[1-5]`
-     O tenga nombre claramente viejo (v4/v5) y sea docs/config no usado
+C) Obsoleto — BORRADO TOTAL (lo que el usuario pide), PERO con guardrails:
+- Borrar TODO lo obsoleto que cumpla:
+  1) esté en `docs/archive` o `docs/history`
+     O tenga nombre claramente viejo y sea docs/config no usado
   2) `rg` no muestre referencias reales desde:
      - docs/INDEX.md README.md docs/** (links)
      - .github/workflows/** package.json turbo.json pnpm-workspace.yaml
@@ -632,9 +632,9 @@ E2E (opcional si es pesado; si no corre, justificar):
 FASE 5 — COMMIT ÚNICO
 - Asegurar `git status` con SOLO cambios esperados.
 - 1 commit final:
-  `chore(repo): cleanup hygiene (v6)`
+  `chore(repo): cleanup hygiene (baseline)`
 
-SALIDA FINAL (en `docs/runbook/repo-cleanup-v6.md`):
+SALIDA FINAL (en `docs/runbook/repo-cleanup-baseline.md`):
 - ✅/⚠️ estado
 - archivos tocados (rutas)
 - resumen (≤10 bullets)
@@ -649,7 +649,7 @@ NORMAS OBLIGATORIAS
 - Comentarios en español, explicando intención y decisiones. Evitar comentarios obvios.
 - Arquitectura: app/ solo routing+wiring; lógica de API en src/shared/api.
 - No agregar dependencias nuevas.
-- Mantener compatibilidad: si hay shims, re-exportar sin mencionar “legacy”.
+- Mantener compatibilidad: si hay shims, re-exportar sin mencionar versiones internas.
 
 OBJETIVO (P0 FIXES)
 1) Corregir Jest para que imports `@/shared/...` apunten a `src/` y no fallen los tests.

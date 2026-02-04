@@ -84,7 +84,7 @@ Recorridos rápidos por intención:
 
 ### SSE (cuando aplica)
 
-En endpoints de streaming (por ejemplo `POST /query/stream`):
+En endpoints de streaming (por ejemplo `POST /workspaces/{workspace_id}/ask/stream`):
 
 - el router adapta el output del use case/LLM a eventos SSE.
 - si ocurre un error durante el stream:
