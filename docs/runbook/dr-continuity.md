@@ -80,3 +80,11 @@ Opcional: validar estado del documento via API de documentos.
 - Si hubo migraciones, coordinar rollback con restore.
 - Ver `docs/runbook/rollback.md` para el procedimiento de rollback.
 
+---
+
+## Checklist DR
+
+- RPO/RTO definidos y aprobados.
+- Backups disponibles y verificados.
+- Endpoints `/healthz` y `/readyz` OK.
+- Reproceso de un documento confirmado.

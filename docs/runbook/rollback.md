@@ -73,3 +73,10 @@ curl "$API_URL/readyz"
 - Si una migracion ya se aplico, el rollback de app puede requerir restore.
 - Ver `docs/runbook/backup-restore.md` y `docs/runbook/migrations.md`.
 
+---
+
+## Checklist post-rollback
+
+- Deploy estable (`kubectl rollout status` OK).
+- `/healthz` y `/readyz` OK.
+- Error rate normalizado.
