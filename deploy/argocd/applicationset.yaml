@@ -1,0 +1,57 @@
+# =============================================================================
+# TARJETA CRC - deploy/argocd/applicationset.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir ApplicationSet para tenants/envs (GitOps).
+# - Generar aplicaciones Helm con valores por tenant.
+#
+# Colaboradores:
+# - deploy/tenants/*/*/values.yaml
+# - infra/helm/ragcorp (chart)
+#
+# Invariantes:
+# - No incluir secretos en git.
+# - Release name fijo: ragcorp.
+# =============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ragcorp-tenants
+spec:
+  generators:
+    - list:
+        elements:
+          - tenant: company-a
+            env: staging
+          - tenant: company-a
+            env: prod
+          - tenant: company-b
+            env: staging
+          - tenant: company-b
+            env: prod
+  template:
+    metadata:
+      name: ragcorp-{{tenant}}-{{env}}
+      labels:
+        app.kubernetes.io/name: ragcorp
+        app.kubernetes.io/instance: ragcorp-{{tenant}}-{{env}}
+    spec:
+      project: default
+      source:
+        repoURL: https://example.com/your-deploy-repo.git
+        targetRevision: main
+        path: infra/helm/ragcorp
+        helm:
+          releaseName: ragcorp
+          valueFiles:
+            - deploy/tenants/{{tenant}}/{{env}}/values.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: ragcorp-{{tenant}}-{{env}}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

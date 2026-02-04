@@ -1,0 +1,71 @@
+# =============================================================================
+# TARJETA CRC - deploy/tenants/company-a/prod/values.yaml
+# =============================================================================
+# Responsabilidades:
+# - Valores Helm para company-a en produccion.
+# - Definir imagenes, ingress y namespace.
+#
+# Colaboradores:
+# - infra/helm/ragcorp/values.yaml
+#
+# Invariantes:
+# - No incluir secretos reales.
+# =============================================================================
+
+namespace:
+  create: true
+  name: ragcorp-company-a-prod
+
+config:
+  data:
+    APP_ENV: "production"
+    ALLOWED_ORIGINS: "https://company-a.prod.example.com"
+
+backend:
+  replicaCount: 3
+  image:
+    repository: ragcorp/backend
+    tag: "latest"
+
+worker:
+  replicaCount: 2
+
+frontend:
+  replicaCount: 3
+  image:
+    repository: ragcorp/frontend
+    tag: "latest"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: company-a.prod.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.company-a.prod.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+  tls:
+    - secretName: ragcorp-company-a-prod-tls
+      hosts:
+        - company-a.prod.example.com
+        - api.company-a.prod.example.com
+
+autoscaling:
+  backend:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+
+pdb:
+  enabled: true
+
+networkPolicy:
+  enabled: true
+
+secrets:
+  existingSecret: ragcorp-company-a-prod

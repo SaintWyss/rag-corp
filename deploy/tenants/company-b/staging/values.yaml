@@ -1,0 +1,54 @@
+# =============================================================================
+# TARJETA CRC - deploy/tenants/company-b/staging/values.yaml
+# =============================================================================
+# Responsabilidades:
+# - Valores Helm para company-b en staging.
+# - Definir imagenes, ingress y namespace.
+#
+# Colaboradores:
+# - infra/helm/ragcorp/values.yaml
+#
+# Invariantes:
+# - No incluir secretos reales.
+# =============================================================================
+
+namespace:
+  create: true
+  name: ragcorp-company-b-staging
+
+config:
+  data:
+    APP_ENV: "staging"
+    ALLOWED_ORIGINS: "https://company-b.staging.example.com"
+
+backend:
+  image:
+    repository: ragcorp/backend
+    tag: "staging"
+
+frontend:
+  image:
+    repository: ragcorp/frontend
+    tag: "staging"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: company-b.staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.company-b.staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+  tls:
+    - secretName: ragcorp-company-b-staging-tls
+      hosts:
+        - company-b.staging.example.com
+        - api.company-b.staging.example.com
+
+secrets:
+  existingSecret: ragcorp-company-b-staging
