@@ -12,6 +12,7 @@
 #
 # Invariantes:
 # - Mantener rutas actualizadas y orden coherente.
+# - No aplicar secrets template desde kustomize base (usar ExternalSecrets o secreto externo).
 # =============================================================================
 
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -22,7 +23,7 @@ namespace: ragcorp
 resources:
   - namespace.yaml
   - configmap.yaml
-  - secret.yaml
+  # NOTA: secret.yaml es solo plantilla (no se aplica en base).
   - backend-deployment.yaml
   - backend-service.yaml
   - backend-hpa.yaml

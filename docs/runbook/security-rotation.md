@@ -1,3 +1,20 @@
+<!--
+===============================================================================
+TARJETA CRC - docs/runbook/security-rotation.md
+===============================================================================
+Responsabilidades:
+- Documentar rotacion segura de secretos criticos.
+- Indicar ubicacion de secretos por entorno (local/CI/K8s).
+
+Colaboradores:
+- infra/k8s/secret.yaml
+- infra/k8s/externalsecrets/*
+- apps/backend/app/crosscutting/config.py
+
+Invariantes:
+- No incluir secretos reales ni ejemplos con valores sensibles.
+===============================================================================
+-->
 # Security Rotation Runbook — RAG Corp
 
 **Audiencia:** SRE, DevOps, Developers
@@ -21,58 +38,71 @@
 
 ---
 
-## Rotación de `GOOGLE_API_KEY`
+## Dónde viven los secretos
 
-### 1) Generar nueva key
-- Crear/rotar la key en el proveedor correspondiente.
+- **Local dev:** `.env` local (no versionado). Usar `.env.example` como plantilla.
+- **CI:** Secrets del repositorio/entorno (GitHub Actions u otro CI).
+- **K8s:** Secret real (`ragcorp-secrets`) creado por:
+  - External Secrets Operator (recomendado): `infra/k8s/externalsecrets/*`
+  - o creación manual controlada.
 
-### 2) Actualizar secretos en entornos
-- **Local dev:** actualizar el `.env` local (no versionado).
-- **CI:** actualizar `GOOGLE_API_KEY` en Secrets del repositorio/entorno.
-- **K8s:** actualizar el Secret (`ragcorp-secrets`) o el ExternalSecret.
-
-### 3) Desplegar y validar
-- Redeploy del backend/worker.
-- Verificar:
-  - `/healthz` y `/readyz`
-  - logs sin errores de “missing API key”
-  - endpoints que usan LLM/embeddings funcionan
+**Nota:** `infra/k8s/secret.yaml` es **solo plantilla** y **no debe aplicarse**. El kustomize base no la incluye.
 
 ---
 
-## Rotación de `JWT_SECRET`
+## Checklist de rotación — `GOOGLE_API_KEY`
 
-### 1) Generar nuevo secreto
-- Usar un secreto fuerte (>= 32 caracteres) y aleatorio.
-
-### 2) Actualizar secretos en entornos
-- **Local dev:** actualizar `.env` local (no versionado).
-- **CI:** actualizar secrets del entorno.
-- **K8s:** actualizar Secret (o ExternalSecret) que alimenta `JWT_SECRET`.
-
-### 3) Invalidar sesiones
-- Todos los JWT previos dejarán de ser válidos.
-- Comunicar cambio a usuarios si aplica.
-- Recomendar re-login.
-
-### 4) Desplegar y validar
-- Redeploy del backend.
-- Verificar:
-  - Auth y endpoints protegidos
-  - métricas/health checks
+1) Generar nueva key en el proveedor correspondiente.
+2) Actualizar en:
+   - Local dev (`.env` no versionado)
+   - CI (Secrets del repo/entorno)
+   - K8s (`ragcorp-secrets` via ExternalSecrets o secret manual)
+3) Desplegar backend/worker.
+4) Verificar:
+   - `/healthz` y `/readyz`
+   - logs sin errores de “missing API key”
+   - endpoints que usan LLM/embeddings funcionan
 
 ---
 
-## Dónde cargar secretos
+## Checklist de rotación — `JWT_SECRET`
 
-- **Local dev:** `.env` local (NO versionado). Usar `.env.example` como plantilla.
-- **CI:** GitHub Secrets (`Settings → Secrets and variables`).
-- **K8s:** `infra/k8s/secret.yaml` como plantilla o External Secrets.
+1) Generar un secreto fuerte (>= 32 caracteres) y aleatorio.
+2) Actualizar en:
+   - Local dev (`.env` no versionado)
+   - CI (Secrets del repo/entorno)
+   - K8s (`ragcorp-secrets` via ExternalSecrets o secret manual)
+3) **Invalidar sesiones** (tokens previos deben expirar).
+4) Desplegar backend.
+5) Verificar:
+   - auth y endpoints protegidos
+   - métricas/health checks
+
+---
+
+## Variables sensibles (backend/worker)
+
+El Secret real debe incluir al menos:
+- `DATABASE_URL`
+- `GOOGLE_API_KEY`
+- `JWT_SECRET`
+- `API_KEYS_CONFIG` o `RBAC_CONFIG`
+
+Opcionales según runtime:
+- `REDIS_URL`
+- `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`
+
+---
+
+## Plantillas K8s
+
+- **Template (no aplicar):** `infra/k8s/secret.yaml`
+- **ExternalSecrets (recomendado):** `infra/k8s/externalsecrets/*.yaml`
 
 ---
 
 ## Referencias
 
-- `docs/runbook/observability.md`
-- `infra/k8s/secret.yaml`
+- `docs/project/SECURITY.md`
 - `apps/backend/app/crosscutting/config.py`
+- `infra/k8s/externalsecrets/`

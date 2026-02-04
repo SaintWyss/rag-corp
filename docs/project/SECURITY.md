@@ -1,3 +1,20 @@
+<!--
+===============================================================================
+TARJETA CRC - docs/project/SECURITY.md
+===============================================================================
+Responsabilidades:
+- Documentar las politicas de seguridad y fuentes de verdad.
+- Centralizar referencias a autenticacion, RBAC, limites y secretos.
+
+Colaboradores:
+- docs/runbook/security-rotation.md
+- apps/backend/app/*
+- shared/contracts/openapi.json
+
+Invariantes:
+- No incluir secretos reales en el repositorio.
+===============================================================================
+-->
 # Seguridad
 Fuente de verdad: `apps/backend/app/` (config, identity, prompts, métricas).
 
@@ -35,6 +52,18 @@ Definidas en `apps/backend/app/crosscutting/metrics.py`:
 - Protección por API key/RBAC según `metrics_require_auth` → `apps/backend/app/crosscutting/config.py`.
 - Dependencia en API → `apps/backend/app/identity/rbac.py` (`require_metrics_permission`).
 - En worker → `apps/backend/app/worker/worker_server.py`.
+
+## Secretos y rotación
+- No se versionan secretos reales.
+- Template K8s (no aplicar): `infra/k8s/secret.yaml`.
+- ExternalSecrets (recomendado): `infra/k8s/externalsecrets/`.
+- Runbook de rotación: `docs/runbook/security-rotation.md`.
+
+Variables sensibles mínimas:
+- `DATABASE_URL`
+- `GOOGLE_API_KEY`
+- `JWT_SECRET`
+- `API_KEYS_CONFIG` o `RBAC_CONFIG`
 
 ## Tests relevantes
 - Unit tests: `apps/backend/tests/unit/README.md`.
