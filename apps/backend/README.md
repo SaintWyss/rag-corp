@@ -33,7 +33,6 @@ Si venís con una intención concreta, estas son las rutas rápidas:
 | `alembic.ini` | Config | Configuración de Alembic (CLI de migraciones). |
 | `app` | Carpeta | Código del backend por capas y entrypoints. |
 | `pytest.ini` | Config | Configuración de Pytest (markers, coverage, warnings). |
-| `rag-corp.lnk` | Documento | Acceso directo local (Windows); no participa del runtime. |
 | `requirements.txt` | Config | Dependencias Python del backend. |
 | `scripts` | Carpeta | Scripts operativos (bootstrap, export de contratos). |
 | `tests` | Carpeta | Tests unit/integration/e2e y fixtures compartidas. |

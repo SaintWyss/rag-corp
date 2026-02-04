@@ -15,6 +15,7 @@ Colaboradores:
 */
 
 import "@testing-library/jest-dom";
+import { TextDecoder, TextEncoder } from "util";
 
 // Mock de next/navigation para tests de UI.
 jest.mock("next/navigation", () => ({
@@ -30,6 +31,11 @@ jest.mock("next/navigation", () => ({
 
 // Mock global de fetch para evitar requests reales.
 global.fetch = jest.fn();
+// TextEncoder/TextDecoder para tests de streaming (SSE).
+global.TextEncoder =
+  TextEncoder as unknown as typeof globalThis.TextEncoder;
+global.TextDecoder =
+  TextDecoder as unknown as typeof globalThis.TextDecoder;
 
 // Reset de mocks entre tests para aislar escenarios.
 beforeEach(() => {

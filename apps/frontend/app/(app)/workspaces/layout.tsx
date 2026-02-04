@@ -8,7 +8,7 @@ Responsabilidades:
   - Mantener wiring puro (sin lógica de producto, sin fetch, sin side-effects).
 
 Colaboradores:
-  - shared/ui/AppShell
+  - shared/ui/shells/AppShell
   - React
 
 Invariantes:
@@ -19,7 +19,7 @@ Invariantes:
 
 import type { ReactNode } from "react";
 
-import { AppShell } from "@/shared/ui/AppShell";
+import { AppShell } from "@/shared/ui/shells/AppShell";
 
 type WorkspacesLayoutProps = {
   /**

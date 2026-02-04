@@ -37,23 +37,11 @@ Notas:
 ===============================================================================
 */
 
+import { parseAuthMe, type AuthRole } from "@/shared/api/contracts";
+import { apiRoutes } from "@/shared/api/routes";
 import { sanitizeNextPath } from "@/shared/lib/safeNext";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
-type UserRole = "admin" | "employee";
-
-/**
- * Contrato mínimo esperado desde `/auth/me`.
- * Se valida de forma conservadora: si algo no cierra, tratamos como no autenticado.
- */
-interface AuthMeResponse {
-  id: string;
-  email: string;
-  role: UserRole;
-  is_active: boolean;
-  created_at: string | null;
-}
 
 // Rutas “home” por rol (portal correcto).
 const ADMIN_HOME = "/admin/users";
@@ -75,11 +63,6 @@ function parseTimeoutMs(raw: string | undefined, fallbackMs: number): number {
 const AUTH_ME_TIMEOUT_MS = parseTimeoutMs(process.env.AUTH_ME_TIMEOUT_MS, 1500);
 const COOKIE_DOMAIN = process.env.JWT_COOKIE_DOMAIN || undefined;
 
-/** Narrowing de rol (defensa ante backend inesperado). */
-function isUserRole(value: unknown): value is UserRole {
-  return value === "admin" || value === "employee";
-}
-
 /**
  * Helper para abortar fetch por timeout.
  * Nota: en edge/runtime, AbortController es soportado; si no lo fuera, el try/catch
@@ -100,12 +83,12 @@ function withTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
  * - No logueamos cookies ni headers.
  * - Validamos role + is_active para no confiar ciegamente en payload.
  */
-async function fetchCurrentUser(req: NextRequest): Promise<AuthMeResponse | null> {
+async function fetchCurrentUser(req: NextRequest) {
   const cookieHeader = req.headers.get("cookie");
   if (!cookieHeader) return null;
 
   // Same-origin: el rewrite es el source of truth del backend.
-  const url = new URL("/auth/me", req.nextUrl.origin);
+  const url = new URL(apiRoutes.auth.me, req.nextUrl.origin);
   const { signal, clear } = withTimeout(AUTH_ME_TIMEOUT_MS);
 
   try {
@@ -123,13 +106,10 @@ async function fetchCurrentUser(req: NextRequest): Promise<AuthMeResponse | null
 
     // Parse defensivo (si backend cambia o responde error HTML, etc.)
     const raw: unknown = await response.json();
-    if (!raw || typeof raw !== "object") return null;
-
-    const user = raw as Partial<AuthMeResponse>;
-    if (!isUserRole(user.role)) return null;
+    const user = parseAuthMe(raw);
+    if (!user) return null;
     if (user.is_active !== true) return null;
-
-    return user as AuthMeResponse;
+    return user;
   } catch (error) {
     // Observabilidad best-effort. Evitar info sensible.
     console.error("[Middleware] /auth/me failed or timed out:", error);
@@ -139,7 +119,7 @@ async function fetchCurrentUser(req: NextRequest): Promise<AuthMeResponse | null
   }
 }
 
-function getHomeForRole(role: UserRole): string {
+function getHomeForRole(role: AuthRole): string {
   return role === "admin" ? ADMIN_HOME : EMPLOYEE_HOME;
 }
 
@@ -148,7 +128,7 @@ function getHomeForRole(role: UserRole): string {
  * - Admin no debería navegar /workspaces.
  * - Employee no debería navegar /admin.
  */
-function isWrongPortal(pathname: string, role: UserRole): boolean {
+function isWrongPortal(pathname: string, role: AuthRole): boolean {
   if (role === "admin") return pathname.startsWith("/workspaces");
   return pathname.startsWith("/admin");
 }

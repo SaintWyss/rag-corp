@@ -17,6 +17,9 @@ Invariantes:
 
 import type { ReactNode } from "react";
 
+import { AppMain } from "@/app-shell/layouts/AppMain";
+import { AppProviders } from "@/app-shell/providers/AppProviders";
+
 type AppLayoutProps = {
   children: ReactNode;
 };
@@ -28,8 +31,8 @@ type AppLayoutProps = {
  */
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
-    <main className="min-h-[100dvh] min-h-screen" role="main">
-      {children}
-    </main>
+    <AppProviders>
+      <AppMain>{children}</AppMain>
+    </AppProviders>
   );
 }

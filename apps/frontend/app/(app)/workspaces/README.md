@@ -39,7 +39,7 @@ Proveer el portal `/workspaces` y su contexto `[id]` con wiring limpio, aplicand
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** portal de usuarios (workspaces) con contexto explícito.
 - **Recibe órdenes de:** router de Next.js.
-- **Llama a:** `shared/ui/AppShell`, `features/workspaces/components/WorkspacesScreen`, `WorkspaceHomeScreen`, `ChatScreen`, `DocumentsScreen`.
+- **Llama a:** `shared/ui/shells/AppShell`, `features/workspaces/components/WorkspacesScreen`, `WorkspaceHomeScreen`, `ChatScreen`, `DocumentsScreen`.
 - **Reglas de límites:** no lógica de negocio ni fetch; solo routing y composición.
 
 ## 👩‍💻 Guía de uso (Snippets)

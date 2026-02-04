@@ -8,15 +8,15 @@ Responsabilidades:
   - Mostrar feedback de errores y accesos rapidos a documentos.
 
 Colaboradores:
-  - features/rag/useRagChat
-  - shared/ui/StatusBanner
+  - features/rag (useRagChat)
+  - shared/ui/components/StatusBanner
   - next/link
 ===============================================================================
 */
 "use client";
 
-import { useRagChat } from "@/features/rag/useRagChat";
-import { StatusBanner } from "@/shared/ui/StatusBanner";
+import { useRagChat } from "@/features/rag";
+import { StatusBanner } from "@/shared/ui/components/StatusBanner";
 import Link from "next/link";
 
 type ChatScreenProps = {

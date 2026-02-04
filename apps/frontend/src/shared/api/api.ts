@@ -18,6 +18,10 @@ Invariantes:
 ===============================================================================
 */
 
+import { apiRoutes } from "@/shared/api/routes";
+import type { ApiProblem } from "@/shared/api/contracts";
+import { normalizeProblem } from "@/shared/api/contracts";
+import { env } from "@/shared/config/env";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import type {
   AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes,
@@ -123,15 +127,6 @@ export type QueryWorkspacePayload = QueryReq;
 
 export type QueryWorkspaceResponse = QueryRes;
 
-export type ApiProblem = {
-  type?: string;
-  title?: string;
-  status?: number;
-  detail?: string;
-  instance?: string;
-  [key: string]: unknown;
-};
-
 type ApiErrorOptions = {
   status: number;
   problem?: ApiProblem;
@@ -158,6 +153,7 @@ export class ApiError extends Error {
 type RequestOptions = RequestInit & {
   timeoutMs?: number;
   includeCredentials?: boolean;
+  retries?: number;
 };
 
 type ParsedBody = {
@@ -167,10 +163,9 @@ type ParsedBody = {
   rawText?: string;
 };
 
-const DEFAULT_API_TIMEOUT_MS = parseTimeoutMs(
-  process.env.NEXT_PUBLIC_API_TIMEOUT_MS ?? process.env.API_TIMEOUT_MS,
-  8000
-);
+const DEFAULT_API_TIMEOUT_MS = parseTimeoutMs(env.apiTimeoutMs, 8000);
+const DEFAULT_GET_RETRIES = 2;
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
 
 function parseTimeoutMs(raw: unknown, fallbackMs: number): number {
   const parsed = Number(raw);
@@ -242,25 +237,6 @@ async function parseResponseBody(response: Response): Promise<ParsedBody> {
   return { contentType, isJson, rawText };
 }
 
-function normalizeProblem(payload: unknown, status: number): ApiProblem | undefined {
-  if (!payload || typeof payload !== "object") {
-    return undefined;
-  }
-  const problem = payload as Record<string, unknown>;
-  const hasSignals =
-    typeof problem.title === "string" ||
-    typeof problem.detail === "string" ||
-    typeof problem.type === "string";
-  if (!hasSignals) {
-    return undefined;
-  }
-
-  const normalized: ApiProblem = { ...problem };
-  if (typeof normalized.status !== "number") {
-    normalized.status = status;
-  }
-  return normalized;
-}
 
 function resolveErrorMessage(
   status: number,
@@ -307,11 +283,47 @@ function buildApiError(response: Response, body: ParsedBody): ApiError {
   });
 }
 
-async function requestJson<T>(
+function backoffMs(attempt: number): number {
+  const base = 200;
+  return Math.min(1000, base * 2 ** attempt);
+}
+
+function shouldRetryRequest(
+  method: string,
+  err: unknown,
+  attempt: number,
+  maxRetries: number,
+  signal?: AbortSignal
+): boolean {
+  if (method !== "GET") {
+    return false;
+  }
+  if (attempt >= maxRetries) {
+    return false;
+  }
+  if (signal?.aborted) {
+    return false;
+  }
+  if (err instanceof ApiError) {
+    return RETRYABLE_STATUS.has(err.status);
+  }
+  if (err instanceof Error && err.name === "AbortError") {
+    return false;
+  }
+  // Network errors and unknown failures are retryable for GET.
+  return true;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestJsonOnce<T>(
   input: RequestInfo | URL,
   init: RequestOptions = {}
 ): Promise<T> {
-  const { timeoutMs, includeCredentials, ...fetchInit } = init;
+  const { timeoutMs, includeCredentials, retries: _retries, ...fetchInit } =
+    init;
   const { signal, clear } = withTimeoutSignal(
     fetchInit,
     parseTimeoutMs(timeoutMs, DEFAULT_API_TIMEOUT_MS)
@@ -345,11 +357,38 @@ async function requestJson<T>(
   }
 }
 
+async function requestJson<T>(
+  input: RequestInfo | URL,
+  init: RequestOptions = {}
+): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const maxRetries =
+    typeof init.retries === "number"
+      ? Math.max(0, init.retries)
+      : method === "GET"
+        ? DEFAULT_GET_RETRIES
+        : 0;
+
+  let attempt = 0;
+  while (true) {
+    try {
+      return await requestJsonOnce<T>(input, init);
+    } catch (err) {
+      if (!shouldRetryRequest(method, err, attempt, maxRetries, init.signal)) {
+        throw err;
+      }
+      await sleep(backoffMs(attempt));
+      attempt += 1;
+    }
+  }
+}
+
 async function requestNoContent(
   input: RequestInfo | URL,
   init: RequestOptions = {}
 ): Promise<void> {
-  const { timeoutMs, includeCredentials, ...fetchInit } = init;
+  const { timeoutMs, includeCredentials, retries: _retries, ...fetchInit } =
+    init;
   const { signal, clear } = withTimeoutSignal(
     fetchInit,
     parseTimeoutMs(timeoutMs, DEFAULT_API_TIMEOUT_MS)
@@ -386,7 +425,7 @@ async function requestFormData<T>(
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
-    return await requestJson<CurrentUser>("/auth/me", { method: "GET" });
+    return await requestJson<CurrentUser>(apiRoutes.auth.me, { method: "GET" });
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       return null;
@@ -397,7 +436,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
 export async function login(email: string, password: string): Promise<void> {
   try {
-    await requestNoContent("/auth/login", {
+    await requestNoContent(apiRoutes.auth.login, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -412,7 +451,7 @@ export async function login(email: string, password: string): Promise<void> {
 
 export async function logout(): Promise<void> {
   try {
-    await requestNoContent("/auth/logout", {
+    await requestNoContent(apiRoutes.auth.logout, {
       method: "POST",
     });
   } catch {
@@ -421,13 +460,13 @@ export async function logout(): Promise<void> {
 }
 
 export async function listUsers(): Promise<UsersListResponse> {
-  return requestJson<UsersListResponse>("/auth/users", { method: "GET" });
+  return requestJson<UsersListResponse>(apiRoutes.auth.users, { method: "GET" });
 }
 
 export async function createUser(
   payload: CreateUserPayload
 ): Promise<AdminUser> {
-  return requestJson<AdminUser>("/auth/users", {
+  return requestJson<AdminUser>(apiRoutes.auth.users, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -435,7 +474,7 @@ export async function createUser(
 }
 
 export async function disableUser(userId: string): Promise<AdminUser> {
-  return requestJson<AdminUser>(`/auth/users/${userId}/disable`, {
+  return requestJson<AdminUser>(apiRoutes.auth.disableUser(userId), {
     method: "POST",
   });
 }
@@ -444,7 +483,7 @@ export async function resetUserPassword(
   userId: string,
   password: string
 ): Promise<AdminUser> {
-  return requestJson<AdminUser>(`/auth/users/${userId}/reset-password`, {
+  return requestJson<AdminUser>(apiRoutes.auth.resetPassword(userId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
@@ -463,7 +502,7 @@ export async function listWorkspaces(
   }
   const query = searchParams.toString();
   return requestJson<WorkspacesListResponse>(
-    `/api/workspaces${query ? `?${query}` : ""}`,
+    `${apiRoutes.workspaces.list}${query ? `?${query}` : ""}`,
     {
       method: "GET",
     }
@@ -473,7 +512,7 @@ export async function listWorkspaces(
 export async function createWorkspace(
   payload: CreateWorkspacePayload
 ): Promise<WorkspaceSummary> {
-  return requestJson<WorkspaceSummary>("/api/workspaces", {
+  return requestJson<WorkspaceSummary>(apiRoutes.workspaces.create, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -483,7 +522,7 @@ export async function createWorkspace(
 export async function adminCreateWorkspace(
   payload: AdminCreateWorkspacePayload
 ): Promise<WorkspaceSummary> {
-  return requestJson<WorkspaceSummary>("/api/admin/workspaces", {
+  return requestJson<WorkspaceSummary>(apiRoutes.admin.workspaces, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -494,7 +533,7 @@ export async function adminListWorkspaces(
   userId: string
 ): Promise<WorkspacesListResponse> {
   return requestJson<WorkspacesListResponse>(
-    `/api/admin/users/${userId}/workspaces`,
+    apiRoutes.admin.userWorkspaces(userId),
     {
       method: "GET",
     }
@@ -504,7 +543,7 @@ export async function adminListWorkspaces(
 export async function publishWorkspace(
   workspaceId: string
 ): Promise<WorkspaceSummary> {
-  return requestJson<WorkspaceSummary>(`/api/workspaces/${workspaceId}/publish`, {
+  return requestJson<WorkspaceSummary>(apiRoutes.workspaces.publish(workspaceId), {
     method: "POST",
   });
 }
@@ -513,7 +552,7 @@ export async function shareWorkspace(
   workspaceId: string,
   payload: ShareWorkspacePayload
 ): Promise<WorkspaceSummary> {
-  return requestJson<WorkspaceSummary>(`/api/workspaces/${workspaceId}/share`, {
+  return requestJson<WorkspaceSummary>(apiRoutes.workspaces.share(workspaceId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -524,7 +563,7 @@ export async function archiveWorkspace(
   workspaceId: string
 ): Promise<ArchiveWorkspaceResponse> {
   return requestJson<ArchiveWorkspaceResponse>(
-    `/api/workspaces/${workspaceId}/archive`,
+    apiRoutes.workspaces.archive(workspaceId),
     {
       method: "POST",
     }
@@ -560,7 +599,7 @@ export async function listWorkspaceDocuments(
 ): Promise<DocumentsListResponse> {
   const query = buildDocumentsQuery(params);
   return requestJson<DocumentsListResponse>(
-    `/api/workspaces/${workspaceId}/documents${query ? `?${query}` : ""}`,
+    `${apiRoutes.workspaces.documents(workspaceId)}${query ? `?${query}` : ""}`,
     {
       method: "GET",
     }
@@ -572,7 +611,7 @@ export async function getWorkspaceDocument(
   documentId: string
 ): Promise<DocumentDetail> {
   return requestJson<DocumentDetail>(
-    `/api/workspaces/${workspaceId}/documents/${documentId}`,
+    apiRoutes.workspaces.document(workspaceId, documentId),
     {
       method: "GET",
     }
@@ -584,7 +623,7 @@ export async function deleteWorkspaceDocument(
   documentId: string
 ): Promise<void> {
   await requestNoContent(
-    `/api/workspaces/${workspaceId}/documents/${documentId}`,
+    apiRoutes.workspaces.document(workspaceId, documentId),
     {
       method: "DELETE",
     }
@@ -596,7 +635,7 @@ export async function uploadWorkspaceDocument(
   payload: FormData
 ): Promise<UploadDocumentResponse> {
   return requestFormData<UploadDocumentResponse>(
-    `/api/workspaces/${workspaceId}/documents/upload`,
+    apiRoutes.workspaces.uploadDocument(workspaceId),
     {
       method: "POST",
       body: payload,
@@ -609,7 +648,7 @@ export async function reprocessWorkspaceDocument(
   documentId: string
 ): Promise<ReprocessDocumentResponse> {
   return requestJson<ReprocessDocumentResponse>(
-    `/api/workspaces/${workspaceId}/documents/${documentId}/reprocess`,
+    apiRoutes.workspaces.reprocessDocument(workspaceId, documentId),
     {
       method: "POST",
     }
@@ -621,7 +660,7 @@ export async function queryWorkspace(
   payload: QueryWorkspacePayload
 ): Promise<QueryWorkspaceResponse> {
   return requestJson<QueryWorkspaceResponse>(
-    `/api/workspaces/${workspaceId}/query`,
+    apiRoutes.workspaces.query(workspaceId),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -634,7 +673,7 @@ export async function ingestWorkspaceText(
   workspaceId: string,
   payload: IngestTextReq
 ): Promise<IngestTextRes> {
-  return requestJson<IngestTextRes>(`/api/workspaces/${workspaceId}/ingest/text`, {
+  return requestJson<IngestTextRes>(apiRoutes.workspaces.ingestText(workspaceId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -646,7 +685,7 @@ export async function ingestWorkspaceBatch(
   payload: IngestBatchReq
 ): Promise<IngestBatchRes> {
   return requestJson<IngestBatchRes>(
-    `/api/workspaces/${workspaceId}/ingest/batch`,
+    apiRoutes.workspaces.ingestBatch(workspaceId),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

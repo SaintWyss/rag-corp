@@ -26,6 +26,15 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "@/shared/*": [
+        "src/shared/*"
+      ],
+      "@/features/*": [
+        "src/features/*"
+      ],
+      "@/app-shell/*": [
+        "src/app-shell/*"
       ]
     }
   },

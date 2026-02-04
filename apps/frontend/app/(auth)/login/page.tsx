@@ -7,14 +7,14 @@ Responsabilidades:
   - Aplicar redirect seguro despues de autenticar.
 
 Colaboradores:
-  - shared/ui/AuroraBackground
+  - shared/ui/components/AuroraBackground
   - shared/api (auth)
   - shared/lib/safeNext
 ===============================================================================
 */
 "use client";
 
-import { AuroraBackground } from "@/shared/ui/AuroraBackground";
+import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
 import { getCurrentUser, login } from "@/shared/api/api";
 import { sanitizeNextPath } from "@/shared/lib/safeNext";
 import { useRouter, useSearchParams } from "next/navigation";

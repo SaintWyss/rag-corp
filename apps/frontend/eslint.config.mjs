@@ -55,6 +55,9 @@ const BOUNDARIES_ELEMENTS = [
   // App Router (wiring)
   { type: "app", pattern: "app/*", capture: ["segment"] },
 
+  // App shell (providers/guards/layout helpers)
+  { type: "app-shell", pattern: "src/app-shell/*", capture: ["segment"] },
+
   // Shared (infra / primitives)
   { type: "shared", pattern: "src/shared/*", capture: ["segment"] },
 
@@ -70,11 +73,8 @@ const BOUNDARIES_ELEMENTS = [
   // Features (bounded by feature name)
   { type: "features", pattern: "src/features/*", capture: ["feature"] },
 
-  // Other src slices (optional, but helps boundaries)
-  { type: "components", pattern: "src/components/*", capture: ["segment"] },
-  { type: "hooks", pattern: "src/hooks/*", capture: ["segment"] },
-  { type: "services", pattern: "src/services/*", capture: ["segment"] },
-  { type: "utils", pattern: "src/utils/*", capture: ["segment"] },
+  // Test helpers (src/test)
+  { type: "test", pattern: "src/test/*", capture: ["segment"] },
 
   // Root lib (root /lib)
   { type: "root-lib", pattern: "lib/*", capture: ["segment"] },
@@ -192,18 +192,33 @@ export default defineConfig([
           default: "allow",
           rules: [
             // src/shared no depende de features (ni siquiera via entrypoint)
-            { from: ["shared"], disallow: ["features", "feature-entry"] },
+            {
+              from: ["shared"],
+              disallow: ["features", "feature-entry", "app", "app-shell"],
+            },
 
             // src/** no depende de app/** (wiring)
             {
-              from: ["shared", "features", "components", "hooks", "services", "utils"],
+              from: ["shared", "features", "app-shell"],
               disallow: ["app"],
+            },
+
+            // app-shell es infraestructura: no depende de features
+            {
+              from: ["app-shell"],
+              disallow: ["features", "feature-entry"],
             },
 
             // features no depende de otras features (excepto entrypoint si aplica)
             {
               from: ["features"],
               disallow: [["features", { feature: "!${from.feature}" }]],
+            },
+
+            // features no depende de app-shell
+            {
+              from: ["features"],
+              disallow: ["app-shell"],
             },
           ],
         },
@@ -235,11 +250,13 @@ export default defineConfig([
   // ---------------------------------------------------------------------------
   {
     files: [
-      "__tests__/**/*.{ts,tsx,js,jsx}",
+      "tests/**/*.{ts,tsx,js,jsx}",
+      "src/test/**/*.{ts,tsx,js,jsx}",
       "**/*.test.{ts,tsx,js,jsx}",
       "**/*.spec.{ts,tsx,js,jsx}",
     ],
     rules: {
+      "boundaries/element-types": "off",
       "no-console": "off",
       eqeqeq: "off",
       "import/no-extraneous-dependencies": [

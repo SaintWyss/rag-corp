@@ -34,6 +34,8 @@ const customJestConfig = {
     "app/**/*.{ts,tsx}",
     "!**/*.d.ts",
     "!**/__tests__/**",
+    "!**/tests/**",
+    "!src/test/**",
     "!**/*.test.{ts,tsx}",
     "!**/*.spec.{ts,tsx}",
   ],

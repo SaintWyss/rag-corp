@@ -35,6 +35,40 @@ const nextConfig = {
   // R: Produce standalone output for the production Docker image.
   output: "standalone",
   /**
+   * Security headers (baseline).
+   * - CSP básico para same-origin + SSE.
+   * - X-Frame-Options para evitar embedding.
+   * - Ajustes defensivos comunes.
+   */
+  async headers() {
+    const isDev = process.env.NODE_ENV !== "production";
+    const cspDirectives = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+      "style-src 'self' 'unsafe-inline'",
+      `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+    ];
+
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Content-Security-Policy", value: cspDirectives.join("; ") },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
+  /**
    * Rewrites:
    * - Permiten que el browser hable "con el mismo origen" (frontend) y Next.js
    *   reenvía al backend internamente.

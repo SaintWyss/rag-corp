@@ -8,7 +8,7 @@ Responsabilidades:
   - Proveer un punto único y explícito para agregar el guard de rol admin.
 
 Colaboradores:
-  - shared/ui/AdminShell
+  - shared/ui/shells/AdminShell
   - React
 
 Invariantes:
@@ -19,7 +19,8 @@ Invariantes:
 
 import type { ReactNode } from "react";
 
-import { AdminShell } from "@/shared/ui/AdminShell";
+import { AdminGuard } from "@/app-shell/guards/AdminGuard";
+import { AdminShell } from "@/shared/ui/shells/AdminShell";
 
 type AdminLayoutProps = {
   /**
@@ -27,28 +28,6 @@ type AdminLayoutProps = {
    */
   children: ReactNode;
 };
-
-type AdminGuardProps = {
-  /**
-   * Contenido protegido por el guard de admin.
-   */
-  children: ReactNode;
-};
-
-/**
- * Guard del portal admin.
- *
- * Implementación actual:
- * - "pass-through" (no bloquea).
- *
- * Punto de inserción recomendado:
- * - Validación server-side (cookies/session) y redirect/notFound según corresponda.
- * - Mantener este guard aquí evita repetir checks en cada page.
- */
-function AdminGuard({ children }: AdminGuardProps) {
-  // TODO(security): implementar verificación de rol admin cuando exista el contrato de auth/roles en frontend.
-  return <>{children}</>;
-}
 
 /**
  * Layout del portal admin.

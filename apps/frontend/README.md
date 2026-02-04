@@ -47,9 +47,9 @@ Estos archivos estan en la raiz porque Next.js y el tooling los buscan automatic
 | Carpeta | Que hay adentro | Por que existe |
 | :-- | :-- | :-- |
 | `app/` | App Router (rutas, layouts) | Next usa el filesystem para routing |
-| `src/` | Codigo de producto | Features, shared, services, hooks, utils |
+| `src/` | Codigo de producto | Features, shared, app-shell, config y helpers |
 | `public/` | Assets estaticos | Logos, imagenes, favicon |
-| `__tests__/` | Tests centralizados | Tests fuera del codigo |
+| `tests/` | Tests | Unit e integration tests |
 | `config/` | Configs de tooling | Jest y configs auxiliares |
 | `docs/` | Docs internas | Arquitectura FE, runbooks |
 | `scripts/` | Scripts | Codegen, checks |
@@ -141,11 +141,10 @@ Empaqueta la app en una imagen reproducible. Hay target `dev` (hot reload) y `pr
 - Features no deben importarse entre si (solo via `index.ts`).
 
 ### Estructura dentro de `src/`
-- `src/features/<feature>/`: logica por feature.
-- `src/shared/`: UI y utilidades reusables.
-- `src/services/`: clientes y adaptadores.
-- `src/hooks/`: hooks comunes.
-- `src/utils/`: helpers generales.
+- `src/app-shell/`: providers, guards y layouts usados por `app/`.
+- `src/features/<feature>/`: logica por feature (components/hooks/services/types).
+- `src/shared/`: UI, api, lib y config reusables.
+- `src/test/`: fixtures y helpers para tests.
 
 ---
 
@@ -158,6 +157,11 @@ pnpm -C apps/frontend test
 Config:
 - `config/jest.config.js`
 - `config/jest.setup.ts`
+
+Estructura:
+- `tests/unit/**` para unit tests
+- `tests/integration/**` para integration tests
+- `src/test/**` para fixtures y helpers
 
 ---
 
@@ -186,7 +190,7 @@ docker compose --profile ui up -d --build
 ## 9) Buenas practicas
 - Pensar siempre en capas: wiring vs producto.
 - Componentes reusables en `src/shared/ui/`.
-- Logica de feature dentro de su carpeta.
+- Logica de feature dentro de su carpeta (sin depender de otros features).
 - Respetar el contrato `/api` y `/auth`.
 
 ---

@@ -9,8 +9,8 @@ Responsabilidades:
 
 Colaboradores:
   - shared/api (workspaces y usuarios)
-  - shared/ui/StatusBanner y NoticeBanner
-  - utils/formatters
+  - shared/ui/components/StatusBanner y NoticeBanner
+  - shared/lib/formatters
 ===============================================================================
 */
 "use client";
@@ -24,9 +24,9 @@ import {
   type CurrentUser,
   type WorkspaceSummary,
 } from "@/shared/api/api";
-import { NoticeBanner } from "@/shared/ui/NoticeBanner";
-import { StatusBanner } from "@/shared/ui/StatusBanner";
-import { formatDate, formatError } from "@/utils/formatters";
+import { NoticeBanner } from "@/shared/ui/components/NoticeBanner";
+import { StatusBanner } from "@/shared/ui/components/StatusBanner";
+import { formatDate, formatError } from "@/shared/lib/formatters";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type WorkspaceDraft = {

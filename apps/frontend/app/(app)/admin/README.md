@@ -31,7 +31,7 @@ Centralizar rutas administrativas y aplicar un shell/guard único para toda la s
 ## 🔗 Conexiones y roles
 - **Rol arquitectónico:** portal administrativo del frontend.
 - **Recibe órdenes de:** router de Next.js.
-- **Llama a:** `shared/ui/AdminShell`, `features/auth/components/AdminUsersScreen`, `features/workspaces/components/AdminWorkspacesScreen`.
+- **Llama a:** `shared/ui/shells/AdminShell`, `features/auth/components/AdminUsersScreen`, `features/workspaces/components/AdminWorkspacesScreen`.
 - **Reglas de límites:** routing puro; sin fetch ni lógica de negocio en pages/layouts.
 
 ## 👩‍💻 Guía de uso (Snippets)
