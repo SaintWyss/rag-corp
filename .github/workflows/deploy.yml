@@ -6,7 +6,7 @@
 # - Ejecutar despliegue a staging/production mediante comando externo.
 #
 # Colaboradores:
-# - apps/backend/Dockerfile.prod
+# - apps/backend/Dockerfile
 # - apps/frontend/Dockerfile
 # - infra/k8s (si se usa kubectl en deploy command)
 #
@@ -64,6 +64,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Preflight (build vars)
+        run: |
+          if [ -z "$REGISTRY" ]; then
+            echo "::error::Missing env.REGISTRY. Define container registry base."
+            exit 1
+          fi
+          if [ -z "$IMAGE_NAME" ]; then
+            echo "::error::Missing env.IMAGE_NAME. Define image name (repository)."
+            exit 1
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -100,7 +111,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./apps/backend
-          file: ./apps/backend/Dockerfile.prod
+          file: ./apps/backend/Dockerfile
           push: true
           tags: ${{ steps.meta_backend.outputs.tags }}
           labels: ${{ steps.meta_backend.outputs.labels }}
@@ -140,7 +151,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Guardrails (staging)
+      - name: Preflight (staging vars)
         run: |
           if [ -z "$DEPLOY_COMMAND" ]; then
             echo "::error::Missing vars.STAGING_DEPLOY_COMMAND. Define how to deploy (ssh/compose/kubectl)."
@@ -197,7 +208,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Guardrails (production)
+      - name: Preflight (production vars)
         run: |
           if [ -z "$DEPLOY_COMMAND" ]; then
             echo "::error::Missing vars.PROD_DEPLOY_COMMAND. Define how to deploy (ssh/compose/kubectl)."
