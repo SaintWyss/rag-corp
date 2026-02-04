@@ -1,0 +1,22 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/namespace.yaml
+# =============================================================================
+# Responsabilidades:
+# - Crear namespace opcional para la instalacion del chart.
+#
+# Colaboradores:
+# - values.yaml (namespace.create/name)
+#
+# Invariantes:
+# - No crear namespace si no se habilita explicitamente.
+# =============================================================================
+
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ default .Release.Namespace .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "ragcorp.name" . }}
+    app.kubernetes.io/part-of: {{ include "ragcorp.name" . }}
+{{- end }}

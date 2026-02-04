@@ -1,0 +1,33 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/NOTES.txt
+# =============================================================================
+# Responsabilidades:
+# - Mostrar instrucciones post-install/upgrade.
+#
+# Colaboradores:
+# - values.yaml
+#
+# Invariantes:
+# - Comandos claros y reproducibles.
+# =============================================================================
+
+RAG Corp Helm chart instalado.
+
+Comandos recomendados:
+
+1) Instalar (namespace existente):
+   helm install ragcorp {{ .Chart.Name }} -n <namespace> -f infra/helm/ragcorp/values.yaml
+
+2) Instalar (creando namespace):
+   helm install ragcorp {{ .Chart.Name }} -n <namespace> --create-namespace -f infra/helm/ragcorp/values.yaml
+
+3) Upgrade:
+   helm upgrade ragcorp {{ .Chart.Name }} -n <namespace> -f infra/helm/ragcorp/values.yaml
+
+4) Render local (debug):
+   helm template ragcorp {{ .Chart.Name }} -n <namespace> -f infra/helm/ragcorp/values.yaml
+
+Notas:
+- Asegura Secrets externos con DATABASE_URL, GOOGLE_API_KEY, JWT_SECRET, API_KEYS_CONFIG/RBAC_CONFIG.
+- Si usas ingress, configura hosts y TLS en values.
+- Si habilitas migraciones, valida backup y ventana de mantenimiento.

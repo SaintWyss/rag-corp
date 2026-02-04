@@ -1,0 +1,294 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/values.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir valores por defecto del chart ragcorp (enterprise-ready).
+# - Centralizar configuracion no sensible y toggles operativos.
+#
+# Colaboradores:
+# - infra/helm/ragcorp/templates/*
+# - infra/k8s/*.yaml (referencia)
+#
+# Invariantes:
+# - No incluir secretos reales en este archivo.
+# - Todo cambio debe ser determinista y documentado.
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+commonLabels: {}
+commonAnnotations: {}
+imagePullSecrets: []
+
+namespace:
+  create: false
+  name: ""
+
+config:
+  data:
+    APP_ENV: "production"
+    LOG_LEVEL: "info"
+    CHUNK_SIZE: "900"
+    CHUNK_OVERLAP: "120"
+    MAX_TOP_K: "5"
+    MAX_CONTEXT_CHARS: "12000"
+
+    RATE_LIMIT_RPS: "10"
+    RATE_LIMIT_BURST: "20"
+
+    DB_POOL_MIN_SIZE: "2"
+    DB_POOL_MAX_SIZE: "10"
+
+    HEALTHCHECK_GOOGLE_ENABLED: "false"
+    METRICS_REQUIRE_AUTH: "true"
+
+    ALLOWED_ORIGINS: "https://ragcorp.example.com"
+    CORS_ALLOW_CREDENTIALS: "false"
+
+secrets:
+  create: false
+  name: ""
+  existingSecret: ""
+  stringData: {}
+
+observability:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    backendPort: "8000"
+    workerPort: "8001"
+
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ragcorp/backend
+    tag: "latest"
+    pullPolicy: Always
+  serviceAccount:
+    create: true
+    name: ""
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  probes:
+    liveness:
+      path: /healthz
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /healthz
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    startup:
+      path: /healthz
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 30
+  extraEnv: []
+  podAnnotations: {}
+
+worker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ragcorp/backend
+    tag: "latest"
+    pullPolicy: Always
+  serviceAccount:
+    create: true
+    name: ""
+  command: ["python", "-m", "app.worker.worker"]
+  port: 8001
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  probes:
+    liveness:
+      path: /readyz
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /readyz
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+  extraEnv:
+    - name: WORKER_HTTP_PORT
+      value: "8001"
+  podAnnotations: {}
+
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ragcorp/frontend
+    tag: "latest"
+    pullPolicy: Always
+  serviceAccount:
+    create: true
+    name: ""
+  service:
+    type: ClusterIP
+    port: 3000
+  ragBackendUrl: ""
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: ["ALL"]
+  probes:
+    liveness:
+      path: /
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+  extraEnv: []
+  podAnnotations: {}
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  persistence:
+    enabled: false
+    size: 1Gi
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    - secretName: ragcorp-tls
+      hosts:
+        - ragcorp.example.com
+        - api.ragcorp.example.com
+  hosts:
+    - host: ragcorp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.ragcorp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+
+networkPolicy:
+  enabled: false
+  ingressNamespaceLabels:
+    app.kubernetes.io/name: ingress-nginx
+  prometheusNamespaceLabels:
+    app.kubernetes.io/name: prometheus
+
+pdb:
+  enabled: true
+  backend:
+    minAvailable: 1
+  frontend:
+    minAvailable: 1
+
+autoscaling:
+  backend:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      percent: 10
+      periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      percent: 100
+      percentPeriodSeconds: 15
+      pods: 4
+      podsPeriodSeconds: 15
+
+rbac:
+  create: false
+
+migrations:
+  enabled: false
+  hook: true
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600

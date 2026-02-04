@@ -1,0 +1,50 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/pdb.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir PodDisruptionBudget para backend y frontend.
+# - Proteger disponibilidad minima durante mantenimiento.
+#
+# Colaboradores:
+# - templates/backend-deployment.yaml
+# - templates/frontend-deployment.yaml
+#
+# Invariantes:
+# - Selectores deben coincidir con Deployments.
+# =============================================================================
+
+{{- if .Values.pdb.enabled }}
+{{- if .Values.backend.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "backend-pdb") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  minAvailable: {{ .Values.pdb.backend.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "ragcorp.selectorLabels" (dict "root" . "component" "backend") | nindent 6 }}
+---
+{{- end }}
+{{- if .Values.frontend.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "frontend-pdb") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  minAvailable: {{ .Values.pdb.frontend.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "ragcorp.selectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
+{{- end }}
+{{- end }}

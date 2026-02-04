@@ -1,0 +1,126 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/redis.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar Redis opcional para cache/cola.
+# - Definir Service interno y volumen (emptyDir o PVC).
+#
+# Colaboradores:
+# - templates/backend-deployment.yaml
+# - templates/worker-deployment.yaml
+#
+# Invariantes:
+# - No incluir secretos.
+# - Puerto 6379 estable.
+# =============================================================================
+
+{{- if .Values.redis.enabled }}
+{{- $redisName := include "ragcorp.componentName" (dict "root" . "component" "redis") -}}
+{{- if .Values.redis.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $redisName }}-data
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "redis") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.redis.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $redisName }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "redis") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ragcorp.selectorLabels" (dict "root" . "component" "redis") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ragcorp.selectorLabels" (dict "root" . "component" "redis") | nindent 8 }}
+      {{- with .Values.commonAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - "256mb"
+            - --maxmemory-policy
+            - "allkeys-lru"
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          {{- if .Values.redis.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ $redisName }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $redisName }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "redis") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+      protocol: TCP
+  selector:
+    {{- include "ragcorp.selectorLabels" (dict "root" . "component" "redis") | nindent 4 }}
+{{- end }}

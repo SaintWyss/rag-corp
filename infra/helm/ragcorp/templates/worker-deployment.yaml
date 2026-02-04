@@ -1,0 +1,103 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/worker-deployment.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar el worker de procesamiento asincrono.
+# - Exponer /readyz para healthchecks internos.
+#
+# Colaboradores:
+# - templates/configmap.yaml
+# - templates/secret.yaml
+#
+# Invariantes:
+# - El worker usa la misma imagen base del backend.
+# - No incluir secretos en claro.
+# =============================================================================
+
+{{- if .Values.worker.enabled }}
+{{- $secretName := "" -}}
+{{- if .Values.secrets.existingSecret -}}
+{{- $secretName = .Values.secrets.existingSecret -}}
+{{- else if .Values.secrets.create -}}
+{{- $secretName = (default (printf "%s-secret" (include "ragcorp.fullname" .)) .Values.secrets.name) -}}
+{{- end -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "worker") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "worker") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ragcorp.selectorLabels" (dict "root" . "component" "worker") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ragcorp.selectorLabels" (dict "root" . "component" "worker") | nindent 8 }}
+      annotations:
+        {{- if .Values.observability.prometheus.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.observability.prometheus.workerPort }}"
+        prometheus.io/path: "{{ .Values.observability.prometheus.path }}"
+        {{- end }}
+        {{- with .Values.worker.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ragcorp.serviceAccountName" (dict "root" . "component" "worker" "serviceAccount" .Values.worker.serviceAccount) }}
+      securityContext:
+        {{- toYaml .Values.worker.podSecurityContext | nindent 8 }}
+      containers:
+        - name: worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.worker.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.worker.port }}
+              protocol: TCP
+          {{- if or .Values.config.data $secretName }}
+          envFrom:
+            {{- if .Values.config.data }}
+            - configMapRef:
+                name: {{ include "ragcorp.fullname" . }}-config
+            {{- end }}
+            {{- if $secretName }}
+            - secretRef:
+                name: {{ $secretName }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.worker.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.worker.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.worker.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.worker.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.worker.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.probes.readiness.failureThreshold }}
+          securityContext:
+            {{- toYaml .Values.worker.containerSecurityContext | nindent 12 }}
+{{- end }}

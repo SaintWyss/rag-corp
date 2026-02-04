@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "nameOverride": {"type": "string"},
+    "fullnameOverride": {"type": "string"},
+    "imagePullSecrets": {"type": "array", "items": {"type": "object"}},
+    "namespace": {
+      "type": "object",
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"}
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "data": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"},
+        "existingSecret": {"type": "string"},
+        "stringData": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "observability": {
+      "type": "object",
+      "properties": {
+        "prometheus": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "path": {"type": "string"},
+            "backendPort": {"type": "string"},
+            "workerPort": {"type": "string"}
+          }
+        }
+      }
+    },
+    "backend": {"type": "object"},
+    "worker": {"type": "object"},
+    "frontend": {"type": "object"},
+    "redis": {"type": "object"},
+    "ingress": {"type": "object"},
+    "networkPolicy": {"type": "object"},
+    "pdb": {"type": "object"},
+    "autoscaling": {"type": "object"},
+    "rbac": {"type": "object"},
+    "migrations": {"type": "object"}
+  }
+}

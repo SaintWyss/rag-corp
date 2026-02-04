@@ -1,0 +1,33 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/configmap.yaml
+# =============================================================================
+# Responsabilidades:
+# - Exponer configuracion no sensible para backend y worker.
+# - Centralizar settings desde values.
+#
+# Colaboradores:
+# - templates/backend-deployment.yaml
+# - templates/worker-deployment.yaml
+#
+# Invariantes:
+# - No incluir secretos reales.
+# - Keys deben coincidir con Settings del backend.
+# =============================================================================
+
+{{- if .Values.config.data }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ragcorp.fullname" . }}-config
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "config") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- toYaml .Values.config.data | nindent 2 }}
+{{- end }}

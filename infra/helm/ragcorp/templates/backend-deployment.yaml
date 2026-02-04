@@ -1,0 +1,114 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/backend-deployment.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar el backend API con probes, recursos y annotations.
+# - Exponer /metrics via annotations si observabilidad esta habilitada.
+#
+# Colaboradores:
+# - templates/configmap.yaml
+# - templates/secret.yaml
+# - templates/backend-service.yaml
+#
+# Invariantes:
+# - No incluir secretos en claro.
+# - Labels deben coincidir con el Service.
+# =============================================================================
+
+{{- if .Values.backend.enabled }}
+{{- $secretName := "" -}}
+{{- if .Values.secrets.existingSecret -}}
+{{- $secretName = .Values.secrets.existingSecret -}}
+{{- else if .Values.secrets.create -}}
+{{- $secretName = (default (printf "%s-secret" (include "ragcorp.fullname" .)) .Values.secrets.name) -}}
+{{- end -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "backend") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ragcorp.selectorLabels" (dict "root" . "component" "backend") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "ragcorp.selectorLabels" (dict "root" . "component" "backend") | nindent 8 }}
+      annotations:
+        {{- if .Values.observability.prometheus.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.observability.prometheus.backendPort }}"
+        prometheus.io/path: "{{ .Values.observability.prometheus.path }}"
+        {{- end }}
+        {{- with .Values.backend.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ragcorp.serviceAccountName" (dict "root" . "component" "backend" "serviceAccount" .Values.backend.serviceAccount) }}
+      securityContext:
+        {{- toYaml .Values.backend.podSecurityContext | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port }}
+              protocol: TCP
+          {{- if or .Values.config.data $secretName }}
+          envFrom:
+            {{- if .Values.config.data }}
+            - configMapRef:
+                name: {{ include "ragcorp.fullname" . }}-config
+            {{- end }}
+            {{- if $secretName }}
+            - secretRef:
+                name: {{ $secretName }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.backend.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.backend.probes.startup.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.startup.failureThreshold }}
+          securityContext:
+            {{- toYaml .Values.backend.containerSecurityContext | nindent 12 }}
+{{- end }}

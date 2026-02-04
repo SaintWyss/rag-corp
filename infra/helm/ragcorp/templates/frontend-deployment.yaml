@@ -1,0 +1,88 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/frontend-deployment.yaml
+# =============================================================================
+# Responsabilidades:
+# - Desplegar el frontend con recursos y probes.
+# - Configurar RAG_BACKEND_URL via values.
+#
+# Colaboradores:
+# - templates/frontend-service.yaml
+# - templates/ingress.yaml
+#
+# Invariantes:
+# - No incluir secretos en claro.
+# - Labels deben coincidir con el Service.
+# =============================================================================
+
+{{- if .Values.frontend.enabled }}
+{{- $backendService := include "ragcorp.componentName" (dict "root" . "component" "backend") -}}
+{{- $backendUrl := .Values.frontend.ragBackendUrl | default (printf "http://%s:%d" $backendService .Values.backend.service.port) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "frontend") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ragcorp.selectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "ragcorp.selectorLabels" (dict "root" . "component" "frontend") | nindent 8 }}
+      annotations:
+        {{- with .Values.frontend.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ragcorp.serviceAccountName" (dict "root" . "component" "frontend" "serviceAccount" .Values.frontend.serviceAccount) }}
+      securityContext:
+        {{- toYaml .Values.frontend.podSecurityContext | nindent 8 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.service.port }}
+              protocol: TCP
+          env:
+            - name: RAG_BACKEND_URL
+              value: "{{ $backendUrl }}"
+            {{- with .Values.frontend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold }}
+          securityContext:
+            {{- toYaml .Values.frontend.containerSecurityContext | nindent 12 }}
+{{- end }}

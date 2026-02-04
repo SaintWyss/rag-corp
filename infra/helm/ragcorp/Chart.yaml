@@ -1,0 +1,20 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/Chart.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir la metadata del chart Helm de RAG Corp.
+# - Establecer versionado del chart y de la app.
+#
+# Colaboradores:
+# - infra/helm/ragcorp/values.yaml
+# - infra/helm/ragcorp/templates/*
+#
+# Invariantes:
+# - El nombre del chart debe ser estable para upgrades.
+# =============================================================================
+apiVersion: v2
+name: ragcorp
+description: Helm chart empresarial para RAG Corp (backend, worker, frontend, ingress)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

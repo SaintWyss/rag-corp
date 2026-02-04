@@ -1,0 +1,61 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/ingress.yaml
+# =============================================================================
+# Responsabilidades:
+# - Exponer backend y frontend via Ingress opcional.
+# - Incluir annotations recomendadas para SSE/timeouts.
+#
+# Colaboradores:
+# - templates/backend-service.yaml
+# - templates/frontend-service.yaml
+#
+# Invariantes:
+# - Hosts y paths deben ser deterministas.
+# - No incluir secretos en annotations.
+# =============================================================================
+
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "ingress") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "ingress") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+          {{- range .paths }}
+          {{- $svcName := "" -}}
+          {{- $svcPort := 0 -}}
+          {{- if eq .service "backend" -}}
+          {{- $svcName = include "ragcorp.componentName" (dict "root" $ "component" "backend") -}}
+          {{- $svcPort = $.Values.backend.service.port -}}
+          {{- else -}}
+          {{- $svcName = include "ragcorp.componentName" (dict "root" $ "component" "frontend") -}}
+          {{- $svcPort = $.Values.frontend.service.port -}}
+          {{- end }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $svcName }}
+                port:
+                  number: {{ $svcPort }}
+          {{- end }}
+    {{- end }}
+{{- end }}

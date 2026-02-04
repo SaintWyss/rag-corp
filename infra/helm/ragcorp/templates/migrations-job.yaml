@@ -1,0 +1,62 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/migrations-job.yaml
+# =============================================================================
+# Responsabilidades:
+# - Ejecutar migraciones de base de datos (opcional).
+# - Permitir hook de pre-install/pre-upgrade si se habilita.
+#
+# Colaboradores:
+# - templates/configmap.yaml
+# - templates/secret.yaml
+#
+# Invariantes:
+# - No ejecutar por defecto (evitar cambios sorpresa).
+# =============================================================================
+
+{{- if .Values.migrations.enabled }}
+{{- $secretName := "" -}}
+{{- if .Values.secrets.existingSecret -}}
+{{- $secretName = .Values.secrets.existingSecret -}}
+{{- else if .Values.secrets.create -}}
+{{- $secretName = (default (printf "%s-secret" (include "ragcorp.fullname" .)) .Values.secrets.name) -}}
+{{- end -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "migrations") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "migrations") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if .Values.migrations.hook }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  {{- end }}
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "ragcorp.selectorLabels" (dict "root" . "component" "migrations") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["sh", "-c", "alembic upgrade head"]
+          {{- if or .Values.config.data $secretName }}
+          envFrom:
+            {{- if .Values.config.data }}
+            - configMapRef:
+                name: {{ include "ragcorp.fullname" . }}-config
+            {{- end }}
+            {{- if $secretName }}
+            - secretRef:
+                name: {{ $secretName }}
+            {{- end }}
+          {{- end }}
+{{- end }}

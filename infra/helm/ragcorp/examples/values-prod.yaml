@@ -1,0 +1,61 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/examples/values-prod.yaml
+# =============================================================================
+# Responsabilidades:
+# - Proveer un ejemplo de valores para produccion (sin secretos).
+#
+# Colaboradores:
+# - infra/helm/ragcorp/values.yaml
+#
+# Invariantes:
+# - No incluir secretos reales.
+# =============================================================================
+
+backend:
+  replicaCount: 3
+  image:
+    repository: ragcorp/backend
+    tag: "latest"
+
+worker:
+  replicaCount: 2
+
+frontend:
+  replicaCount: 3
+  image:
+    repository: ragcorp/frontend
+    tag: "latest"
+
+autoscaling:
+  backend:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+
+pdb:
+  enabled: true
+
+networkPolicy:
+  enabled: true
+
+ingress:
+  enabled: true
+  hosts:
+    - host: ragcorp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.ragcorp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+  tls:
+    - secretName: ragcorp-prod-tls
+      hosts:
+        - ragcorp.example.com
+        - api.ragcorp.example.com
+
+secrets:
+  existingSecret: ragcorp-secrets-prod

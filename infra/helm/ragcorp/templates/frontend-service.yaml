@@ -1,0 +1,39 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/frontend-service.yaml
+# =============================================================================
+# Responsabilidades:
+# - Exponer el frontend via Service estable.
+# - Mantener selector/puerto alineado al Deployment.
+#
+# Colaboradores:
+# - templates/frontend-deployment.yaml
+# - templates/ingress.yaml
+#
+# Invariantes:
+# - Selector debe coincidir con labels del frontend.
+# =============================================================================
+
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ragcorp.componentName" (dict "root" . "component" "frontend") }}
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "ragcorp.selectorLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+{{- end }}

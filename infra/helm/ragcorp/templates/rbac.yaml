@@ -1,0 +1,57 @@
+# =============================================================================
+# TARJETA CRC - infra/helm/ragcorp/templates/rbac.yaml
+# =============================================================================
+# Responsabilidades:
+# - Crear RBAC minimo (namespace-scoped) si se habilita.
+# - Asociar ServiceAccounts a permisos de lectura basicos.
+#
+# Colaboradores:
+# - templates/serviceaccount.yaml
+# - templates/*-deployment.yaml
+#
+# Invariantes:
+# - No otorgar acceso a Secrets.
+# =============================================================================
+
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ragcorp.fullname" . }}-read
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "rbac") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "endpoints", "configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ragcorp.fullname" . }}-read
+  labels:
+    {{- include "ragcorp.componentLabels" (dict "root" . "component" "rbac") | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ragcorp.fullname" . }}-read
+subjects:
+  {{- if .Values.backend.enabled }}
+  - kind: ServiceAccount
+    name: {{ include "ragcorp.serviceAccountName" (dict "root" . "component" "backend" "serviceAccount" .Values.backend.serviceAccount) }}
+  {{- end }}
+  {{- if .Values.frontend.enabled }}
+  - kind: ServiceAccount
+    name: {{ include "ragcorp.serviceAccountName" (dict "root" . "component" "frontend" "serviceAccount" .Values.frontend.serviceAccount) }}
+  {{- end }}
+  {{- if .Values.worker.enabled }}
+  - kind: ServiceAccount
+    name: {{ include "ragcorp.serviceAccountName" (dict "root" . "component" "worker" "serviceAccount" .Values.worker.serviceAccount) }}
+  {{- end }}
+{{- end }}
