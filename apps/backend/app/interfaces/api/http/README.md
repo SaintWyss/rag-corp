@@ -20,6 +20,7 @@ Recorridos rápidos por intención:
 ### Qué SÍ hace
 
 - Define rutas HTTP por feature (workspaces, documents, query, admin).
+- Mantiene el scoping por `workspace_id` en todos los endpoints de negocio.
 - Valida y tipa requests/responses con Pydantic.
 - Construye DTOs de Application (`*Input`) y llama a use cases.
 - Traduce resultados y errores tipados a:

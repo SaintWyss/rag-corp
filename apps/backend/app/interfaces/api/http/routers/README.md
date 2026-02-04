@@ -30,6 +30,7 @@ Recorridos rápidos por intención:
 - documentos
 - query (search/ask/stream)
 - admin
+- Todos los endpoints de documentos/ask/query/ingest son workspace-scoped (workspace_id en path).
 
 - Aplica dependencias de borde:
 - construcción de `actor`

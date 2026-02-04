@@ -1,53 +1,79 @@
 # apps/frontend/app/(app)
 
-Grupo de rutas principal de la **Aplicación** (portal autenticado).
+Grupo de rutas principal del portal autenticado (routing + wiring).
 
-## 🎯 Propósito
+## 🎯 Misión
+Asegurar un entrypoint consistente para el portal autenticado y concentrar el wiring de rutas y boundaries comunes sin mezclar lógica de producto.
 
-Agrupar todas las pantallas que requieren:
+### Qué SÍ hace
+- Agrupa rutas que requieren sesión activa bajo un mismo route group.
+- Provee boundaries globales del grupo (`error.tsx`, `loading.tsx`, `not-found.tsx`).
+- Define el entrypoint del portal y el redirect seguro en `page.tsx`.
+- Organiza los portales `/admin` y `/workspaces` con layouts propios.
 
-1. **Sesión activa** (autenticación).
-2. **Layout de aplicación** (shell/chrome) aplicado por secciones.
-3. **Wiring de rutas** (params, redirects, boundaries) sin lógica de producto.
+### Qué NO hace (y por qué)
+- No contiene lógica de producto. Razón: el negocio vive en `src/features/*`. Consecuencia: las pages solo delegan en screens.
+- No aplica guards de rol aquí. Razón: los guards se centralizan por portal. Consecuencia: admin/workspaces definen sus reglas en sus layouts.
+- No monta un shell global. Razón: cada portal usa su propio chrome. Consecuencia: `AppShell`/`AdminShell` se aplican en layouts específicos.
 
-> Regla de arquitectura: `app/` es routing + wiring.  
-> La lógica de producto vive en `src/features/*` y lo compartido en `src/shared/*`.
+## 🗺️ Mapa del territorio
+| Recurso | Tipo | Responsabilidad (en humano) |
+| :-- | :-- | :-- |
+| `README.md` | Documento | Portada y mapa del route group. |
+| `layout.tsx` | Archivo | Layout neutro del grupo (sin guards ni shell). |
+| `page.tsx` | Archivo | Entry point con redirect seguro al portal. |
+| `error.tsx` | Archivo | Error boundary del grupo (recuperable). |
+| `loading.tsx` | Archivo | Skeleton/placeholder neutro del grupo. |
+| `not-found.tsx` | Archivo | 404 del grupo. |
+| `admin/` | Carpeta | Portal administrativo. |
+| `workspaces/` | Carpeta | Portal principal de usuarios. |
 
-## 🧱 Boundaries del grupo
+## ⚙️ ¿Cómo funciona por dentro?
+- `page.tsx` normaliza `next` con `sanitizeNextPath` y redirige a un destino seguro (default: `/workspaces`).
+- `layout.tsx` provee un `<main>` neutro sin side-effects ni guards.
+- Cada portal define su propio layout y su shell (`AdminShell` o `AppShell`).
+- Los boundaries del grupo manejan errores/loads comunes para rutas hijas.
 
-Este grupo define boundaries globales para UX consistente:
+## 🔗 Conexiones y roles
+- **Rol arquitectónico:** route group del portal autenticado (wiring + boundaries).
+- **Recibe órdenes de:** Next.js router y middleware de auth.
+- **Llama a:** `shared/lib/safeNext`, layouts de portal y screens en `src/features/*`.
+- **Reglas de límites:** no traer lógica de producto ni fetch; solo routing y composición.
 
-- `error.tsx`: error recuperable del grupo (reset).
-- `loading.tsx`: skeleton neutro.
-- `not-found.tsx`: 404 del grupo.
+## 👩‍💻 Guía de uso (Snippets)
+```tsx
+import { redirect } from "next/navigation";
+import { sanitizeNextPath } from "@/shared/lib/safeNext";
 
-## 📍 Rutas y Portales
+export default function AppEntryPage({ searchParams }) {
+  const rawNext = Array.isArray(searchParams?.next)
+    ? searchParams?.next[0]
+    : searchParams?.next;
+  const target = sanitizeNextPath(rawNext) || "/workspaces";
+  redirect(target);
+}
+```
 
-Este grupo se organiza en portales:
+## 🧩 Cómo extender sin romper nada
+- Si agregás un portal nuevo, creá una carpeta con su propio `layout.tsx` y README.
+- Mantené las pages del grupo como wiring puro (sin fetch ni lógica de producto).
+- Centralizá guards por portal para evitar duplicación.
 
-### 🛡️ Portal Admin (`/admin`)
+## 🆘 Troubleshooting
+- **Síntoma:** redirect loops al entrar al portal.
+- **Causa probable:** `next` inválido o middleware mal configurado.
+- **Dónde mirar:** `page.tsx` y `shared/lib/safeNext`.
+- **Solución:** validar el `next` y usar fallback seguro.
+- **Síntoma:** falta el shell en un portal.
+- **Causa probable:** layout del portal no aplica `AppShell`/`AdminShell`.
+- **Dónde mirar:** `admin/layout.tsx` o `workspaces/layout.tsx`.
+- **Solución:** aplicar el shell en el layout del portal.
+- **Síntoma:** 404 en un workspace válido.
+- **Causa probable:** validación del `id` falla en el boundary.
+- **Dónde mirar:** `workspaces/[id]/layout.tsx`.
+- **Solución:** ajustar la normalización del `id` o la ruta.
 
-Gestión de plataforma.
-
-- `/admin/users`: ABM de usuarios.
-- `/admin/workspaces`: Gestión global de workspaces.
-
-Notas:
-- El `AdminShell` se aplica en `app/(app)/admin/layout.tsx`.
-- El guard de rol admin se centraliza en ese layout.
-
-### 💼 Portal Workspaces (`/workspaces`)
-
-Uso diario de empleados/usuarios.
-
-- `/workspaces`: Listado de workspaces accesibles.
-- `/workspaces/[id]`: Dashboard de un workspace específico.
-- `/workspaces/[id]/chat`: Interfaz de chat RAG.
-- `/workspaces/[id]/documents`: Gestión de documentos del workspace.
-
-Notas:
-- El shell de esta sección (AppShell) debe aplicarse a nivel de layout del portal `/workspaces`
-  para evitar duplicación en pages.
-- El segmento `workspaces/[id]` actúa como boundary del contexto workspace (validación de `id` + slots).
-
----
+## 🔎 Ver también
+- `./admin/README.md`
+- `./workspaces/README.md`
+- `../../README.md`
