@@ -108,6 +108,21 @@ kubectl apply -k infra/k8s/overlays/staging
 kubectl apply -k infra/k8s/overlays/prod
 ```
 
+### Política de imágenes (prod)
+
+- Usar **tags inmutables** (`sha-<gitsha>` o semver) en overlays.
+- **No** usar `latest` en producción.
+
+### Verificar overlays sin kubectl (dockerizado)
+
+```bash
+bash scripts/ops/render_kustomize.sh staging > /tmp/staging.yaml
+bash scripts/ops/render_kustomize.sh prod > /tmp/prod.yaml
+
+# Verificar que prod NO contiene :latest
+rg ':latest' /tmp/prod.yaml
+```
+
 ---
 
 ## Observability (local)

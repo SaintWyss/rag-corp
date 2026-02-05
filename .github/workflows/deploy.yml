@@ -91,10 +91,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
           tags: |
-            type=sha,prefix=
-            type=ref,event=branch
+            type=sha,prefix=sha-
             type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Extract frontend metadata
         id: meta_frontend
@@ -102,10 +100,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
           tags: |
-            type=sha,prefix=
-            type=ref,event=branch
+            type=sha,prefix=sha-
             type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v5

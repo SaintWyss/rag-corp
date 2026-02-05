@@ -45,6 +45,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  kustomize-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render staging overlay
+        run: bash scripts/ops/render_kustomize.sh staging > /tmp/staging.yaml
+      - name: Render prod overlay
+        run: bash scripts/ops/render_kustomize.sh prod > /tmp/prod.yaml
+      - name: Ensure prod has no latest tags
+        run: |
+          if grep -n ":latest" /tmp/prod.yaml; then
+            echo "::error::Prod overlay contiene :latest. Usar tags inmutables."
+            exit 1
+          fi
+      - name: Upload rendered manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: kustomize-render
+          path: |
+            /tmp/staging.yaml
+            /tmp/prod.yaml
+
   backend-lint:
     runs-on: ubuntu-latest
     defaults:

@@ -83,6 +83,16 @@ kubectl -n ragcorp get pods -w
 kubectl -n ragcorp get svc
 ```
 
+## Verificación de overlays sin kubectl
+
+```bash
+bash scripts/ops/render_kustomize.sh staging > /tmp/staging.yaml
+bash scripts/ops/render_kustomize.sh prod > /tmp/prod.yaml
+
+# En producción no debe existir :latest
+rg ':latest' /tmp/prod.yaml
+```
+
 ## Manifests
 
 | File | Description |

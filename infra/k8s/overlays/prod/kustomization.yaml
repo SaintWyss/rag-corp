@@ -23,10 +23,10 @@ resources:
 images:
   - name: ragcorp/backend
     newName: ghcr.io/your-org/ragcorp-backend
-    newTag: 0.1.0
+    newTag: sha-REPLACE_WITH_GIT_SHA
   - name: ragcorp/frontend
     newName: ghcr.io/your-org/ragcorp-frontend
-    newTag: 0.1.0
+    newTag: sha-REPLACE_WITH_GIT_SHA
 
 patches:
   - path: patch-configmap.yaml
