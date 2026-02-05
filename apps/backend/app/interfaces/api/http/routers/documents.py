@@ -170,7 +170,6 @@ def _to_document_summary(doc: Document) -> DocumentSummaryRes:
         source=doc.source,
         tags=list(doc.tags or []),
         created_at=doc.created_at,
-        updated_at=doc.updated_at,
     )
 
 
@@ -188,9 +187,7 @@ def _to_document_detail(doc: Document) -> DocumentDetailRes:
         tags=list(doc.tags or []),
         allowed_roles=list(doc.allowed_roles or []),
         created_at=doc.created_at,
-        updated_at=doc.updated_at,
         deleted_at=doc.deleted_at,
-        archived_at=doc.archived_at,
     )
 
 

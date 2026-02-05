@@ -865,6 +865,7 @@ function WorkspaceDocumentsScreen({
                     type="button"
                     onClick={() => setSelectedId(doc.id)}
                     data-testid={`sources-item-${doc.id}`}
+                    data-document-title={doc.title || doc.file_name || ""}
                     className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                       selectedClass
                         ? "border-cyan-400/40 bg-cyan-500/10"
@@ -955,7 +956,11 @@ function WorkspaceDocumentsScreen({
               Selecciona un documento para ver el detalle.
             </div>
           ) : (
-            <div className="mt-6 space-y-6">
+            <div
+              className="mt-6 space-y-6"
+              data-testid="source-detail"
+              data-document-title={selected.title || selected.file_name || ""}
+            >
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-white">
                   {selected.title || selected.file_name || "Documento sin titulo"}
@@ -986,7 +991,9 @@ function WorkspaceDocumentsScreen({
                 <div className="mt-3 space-y-2 text-xs text-white/60">
                   <div>
                     <span className="text-white/40">Estado: </span>
-                    <span>{normalizeStatus(selected.status)}</span>
+                    <span data-testid="source-detail-status">
+                      {normalizeStatus(selected.status)}
+                    </span>
                   </div>
                   <div>
                     <span className="text-white/40">Creado: </span>

@@ -56,8 +56,8 @@ x-backend-env: &backend_env
   # Configs opcionales (según tu implementación)
   API_KEYS_CONFIG: ${API_KEYS_CONFIG:-}
   RBAC_CONFIG: ${RBAC_CONFIG:-}
-  RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-10}
-  RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-20}
+  RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-500}
+  RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-1000}
   # Healthcheck de DB al adquirir conexión (puede desactivarse en E2E).
   DB_HEALTHCHECK_ON_ACQUIRE: ${DB_HEALTHCHECK_ON_ACQUIRE:-true}
 

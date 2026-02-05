@@ -52,8 +52,8 @@ load_env_file() {
   done < "$file"
 }
 
-DEFAULT_ADMIN_EMAIL="admin@example.com"
-DEFAULT_ADMIN_PASSWORD="admin-pass-123"
+DEFAULT_ADMIN_EMAIL="admin@local"
+DEFAULT_ADMIN_PASSWORD="admin"
 DEFAULT_API_KEYS_CONFIG='{"e2e-key":["ingest","ask"]}'
 DEFAULT_TEST_API_KEY="e2e-key"
 
@@ -78,8 +78,8 @@ export S3_BUCKET="${S3_BUCKET:-rag-documents}"
 export S3_REGION="${S3_REGION:-us-east-1}"
 export MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin}"
 export MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-minioadmin}"
-export RATE_LIMIT_RPS="${RATE_LIMIT_RPS:-0}"
-export RATE_LIMIT_BURST="${RATE_LIMIT_BURST:-0}"
+export RATE_LIMIT_RPS="${RATE_LIMIT_RPS:-500}"
+export RATE_LIMIT_BURST="${RATE_LIMIT_BURST:-1000}"
 export DB_HEALTHCHECK_ON_ACQUIRE="${DB_HEALTHCHECK_ON_ACQUIRE:-false}"
 
 require_docker
@@ -89,7 +89,7 @@ cleanup() {
     log "E2E_KEEP_STACK=1 -> no se baja el stack."
     return 0
   fi
-  docker compose --profile e2e down -v
+  docker compose --profile e2e --profile rag down -v --remove-orphans
 }
 trap cleanup EXIT
 

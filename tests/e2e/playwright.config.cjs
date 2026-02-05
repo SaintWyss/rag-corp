@@ -46,10 +46,10 @@ const baseURL = process.env.E2E_BASE_URL || "http://localhost:3000";
 
 module.exports = defineConfig({
   testDir: "./tests",
-  fullyParallel: true,
+  fullyParallel: !useCompose && !process.env.CI,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : useCompose ? 1 : undefined,
   reporter: process.env.CI
     ? [["github"], ["html", { open: "never" }]]
     : "html",

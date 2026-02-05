@@ -49,7 +49,7 @@ test.describe("Sources flow", () => {
         await expect(page.getByTestId("sources-workspace")).toContainText(ws.id);
 
         const listItem = page.locator(
-            `[data-testid="source-list-item"][data-document-title="${docTitle}"]`
+            `[data-testid^="sources-item-"][data-document-title="${docTitle}"]`
         );
         await expect(listItem).toBeVisible();
         await listItem.click();

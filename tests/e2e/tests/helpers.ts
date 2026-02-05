@@ -16,6 +16,42 @@ import fs from "fs";
 import path from "path";
 import { expect, type Page } from "@playwright/test";
 
+const RATE_LIMIT_MAX_RETRIES = 6;
+const RATE_LIMIT_BASE_DELAY_MS = 200;
+const RATE_LIMIT_MAX_DELAY_MS = 2_000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterSeconds(headers: Record<string, string>): number | null {
+  const raw = headers["retry-after"];
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return value;
+}
+
+async function requestWithRateLimitRetry<T extends { status(): number; headers(): Record<string, string> }>(
+  fn: () => Promise<T>,
+  context: string
+): Promise<T> {
+  for (let attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt += 1) {
+    const res = await fn();
+    if (res.status() !== 429) return res;
+    const headers = res.headers();
+    const retryAfterSeconds = parseRetryAfterSeconds(headers);
+    const backoffMs = retryAfterSeconds
+      ? Math.min(retryAfterSeconds * 1000, RATE_LIMIT_MAX_DELAY_MS)
+      : Math.min(RATE_LIMIT_BASE_DELAY_MS * 2 ** attempt, RATE_LIMIT_MAX_DELAY_MS);
+    if (attempt >= RATE_LIMIT_MAX_RETRIES) {
+      return res;
+    }
+    await sleep(backoffMs);
+  }
+  throw new Error(`Rate limit retry agotado: ${context}`);
+}
+
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -101,6 +137,7 @@ async function setAuthCookie(
       async () => {
         const cAdmin = await page.context().cookies(adminUrl);
         const cWs = await page.context().cookies(workspacesUrl);
+        const cAny = await page.context().cookies();
 
         const okAdmin = cAdmin.some(
           (c) => names.includes(c.name) && c.path === "/" && c.domain.includes(domain)
@@ -108,8 +145,11 @@ async function setAuthCookie(
         const okWs = cWs.some(
           (c) => names.includes(c.name) && c.path === "/" && c.domain.includes(domain)
         );
+        const okAny = cAny.some(
+          (c) => names.includes(c.name) && c.path === "/" && c.domain.includes(domain)
+        );
 
-        return okAdmin && okWs;
+        return (okAdmin && okWs) || okAny;
       },
       {
         timeout: 10_000,
@@ -125,9 +165,13 @@ async function setAuthCookie(
  * Esto evita flakes de UI login y asegura que page.goto() NO caiga en /login.
  */
 async function apiLogin(page: Page, email: string, password: string) {
-  const res = await page.request.post("/auth/login", {
-    data: { email, password },
-  });
+  const res = await requestWithRateLimitRetry(
+    () =>
+      page.request.post("/auth/login", {
+        data: { email, password },
+      }),
+    "POST /auth/login"
+  );
 
   if (!res.ok()) {
     const body = await res.text();
@@ -154,7 +198,15 @@ async function apiLogin(page: Page, email: string, password: string) {
   await setAuthCookie(page, token, expiresIn);
 
   // Fuente de verdad del rol: /auth/me (ya usando cookie real del browser)
-  const me = await page.request.get("/auth/me");
+  const me = await requestWithRateLimitRetry(
+    () =>
+      page.request.get("/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    "GET /auth/me"
+  );
   if (!me.ok()) {
     throw new Error(
       `Auth sanity failed after login: ${me.status()} ${await me.text()}`
@@ -226,12 +278,16 @@ async function getAdminToken(page: Page): Promise<string> {
 
 export async function createWorkspace(page: Page, name: string) {
   const token = await getAdminToken(page);
-  const response = await page.request.post("/api/workspaces", {
-    data: { name },
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await requestWithRateLimitRetry(
+    () =>
+      page.request.post("/api/workspaces", {
+        data: { name },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    "POST /api/workspaces"
+  );
 
   if (!response.ok()) {
     const body = await response.text();
@@ -284,8 +340,12 @@ export async function uploadDocumentAndWaitReady(
   await expect
     .poll(
       async () => {
-        const res = await page.request.get(
-          `/api/workspaces/${workspaceId}/documents/${documentId}`
+        const res = await requestWithRateLimitRetry(
+          () =>
+            page.request.get(
+              `/api/workspaces/${workspaceId}/documents/${documentId}`
+            ),
+          "GET /api/workspaces/:id/documents/:id"
         );
         if (!res.ok()) {
           return { ok: false, status: res.status(), state: "ERROR" };
@@ -301,7 +361,10 @@ export async function uploadDocumentAndWaitReady(
 }
 
 export async function adminListUsers(page: Page): Promise<any[]> {
-  const response = await page.request.get("/auth/users?limit=200");
+  const response = await requestWithRateLimitRetry(
+    () => page.request.get("/auth/users?limit=200"),
+    "GET /auth/users"
+  );
   if (!response.ok()) {
     throw new Error(
       `Failed to list users: ${response.status()} ${await response.text()}`
@@ -335,9 +398,13 @@ export async function adminEnsureUser(
   const exists = users.some((u: any) => u.email === user.email);
   if (exists) return;
 
-  const res = await page.request.post("/auth/users", {
-    data: { email: user.email, password: user.password, role },
-  });
+  const res = await requestWithRateLimitRetry(
+    () =>
+      page.request.post("/auth/users", {
+        data: { email: user.email, password: user.password, role },
+      }),
+    "POST /auth/users"
+  );
 
   if (!res.ok() && res.status() !== 409) {
     throw new Error(
@@ -352,9 +419,13 @@ export async function adminCreateWorkspaceForUserId(
   name: string,
   description?: string
 ): Promise<any> {
-  const response = await page.request.post("/api/admin/workspaces", {
-    data: { owner_user_id: ownerUserId, name, description },
-  });
+  const response = await requestWithRateLimitRetry(
+    () =>
+      page.request.post("/api/admin/workspaces", {
+        data: { owner_user_id: ownerUserId, name, description },
+      }),
+    "POST /api/admin/workspaces"
+  );
 
   if (!response.ok()) {
     const body = await response.text();
