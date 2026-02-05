@@ -7,28 +7,26 @@ Responsabilidades:
   - Evitar regresiones en headers de seguridad del frontend.
 
 Colaboradores:
-  - apps/frontend/next.config.mjs
+  - shared/security/csp.ts
 
 Invariantes:
   - No validar valores sensibles ni agregar dependencias externas.
 ===============================================================================
 */
 
-import fs from "fs";
-import path from "path";
+import { buildCspHeader } from "@/shared/security/csp";
 
 describe("CSP headers", () => {
   it("incluye Content-Security-Policy con directivas base", async () => {
-    const configPath = path.resolve(__dirname, "../../../next.config.mjs");
-    const contents = fs.readFileSync(configPath, "utf8");
+    const csp = buildCspHeader({ nonce: "test-nonce", isDev: false });
 
-    expect(contents).toContain("Content-Security-Policy");
-    expect(contents).toContain("default-src 'self'");
-    expect(contents).toContain("base-uri 'self'");
-    expect(contents).toContain("object-src 'none'");
-    expect(contents).toContain("frame-ancestors 'none'");
-    expect(contents).toContain("script-src 'self'");
-    expect(contents).toContain("style-src 'self'");
-    expect(contents).toContain("connect-src 'self'");
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("script-src 'self' 'nonce-test-nonce' 'unsafe-inline'");
+    expect(csp).toContain("style-src 'self' 'nonce-test-nonce' 'unsafe-inline'");
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).toContain("unsafe-inline");
   });
 });

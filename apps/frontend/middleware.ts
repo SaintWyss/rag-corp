@@ -9,6 +9,7 @@ Responsabilidades:
   - Enforcear portal correcto según rol (admin/employee).
   - Sanitizar `next` para evitar open-redirects.
   - Fail-safe: si el backend falla o timeoutea, forzar login.
+  - Inyectar headers de seguridad (CSP con nonce).
 
 Colaboradores:
   - NextRequest/NextResponse (middleware runtime)
@@ -37,11 +38,12 @@ Notas:
 ===============================================================================
 */
 
-import { parseAuthMe, type AuthRole } from "@/shared/api/contracts";
+import { type NextRequest, NextResponse } from "next/server";
+
+import { type AuthRole, parseAuthMe } from "@/shared/api/contracts/auth";
 import { apiRoutes } from "@/shared/api/routes";
 import { sanitizeNextPath } from "@/shared/lib/safeNext";
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { buildCspHeader } from "@/shared/security/csp";
 
 // Rutas “home” por rol (portal correcto).
 const ADMIN_HOME = "/admin/users";
@@ -119,6 +121,31 @@ async function fetchCurrentUser(req: NextRequest) {
   }
 }
 
+function createNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let binary = "";
+  bytes.forEach((value) => {
+    binary += String.fromCharCode(value);
+  });
+  return btoa(binary);
+}
+
+function applySecurityHeaders(
+  response: NextResponse,
+  cspHeader: string
+): NextResponse {
+  response.headers.set("Content-Security-Policy", cspHeader);
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()"
+  );
+  return response;
+}
+
 function getHomeForRole(role: AuthRole): string {
   return role === "admin" ? ADMIN_HOME : EMPLOYEE_HOME;
 }
@@ -146,10 +173,24 @@ function deleteCookie(response: NextResponse, name: string) {
 
 /**
  * Middleware principal:
- * - Aplica solo en matcher (login + rutas privadas).
+ * - Aplica sobre rutas de app (excluye assets estáticos por matcher).
  * - Usa guard clauses para legibilidad y “fail closed”.
  */
 export async function middleware(req: NextRequest) {
+  const nonce = createNonce();
+  const isDev = process.env.NODE_ENV !== "production";
+  const cspHeader = buildCspHeader({ nonce, isDev });
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const nextResponse = () =>
+    applySecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      cspHeader
+    );
+  const redirectResponse = (url: URL) =>
+    applySecurityHeaders(NextResponse.redirect(url), cspHeader);
+
   const { pathname, searchParams } = req.nextUrl;
 
   /**
@@ -180,7 +221,7 @@ export async function middleware(req: NextRequest) {
   const isLoginPage = pathname === "/login";
 
   // Si no es privada ni login, no hacemos nada.
-  if (!isPrivateRoute && !isLoginPage) return NextResponse.next();
+  if (!isPrivateRoute && !isLoginPage) return nextResponse();
 
   /**
    * Caso 1: Ruta privada sin cookie → redirect a /login.
@@ -198,7 +239,7 @@ export async function middleware(req: NextRequest) {
     url.search = "";
     url.searchParams.set("next", fullPath);
 
-    return NextResponse.redirect(url);
+    return redirectResponse(url);
   }
 
   /**
@@ -226,7 +267,7 @@ export async function middleware(req: NextRequest) {
         url.searchParams.set("next", fullPath);
       }
 
-      const response = NextResponse.redirect(url);
+      const response = redirectResponse(url);
       deleteCookie(response, cookieName);
       deleteCookie(response, "access_token");
       deleteCookie(response, "rag_access_token");
@@ -250,14 +291,14 @@ export async function middleware(req: NextRequest) {
           const url = req.nextUrl.clone();
           url.pathname = safePath;
           url.search = "";
-          return NextResponse.redirect(url);
+          return redirectResponse(url);
         }
       }
 
       const url = req.nextUrl.clone();
       url.pathname = getHomeForRole(role);
       url.search = "";
-      return NextResponse.redirect(url);
+      return redirectResponse(url);
     }
 
     /**
@@ -267,21 +308,23 @@ export async function middleware(req: NextRequest) {
       const url = req.nextUrl.clone();
       url.pathname = getHomeForRole(role);
       url.search = "";
-      return NextResponse.redirect(url);
+      return redirectResponse(url);
     }
 
     // Caso 2c: Todo OK → continuar.
-    return NextResponse.next();
+    return nextResponse();
   }
 
   // Fallback seguro (no debería ocurrir por la lógica anterior).
-  return NextResponse.next();
+  return nextResponse();
 }
 
 /**
  * Matcher:
- * - Restringe dónde corre el middleware (performance + menor riesgo de efectos).
+ * - Excluye assets estáticos para performance y evitar headers innecesarios.
  */
 export const config = {
-  matcher: ["/login", "/workspaces/:path*", "/admin/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+  ],
 };
