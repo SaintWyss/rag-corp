@@ -33,6 +33,7 @@
     "contracts:export": "docker compose run --rm --no-deps rag-api python scripts/export_openapi.py --out /repo/shared/contracts/openapi.json",
     "contracts:gen": "pnpm --filter @contracts gen",
     "test:backend:unit": "docker compose run --rm --no-deps --build rag-api pytest -m unit",
+    "verify": "bash scripts/verify.sh",
     "e2e:install": "pnpm -C tests/e2e install",
     "e2e:install:browsers": "pnpm -C tests/e2e exec playwright install",
     "e2e": "pnpm run e2e:install && pnpm -C tests/e2e exec playwright test",
