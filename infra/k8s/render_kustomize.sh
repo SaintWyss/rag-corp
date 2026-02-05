@@ -6,6 +6,7 @@ set -euo pipefail
 # =============================================================================
 # Responsabilidades:
 # - Renderizar overlays Kustomize usando Docker (sin depender de kubectl local).
+# - Permitir override de imagenes (sha) sin tocar el repo.
 # - Escribir salida a stdout o a un archivo indicado por --out.
 # - Fallar con mensajes accionables si falta Docker u overlays.
 #
@@ -19,12 +20,13 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE' >&2
-Uso: infra/k8s/render_kustomize.sh <staging|prod> [--out <ruta>]
+Uso: infra/k8s/render_kustomize.sh <staging|prod> [--out <ruta>] [--backend-image <ref>] [--frontend-image <ref>]
 
 Ejemplos:
   infra/k8s/render_kustomize.sh staging --out /tmp/ragcorp-staging.yaml
   infra/k8s/render_kustomize.sh prod --out /tmp/ragcorp-prod.yaml
   infra/k8s/render_kustomize.sh prod > /tmp/ragcorp-prod.yaml
+  infra/k8s/render_kustomize.sh prod --backend-image ghcr.io/org/ragcorp/backend:sha-<sha> --frontend-image ghcr.io/org/ragcorp/frontend:sha-<sha>
 USAGE
 }
 
@@ -37,6 +39,8 @@ ENVIRONMENT="$1"
 shift || true
 
 OUT_PATH=""
+BACKEND_IMAGE=""
+FRONTEND_IMAGE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out)
@@ -45,6 +49,22 @@ while [[ $# -gt 0 ]]; do
       ;;
     --out=*)
       OUT_PATH="${1#--out=}"
+      shift
+      ;;
+    --backend-image)
+      BACKEND_IMAGE="$2"
+      shift 2
+      ;;
+    --backend-image=*)
+      BACKEND_IMAGE="${1#--backend-image=}"
+      shift
+      ;;
+    --frontend-image)
+      FRONTEND_IMAGE="$2"
+      shift 2
+      ;;
+    --frontend-image=*)
+      FRONTEND_IMAGE="${1#--frontend-image=}"
       shift
       ;;
     -h|--help)
@@ -85,11 +105,43 @@ fi
 
 IMAGE="${KUSTOMIZE_IMAGE:-registry.k8s.io/kustomize/kustomize:v5.4.3}"
 
+WORKDIR_ROOT="${PWD}"
+TEMP_DIR=""
+
+cleanup() {
+  if [[ -n "$TEMP_DIR" ]]; then
+    rm -rf "$TEMP_DIR"
+  fi
+}
+trap cleanup EXIT
+
+if [[ -n "$BACKEND_IMAGE" || -n "$FRONTEND_IMAGE" ]]; then
+  TEMP_DIR="$(mktemp -d)"
+  mkdir -p "$TEMP_DIR/infra"
+  cp -R infra/k8s "$TEMP_DIR/infra/k8s"
+  WORKDIR_ROOT="$TEMP_DIR"
+
+  if [[ -n "$BACKEND_IMAGE" ]]; then
+    docker run --rm \
+      -v "${WORKDIR_ROOT}:/workdir" \
+      -w "/workdir/infra/k8s/overlays/${ENVIRONMENT}" \
+      "$IMAGE" edit set image "ragcorp/backend=${BACKEND_IMAGE}"
+  fi
+
+  if [[ -n "$FRONTEND_IMAGE" ]]; then
+    docker run --rm \
+      -v "${WORKDIR_ROOT}:/workdir" \
+      -w "/workdir/infra/k8s/overlays/${ENVIRONMENT}" \
+      "$IMAGE" edit set image "ragcorp/frontend=${FRONTEND_IMAGE}"
+  fi
+fi
+
 render() {
   docker run --rm \
-    -v "${PWD}:/workdir" \
+    -v "${WORKDIR_ROOT}:/workdir" \
     -w /workdir \
-    "$IMAGE" build --load-restrictor=LoadRestrictionsNone "$OVERLAY_PATH"
+    "$IMAGE" build --load-restrictor=LoadRestrictionsNone \
+    "/workdir/infra/k8s/overlays/${ENVIRONMENT}"
 }
 
 if [[ -n "$OUT_PATH" ]]; then

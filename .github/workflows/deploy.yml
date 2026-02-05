@@ -50,6 +50,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  SHA_TAG: sha-${{ github.sha }}
 
 jobs:
   build:
@@ -128,6 +129,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Render manifests (staging/prod)
+        env:
+          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ env.SHA_TAG }}
+          FRONTEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ env.SHA_TAG }}
+        run: |
+          bash infra/k8s/render_kustomize.sh staging \
+            --backend-image "$BACKEND_IMAGE" \
+            --frontend-image "$FRONTEND_IMAGE" \
+            --out /tmp/ragcorp-staging.yaml
+          bash infra/k8s/render_kustomize.sh prod \
+            --backend-image "$BACKEND_IMAGE" \
+            --frontend-image "$FRONTEND_IMAGE" \
+            --out /tmp/ragcorp-prod.yaml
+          if grep -n ":latest" /tmp/ragcorp-prod.yaml; then
+            echo "::error::Prod render contiene :latest. Usar tags inmutables."
+            exit 1
+          fi
+
+      - name: Upload rendered manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: kustomize-render-${{ env.SHA_TAG }}
+          path: |
+            /tmp/ragcorp-staging.yaml
+            /tmp/ragcorp-prod.yaml
+
   deploy-staging:
     name: Deploy to Staging
     needs: build
@@ -140,6 +167,8 @@ jobs:
       BACKEND_IMAGE_TAGS: ${{ needs.build.outputs.backend_tags }}
       FRONTEND_IMAGE_TAGS: ${{ needs.build.outputs.frontend_tags }}
       DEPLOY_VERSION: ${{ github.event.inputs.version || github.sha }}
+      BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ env.SHA_TAG }}
+      FRONTEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ env.SHA_TAG }}
       BASE_URL: ${{ vars.STAGING_BASE_URL }}
       DEPLOY_COMMAND: ${{ vars.STAGING_DEPLOY_COMMAND }}
 
@@ -197,6 +226,8 @@ jobs:
       BACKEND_IMAGE_TAGS: ${{ needs.build.outputs.backend_tags }}
       FRONTEND_IMAGE_TAGS: ${{ needs.build.outputs.frontend_tags }}
       DEPLOY_VERSION: ${{ github.event.inputs.version || github.sha }}
+      BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ env.SHA_TAG }}
+      FRONTEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ env.SHA_TAG }}
       BASE_URL: ${{ vars.PROD_BASE_URL }}
       DEPLOY_COMMAND: ${{ vars.PROD_DEPLOY_COMMAND }}
 

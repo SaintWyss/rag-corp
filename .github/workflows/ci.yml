@@ -47,17 +47,28 @@ jobs:
 
   kustomize-render:
     runs-on: ubuntu-latest
+    env:
+      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend:sha-${{ github.sha }}
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend:sha-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - name: Render staging overlay
-        run: bash infra/k8s/render_kustomize.sh staging --out /tmp/staging.yaml
+        run: |
+          bash infra/k8s/render_kustomize.sh staging \
+            --backend-image "$BACKEND_IMAGE" \
+            --frontend-image "$FRONTEND_IMAGE" \
+            --out /tmp/ragcorp-staging.yaml
       - name: Render prod overlay
-        run: bash infra/k8s/render_kustomize.sh prod --out /tmp/prod.yaml
+        run: |
+          bash infra/k8s/render_kustomize.sh prod \
+            --backend-image "$BACKEND_IMAGE" \
+            --frontend-image "$FRONTEND_IMAGE" \
+            --out /tmp/ragcorp-prod.yaml
       - name: Validate rendered outputs
         run: |
-          test -s /tmp/staging.yaml
-          test -s /tmp/prod.yaml
-          if grep -n ":latest" /tmp/prod.yaml; then
+          test -s /tmp/ragcorp-staging.yaml
+          test -s /tmp/ragcorp-prod.yaml
+          if grep -n ":latest" /tmp/ragcorp-prod.yaml; then
             echo "::error::Prod overlay contiene :latest. Usar tags inmutables."
             exit 1
           fi
@@ -66,8 +77,8 @@ jobs:
         with:
           name: kustomize-render
           path: |
-            /tmp/staging.yaml
-            /tmp/prod.yaml
+            /tmp/ragcorp-staging.yaml
+            /tmp/ragcorp-prod.yaml
 
   backend-lint:
     runs-on: ubuntu-latest
@@ -156,6 +167,29 @@ jobs:
           files: apps/frontend/coverage/lcov.info
         continue-on-error: true
 
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build backend image (gate)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/backend
+          file: ./apps/backend/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build frontend image (gate)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/frontend
+          file: ./apps/frontend/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   contracts-check:
     runs-on: ubuntu-latest
     env:
@@ -183,7 +217,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test]
+    needs: [backend-test, frontend-test, docker-build]
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     timeout-minutes: 35
     env:
@@ -194,6 +228,8 @@ jobs:
       E2E_USE_COMPOSE: "1"
       E2E_BASE_URL: http://localhost:3000
       E2E_API_URL: http://localhost:8000
+      E2E_ADMIN_EMAIL: admin@example.com
+      E2E_ADMIN_PASSWORD: admin-pass-123
       NEXT_PUBLIC_API_URL: http://rag-api:8000
     steps:
       - uses: actions/checkout@v4
@@ -220,6 +256,8 @@ jobs:
             sleep 2
           done
           curl -sf http://localhost:8000/healthz
+      - name: Bootstrap admin (E2E)
+        run: docker compose exec -T rag-api python scripts/create_admin.py --email "$E2E_ADMIN_EMAIL" --password "$E2E_ADMIN_PASSWORD"
       - name: Wait for web
         run: |
           for i in {1..30}; do
