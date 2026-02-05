@@ -134,4 +134,4 @@ EXPOSE 3000
 # ----------------------------
 # Runtime
 # ----------------------------
-CMD ["node", "server.js"]
+CMD ["node", "apps/frontend/server.js"]
