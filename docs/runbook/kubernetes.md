@@ -86,29 +86,29 @@ kubectl -n ragcorp get svc
 ## Verificación de overlays sin kubectl
 
 ```bash
-bash scripts/ops/render_kustomize.sh staging > /tmp/staging.yaml
-bash scripts/ops/render_kustomize.sh prod > /tmp/prod.yaml
+bash infra/k8s/render_kustomize.sh staging --out /tmp/ragcorp-staging.yaml
+bash infra/k8s/render_kustomize.sh prod --out /tmp/ragcorp-prod.yaml
 
 # En producción no debe existir :latest
-rg ':latest' /tmp/prod.yaml
+rg ':latest' /tmp/ragcorp-prod.yaml
 ```
 
 ## Manifests
 
 | File | Description |
 |------|-------------|
-| `namespace.yaml` | Dedicated namespace `ragcorp` |
-| `configmap.yaml` | Non-sensitive configuration |
-| `secret.yaml` | Sensitive data (DB URL, API keys) |
-| `backend-deployment.yaml` | FastAPI backend with security contexts |
-| `backend-service.yaml` | Backend ClusterIP service |
-| `backend-hpa.yaml` | Horizontal Pod Autoscaler (2-10 pods) |
-| `frontend-deployment.yaml` | Next.js frontend |
-| `frontend-service.yaml` | Frontend ClusterIP service |
-| `ingress.yaml` | NGINX Ingress with TLS |
-| `redis-deployment.yaml` | Redis cache |
-| `pdb.yaml` | Pod Disruption Budgets |
-| `network-policy.yaml` | Zero-trust network policies |
+| `base/namespace.yaml` | Dedicated namespace `ragcorp` |
+| `base/configmap.yaml` | Non-sensitive configuration |
+| `base/secret.yaml` | Sensitive data (DB URL, API keys) |
+| `base/backend-deployment.yaml` | FastAPI backend with security contexts |
+| `base/backend-service.yaml` | Backend ClusterIP service |
+| `base/backend-hpa.yaml` | Horizontal Pod Autoscaler (2-10 pods) |
+| `base/frontend-deployment.yaml` | Next.js frontend |
+| `base/frontend-service.yaml` | Frontend ClusterIP service |
+| `base/ingress.yaml` | NGINX Ingress with TLS |
+| `base/redis-deployment.yaml` | Redis cache |
+| `base/pdb.yaml` | Pod Disruption Budgets |
+| `base/network-policy.yaml` | Zero-trust network policies |
 
 ## Security Features
 

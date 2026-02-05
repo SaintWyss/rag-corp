@@ -1,3 +1,21 @@
+<!--
+===============================================================================
+TARJETA CRC - docs/project/guia_definitiva_de_produccion_rag_corp.md
+===============================================================================
+Responsabilidades:
+- Definir el estándar de producción y los gates verificables.
+- Servir como fuente de verdad para despliegue, seguridad y calidad.
+
+Colaboradores:
+- docs/runbook/*
+- infra/k8s/*
+- .github/workflows/*
+
+Invariantes:
+- No incluir secretos reales.
+- Mantener rutas coherentes con el repo.
+===============================================================================
+-->
 # Guía Definitiva de Producción — RAG Corp
 
 > Documento único para llevar el repo **a estado “production‑ready”** y desplegarlo en un entorno empresarial con seguridad, operación y calidad verificables.
@@ -366,13 +384,13 @@ Aplicar cualquier ajuste faltante para cumplir **100%** el checklist de go‑liv
    - Verificación: `docker build -f apps/backend/Dockerfile ...` y workflow verde.
 
 2) **K8s usa imágenes `ragcorp/*:latest` vs publish a registry**
-   - Evidencia: `infra/k8s/kustomization.yaml` define `ragcorp/backend:latest` y `ragcorp/frontend:latest`.
+   - Evidencia: `infra/k8s/base/kustomization.yaml` define `ragcorp/backend:latest` y `ragcorp/frontend:latest`.
    - Riesgo: drift entre imágenes publicadas (p.ej. GHCR) y lo desplegado.
    - Acción: crear overlays (staging/prod) que reescriban `images.newName/newTag` hacia el registry real (GHCR/ECR/GCR).
    - Verificación: `kubectl kustomize infra/k8s/overlays/prod | grep image:`.
 
 3) **Ingress timeouts pueden cortar SSE**
-   - Evidencia: `infra/k8s/ingress.yaml` tiene `nginx.ingress.kubernetes.io/proxy-read-timeout: "60"`.
+   - Evidencia: `infra/k8s/base/ingress.yaml` tiene `nginx.ingress.kubernetes.io/proxy-read-timeout: "60"`.
    - Acción: definir timeout de lectura mayor para SSE (p.ej. 10–30 min) o estrategia de keepalive.
    - Verificación: ask streaming prolongado sin cortes (staging) + métricas de duración.
 
@@ -445,4 +463,3 @@ Aplicar cualquier ajuste faltante para cumplir **100%** el checklist de go‑liv
 3) `docs/project/informe_de_sistemas_rag_corp.md` (informe técnico consolidado).
 4) `docs/reference/*` (contratos, config, errores, access control, limits).
 5) Evidencia CI: pipeline verde + artefactos (imágenes, SBOM si aplica).
-

@@ -7,7 +7,7 @@ Responsabilidades:
 - Indicar ubicacion de secretos por entorno (local/CI/K8s).
 
 Colaboradores:
-- infra/k8s/secret.yaml
+- infra/k8s/base/secret.yaml
 - infra/k8s/externalsecrets/*
 - apps/backend/app/crosscutting/config.py
 
@@ -46,7 +46,7 @@ Invariantes:
   - External Secrets Operator (recomendado): `infra/k8s/externalsecrets/*`
   - o creación manual controlada.
 
-**Nota:** `infra/k8s/secret.yaml` es **solo plantilla** y **no debe aplicarse**. El kustomize base no la incluye.
+**Nota:** `infra/k8s/base/secret.yaml` es **solo plantilla** y **no debe aplicarse**. El kustomize base no la incluye.
 
 ---
 
@@ -96,7 +96,7 @@ Opcionales según runtime:
 
 ## Plantillas K8s
 
-- **Template (no aplicar):** `infra/k8s/secret.yaml`
+- **Template (no aplicar):** `infra/k8s/base/secret.yaml`
 - **ExternalSecrets (recomendado):** `infra/k8s/externalsecrets/*.yaml`
 
 ---

@@ -35,7 +35,7 @@ on:
           - staging
           - production
       version:
-        description: "Version tag to deploy (leave empty for latest)"
+        description: "Version tag to deploy (leave empty to use sha tag)"
         required: false
         type: string
 

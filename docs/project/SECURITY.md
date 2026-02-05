@@ -55,7 +55,7 @@ Definidas en `apps/backend/app/crosscutting/metrics.py`:
 
 ## Secretos y rotación
 - No se versionan secretos reales.
-- Template K8s (no aplicar): `infra/k8s/secret.yaml`.
+- Template K8s (no aplicar): `infra/k8s/base/secret.yaml`.
 - ExternalSecrets (recomendado): `infra/k8s/externalsecrets/`.
 - Runbook de rotación: `docs/runbook/security-rotation.md`.
 

@@ -50,11 +50,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Render staging overlay
-        run: bash scripts/ops/render_kustomize.sh staging > /tmp/staging.yaml
+        run: bash infra/k8s/render_kustomize.sh staging --out /tmp/staging.yaml
       - name: Render prod overlay
-        run: bash scripts/ops/render_kustomize.sh prod > /tmp/prod.yaml
-      - name: Ensure prod has no latest tags
+        run: bash infra/k8s/render_kustomize.sh prod --out /tmp/prod.yaml
+      - name: Validate rendered outputs
         run: |
+          test -s /tmp/staging.yaml
+          test -s /tmp/prod.yaml
           if grep -n ":latest" /tmp/prod.yaml; then
             echo "::error::Prod overlay contiene :latest. Usar tags inmutables."
             exit 1

@@ -49,7 +49,7 @@ Invariantes:
 
 Plantillas:
 - Local: `.env.example` → `.env` (no versionado)
-- K8s: `infra/k8s/secret.yaml` es **solo plantilla** (no aplicar)
+- K8s: `infra/k8s/base/secret.yaml` es **solo plantilla** (no aplicar)
 
 ---
 
@@ -116,11 +116,11 @@ kubectl apply -k infra/k8s/overlays/prod
 ### Verificar overlays sin kubectl (dockerizado)
 
 ```bash
-bash scripts/ops/render_kustomize.sh staging > /tmp/staging.yaml
-bash scripts/ops/render_kustomize.sh prod > /tmp/prod.yaml
+bash infra/k8s/render_kustomize.sh staging --out /tmp/ragcorp-staging.yaml
+bash infra/k8s/render_kustomize.sh prod --out /tmp/ragcorp-prod.yaml
 
 # Verificar que prod NO contiene :latest
-rg ':latest' /tmp/prod.yaml
+rg ':latest' /tmp/ragcorp-prod.yaml
 ```
 
 ---
