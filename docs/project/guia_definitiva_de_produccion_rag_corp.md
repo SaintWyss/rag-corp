@@ -395,8 +395,8 @@ Aplicar cualquier ajuste faltante para cumplir **100%** el checklist de go‑liv
    - Verificación: ask streaming prolongado sin cortes (staging) + métricas de duración.
 
 4) **Gates unificados de “release verification”**
-   - Estado: existen scripts sueltos (`verify_no_secrets.sh`, CI), pero conviene un solo comando local.
-   - Acción: agregar script `pnpm verify` (o `pnpm check:ci`) que ejecute lint+typecheck+tests+contracts+secret scan.
+   - Estado: existe `pnpm verify` como entrypoint único (local/CI).
+   - Acción: mantener orden estable (secrets → contracts → FE → BE → builds → render → e2e).
    - Verificación: `pnpm verify` pasa en limpio.
 
 ### 11.4 Tareas típicas que Codex debe cerrar (si faltan)
@@ -414,6 +414,8 @@ Aplicar cualquier ajuste faltante para cumplir **100%** el checklist de go‑liv
 ### 12.1 Verificación rápida (local)
 - Instalar dependencias monorepo:
   - `pnpm install`
+- Verificación unificada (recomendada):
+  - `pnpm verify`
 - Lint global (turbo):
   - `pnpm lint`
 - Build global (turbo):

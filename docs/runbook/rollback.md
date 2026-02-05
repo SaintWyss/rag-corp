@@ -66,6 +66,15 @@ curl "$API_URL/readyz"
 2) Esperar sincronizacion del controlador GitOps (Argo CD / Flux).
 3) Verificar despliegue y salud (igual que Helm).
 
+## Identificar el tag desplegado
+
+- Usar los manifiestos renderizados (artifact de CI/deploy) para ver el tag exacto.
+- Alternativa en cluster:
+
+```bash
+kubectl get deploy <deployment> -n <namespace> -o jsonpath='{.spec.template.spec.containers[*].image}'
+```
+
 ---
 
 ## Si hubo migraciones

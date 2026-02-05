@@ -31,6 +31,7 @@ Runbooks y operacion del backend.
 
 ## Continuidad y seguridad
 - Backup/Restore → `../runbook/backup-restore.md`
+- Evidencia de drills → `../runbook/backup-drill-log.md`
 - Rollback → `../runbook/rollback.md`
 - DR/Continuidad → `../runbook/dr-continuity.md`
 - Rotacion de secretos → `../runbook/security-rotation.md`

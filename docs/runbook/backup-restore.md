@@ -36,6 +36,11 @@ Invariantes:
 - No versionar secretos ni credenciales.
 - Validar salud despues de restaurar.
 
+## Evidencia de drills
+
+- Registrar cada simulacro en `docs/runbook/backup-drill-log.md`.
+- El objetivo es dejar evidencia de tiempos reales (RPO/RTO) y hallazgos.
+
 ---
 
 ## Postgres
@@ -104,4 +109,3 @@ curl "$API_URL/readyz"
 - `/healthz` y `/readyz` OK (backend y worker).
 - Backend/worker levantan sin errores de conexion DB/Redis.
 - Reproceso de un documento de prueba confirmado.
-

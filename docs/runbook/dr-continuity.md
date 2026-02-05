@@ -23,10 +23,16 @@ Invariantes:
 
 ---
 
-## Objetivos RPO/RTO (placeholders)
+## Objetivos RPO/RTO (valores iniciales)
 
-- **RPO objetivo:** TBD (definir con negocio/IT).
-- **RTO objetivo:** TBD (definir con negocio/IT).
+- **RPO objetivo:** 15 minutos.
+  - Racional: backups frecuentes + pérdida máxima tolerable de documentos/estados recientes.
+- **RTO objetivo:** 60 minutos.
+  - Racional: tiempo esperado para restaurar DB, re-deploy y validación básica.
+
+**Cómo renegociar con negocio:**
+- Si el negocio exige menor RPO/RTO, aumentar frecuencia de backups y/o usar réplicas.
+- Si el negocio acepta mayor RPO/RTO, documentar el riesgo y ajustar la cadencia.
 
 Referencia: `docs/project/informe_de_negocio_brd_srs_rag_corp.md`.
 
