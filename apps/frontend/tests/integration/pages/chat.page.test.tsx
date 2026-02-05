@@ -39,13 +39,13 @@ jest.mock("@/features/rag", () => ({
 }));
 
 describe("Chat Page", () => {
-  it("renders the chat header", () => {
-    render(<ChatPage params={{ id: "workspace-1" }} />);
+  it("renders the chat header", async () => {
+    render(await ChatPage({ params: Promise.resolve({ id: "workspace-1" }) }));
     expect(screen.getByText(/chat con streaming/i)).toBeInTheDocument();
   });
 
-  it("renders the message input", () => {
-    render(<ChatPage params={{ id: "workspace-1" }} />);
+  it("renders the message input", async () => {
+    render(await ChatPage({ params: Promise.resolve({ id: "workspace-1" }) }));
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 });

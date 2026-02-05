@@ -43,6 +43,10 @@ def _configure_connection(conn) -> None:
 
     Se ejecuta cuando el pool crea/adquiere conexiones (según implementación del pool).
     """
+    # Evita conflictos de prepared statements en cargas concurrentes (E2E/worker).
+    conn.prepare_threshold = 0
+    conn.prepared_max = 0
+
     # Registrar tipo vectorial (pgvector)
     register_vector(conn)
 

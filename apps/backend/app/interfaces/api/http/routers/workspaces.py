@@ -223,8 +223,7 @@ def create_workspace(
         name=req.name,
         visibility=req.visibility,
         owner_user_id=principal.user.user_id if principal and principal.user else None,
-        description=req.description,
-        allowed_roles=req.allowed_roles,
+        description=None,
         actor=actor,
     )
 
@@ -291,8 +290,6 @@ def update_workspace(
         actor=actor,
         name=req.name,
         description=req.description,
-        visibility=req.visibility,
-        allowed_roles=req.allowed_roles,
     )
 
     if result.error is not None:

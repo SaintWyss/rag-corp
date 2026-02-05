@@ -1,12 +1,30 @@
+/**
+ * =============================================================================
+ * TARJETA CRC - tests/e2e/tests/full-pipeline.spec.ts (E2E Pipeline)
+ * =============================================================================
+ * Responsabilidades:
+ * - Validar upload + procesamiento + chat en workspace de empleado.
+ * - Admin crea workspace y sube documento; empleado consume.
+ *
+ * Invariantes:
+ * - No imprimir secretos.
+ * =============================================================================
+ */
+
 import path from "path";
 import { expect, test } from "@playwright/test";
 import {
-    clearApiKeyStorage,
-    createWorkspace,
-    hasAdminCredentials,
-    loginAsAdmin,
-    uploadDocumentAndWaitReady,
+  adminCreateWorkspaceForUserId,
+  adminEnsureUser,
+  adminGetUserIdByEmail,
+  clearApiKeyStorage,
+  hasAdminCredentials,
+  login,
+  loginAsAdmin,
+  uploadDocumentAndWaitReady,
 } from "./helpers";
+
+const EMP_USER = { email: "employee1@local", password: "employee1" };
 
 test.describe("Full pipeline", () => {
     const hasAdminEnv = hasAdminCredentials();
@@ -15,14 +33,18 @@ test.describe("Full pipeline", () => {
     test("upload -> ready -> chat streaming", async ({ page }) => {
         await clearApiKeyStorage(page);
         await loginAsAdmin(page);
+        await adminEnsureUser(page, EMP_USER, "employee");
+        const empId = await adminGetUserIdByEmail(page, EMP_USER.email);
 
         const docTitle = `Pipeline ${Date.now()}`;
         const filePath = path.join(__dirname, "..", "fixtures", "sample.pdf");
         const workspaceName = `E2E Workspace ${Date.now()}`;
-        const workspaceId = await createWorkspace(page, workspaceName);
-        await uploadDocumentAndWaitReady(page, workspaceId, docTitle, filePath);
+        const ws = await adminCreateWorkspaceForUserId(page, empId, workspaceName);
+        await uploadDocumentAndWaitReady(page, ws.id, docTitle, filePath);
 
-        await page.goto(`/workspaces/${workspaceId}/chat`);
+        await page.context().clearCookies();
+        await login(page, EMP_USER.email, EMP_USER.password);
+        await page.goto(`/workspaces/${ws.id}/chat`);
 
         const input = page.getByTestId("chat-input");
         await input.fill("Resume el documento cargado.");

@@ -27,12 +27,12 @@ type WorkspaceDocumentsSearchParams = {
 };
 
 type PageProps = {
-  params: {
+  params: Promise<{
     /**
      * Segmento dinámico validado por el boundary del workspace.
      */
     id: string;
-  };
+  }>;
   /**
    * Query params del request actual (server component).
    */
@@ -59,12 +59,16 @@ function normalizePreferredDocumentId(
  * Página de documentos del workspace.
  * - Wiring puro: transforma params/searchParams en props para el screen.
  */
-export default function WorkspaceDocumentsPage({ params, searchParams }: PageProps) {
+export default async function WorkspaceDocumentsPage({
+  params,
+  searchParams,
+}: PageProps) {
+  const { id } = await params;
   const preferredDocumentId = normalizePreferredDocumentId(searchParams?.doc);
 
   return (
     <DocumentsScreen
-      workspaceId={params.id}
+      workspaceId={id}
       preferredDocumentId={preferredDocumentId}
     />
   );

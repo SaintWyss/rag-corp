@@ -1,3 +1,17 @@
+/**
+ * =============================================================================
+ * TARJETA CRC - tests/e2e/tests/helpers.ts (Helpers E2E)
+ * =============================================================================
+ * Responsabilidades:
+ * - Centralizar helpers de login, cookies y setup para Playwright.
+ * - Enmascarar variaciones de API entre entornos (lista vs objeto).
+ *
+ * Invariantes:
+ * - No imprimir secretos.
+ * - Usar el mismo origen base para cookies y requests.
+ * =============================================================================
+ */
+
 import fs from "fs";
 import path from "path";
 import { expect, type Page } from "@playwright/test";
@@ -262,7 +276,7 @@ export async function uploadDocumentAndWaitReady(
   }
 
   const uploadData: any = await upload.json();
-  const documentId = uploadData?.id;
+  const documentId = uploadData?.id || uploadData?.document_id;
   if (!documentId) {
     throw new Error(`Upload response missing id: ${JSON.stringify(uploadData)}`);
   }
@@ -294,6 +308,7 @@ export async function adminListUsers(page: Page): Promise<any[]> {
     );
   }
   const data = await response.json();
+  if (Array.isArray(data)) return data;
   return data.users || [];
 }
 

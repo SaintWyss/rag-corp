@@ -1,3 +1,16 @@
+/**
+ * =============================================================================
+ * TARJETA CRC - tests/e2e/tests/role-separation.spec.ts (E2E Roles)
+ * =============================================================================
+ * Responsabilidades:
+ * - Validar separación de roles y redirecciones admin/employee.
+ * - Usar credenciales E2E configurables por env.
+ *
+ * Invariantes:
+ * - No imprimir secretos.
+ * =============================================================================
+ */
+
 import { expect, test } from "@playwright/test";
 import {
   adminCreateWorkspaceForUserId,
@@ -9,7 +22,10 @@ import {
   loginAsAdmin,
 } from "./helpers";
 
-const ADMIN_USER = { email: "admin@local", password: "admin" };
+const ADMIN_USER = {
+  email: process.env.E2E_ADMIN_EMAIL || "admin@local",
+  password: process.env.E2E_ADMIN_PASSWORD || "admin",
+};
 const EMP1_USER = { email: "employee1@local", password: "employee1" };
 const EMP2_USER = { email: "employee2@local", password: "employee2" };
 
@@ -62,7 +78,9 @@ test.describe.serial("Role Separation & Isolation", () => {
 
     await expect(page).toHaveURL(/\/admin\/users/);
 
-    await page.goto("/workspaces", { waitUntil: "domcontentloaded" });
+    await page
+      .goto("/workspaces", { waitUntil: "domcontentloaded" })
+      .catch(() => null);
     await expect(page).toHaveURL(/\/admin\/users/, { timeout: 15_000 });
   });
 
@@ -71,7 +89,9 @@ test.describe.serial("Role Separation & Isolation", () => {
 
     await expect(page).toHaveURL(/\/workspaces/);
 
-    await page.goto("/admin/users", { waitUntil: "domcontentloaded" });
+    await page
+      .goto("/admin/users", { waitUntil: "domcontentloaded" })
+      .catch(() => null);
     await expect(page).toHaveURL(/\/workspaces/, { timeout: 15_000 });
   });
 

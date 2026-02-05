@@ -32,11 +32,11 @@ import {
   type QueryRes,
   type ReprocessDocumentRes,
   type UploadDocumentRes,
-  type WorkspaceRes,
-  type WorkspacesListRes,
+  type WorkspaceACL,
 } from "@contracts/src/generated";
 
 import { type ApiProblem, normalizeProblem } from "@/shared/api/contracts/problem";
+import { type WorkspaceVisibility } from "@/shared/api/contracts/workspaces";
 import { apiRoutes } from "@/shared/api/routes";
 import { env } from "@/shared/config/env";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
@@ -100,9 +100,27 @@ export type CreateUserPayload = {
   role?: "admin" | "employee";
 };
 
-export type WorkspaceSummary = WorkspaceRes;
+export type WorkspaceSummary = {
+  id: string;
+  name: string;
+  visibility: WorkspaceVisibility;
+  owner_user_id?: string | null;
+  description?: string | null;
+  acl?: WorkspaceACL;
+  created_at?: string | null;
+  updated_at?: string | null;
+  archived_at?: string | null;
+};
 
-export type WorkspacesListResponse = WorkspacesListRes;
+export type AdminWorkspaceSummary = WorkspaceSummary;
+
+export type WorkspacesListResponse = {
+  workspaces: WorkspaceSummary[];
+};
+
+export type AdminWorkspacesListResponse = {
+  workspaces: AdminWorkspaceSummary[];
+};
 
 export type ListWorkspacesParams = {
   ownerUserId?: string;
@@ -468,7 +486,18 @@ export async function logout(): Promise<void> {
 }
 
 export async function listUsers(): Promise<UsersListResponse> {
-  return requestJson<UsersListResponse>(apiRoutes.auth.users, { method: "GET" });
+  const data = await requestJson<UsersListResponse | AdminUser[]>(
+    apiRoutes.auth.users,
+    { method: "GET" }
+  );
+  // Compat: el backend puede devolver lista directa en vez de { users }.
+  if (Array.isArray(data)) {
+    return { users: data };
+  }
+  if (Array.isArray(data.users)) {
+    return data;
+  }
+  return { users: [] };
 }
 
 export async function createUser(
@@ -529,8 +558,8 @@ export async function createWorkspace(
 
 export async function adminCreateWorkspace(
   payload: AdminCreateWorkspacePayload
-): Promise<WorkspaceSummary> {
-  return requestJson<WorkspaceSummary>(apiRoutes.admin.workspaces, {
+): Promise<AdminWorkspaceSummary> {
+  return requestJson<AdminWorkspaceSummary>(apiRoutes.admin.workspaces, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -539,8 +568,8 @@ export async function adminCreateWorkspace(
 
 export async function adminListWorkspaces(
   userId: string
-): Promise<WorkspacesListResponse> {
-  return requestJson<WorkspacesListResponse>(
+): Promise<AdminWorkspacesListResponse> {
+  return requestJson<AdminWorkspacesListResponse>(
     apiRoutes.admin.userWorkspaces(userId),
     {
       method: "GET",

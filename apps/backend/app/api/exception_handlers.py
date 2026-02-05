@@ -54,7 +54,7 @@ async def _handle_service_error(
         extra={
             "code": code.value,
             "error_id": getattr(exc, "error_id", None),
-            "message": getattr(exc, "message", str(exc)),
+            "error_message": getattr(exc, "message", str(exc)),
             "request_id": request_id,
         },
     )

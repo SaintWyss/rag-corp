@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# =============================================================================
+# TARJETA CRC - tests/e2e/scripts/run-e2e.sh (Runner E2E Compose + Playwright)
+# =============================================================================
+# Responsabilidades:
+# - Levantar stack E2E con Docker Compose.
+# - Ejecutar Playwright con base URL estable.
+# - Forzar backend URL interna de red Docker para evitar drift.
+#
+# Colaboradores:
+# - docker compose (perfil e2e)
+# - Playwright (tests/e2e)
+#
+# Invariantes:
+# - No imprimir secretos ni valores sensibles.
+# - Usar http://rag-api:8000 como backend interno para rewrites.
+# =============================================================================
+
 # Defaults (permitiendo override para Admin creds)
 export E2E_ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@local}"
 export E2E_ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-admin}"
@@ -19,7 +36,8 @@ echo "🚀 Run E2E | Repo: $REPO_ROOT"
 cd "$REPO_ROOT"
 
 echo "🐳 Starting Docker..."
-docker compose --profile e2e up -d --build db rag-api web
+# Forzamos backend interno de red Docker para evitar proxy a localhost.
+RAG_BACKEND_URL="http://rag-api:8000" docker compose --profile e2e up -d --build db rag-api web
 
 # 2) Esperar web
 echo "⏳ Waiting for Web ($E2E_BASE_URL/login)..."
@@ -63,7 +81,7 @@ pnpm exec playwright install chromium
 echo "🧪 Running Tests..."
 set +e
 # Playwright usará E2E_USE_COMPOSE=1, asi que no levantará sus webservers (usará el docker que ya levantamos)
-pnpm exec playwright test --project=chromium --timeout=60000
+pnpm exec playwright test -c playwright.config.cjs --project=chromium --timeout=60000
 TEST_EXIT_CODE=$?
 set -e
 

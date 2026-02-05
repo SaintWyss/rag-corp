@@ -36,7 +36,7 @@
     "verify": "bash scripts/verify.sh",
     "e2e:install": "pnpm -C tests/e2e install",
     "e2e:install:browsers": "pnpm -C tests/e2e exec playwright install",
-    "e2e": "pnpm run e2e:install && pnpm -C tests/e2e exec playwright test",
+    "e2e": "pnpm run e2e:install && pnpm -C tests/e2e exec playwright test -c playwright.config.cjs",
     "e2e:ui": "pnpm run e2e:install && pnpm -C tests/e2e test:ui",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
     "changelog:first": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",

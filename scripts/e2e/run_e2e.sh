@@ -70,6 +70,17 @@ export API_KEYS_CONFIG="${API_KEYS_CONFIG:-$DEFAULT_API_KEYS_CONFIG}"
 export TEST_API_KEY="${TEST_API_KEY:-$DEFAULT_TEST_API_KEY}"
 export FAKE_LLM="${FAKE_LLM:-1}"
 export FAKE_EMBEDDINGS="${FAKE_EMBEDDINGS:-1}"
+export REDIS_URL="${REDIS_URL:-redis://redis:6379}"
+export S3_ENDPOINT_URL="${S3_ENDPOINT_URL:-http://minio:9000}"
+export S3_ACCESS_KEY="${S3_ACCESS_KEY:-minioadmin}"
+export S3_SECRET_KEY="${S3_SECRET_KEY:-minioadmin}"
+export S3_BUCKET="${S3_BUCKET:-rag-documents}"
+export S3_REGION="${S3_REGION:-us-east-1}"
+export MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin}"
+export MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-minioadmin}"
+export RATE_LIMIT_RPS="${RATE_LIMIT_RPS:-0}"
+export RATE_LIMIT_BURST="${RATE_LIMIT_BURST:-0}"
+export DB_HEALTHCHECK_ON_ACQUIRE="${DB_HEALTHCHECK_ON_ACQUIRE:-false}"
 
 require_docker
 
@@ -83,7 +94,9 @@ cleanup() {
 trap cleanup EXIT
 
 log "Levantando stack E2E..."
-docker compose --profile e2e up -d --build
+# Forzar backend interno de red Docker para rewrites del frontend.
+export RAG_BACKEND_URL="http://rag-api:8000"
+RAG_BACKEND_URL="$RAG_BACKEND_URL" docker compose --profile e2e --profile rag up -d --build
 
 log "Esperando /healthz backend..."
 for _ in {1..30}; do

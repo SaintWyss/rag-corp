@@ -107,6 +107,8 @@ class ListWorkspacesUseCase:
         actor: WorkspaceActor | None,
         owner_user_id: UUID | None = None,
         include_archived: bool = False,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> WorkspaceListResult:
         """
         Devuelve el listado de workspaces visibles según el actor.
@@ -141,6 +143,7 @@ class ListWorkspacesUseCase:
                 owner_user_id=owner_user_id,
                 include_archived=include_archived,
             )
+            workspaces = self._apply_pagination(workspaces, limit=limit, offset=offset)
             return WorkspaceListResult(workspaces=workspaces)
 
         # ---------------------------------------------------------------------
@@ -176,6 +179,7 @@ class ListWorkspacesUseCase:
             if can_read_workspace(workspace, actor, shared_user_ids=shared_user_ids):
                 visible.append(workspace)
 
+        visible = self._apply_pagination(visible, limit=limit, offset=offset)
         return WorkspaceListResult(workspaces=visible)
 
     # =========================================================================
@@ -192,3 +196,14 @@ class ListWorkspacesUseCase:
                 message=message,
             ),
         )
+
+    @staticmethod
+    def _apply_pagination(
+        items: list, *, limit: int | None, offset: int | None
+    ) -> list:
+        """Aplica paginación defensiva (sin fallar si no se provee)."""
+        safe_offset = max(offset or 0, 0)
+        if limit is None:
+            return items[safe_offset:]
+        safe_limit = max(limit, 0)
+        return items[safe_offset : safe_offset + safe_limit]

@@ -20,19 +20,20 @@ Invariantes:
 import { WorkspaceHomeScreen } from "@/features/workspaces/components/WorkspaceHomeScreen";
 
 type PageProps = {
-  params: {
+  params: Promise<{
     /**
      * Segmento dinámico validado previamente por el layout del workspace.
      * Se asume no vacío por contrato del boundary.
      */
     id: string;
-  };
+  }>;
 };
 
 /**
  * Página "home" de un workspace.
  * - Wiring puro: transforma params en props para el screen.
  */
-export default function WorkspaceHomePage({ params }: PageProps) {
-  return <WorkspaceHomeScreen workspaceId={params.id} />;
+export default async function WorkspaceHomePage({ params }: PageProps) {
+  const { id } = await params;
+  return <WorkspaceHomeScreen workspaceId={id} />;
 }

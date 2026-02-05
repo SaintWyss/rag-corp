@@ -1,10 +1,21 @@
 """
-Name: Admin Bootstrap Script
+===============================================================================
+TARJETA CRC - apps/backend/scripts/create_admin.py (Bootstrap admin)
+===============================================================================
+Responsabilidades:
+  - Crear el primer usuario admin (idempotente).
+  - Hashear passwords con Argon2.
+  - Persistir usuarios en PostgreSQL.
 
-Responsibilities:
-  - Create the first admin user (idempotent)
-  - Hash passwords with Argon2
-  - Store user in PostgreSQL
+Colaboradores:
+  - app.identity.auth_users
+  - app.identity.users
+  - psycopg
+
+Invariantes:
+  - Requiere DATABASE_URL.
+  - No imprime secretos ni valores sensibles.
+===============================================================================
 """
 
 from __future__ import annotations
@@ -21,8 +32,8 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from app.auth_users import hash_password  # noqa: E402
-from app.users import UserRole  # noqa: E402
+from app.identity.auth_users import hash_password  # noqa: E402
+from app.identity.users import UserRole  # noqa: E402
 
 
 def _require_database_url() -> str:

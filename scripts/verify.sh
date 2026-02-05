@@ -70,7 +70,7 @@ fi
 
 log "5) Docker builds (backend + frontend)"
 docker build -f apps/backend/Dockerfile apps/backend
-docker build -f apps/frontend/Dockerfile apps/frontend
+docker build -f apps/frontend/Dockerfile .
 
 log "6) Kustomize render (staging + prod)"
 bash infra/k8s/render_kustomize.sh staging --out /tmp/ragcorp-staging.yaml

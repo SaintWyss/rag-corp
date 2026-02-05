@@ -20,18 +20,19 @@ Invariantes:
 import { ChatScreen } from "@/features/chat/components/ChatScreen";
 
 type PageProps = {
-  params: {
+  params: Promise<{
     /**
      * Segmento dinámico validado por el boundary del workspace.
      */
     id: string;
-  };
+  }>;
 };
 
 /**
  * Página de chat del workspace.
  * - Wiring puro: transforma params en props para el screen.
  */
-export default function WorkspaceChatPage({ params }: PageProps) {
-  return <ChatScreen workspaceId={params.id} />;
+export default async function WorkspaceChatPage({ params }: PageProps) {
+  const { id } = await params;
+  return <ChatScreen workspaceId={id} />;
 }

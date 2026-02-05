@@ -184,7 +184,6 @@ def _to_document_detail(doc: Document) -> DocumentDetailRes:
         file_name=doc.file_name,
         source=doc.source,
         storage_key=doc.storage_key,
-        content_hash=doc.content_hash,
         metadata=doc.metadata or {},
         tags=list(doc.tags or []),
         allowed_roles=list(doc.allowed_roles or []),

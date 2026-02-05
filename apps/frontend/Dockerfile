@@ -124,8 +124,8 @@ WORKDIR /app/apps/frontend
 # Copia artefactos standalone desde builder
 # ----------------------------
 COPY --from=builder --chown=app:app /app/apps/frontend/.next/standalone ./
-COPY --from=builder --chown=app:app /app/apps/frontend/.next/static ./.next/static
-COPY --from=builder --chown=app:app /app/apps/frontend/public ./public
+COPY --from=builder --chown=app:app /app/apps/frontend/.next/static ./apps/frontend/.next/static
+COPY --from=builder --chown=app:app /app/apps/frontend/public ./apps/frontend/public
 
 USER app
 

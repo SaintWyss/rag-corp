@@ -38,6 +38,7 @@ from ..crosscutting.error_responses import (
     not_found,
     unauthorized,
 )
+from ..crosscutting.exceptions import DatabaseError
 from ..domain.repositories import AuditEventRepository
 from ..identity.auth_users import DEFAULT_ACCESS_TOKEN_COOKIE as ACCESS_TOKEN_COOKIE
 from ..identity.auth_users import (
@@ -235,12 +236,19 @@ def create_user_admin(
     if existing:
         raise conflict("El email ya existe.")
 
-    user = create_user(
-        email=req.email,
-        password_hash=hash_password(req.password),
-        role=req.role,
-        is_active=req.is_active,
-    )
+    try:
+        user = create_user(
+            email=req.email,
+            password_hash=hash_password(req.password),
+            role=req.role,
+            is_active=req.is_active,
+        )
+    except DatabaseError as exc:
+        # Carrera concurrente: otro worker pudo crear el mismo email.
+        msg = str(exc)
+        if "uq_users_email" in msg or "duplicate key value" in msg:
+            raise conflict("El email ya existe.") from exc
+        raise
 
     emit_audit_event(
         audit_repo,

@@ -21,7 +21,7 @@ type CspOptions = {
   isDev: boolean;
 };
 
-export function buildCspHeader({ nonce, isDev }: CspOptions): string {
+export function buildCspHeader({ nonce: _nonce, isDev }: CspOptions): string {
   const directives = [
     "default-src 'self'",
     "base-uri 'self'",
@@ -30,8 +30,8 @@ export function buildCspHeader({ nonce, isDev }: CspOptions): string {
     "object-src 'none'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
     `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
   ];
 

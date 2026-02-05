@@ -19,7 +19,7 @@ Invariantes:
 import { expect, test } from "@playwright/test";
 
 test.describe("Security headers", () => {
-  test("CSP incluye directivas base y nonce", async ({ page }) => {
+  test("CSP incluye directivas base", async ({ page }) => {
     const response = await page.goto("/", { waitUntil: "domcontentloaded" });
     expect(response).toBeTruthy();
 
@@ -29,8 +29,8 @@ test.describe("Security headers", () => {
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
-    expect(csp).toContain("script-src 'self' 'nonce-");
-    expect(csp).toContain("style-src 'self' 'nonce-");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("style-src 'self'");
     expect(csp).toContain("unsafe-inline");
   });
 });

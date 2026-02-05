@@ -1,33 +1,52 @@
+/**
+ * =============================================================================
+ * TARJETA CRC - tests/e2e/tests/documents.spec.ts (E2E Sources)
+ * =============================================================================
+ * Responsabilidades:
+ * - Validar listado/detalle de fuentes para un empleado.
+ * - Subir documento via API admin (sin UI) y verificar READY en UI.
+ *
+ * Invariantes:
+ * - No imprimir secretos.
+ * =============================================================================
+ */
+
 import path from "path";
 import { expect, test } from "@playwright/test";
-import { createWorkspace, hasAdminCredentials, loginAsAdmin } from "./helpers";
+import {
+  adminCreateWorkspaceForUserId,
+  adminEnsureUser,
+  adminGetUserIdByEmail,
+  clearApiKeyStorage,
+  hasAdminCredentials,
+  login,
+  loginAsAdmin,
+  uploadDocumentAndWaitReady,
+} from "./helpers";
+
+const EMP_USER = { email: "employee1@local", password: "employee1" };
 
 test.describe("Sources flow", () => {
     const hasAdminEnv = hasAdminCredentials();
 
     test.skip(!hasAdminEnv, "E2E admin credentials are not configured.");
 
-    test.beforeEach(async ({ page }) => {
-        await loginAsAdmin(page);
-        await page.goto("/workspaces");
-        await expect(page).toHaveURL(/\/workspaces$/);
-        await expect(page.getByTestId("workspaces-page")).toBeVisible();
-    });
-
     test("upload -> list -> detail -> ready", async ({ page }) => {
+        await clearApiKeyStorage(page);
+        await loginAsAdmin(page);
+        await adminEnsureUser(page, EMP_USER, "employee");
+        const empId = await adminGetUserIdByEmail(page, EMP_USER.email);
         const workspaceName = `E2E WS ${Date.now()}`;
-        const workspaceId = await createWorkspace(page, workspaceName);
-        await page.goto(`/workspaces/${workspaceId}/documents`);
-        await expect(page.getByTestId("sources-workspace")).toContainText(
-            workspaceId
-        );
+        const ws = await adminCreateWorkspaceForUserId(page, empId, workspaceName);
 
         const docTitle = `Source ${Date.now()}`;
         const filePath = path.join(__dirname, "..", "fixtures", "sample.pdf");
+        await uploadDocumentAndWaitReady(page, ws.id, docTitle, filePath);
 
-        await page.getByTestId("sources-title-input").fill(docTitle);
-        await page.getByTestId("sources-file-input").setInputFiles(filePath);
-        await page.getByTestId("sources-upload-submit").click();
+        await page.context().clearCookies();
+        await login(page, EMP_USER.email, EMP_USER.password);
+        await page.goto(`/workspaces/${ws.id}/documents`);
+        await expect(page.getByTestId("sources-workspace")).toContainText(ws.id);
 
         const listItem = page.locator(
             `[data-testid="source-list-item"][data-document-title="${docTitle}"]`

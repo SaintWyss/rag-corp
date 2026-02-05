@@ -78,7 +78,9 @@ describe("Documents Page", () => {
     });
     (getCurrentUser as jest.Mock).mockResolvedValue(null);
 
-    render(<DocumentsPage params={{ id: "workspace-1" }} />);
+    render(
+      await DocumentsPage({ params: Promise.resolve({ id: "workspace-1" }) })
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Sources" })
@@ -128,7 +130,9 @@ describe("Documents Page", () => {
       is_active: true,
     });
 
-    render(<DocumentsPage params={{ id: "workspace-1" }} />);
+    render(
+      await DocumentsPage({ params: Promise.resolve({ id: "workspace-1" }) })
+    );
 
     const item = await screen.findByTestId("sources-item-doc-2");
     fireEvent.click(item);

@@ -88,6 +88,17 @@ class _ConnectionContext(ContextManager[TimedConnection]):
         try:
             conn = self._inner_ctx.__enter__()
             if self._healthcheck:
+                # Asegura estado limpio (evita transacciones abortadas del uso previo).
+                # psycopg permite rollback seguro aunque no haya transacción activa.
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                # Limpia prepared statements para evitar colisiones en pool.
+                try:
+                    conn.execute("DEALLOCATE ALL")
+                except Exception:
+                    pass
                 # Healthcheck rápido (evita conexiones zombis).
                 conn.execute("SELECT 1")
             self._conn = TimedConnection(conn, slow_query_seconds=self._slow)

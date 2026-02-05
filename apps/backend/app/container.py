@@ -68,7 +68,9 @@ from .domain.services import (
 )
 from .infrastructure.cache import get_embedding_cache
 from .infrastructure.parsers import SimpleDocumentTextExtractor
-from .infrastructure.queue import RQDocumentProcessingQueue
+from redis import Redis
+
+from .infrastructure.queue import RQDocumentProcessingQueue, RQQueueConfig
 from .infrastructure.repositories import (
     InMemoryConversationRepository,
     InMemoryWorkspaceAclRepository,
@@ -256,9 +258,17 @@ def get_document_queue() -> DocumentProcessingQueue | None:
     if not settings.redis_url.strip():
         return None
 
+    redis_conn = Redis.from_url(
+        settings.redis_url,
+        socket_connect_timeout=2,
+        socket_timeout=5,
+        health_check_interval=30,
+    )
+
+    config = RQQueueConfig(retry_max_attempts=settings.retry_max_attempts)
     return RQDocumentProcessingQueue(
-        redis_url=settings.redis_url,
-        retry_max_attempts=settings.retry_max_attempts,
+        redis=redis_conn,
+        config=config,
     )
 
 
@@ -333,7 +343,7 @@ def get_list_documents_use_case() -> ListDocumentsUseCase:
 def get_list_workspaces_use_case() -> ListWorkspacesUseCase:
     """Caso de uso: listar workspaces."""
     return ListWorkspacesUseCase(
-        repository=get_workspace_repository(),
+        workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
     )
 

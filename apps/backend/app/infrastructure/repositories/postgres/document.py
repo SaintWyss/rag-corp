@@ -32,6 +32,7 @@ from typing import Iterable
 from uuid import UUID, uuid4
 
 import numpy as np
+from psycopg.errors import DuplicatePreparedStatement
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 
@@ -427,15 +428,27 @@ class PostgresDocumentRepository:
                     for idx, chunk in enumerate(chunks)
                 ]
 
-                # 3) Inserción batch
+                # 3) Inserción batch (con fallback por colisiones de prepared statements).
                 with conn.cursor() as cur:
-                    cur.executemany(
-                        """
-                        INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        """,
-                        batch,
-                    )
+                    try:
+                        cur.executemany(
+                            """
+                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            """,
+                            batch,
+                        )
+                    except DuplicatePreparedStatement:
+                        # Fallback defensivo: desactivamos batch si el driver choca en prepared statements.
+                        conn.rollback()
+                        for row in batch:
+                            conn.execute(
+                                """
+                                INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                """,
+                                row,
+                            )
 
             logger.info(
                 "PostgresDocumentRepository: Saved chunks",

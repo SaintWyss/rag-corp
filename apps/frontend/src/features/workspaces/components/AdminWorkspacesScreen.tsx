@@ -15,16 +15,16 @@ Colaboradores:
 */
 "use client";
 
-import { type FormEvent,useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import {
   adminCreateWorkspace,
   adminListWorkspaces,
   type AdminUser,
+  type AdminWorkspaceSummary,
   type CurrentUser,
   getCurrentUser,
   listUsers,
-  type WorkspaceSummary,
 } from "@/shared/api/api";
 import { formatDate, formatError } from "@/shared/lib/formatters";
 import { NoticeBanner } from "@/shared/ui/components/NoticeBanner";
@@ -46,7 +46,7 @@ export function AdminWorkspacesScreen() {
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [workspaces, setWorkspaces] = useState<AdminWorkspaceSummary[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
 
