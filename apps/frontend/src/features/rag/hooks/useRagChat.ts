@@ -1,14 +1,24 @@
 /**
- * @fileoverview
- * Name: useRagChat Hook
- *
- * Responsibilities:
- *   - Manage chat messages and streaming state
- *   - Handle SSE streaming via /api/workspaces/{id}/ask/stream
- *   - Maintain conversation_id across turns
- *   - Support cancel and retry flows
- */
+===============================================================================
+TARJETA CRC - apps/frontend/src/features/rag/hooks/useRagChat.ts (Hook chat)
+===============================================================================
+Responsabilidades:
+  - Manejar estado de chat y streaming SSE.
+  - Controlar abort/cancel y límites de stream.
+  - Normalizar errores de red hacia mensajes de UI.
+
+Colaboradores:
+  - shared/api/api (queries)
+  - shared/api/sse (parser SSE)
+
+Invariantes:
+  - Respetar límites de eventos y tamaño de stream.
+  - Abort en unmount para evitar fugas.
+===============================================================================
+*/
 "use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getWorkspaceDocument, queryWorkspace } from "@/shared/api/api";
 import { apiRoutes } from "@/shared/api/routes";
@@ -18,7 +28,6 @@ import {
   networkErrorMessage,
   statusToUserMessage,
 } from "@/shared/lib/httpErrors";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 type ChatRole = "user" | "assistant";
 type MessageStatus = "streaming" | "complete" | "error" | "cancelled";

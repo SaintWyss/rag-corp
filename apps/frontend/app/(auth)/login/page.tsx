@@ -14,11 +14,12 @@ Colaboradores:
 */
 "use client";
 
-import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent,useState } from "react";
+
 import { getCurrentUser, login } from "@/shared/api/api";
 import { sanitizeNextPath } from "@/shared/lib/safeNext";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
 
 export default function LoginPage() {
   const router = useRouter();

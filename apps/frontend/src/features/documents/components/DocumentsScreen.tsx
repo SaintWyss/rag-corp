@@ -16,33 +16,34 @@ Colaboradores:
 */
 "use client";
 
+import Link from "next/link";
 import {
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  type CurrentUser,
   deleteWorkspaceDocument,
+  type DocumentDetail,
+  type DocumentSort,
+  type DocumentStatus,
+  type DocumentSummary,
   getCurrentUser,
   getWorkspaceDocument,
   listWorkspaceDocuments,
   reprocessWorkspaceDocument,
   uploadWorkspaceDocument,
-  type CurrentUser,
-  type DocumentDetail,
-  type DocumentSort,
-  type DocumentStatus,
-  type DocumentSummary,
 } from "@/shared/api/api";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
+import { formatDate, formatError } from "@/shared/lib/formatters";
 import { NoticeBanner } from "@/shared/ui/components/NoticeBanner";
 import { StatusBanner } from "@/shared/ui/components/StatusBanner";
-import { formatDate, formatError } from "@/shared/lib/formatters";
-import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-  type FormEvent,
-} from "react";
 
 type DocumentsScreenProps = {
   workspaceId?: string;

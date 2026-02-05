@@ -14,12 +14,13 @@ Colaboradores:
 */
 "use client";
 
-import { listWorkspaces, logout, type WorkspaceSummary } from "@/shared/api/api";
-import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
-import { ApiKeyInput } from "@/shared/ui/components/ApiKeyInput";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { listWorkspaces, logout, type WorkspaceSummary } from "@/shared/api/api";
+import { ApiKeyInput } from "@/shared/ui/components/ApiKeyInput";
+import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
 
 type AppShellProps = {
   children: React.ReactNode;

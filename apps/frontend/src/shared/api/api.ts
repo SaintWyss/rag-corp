@@ -18,28 +18,28 @@ Invariantes:
 ===============================================================================
 */
 
+import {
+  type ArchiveWorkspaceRes,
+  type CreateWorkspaceReq,
+  type DocumentDetailRes,
+  type DocumentsListRes,
+  type DocumentSummaryRes,
+  type IngestBatchReq,
+  type IngestBatchRes,
+  type IngestTextReq,
+  type IngestTextRes,
+  type QueryReq,
+  type QueryRes,
+  type ReprocessDocumentRes,
+  type UploadDocumentRes,
+  type WorkspaceRes,
+  type WorkspacesListRes,
+} from "@contracts/src/generated";
+
+import { type ApiProblem, normalizeProblem } from "@/shared/api/contracts/problem";
 import { apiRoutes } from "@/shared/api/routes";
-import type { ApiProblem } from "@/shared/api/contracts";
-import { normalizeProblem } from "@/shared/api/contracts";
 import { env } from "@/shared/config/env";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
-import type {
-  ArchiveWorkspaceRes,
-  CreateWorkspaceReq,
-  DocumentDetailRes,
-  DocumentSummaryRes,
-  DocumentsListRes,
-  IngestBatchReq,
-  IngestBatchRes,
-  IngestTextReq,
-  IngestTextRes,
-  QueryReq,
-  QueryRes,
-  ReprocessDocumentRes,
-  UploadDocumentRes,
-  WorkspaceRes,
-  WorkspacesListRes,
-} from "@contracts/src/generated";
 
 export type DocumentStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
 

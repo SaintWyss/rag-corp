@@ -1,6 +1,25 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/integration/pages/admin.users.page.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar rendering y gating de AdminUsersPage.
+  - Asegurar bloqueo de roles no-admin.
+
+Colaboradores:
+  - app/(app)/admin/users/page
+  - shared/api/api (mocks)
+
+Invariantes:
+  - Sin llamadas reales a backend.
+===============================================================================
+*/
+
 import { render, screen } from "@testing-library/react";
-import AdminUsersPage from "../../../app/(app)/admin/users/page";
+
 import { getCurrentUser, listUsers, listWorkspaces } from "@/shared/api/api";
+
+import AdminUsersPage from "../../../app/(app)/admin/users/page";
 
 jest.mock("@/shared/lib/apiKey", () => ({
   getStoredApiKey: jest.fn(),

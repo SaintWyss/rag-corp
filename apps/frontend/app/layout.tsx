@@ -1,6 +1,26 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/app/layout.tsx (Layout raíz)
+===============================================================================
+Responsabilidades:
+  - Definir el wrapper HTML/BODY global del App Router.
+  - Configurar tipografía base y estilos globales.
+  - Exponer metadata usada por Next.js.
+
+Colaboradores:
+  - next/font/google
+  - globals.css
+
+Invariantes:
+  - Mantenerse como server component (sin "use client").
+  - No incluir lógica de negocio ni side-effects de datos.
+===============================================================================
+*/
+
+import "./globals.css";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

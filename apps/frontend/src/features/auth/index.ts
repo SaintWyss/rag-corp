@@ -1,10 +1,17 @@
 /**
- * Auth feature module
- *
- * This module re-exports auth-related functions from the shared API client.
- * The canonical implementation lives in @/shared/api/api.ts to maintain
- * a single source of truth for API interactions.
- */
+===============================================================================
+TARJETA CRC - apps/frontend/src/features/auth/index.ts (Feature auth)
+===============================================================================
+Responsabilidades:
+  - Re-exportar el API público de auth para el feature.
+  - Mantener el contrato de imports estable para consumidores internos.
 
-export { getCurrentUser, login, logout, type CurrentUser } from "@/shared/api/api";
+Colaboradores:
+  - shared/api/api.ts
 
+Invariantes:
+  - No implementar lógica; solo re-exports.
+===============================================================================
+*/
+
+export { type CurrentUser,getCurrentUser, login, logout } from "@/shared/api/api";

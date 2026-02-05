@@ -1,4 +1,22 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/unit/hooks/useRagAsk.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar estados y errores del hook useRagAsk.
+  - Verificar mapeo de errores HTTP.
+
+Colaboradores:
+  - features/rag (hook)
+  - test/helpers/mockFetch
+
+Invariantes:
+  - Sin llamadas reales de red.
+===============================================================================
+*/
+
 import { act, renderHook } from "@testing-library/react";
+
 import { useRagAsk } from "@/features/rag";
 import { HTTP_ERROR_FIXTURES } from "@/test/fixtures/httpErrors";
 import { getMockFetch, mockJsonOnce } from "@/test/helpers/mockFetch";

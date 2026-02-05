@@ -19,18 +19,12 @@ Invariantes:
 ===============================================================================
 */
 
-import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
 type WorkspaceLayoutProps = {
   children: ReactNode;
-  params: {
-    /**
-     * Param de ruta capturado por Next (segmento dinámico).
-     * Nota: lo tratamos como potencialmente inválido/undefined para fail-fast defensivo.
-     */
-    id?: string;
-  };
+  params: Promise<{ id: string }>;
 };
 
 /**
@@ -38,7 +32,7 @@ type WorkspaceLayoutProps = {
  * - Evita strings vacíos o con solo espacios.
  * - No intenta "corregir" formatos: el contrato de id se valida en capas de dominio/servicio.
  */
-function normalizeWorkspaceId(raw?: string): string | null {
+function normalizeWorkspaceId(raw?: string | null): string | null {
   if (typeof raw !== "string") {
     return null;
   }
@@ -51,8 +45,12 @@ function normalizeWorkspaceId(raw?: string): string | null {
  * - Se encarga solo del boundary (validación + contenedor).
  * - El contenido real vive en screens de `src/features/*`.
  */
-export default function WorkspaceLayout({ children, params }: WorkspaceLayoutProps) {
-  const workspaceId = normalizeWorkspaceId(params.id);
+export default async function WorkspaceLayout({
+  children,
+  params,
+}: WorkspaceLayoutProps) {
+  const { id } = await params;
+  const workspaceId = normalizeWorkspaceId(id);
 
   // Fail-fast: si el id es inválido, delegamos a la página 404 del segmento.
   if (!workspaceId) {

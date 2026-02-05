@@ -1,4 +1,21 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/unit/components/AnswerCard.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar rendering y accesibilidad de AnswerCard.
+  - Cubrir casos de respuesta vacía y contenido largo.
+
+Colaboradores:
+  - shared/ui/components/AnswerCard
+
+Invariantes:
+  - Sin llamadas de red.
+===============================================================================
+*/
+
 import { render, screen } from "@testing-library/react";
+
 import { AnswerCard } from "@/shared/ui/components/AnswerCard";
 
 describe("AnswerCard Component", () => {

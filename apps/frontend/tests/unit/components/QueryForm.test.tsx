@@ -1,4 +1,21 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/unit/components/QueryForm.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar render y callbacks del QueryForm.
+  - Asegurar binding de input y submit.
+
+Colaboradores:
+  - shared/ui/components/QueryForm
+
+Invariantes:
+  - Sin llamadas de red.
+===============================================================================
+*/
+
 import { fireEvent, render, screen } from "@testing-library/react";
+
 import { QueryForm } from "@/shared/ui/components/QueryForm";
 
 describe("QueryForm Component", () => {

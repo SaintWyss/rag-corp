@@ -1,4 +1,22 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/integration/pages/chat.page.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar render básico de la página de chat.
+  - Confirmar presencia de header e input.
+
+Colaboradores:
+  - app/(app)/workspaces/[id]/chat/page
+  - features/rag (mock)
+
+Invariantes:
+  - Sin llamadas reales a backend.
+===============================================================================
+*/
+
 import { render, screen } from "@testing-library/react";
+
 import ChatPage from "../../../app/(app)/workspaces/[id]/chat/page";
 
 jest.mock("@/shared/api/api", () => ({

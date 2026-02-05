@@ -15,20 +15,21 @@ Colaboradores:
 */
 "use client";
 
+import { type FormEvent,useCallback, useEffect, useState } from "react";
+
 import {
+  type AdminUser,
   createUser,
+  type CreateUserPayload,
+  type CurrentUser,
   disableUser,
   getCurrentUser,
   listUsers,
   resetUserPassword,
-  type AdminUser,
-  type CreateUserPayload,
-  type CurrentUser,
 } from "@/shared/api/api";
+import { formatDate, formatError } from "@/shared/lib/formatters";
 import { NoticeBanner } from "@/shared/ui/components/NoticeBanner";
 import { StatusBanner } from "@/shared/ui/components/StatusBanner";
-import { formatDate, formatError } from "@/shared/lib/formatters";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type DraftUser = {
   email: string;

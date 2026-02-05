@@ -12,8 +12,9 @@ Colaboradores:
 */
 "use client";
 
-import { cn } from "@/shared/lib/cn";
 import type { HTMLProps, ReactNode } from "react";
+
+import { cn } from "@/shared/lib/cn";
 
 export type AuroraBackgroundProps = HTMLProps<HTMLDivElement> & {
   children: ReactNode;

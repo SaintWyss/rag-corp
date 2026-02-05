@@ -1,4 +1,21 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/unit/components/StatusBanner.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar render de StatusBanner en casos de error.
+  - Verificar clases base y textos.
+
+Colaboradores:
+  - shared/ui/components/StatusBanner
+
+Invariantes:
+  - Sin llamadas de red.
+===============================================================================
+*/
+
 import { render, screen } from "@testing-library/react";
+
 import { StatusBanner } from "@/shared/ui/components/StatusBanner";
 
 describe("StatusBanner Component", () => {

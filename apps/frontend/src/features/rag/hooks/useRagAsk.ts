@@ -1,33 +1,25 @@
 /**
- * @fileoverview
- * Name: useRagAsk Hook
- *
- * Responsibilities:
- *   - Manage RAG ask query state (query, answer, sources, loading, error)
- *   - Handle API call to backend workspace-scoped endpoint
- *   - Provide abort capability for pending requests
- *   - Map HTTP error codes to user-friendly messages (es-AR)
- *   - Cleanup resources on component unmount
- *
- * Collaborators:
- *   - @contracts/src/generated: Orval-generated API client
- *   - QueryForm: consumes setQuery and submit
- *   - AnswerCard: consumes answer
- *   - SourcesList: consumes sources
- *
- * Constraints:
- *   - Timeout: 30 seconds max per request
- *   - Only one request in flight at a time
- *   - Must abort pending request on unmount
- *
- * Notes:
- *   - AbortController for request cancellation
- *   - State reset on new submit
- *   - Error messages localized to Spanish
- */
+===============================================================================
+TARJETA CRC - apps/frontend/src/features/rag/hooks/useRagAsk.ts (Hook ask)
+===============================================================================
+Responsabilidades:
+  - Manejar estado de pregunta/respuesta/sources del flujo ask.
+  - Orquestar llamada HTTP con timeout y abort.
+  - Normalizar errores hacia mensajes de UI.
+
+Colaboradores:
+  - shared/api/routes
+  - shared/lib/httpErrors
+
+Invariantes:
+  - Un request en vuelo por vez.
+  - Abort en unmount para evitar fugas.
+===============================================================================
+*/
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { apiRoutes } from "@/shared/api/routes";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
 import { networkErrorMessage, statusToUserMessage } from "@/shared/lib/httpErrors";

@@ -15,9 +15,10 @@ Colaboradores:
 */
 "use client";
 
+import Link from "next/link";
+
 import { useRagChat } from "@/features/rag";
 import { StatusBanner } from "@/shared/ui/components/StatusBanner";
-import Link from "next/link";
 
 type ChatScreenProps = {
   workspaceId?: string;

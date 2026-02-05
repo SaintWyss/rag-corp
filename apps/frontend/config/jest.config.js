@@ -10,7 +10,6 @@
 // =============================================================================
 
 const path = require("path");
-// eslint-disable-next-line @typescript-eslint/no-require-imports -- Jest corre en CJS.
 const nextJest = require("next/jest");
 
 const rootDir = path.resolve(__dirname, "..");

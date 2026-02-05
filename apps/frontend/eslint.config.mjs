@@ -28,15 +28,16 @@ Invariantes:
 ===============================================================================
 */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 import boundaries from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import unusedImports from "eslint-plugin-unused-imports";
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 /**
  * Convención de paths:

@@ -10,8 +10,7 @@ Colaboradores:
 ===============================================================================
 */
 
-export { normalizeProblem } from "./problem";
-export type { ApiProblem } from "./problem";
-
-export { parseAuthMe } from "./auth";
 export type { AuthMe, AuthRole } from "./auth";
+export { parseAuthMe } from "./auth";
+export type { ApiProblem } from "./problem";
+export { normalizeProblem } from "./problem";

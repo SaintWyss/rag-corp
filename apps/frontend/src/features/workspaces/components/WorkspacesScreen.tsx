@@ -15,22 +15,23 @@ Colaboradores:
 */
 "use client";
 
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   archiveWorkspace,
   createWorkspace,
+  type CurrentUser,
   getCurrentUser,
   listWorkspaces,
   publishWorkspace,
   shareWorkspace,
-  type CurrentUser,
   type WorkspaceSummary,
 } from "@/shared/api/api";
+import { WorkspaceVisibility } from "@/shared/api/contracts/workspaces";
 import { getStoredApiKey } from "@/shared/lib/apiKey";
+import { formatDate, formatError } from "@/shared/lib/formatters";
 import { NoticeBanner } from "@/shared/ui/components/NoticeBanner";
 import { StatusBanner } from "@/shared/ui/components/StatusBanner";
-import { formatDate, formatError } from "@/shared/lib/formatters";
-import { WorkspaceVisibility } from "@contracts/src/generated";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 type WorkspaceDraft = {
   name: string;

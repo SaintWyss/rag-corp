@@ -1,8 +1,26 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/unit/hooks/useRagChat.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar estados y streaming del hook useRagChat.
+  - Verificar errores y conversationId.
+
+Colaboradores:
+  - features/rag (hook)
+  - test/helpers/mockFetch
+
+Invariantes:
+  - Sin llamadas reales de red.
+===============================================================================
+*/
+
 import { act, renderHook } from "@testing-library/react";
+
 import { useRagChat } from "@/features/rag";
+import { queryWorkspace } from "@/shared/api/api";
 import { SAMPLE_CHAT_STREAM } from "@/test/fixtures/sse";
 import { getMockFetch, makeStreamResponse } from "@/test/helpers/mockFetch";
-import { queryWorkspace } from "@/shared/api/api";
 
 jest.mock("@/shared/api/api", () => ({
   queryWorkspace: jest.fn().mockResolvedValue({ matches: [] }),

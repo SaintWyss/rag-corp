@@ -13,11 +13,12 @@ Colaboradores:
 */
 "use client";
 
-import { logout } from "@/shared/api/api";
-import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
+
+import { logout } from "@/shared/api/api";
+import { AuroraBackground } from "@/shared/ui/components/AuroraBackground";
 
 type AdminShellProps = {
   children: React.ReactNode;

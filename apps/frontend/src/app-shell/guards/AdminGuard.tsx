@@ -16,12 +16,12 @@ Notas / Invariantes:
 ===============================================================================
 */
 
-import type { ReactNode } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
+import { type AuthMe,parseAuthMe } from "@/shared/api/contracts/auth";
 import { apiRoutes } from "@/shared/api/routes";
-import { parseAuthMe, type AuthMe } from "@/shared/api/contracts";
 
 type AdminGuardProps = {
   children: ReactNode;

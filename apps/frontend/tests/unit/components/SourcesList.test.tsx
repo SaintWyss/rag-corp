@@ -1,4 +1,21 @@
+/**
+===============================================================================
+TARJETA CRC - apps/frontend/tests/unit/components/SourcesList.test.tsx
+===============================================================================
+Responsabilidades:
+  - Validar render de SourcesList con 0/1/N fuentes.
+  - Verificar headings y artículos.
+
+Colaboradores:
+  - shared/ui/components/SourcesList
+
+Invariantes:
+  - Sin llamadas de red.
+===============================================================================
+*/
+
 import { render, screen } from "@testing-library/react";
+
 import { SourcesList } from "@/shared/ui/components/SourcesList";
 
 describe("SourcesList Component", () => {
