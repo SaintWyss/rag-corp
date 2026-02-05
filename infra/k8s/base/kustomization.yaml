@@ -1,0 +1,52 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/base/kustomization.yaml
+# =============================================================================
+# Responsabilidades:
+# - Orquestar la lista de manifests para despliegue.
+#
+# Colaboradores:
+# - infra/k8s/base/*.yaml
+#
+# Invariantes:
+# - Mantener rutas actualizadas y orden coherente.
+# - No aplicar secrets template desde kustomize base (usar ExternalSecrets o secreto externo).
+# =============================================================================
+
+# Kustomize configuration for RAG Corp K8s manifests
+# Usage: kubectl apply -k infra/k8s/base/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ragcorp
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  # NOTA: secret.yaml es solo plantilla (no se aplica en base).
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - backend-hpa.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - ingress.yaml
+  - redis-deployment.yaml
+  - pdb.yaml
+  - network-policy.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/version: "0.1.0"
+
+# Image customization (override in overlays)
+images:
+  - name: ragcorp/backend
+    newTag: latest
+  - name: ragcorp/frontend
+    newTag: latest
+
+# ConfigMap generator (alternative to static configmap.yaml)
+# configMapGenerator:
+#   - name: ragcorp-config
+#     literals:
+#       - LOG_LEVEL=info

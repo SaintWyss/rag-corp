@@ -3,13 +3,13 @@
 
 # Backend Network Policy
 # =============================================================================
-# TARJETA CRC - infra/k8s/network-policy.yaml
+# TARJETA CRC - infra/k8s/base/network-policy.yaml
 # =============================================================================
 # Responsabilidades:
 # - Definir politicas de red (zero-trust) en el namespace.
 #
 # Colaboradores:
-# - infra/k8s/namespace.yaml
+# - infra/k8s/base/namespace.yaml
 #
 # Invariantes:
 # - Mantener reglas explicitas de ingress/egress necesarias.

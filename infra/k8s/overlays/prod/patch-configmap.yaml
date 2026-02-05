@@ -6,7 +6,7 @@
 # - Mantener valores no sensibles.
 #
 # Colaboradores:
-# - infra/k8s/configmap.yaml
+# - infra/k8s/base/configmap.yaml
 #
 # Invariantes:
 # - No incluir secretos.
@@ -16,6 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ragcorp-config
+  namespace: ragcorp
 data:
   APP_ENV: "production"
   ALLOWED_ORIGINS: "https://ragcorp.example.com"

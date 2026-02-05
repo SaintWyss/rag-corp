@@ -1,13 +1,13 @@
 # RAG Corp Frontend Service
 # =============================================================================
-# TARJETA CRC - infra/k8s/frontend-service.yaml
+# TARJETA CRC - infra/k8s/base/frontend-service.yaml
 # =============================================================================
 # Responsabilidades:
 # - Exponer el frontend internamente con un Service estable.
 #
 # Colaboradores:
-# - infra/k8s/frontend-deployment.yaml
-# - infra/k8s/ingress.yaml
+# - infra/k8s/base/frontend-deployment.yaml
+# - infra/k8s/base/ingress.yaml
 #
 # Invariantes:
 # - Selector y puertos deben coincidir con el Deployment.

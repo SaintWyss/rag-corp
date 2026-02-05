@@ -5,7 +5,7 @@
 # - Reducir recursos y replicas para staging.
 #
 # Colaboradores:
-# - infra/k8s/backend-deployment.yaml
+# - infra/k8s/base/backend-deployment.yaml
 #
 # Invariantes:
 # - Mantener probes y labels intactos.
@@ -15,6 +15,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ragcorp-backend
+  namespace: ragcorp
 spec:
   replicas: 1
   template:

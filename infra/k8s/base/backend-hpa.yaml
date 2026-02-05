@@ -1,12 +1,12 @@
 # RAG Corp Backend Horizontal Pod Autoscaler
 # =============================================================================
-# TARJETA CRC - infra/k8s/backend-hpa.yaml
+# TARJETA CRC - infra/k8s/base/backend-hpa.yaml
 # =============================================================================
 # Responsabilidades:
 # - Escalar el backend segun metricas (CPU/memoria).
 #
 # Colaboradores:
-# - infra/k8s/backend-deployment.yaml
+# - infra/k8s/base/backend-deployment.yaml
 #
 # Invariantes:
 # - Targets deben existir en el Deployment.

@@ -1,12 +1,12 @@
 # RAG Corp Kubernetes Namespace
 # =============================================================================
-# TARJETA CRC - infra/k8s/namespace.yaml
+# TARJETA CRC - infra/k8s/base/namespace.yaml
 # =============================================================================
 # Responsabilidades:
 # - Definir el namespace de trabajo para RAG Corp.
 #
 # Colaboradores:
-# - infra/k8s/kustomization.yaml
+# - infra/k8s/base/kustomization.yaml
 #
 # Invariantes:
 # - El nombre del namespace debe ser estable.

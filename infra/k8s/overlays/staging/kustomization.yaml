@@ -6,7 +6,7 @@
 # - Fijar imágenes, hosts y recursos sin incluir secretos.
 #
 # Colaboradores:
-# - infra/k8s/kustomization.yaml
+# - infra/k8s/base/kustomization.yaml
 # - infra/k8s/overlays/staging/patch-*.yaml
 #
 # Invariantes:
@@ -18,7 +18,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../
+  - ../../base
 
 images:
   - name: ragcorp/backend

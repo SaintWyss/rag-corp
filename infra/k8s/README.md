@@ -1,3 +1,21 @@
+<!--
+===============================================================================
+TARJETA CRC - infra/k8s/README.md
+===============================================================================
+Responsabilidades:
+- Describir la estructura K8s (base + overlays) sin drift.
+- Indicar cómo aplicar base y overlays con comandos reales.
+
+Colaboradores:
+- infra/k8s/base/*
+- infra/k8s/overlays/*
+- infra/k8s/render_kustomize.sh
+
+Invariantes:
+- No incluir secretos reales.
+- Mantener rutas coherentes con el repo.
+===============================================================================
+-->
 # infra/k8s/ — README
 
 > **Navegación:** [← Volver a infra/](../README.md) · [← Volver a raíz](../../README.md)
@@ -25,25 +43,31 @@ Esta carpeta contiene todos los "manifiestos" — archivos YAML que le dicen a K
 
 ```
 k8s/
-├── kustomization.yaml          # Orquestador: lista qué aplicar
-├── namespace.yaml              # Crea el "espacio" ragcorp
-├── configmap.yaml              # Variables de entorno no-secretas
-├── secret.yaml                 # Credenciales (PLACEHOLDERS)
-├── backend-deployment.yaml     # Cómo correr el backend
-├── backend-service.yaml        # Cómo exponer el backend
-├── backend-hpa.yaml            # Auto-escalado del backend
-├── frontend-deployment.yaml    # Cómo correr el frontend
-├── frontend-service.yaml       # Cómo exponer el frontend
-├── redis-deployment.yaml       # Cache Redis
-├── ingress.yaml                # Entrada de tráfico externo
-├── network-policy.yaml         # Firewall interno
-└── pdb.yaml                    # Protección durante mantenimiento
+├── kustomization.yaml          # Wrapper (compatibilidad) -> base
+├── base/                        # Manifiestos base (sin overlays)
+│   ├── kustomization.yaml
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── secret.yaml
+│   ├── backend-deployment.yaml
+│   ├── backend-service.yaml
+│   ├── backend-hpa.yaml
+│   ├── frontend-deployment.yaml
+│   ├── frontend-service.yaml
+│   ├── redis-deployment.yaml
+│   ├── ingress.yaml
+│   ├── network-policy.yaml
+│   └── pdb.yaml
+├── overlays/
+│   ├── staging/
+│   └── prod/
+└── render_kustomize.sh          # Render dockerizado (sin kubectl)
 ```
 
 ### ¿Cómo se usa paso a paso?
 
 ```bash
-# 1. Aplicar todos los manifiestos
+# 1. Aplicar base (compatibilidad)
 kubectl apply -k infra/k8s/
 
 # 2. Verificar que todo está corriendo
@@ -76,10 +100,10 @@ Esta carpeta NO DEBE contener:
 
 | Componente | Dependencias |
 |------------|--------------|
-| `backend-deployment.yaml` | `secret.yaml`, `configmap.yaml`, imagen de container registry |
-| `frontend-deployment.yaml` | `backend-service.yaml` (para conectar al API) |
-| `ingress.yaml` | NGINX Ingress Controller, cert-manager |
-| `backend-hpa.yaml` | Metrics Server instalado en cluster |
+| `base/backend-deployment.yaml` | `base/secret.yaml`, `base/configmap.yaml`, imagen de container registry |
+| `base/frontend-deployment.yaml` | `base/backend-service.yaml` (para conectar al API) |
+| `base/ingress.yaml` | NGINX Ingress Controller, cert-manager |
+| `base/backend-hpa.yaml` | Metrics Server instalado en cluster |
 
 **Prerrequisitos del cluster:**
 - Kubernetes 1.27+
