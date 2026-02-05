@@ -1,0 +1,36 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/prod/kustomization.yaml
+# =============================================================================
+# Responsabilidades:
+# - Definir overrides de producción sobre la base K8s.
+# - Fijar imágenes, hosts y recursos sin incluir secretos.
+#
+# Colaboradores:
+# - infra/k8s/kustomization.yaml
+# - infra/k8s/overlays/prod/patch-*.yaml
+#
+# Invariantes:
+# - No usar tags latest.
+# - No incluir datos sensibles.
+# =============================================================================
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../
+
+images:
+  - name: ragcorp/backend
+    newName: ghcr.io/your-org/ragcorp-backend
+    newTag: 0.1.0
+  - name: ragcorp/frontend
+    newName: ghcr.io/your-org/ragcorp-frontend
+    newTag: 0.1.0
+
+patches:
+  - path: patch-configmap.yaml
+  - path: patch-backend-resources.yaml
+  - path: patch-frontend-resources.yaml
+  - path: patch-backend-hpa.yaml
+  - path: patch-ingress.yaml

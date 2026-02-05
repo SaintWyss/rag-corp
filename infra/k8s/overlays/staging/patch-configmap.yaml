@@ -1,0 +1,21 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/staging/patch-configmap.yaml
+# =============================================================================
+# Responsabilidades:
+# - Ajustar toggles de entorno para staging.
+# - Mantener valores no sensibles.
+#
+# Colaboradores:
+# - infra/k8s/configmap.yaml
+#
+# Invariantes:
+# - No incluir secretos.
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ragcorp-config
+data:
+  APP_ENV: "staging"
+  ALLOWED_ORIGINS: "https://staging.ragcorp.example.com"

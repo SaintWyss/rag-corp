@@ -1,21 +1,44 @@
+<!--
+===============================================================================
+TARJETA CRC - docs/runbook/deployment.md
+===============================================================================
+Responsabilidades:
+- Guiar el despliegue en entornos locales y productivos sin drift.
+- Definir rutas preferidas (Helm) y alternativas (Kustomize) para K8s.
+- Mantener comandos verificables y alineados a los nombres reales del runtime.
+
+Colaboradores:
+- infra/helm/ragcorp/README.md
+- infra/k8s/overlays/*
+- compose.yaml
+
+Invariantes:
+- No incluir secretos reales ni ejemplos sensibles.
+- Los comandos deben referenciar servicios existentes (ej. rag-api, migrate).
+===============================================================================
+-->
 # Deployment Guide
 
-**Project:** RAG Corp
-**Last Updated:** 2026-01-22
+**Project:** RAG Corp  
+**Last Updated:** 2026-02-05
 
 ---
 
 ## Overview
 
-| Environment   | Method                 | Config                                      |
-| ------------- | ---------------------- | ------------------------------------------- |
-| Development   | Docker Compose         | `compose.yaml`                              |
-| Production    | Docker Compose         | `compose.prod.yaml`                         |
-| Observability | Docker Compose profile | `compose.prod.yaml --profile observability` |
+| Environment   | Método preferido | Config / Ruta |
+| ------------- | ---------------- | ------------- |
+| Development   | Docker Compose   | `compose.yaml` |
+| Staging       | Helm (K8s)       | `infra/helm/ragcorp/examples/values-staging.yaml` |
+| Production    | Helm (K8s)       | `infra/helm/ragcorp/examples/values-prod.yaml` |
+| K8s (alterno) | Kustomize        | `infra/k8s/overlays/{staging,prod}/` |
+| Observability | Docker Compose   | `compose.yaml --profile observability` |
+
+**Nota:** Docker Compose es para **local** o **single-node demo**. Para producción, usar **Helm** (preferido) o **Kustomize overlays**.
 
 ---
 
-## Required Variables (prod)
+## Variables requeridas (backend/worker)
 
 - `DATABASE_URL`
 - `GOOGLE_API_KEY`
@@ -24,25 +47,30 @@
 - `API_KEYS_CONFIG` o `RBAC_CONFIG`
 - `METRICS_REQUIRE_AUTH=true`
 
-Ver `.env.example` para el listado completo.
+Plantillas:
+- Local: `.env.example` → `.env` (no versionado)
+- K8s: `infra/k8s/secret.yaml` es **solo plantilla** (no aplicar)
 
 ---
 
-## Docker Compose (production)
+## Docker Compose (local / single-node demo)
 
 ```bash
-cp .env.example .env.prod
-# Edit .env.prod
+# Crear env local (no versionado)
+cp .env.example .env
+# Editar .env con valores locales
 
-docker compose -f compose.prod.yaml --env-file .env.prod build
-docker compose -f compose.prod.yaml --env-file .env.prod up -d
+# Stack base (DB + migrate + API)
+pnpm stack:core
+
+# Stack full (incluye UI + observabilidad)
+pnpm stack:all
 ```
 
-El servicio `backend` ejecuta `alembic upgrade head` al iniciar.
-Si se requiere, se puede correr manualmente:
+Migraciones manuales (si se requiere):
 
 ```bash
-docker compose -f compose.prod.yaml exec backend alembic upgrade head
+docker compose run --rm --no-deps migrate
 ```
 
 Health checks:
@@ -54,10 +82,38 @@ curl http://localhost:8000/readyz
 
 ---
 
-## Observability (prod)
+## Kubernetes (producción)
+
+### Opción preferida: Helm
 
 ```bash
-docker compose -f compose.prod.yaml --profile observability up -d
+# Staging
+helm upgrade --install ragcorp infra/helm/ragcorp \
+  -n ragcorp --create-namespace \
+  -f infra/helm/ragcorp/examples/values-staging.yaml
+
+# Production
+helm upgrade --install ragcorp infra/helm/ragcorp \
+  -n ragcorp --create-namespace \
+  -f infra/helm/ragcorp/examples/values-prod.yaml
+```
+
+### Opción alternativa: Kustomize overlays
+
+```bash
+# Staging
+kubectl apply -k infra/k8s/overlays/staging
+
+# Production
+kubectl apply -k infra/k8s/overlays/prod
+```
+
+---
+
+## Observability (local)
+
+```bash
+docker compose --profile observability up -d
 ```
 
 URLs:
@@ -66,10 +122,6 @@ URLs:
 - Grafana: http://localhost:3001
 
 ---
-
-## Kubernetes
-
-Ver `infra/k8s/README.md` y `docs/runbook/kubernetes.md`.
 
 ## GitHub Actions / CI/CD
 
@@ -85,5 +137,6 @@ El workflow de deploy usa GitHub Environments (`staging` y `production`).
 
 ### Rollback
 
+- **Helm**: `helm rollback <release> <revision> -n <namespace>`
 - **Kubernetes**: `kubectl rollout undo deployment/<name>`
 - **Docker Compose**: `docker compose pull <prev-tag> && docker compose up -d`

@@ -1,0 +1,44 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/prod/patch-ingress.yaml
+# =============================================================================
+# Responsabilidades:
+# - Ajustar hosts y TLS para producción.
+#
+# Colaboradores:
+# - infra/k8s/ingress.yaml
+#
+# Invariantes:
+# - Mantener paths coherentes con backend/frontend.
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ragcorp-ingress
+spec:
+  tls:
+    - hosts:
+        - ragcorp.example.com
+        - api.ragcorp.example.com
+      secretName: ragcorp-prod-tls
+  rules:
+    - host: ragcorp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ragcorp-frontend
+                port:
+                  name: http
+    - host: api.ragcorp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ragcorp-backend
+                port:
+                  name: http

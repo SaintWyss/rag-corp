@@ -1,3 +1,19 @@
+<!--
+===============================================================================
+TARJETA CRC - docs/project/CHANGELOG.md
+===============================================================================
+Responsabilidades:
+- Registrar cambios relevantes del repo sin drift operativo.
+- Evitar referencias a artefactos inexistentes.
+
+Colaboradores:
+- docs/runbook/deployment.md
+- compose.yaml
+
+Invariantes:
+- No incluir secretos reales.
+===============================================================================
+-->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -30,8 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Conventional changelog automation
 
 ### Changed
-- **compose.prod.yaml** - Full observability stack integration
-  - Redis always enabled in production
+- **compose.yaml (profiles)** - Full observability stack integration
+  - Redis enabled via perfiles `rag/full`
   - Prometheus, Grafana, exporters via `--profile observability`
   - Redis exporter for cache metrics
 - Extracted exception handlers from `main.py` to `exception_handlers.py`

@@ -1,0 +1,30 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/prod/patch-backend-resources.yaml
+# =============================================================================
+# Responsabilidades:
+# - Ajustar recursos y replicas del backend para producción.
+#
+# Colaboradores:
+# - infra/k8s/backend-deployment.yaml
+#
+# Invariantes:
+# - Mantener probes y labels intactos.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ragcorp-backend
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: backend
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "3000m"
+              memory: "4Gi"

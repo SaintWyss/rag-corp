@@ -1,0 +1,30 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/staging/patch-backend-resources.yaml
+# =============================================================================
+# Responsabilidades:
+# - Reducir recursos y replicas para staging.
+#
+# Colaboradores:
+# - infra/k8s/backend-deployment.yaml
+#
+# Invariantes:
+# - Mantener probes y labels intactos.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ragcorp-backend
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: backend
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "384Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

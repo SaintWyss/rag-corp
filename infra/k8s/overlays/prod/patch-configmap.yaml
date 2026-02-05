@@ -1,0 +1,21 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/prod/patch-configmap.yaml
+# =============================================================================
+# Responsabilidades:
+# - Ajustar toggles de entorno para producción.
+# - Mantener valores no sensibles.
+#
+# Colaboradores:
+# - infra/k8s/configmap.yaml
+#
+# Invariantes:
+# - No incluir secretos.
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ragcorp-config
+data:
+  APP_ENV: "production"
+  ALLOWED_ORIGINS: "https://ragcorp.example.com"

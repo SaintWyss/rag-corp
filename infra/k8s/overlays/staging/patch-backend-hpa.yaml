@@ -1,0 +1,20 @@
+# =============================================================================
+# TARJETA CRC - infra/k8s/overlays/staging/patch-backend-hpa.yaml
+# =============================================================================
+# Responsabilidades:
+# - Ajustar rangos de escalado para staging.
+#
+# Colaboradores:
+# - infra/k8s/backend-hpa.yaml
+#
+# Invariantes:
+# - Mantener métricas base (CPU/memory).
+# =============================================================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ragcorp-backend-hpa
+spec:
+  minReplicas: 1
+  maxReplicas: 4

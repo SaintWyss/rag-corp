@@ -1,3 +1,21 @@
+<!--
+===============================================================================
+TARJETA CRC - docs/runbook/kubernetes.md
+===============================================================================
+Responsabilidades:
+- Documentar el despliegue en Kubernetes con Helm (preferido) y Kustomize (alterno).
+- Mantener comandos verificables y coherentes con los manifiestos reales.
+
+Colaboradores:
+- infra/helm/ragcorp/README.md
+- infra/k8s/overlays/*
+- infra/k8s/README.md
+
+Invariantes:
+- No incluir secretos reales.
+- Referenciar rutas existentes del repo.
+===============================================================================
+-->
 # Kubernetes Deployment Guide
 
 **Project:** RAG Corp  
@@ -7,7 +25,10 @@
 
 ## Overview
 
-RAG Corp provides production-ready Kubernetes manifests in [`infra/k8s/`](../../infra/k8s/).
+**Preferido:** Helm chart en `infra/helm/ragcorp/`.  
+**Alternativo:** Kustomize overlays en `infra/k8s/overlays/{staging,prod}/`.
+
+RAG Corp mantiene manifests base en [`infra/k8s/`](../../infra/k8s/).
 
 ## Architecture
 
@@ -35,11 +56,25 @@ RAG Corp provides production-ready Kubernetes manifests in [`infra/k8s/`](../../
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+## Quick Start (preferido: Helm)
 
 ```bash
-# 1. Apply all manifests
-kubectl apply -k infra/k8s/
+# Staging
+helm upgrade --install ragcorp infra/helm/ragcorp \\
+  -n ragcorp --create-namespace \\
+  -f infra/helm/ragcorp/examples/values-staging.yaml
+
+# Production
+helm upgrade --install ragcorp infra/helm/ragcorp \\
+  -n ragcorp --create-namespace \\
+  -f infra/helm/ragcorp/examples/values-prod.yaml
+```
+
+## Quick Start (alterno: Kustomize overlays)
+
+```bash
+# 1. Apply overlay (staging o prod)
+kubectl apply -k infra/k8s/overlays/staging
 
 # 2. Verify deployment
 kubectl -n ragcorp get pods -w
