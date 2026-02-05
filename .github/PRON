@@ -1,5 +1,4 @@
-```md
--------------------------------------------------------------------------------------------------------
+
 REGLAS GLOBALES:
 - Modo SIN CAMBIOS: no modificar archivos, no commits.
 - Modo 1 COMMIT: cambios directos + 1 commit final (sin ramas/PR).
@@ -7,108 +6,148 @@ REGLAS GLOBALES:
 - CERO INVENCIÓN: toda afirmación importante debe citar rutas reales; si no existe → NO ENCONTRADO + TODO(verify).
 - SALIDA: no pegar archivos completos; entregar unified diff/patch + lista de archivos tocados.
 Repo layout canonical: apps/backend, apps/frontend, shared/contracts, infra, docs, tests.
--------------------------------------------------------------------------------------------------------
+
+---
+
 @workspace
-# PRON — AUDITORÍA + % PROGRESO
-Objetivo: informe maestro baseline verificable (TO-BE vs AS-IS) + % progreso + Top gaps. SIN modificar archivos.
+# PRON baseline — AUDITORÍA + % PROGRESO (PROD-READY) — SIN CAMBIOS
+Objetivo: informe maestro verificable (TO-BE vs AS-IS) + % progreso + Top gaps BLOQUEANTES para deploy.
+Prohibido modificar archivos (0 edits, 0 commits).
 
-REGLAS
-- MODO: SIN CAMBIOS (0 edits, 0 commits).
-- CERO INVENCIÓN: cada afirmación clave debe citar rutas/headers. Si falta: “NO ENCONTRADO” + TODO(verify).
+REGLAS DURAS
+- MODO: SOLO LECTURA. No crear/editar/formattear archivos.
+- CERO INVENCIÓN: toda afirmación clave debe tener evidencia con ruta + líneas.
+  - Si falta: “NO ENCONTRADO” + TODO(verify).
 - Repo layout canónico: apps/backend, apps/frontend, shared/contracts, docs, infra, tests, .github.
-- No leer todo el repo: limitarse a fuentes y a búsquedas `rg` puntuales.
+- No leer todo el repo: usar SOLO fuentes + búsquedas puntuales (rg/grep).
+- Citas: para cada evidencia, incluir:
+  - path:lineStart-lineEnd + snippet breve (máx 8 líneas).
+  - Tip: usa `nl -ba <file> | sed -n 'X,Yp'`.
 
-FUENTES (prioridad, usar en este orden)
-0) docs/system/informe_de_sistemas_rag_corp.md
-1) docs/system/**
-2) shared/contracts/openapi.json
-3) apps/backend/alembic/versions/**
-4) apps/backend/app/main.py + apps/backend/app/api/** + apps/backend/app/routes.py (si existe)
-5) compose*.yaml + package.json + .github/workflows/**
-6) docs/architecture/** (ADRs)
-Si alguna ruta “no existe”: reportar NO ENCONTRADO y seguir con la siguiente.
+FUENTES DE VERDAD (PRIORIDAD — USAR EN ESTE ORDEN)
+0) docs/project/guia_definitiva_de_produccion_rag_corp.md
+1) docs/project/guia_definitiva_de_readme_rag_corp_raiz_padres_y_hojas.md
+2) docs/project/informe_de_negocio_brd_srs_rag_corp.md
+3) docs/project/informe_de_sistemas_rag_corp.md
+4) docs/requirements/functional.md + docs/requirements/non-functional.md
+5) docs/reference/** + docs/architecture/** (ADRs + diagrams)
+6) shared/contracts/openapi.json
+7) apps/backend/alembic/versions/** (migraciones)
+8) apps/backend/app/main.py + apps/backend/app/interfaces/api/http/** + apps/backend/app/crosscutting/**
+9) apps/frontend/app/** + apps/frontend/src/** + apps/frontend/middleware.ts + apps/frontend/next.config.mjs
+10) infra/** + compose*.yaml + .github/workflows/** + package.json
+Si una ruta no existe: reportar NO ENCONTRADO y seguir.
 
-MÉTODO (ejecución mínima)
-A) Extraer TO-BE del contrato baseline: 15–25 bullets (máximo).
-B) Snapshot AS-IS (solo hechos verificables):
-   - Stack: FE/BE/DB/Queue/Storage/Obs/CI/Deploy (1–2 bullets c/u)
-   - Comandos reales de ejecución (solo scripts existentes en package.json y compose)
-C) Matriz de cumplimiento (tabla compacta, 6 áreas):
-   - Producto (Workspaces/ACL/Scoping/RAG)
-   - Seguridad/Gobernanza (Auth/RBAC/hardening/metrics)
-   - Operación (worker/retries/migraciones/storage)
-   - Calidad (tests/CI/contratos/RFC7807)
-   - Observabilidad (health/ready/metrics/logs)
-   - Documentación (drift/completitud)
-   Para cada área: ✅/⚠️/❌ + 2 evidencias (rutas) + 1 riesgo + 1 acción concreta.
+SANITY CHECKS (antes de analizar)
+A) Verificar existencia de las 4 fuentes top (0..3).
+B) Verificar que shared/contracts/openapi.json existe.
+C) Verificar workflows:
+   - .github/workflows/ci.yml existe
+   - .github/workflows/deploy.yml existe
+D) Verificar “referencias rotas”:
+   - Todo Dockerfile path en workflows debe existir.
+   - Todo compose*.yaml citado en docs debe existir.
+   - Si hay mismatch: marcar como GAP BLOQUEANTE con evidencia.
 
-D) % Progreso:
-   - Definir pesos (suman 100) SOLO por las 6 áreas.
-   - Fórmula: progreso = Σ(peso_area * score_area), score: ✅=1, ⚠️=0.5, ❌=0
-   - Mostrar tabla pesos+score+resultado final.
-E) Top 10 gaps bloqueantes:
-   - Formato fijo por gap (1 línea): [Área] Gap — Impacto — Evidencia (ruta) — Fix mínimo.
-F) Checklist DONE baseline (10–15 items):
-   - Cada item con evidencia (ruta) + comando de verificación (curl/psql/script) si existe; si no existe: TODO(verify).
+MÉTODO (EJECUCIÓN MÍNIMA, SIN SALTOS)
 
-SALIDA (formato corto y constante)
-1) CONTRATO baseline (15–25 bullets + citas)
-2) AS-IS snapshot (stack + comandos + citas)
+1) CONTRATO BASELINE (TO-BE) — 15 a 25 bullets, máximo
+- Extraer del conjunto docs/project/* + docs/requirements/*
+- Cada bullet debe tener 1 evidencia (ruta + líneas).
+- Enfocar en: producto, seguridad, operación, calidad, observabilidad, documentación.
+
+2) SNAPSHOT AS-IS (solo hechos verificables)
+- Stack: FE / BE / DB / Queue-Worker / Storage / Obs / CI / Deploy (1–2 bullets c/u)
+- Para cada ítem: 1 evidencia (ruta + líneas).
+- Comandos reales: SOLO scripts existentes en package.json (root y apps/frontend) y docs/runbook si coincide.
+
+3) MATRIZ DE CUMPLIMIENTO (tabla compacta, 6 áreas)
+Áreas:
+- Producto (Workspaces/ACL/Scoping/RAG)
+- Seguridad/Gobernanza (Auth/RBAC/headers/secrets/metrics auth)
+- Operación/Deploy (compose/k8s/release/rollback/backup/DR)
+- Calidad (tests/CI/contracts/RFC7807)
+- Observabilidad (health/ready/metrics/logs/dashboards)
+- Documentación (canon/stubs/drift/runbooks)
+Para cada área:
+- Estado: ✅ / ⚠️ / ❌
+- Evidencias: 2 (rutas + líneas)
+- Riesgo: 1 línea
+- Acción mínima: 1 línea (fix incremental)
+
+4) % PROGRESO (con fórmula explícita)
+- Definir pesos (suman 100) SOLO por las 6 áreas.
+- Pesos RECOMENDADOS (prod-ready):
+  - Seguridad 25
+  - Operación/Deploy 25
+  - Producto 20
+  - Calidad 15
+  - Observabilidad 10
+  - Documentación 5
+- Score: ✅=1, ⚠️=0.5, ❌=0
+- Progreso = Σ(peso_area * score_area)
+- Mostrar tabla: Área | Peso | Estado | Score | Contrib | Evidencias.
+
+5) TOP 10 GAPS BLOQUEANTES (solo los que frenan prod)
+Formato fijo por gap (1 línea):
+[Área] Gap — Impacto — Evidencia (path:lines) — Fix mínimo
+Regla: al menos 6/10 deben ser “deploy blockers” o “security blockers”.
+
+6) DONE BASELINE CHECKLIST (10–15 items)
+Cada item debe incluir:
+- Evidencia (path:lines)
+- Comando de verificación real (script/compose/pytest/pnpm/curl) o TODO(verify)
+
+7) CIERRE
+- % total final
+- 3 fortalezas (con evidencia)
+- 3 riesgos (con evidencia)
+- 1 próximo paso inmediato (con evidencia)
+
+SALIDA (FORMATO CONSTANTE)
+1) CONTRATO baseline (15–25 bullets + evidencias)
+2) AS-IS snapshot (stack + comandos + evidencias)
 3) MATRIZ (tabla)
 4) % PROGRESO (tabla + fórmula)
-5) TOP 10 GAPS (lista 10 líneas)
-6) DONE baseline checklist (10–15 checks)
-7) CIERRE: % total + 3 fortalezas + 3 riesgos + 1 próximo paso (con evidencia)
--------------------------------------------------------------------------------------------------------
+5) TOP 10 GAPS (10 líneas)
+6) DONE checklist (10–15 checks)
+7) CIERRE
+
+---
+
 @workspace
-# PRON DEUDA TÉCNICA + QUICK WINS (SIN CAMBIOS)
-Objetivo: backlog senior baseline basado SOLO en evidencia. SIN edits/commits.
+# PRON — DEUDA TÉCNICA + QUICK WINS (SIN CAMBIOS)
+Objetivo: backlog senior baseline (solo evidencia) con Top 10 + quick wins + medianas + no tocar.
 
 REGLAS
 - MODO: SIN CAMBIOS.
-- CERO INVENCIÓN: cada ítem debe citar rutas exactas (mín. 2 rutas por ítem). Si falta: NO ENCONTRADO + TODO(verify).
-- Incremental only: prohibidas reescrituras/re-arquitectura.
-- No leer todo el repo: usar fuentes + búsquedas `rg` puntuales.
+- CERO INVENCIÓN: cada ítem debe citar 2 evidencias (path:lines).
+- Incremental only: prohibidas re-arquitecturas.
+- Usar mismas FUENTES (prioridad) que la auditoría.
 
-FUENTES (prioridad)
-1) docs/system/** (contrato baseline / informe)
-2) .github/workflows/** (CI)
-3) compose*.yaml + infra/** (runtime/ops)
-4) apps/backend/** (especial: app/main.py, app/api/**, app/infrastructure/**, alembic/versions/**)
-5) apps/frontend/** (especial: src/**, middleware.ts, package.json)
-6) shared/contracts/** (openapi.json, generated.ts)
-7) tests/** (e2e/load)
+MÉTODO
+A) Detectar hallazgos: listar 20–30 candidatos (bullets) con rutas.
+B) Priorizar Top 10 (riesgo/impacto/urgencia/CI/deploy).
+C) Clasificar resto: Quick Wins (≤2h) y Medianas (1–2d).
+D) Marcar “No tocar todavía” (3–5) por riesgo/ambigüedad/out-of-scope.
 
-MÉTODO (rápido)
-A) Detectar hallazgos: listar 20–30 candidatos (solo bullets) con rutas.
-B) Priorizar: seleccionar Top 10 (criterio: riesgo/impacto/urgencia/CI).
-C) Clasificar el resto en Quick Wins (≤2h) y Medianas (1–2d).
-D) Marcar “No tocar todavía” (3–5) por riesgo/ambigüedad.
-
-FORMATO OBLIGATORIO (estricto para cada ítem)
-Usar esta plantilla EXACTA. Máximo 6 líneas por ítem.
-
+FORMATO ESTRICTO (máx 6 líneas por ítem)
 [ID] Título corto
-- Impacto: Alto|Medio|Bajo  | Riesgo: Seguridad|Perf|Mantenibilidad|UX (1–2)
-- Evidencia: path1 ; path2
+- Impacto: Alto|Medio|Bajo | Riesgo: Seguridad|Perf|Mantenibilidad|UX (1–2)
+- Evidencia: path1:lines ; path2:lines
 - Problema: 1 línea
 - Fix (incremental): 1–2 líneas
 - Validación: comando real (script/compose/pytest/pnpm/curl) o TODO(verify)
 
 ENTREGABLES
-1) TOP 10 DEUDA (10 ítems, usando el formato exacto)
-2) QUICK WINS (5–12 ítems, formato exacto, ≤2h)
-3) MEDIANAS (5–10 ítems, formato exacto, 1–2d)
-4) NO TOCAR TODAVÍA (3–5 ítems, formato exacto, con “por qué” en 1 línea)
-5) ORDEN DE EJECUCIÓN (1..N)
-- Lista numerada con dependencias (máx 8 líneas): “X depende de Y porque …”
+1) TOP 10 DEUDA (10 ítems)
+2) QUICK WINS (5–12 ítems, ≤2h)
+3) MEDIANAS (5–10 ítems, 1–2d)
+4) NO TOCAR TODAVÍA (3–5 ítems, con “por qué” 1 línea)
+5) ORDEN DE EJECUCIÓN (1..N) con dependencias (máx 8 líneas)
 
-RESTRICCIONES DE SALIDA (para ahorrar tokens)
-- No escribir introducciones largas.
-- No más de 1–2 líneas de explicación por sección fuera de los ítems.
-- No repetir rutas: usar rutas cortas y directas.
+---
 
--------------------------------------------------------------------------------------------------------
 @workspace
 # PRON E2E FULL PIPELINE (WORKSPACES) (1 COMMIT)
 Objetivo: E2E robusto (Playwright) para flujo baseline completo con Workspaces, determinista y sin flakes. 1 commit.
@@ -187,7 +226,9 @@ SALIDA FINAL
 - Estrategia anti-flake (3 bullets)
 - Comandos corridos + resultado
 - TODOs (si faltó soporte real de viewer/stream)
--------------------------------------------------------------------------------------------------------
+  
+---
+
 @workspace
 # PRON OBSERVABILIDAD: MÉTRICAS + AUDIT (1 COMMIT)
 QUIERO COMPLETAR OBSERVABILIDAD baseline (AUDITORÍA + MÉTRICAS) ALINEADA A WORKSPACES, Y HACER 1 SOLO COMMIT.
@@ -220,7 +261,9 @@ TAREAS
 COMMIT
 - `feat(obs): workspace audit + metrics alignment (baseline)`
 
--------------------------------------------------------------------------------------------------------
+
+---
+
 @workspace
 # PRON baseline-CI1 — CI HYGIENE + STABILITY (1 COMMIT) [CLÍNICO]
 Objetivo: arreglar CI que falla por configuración (paths/scripts/caches/timeouts/perms) SIN tocar producto. 1 commit.
@@ -262,7 +305,9 @@ SALIDA FINAL
 - Archivos tocados
 - Top 10 fixes (≤10 bullets)
 - Qué NO se pudo verificar (TODOs)
--------------------------------------------------------------------------------------------------------
+  
+---
+
 @workspace
 # PRON baseline-CI2 — TEST STABILITY (unit/integration/e2e) (1 COMMIT)
 Objetivo: reducir flakes y hacer tests deterministas para CI. 1 commit.
@@ -303,7 +348,8 @@ SALIDA FINAL
 - Qué flakes se mitigaron (≤8 bullets)
 - TODOs que requieren cambios de producto (para CI3)
 
--------------------------------------------------------------------------------------------------------
+---
+
 @workspace
 # PRON baseline-CI3 — BUGFIXES FOR CI FAILURES (1 COMMIT)
 Objetivo: arreglar bugs reales detectados por CI (tests rojos), con cambios mínimos y verificados. 1 commit.
@@ -341,7 +387,8 @@ SALIDA FINAL
 - Lista de fallas corregidas (≤10)
 - Comandos corridos + resultado
 
--------------------------------------------------------------------------------------------------------
+---
+
 @workspace
 # PRON DOCS — AUDIT + APPLY (Docs only)
 Objetivo: (1) auditar docs+READMEs y detectar drift contra el repo real; (2) opcionalmente aplicar fixes SOLO en docs, en 1 commit.
@@ -443,7 +490,8 @@ SALIDA FINAL (formato fijo)
    - commit: `docs(baseline): align documentation with repo state`
    - TODOs que quedaron
 
--------------------------------------------------------------------------------------------------------
+---
+
 @workspace
 # PRON CRC APPLY (INSERTAR EN ARCHIVOS) (1 COMMIT)
 Objetivo: insertar CRC Cards baseline (EN INGLÉS) en archivos críticos BE/FE que NO las tengan. Sin cambios funcionales. 1 commit.
@@ -512,7 +560,8 @@ SALIDA FINAL (formato corto)
 - Comandos corridos + resultado
 - TODOs (si hubo casos dudosos)
 
-------------------------------------------------------------------------------------------------------------
+---
+
 @workspace
 # PRON vClean — LIMPIEZA TOTAL DEL REPO (higiene + consistencia) (1 COMMIT)
 Objetivo: dejar el repo ordenado, consistente y CI-ready SIN CAMBIAR lógica/behavior.
@@ -528,7 +577,8 @@ SÍ HACER (solo higiene):
 - Quitar debug obvio (prints/logs) SOLO si es inequívocamente debug y no parte del sistema.
 - Eliminar dead code SOLO con evidencia de 0 uso (rg + imports + scripts).
 
-===============================================================================
+---
+
 FASE 1 — INVENTARIO (SOLO LECTURA, sin borrar todavía)
 1) Listar archivos trackeados “candidatos basura”:
    - caches: __pycache__ .pytest_cache .ruff_cache .mypy_cache
@@ -564,7 +614,8 @@ Producción de evidencia:
   - Evidencia de no-uso (1–3 líneas por ítem: “rg … → 0 results”)
   - TODOs dudosos (si hubo)
 
-===============================================================================
+---
+
 FASE 2 — PLAN (máx 10 bullets, en el mismo `docs/runbook/repo-cleanup-baseline.md`)
 Plan ultra acotado:
 - 1) remover basura trackeada + git rm
@@ -573,7 +624,8 @@ Plan ultra acotado:
 - 4) normalizar docs links (solo links/typos; no cambiar contenido contractual)
 - 5) correr checks mínimos
 
-===============================================================================
+---
+
 FASE 3 — EJECUCIÓN (cambios reales, pero TODO va al mismo commit final)
 A) Basura/artefactos (SOLO si están trackeados):
 - Eliminar (git rm) cualquier candidato confirmado.
@@ -607,7 +659,8 @@ D) Tooling “sin cambiar behavior”
 - Frontend: no tocar lógica; solo lint/ts fixes que no cambien behavior (ej: unused imports).
 - Contracts: correr generator si existe y asegurar 0 diff.
 
-===============================================================================
+---
+
 FASE 4 — VALIDACIÓN (obligatoria; si algo no se puede correr, explicar por qué)
 Correr y dejar resumen (en el runbook o comentario final):
 
@@ -628,7 +681,8 @@ Contracts (si aplica):
 E2E (opcional si es pesado; si no corre, justificar):
 - pnpm -C tests/e2e test
 
-===============================================================================
+---
+
 FASE 5 — COMMIT ÚNICO
 - Asegurar `git status` con SOLO cambios esperados.
 - 1 commit final:
@@ -641,7 +695,9 @@ SALIDA FINAL (en `docs/runbook/repo-cleanup-baseline.md`):
 - qué eliminaste y evidencia (rg 0 results)
 - comandos corridos + resultado
 - TODOs que quedaron
-------------------------------------------------------------------------------------------------------------
+
+---
+
 Actuá como ingeniero senior de frontend (Next.js App Router) y aplicá estrictamente estas normas:
 
 NORMAS OBLIGATORIAS
