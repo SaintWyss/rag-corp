@@ -119,6 +119,16 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/ragcorp_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: ragcorp_test
+      POSTGRES_HOST: localhost
+      POSTGRES_HOST_PORT: "5432"
+      PGUSER: test
+      PGPASSWORD: test
+      PGDATABASE: ragcorp_test
+      PGHOST: localhost
+      PGPORT: "5432"
       GOOGLE_API_KEY: fake-key-for-tests
     steps:
       - uses: actions/checkout@v4
@@ -127,6 +137,16 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Enable pgvector extension
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+
+          url = os.environ["DATABASE_URL"]
+          with psycopg.connect(url, autocommit=True) as conn:
+              conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+          PY
       - run: pytest --cov=app --cov-report=xml -q
       - uses: codecov/codecov-action@v4
         with:
@@ -400,6 +420,16 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/ragcorp_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: ragcorp_test
+      POSTGRES_HOST: localhost
+      POSTGRES_HOST_PORT: "5432"
+      PGUSER: test
+      PGPASSWORD: test
+      PGDATABASE: ragcorp_test
+      PGHOST: localhost
+      PGPORT: "5432"
       FAKE_LLM: "1"
       FAKE_EMBEDDINGS: "1"
     steps:
@@ -410,6 +440,17 @@ jobs:
           cache: pip
       - name: Install backend dependencies
         run: cd apps/backend && pip install -r requirements.txt
+      - name: Enable pgvector extension
+        run: |
+          cd apps/backend
+          python - <<'PY'
+          import os
+          import psycopg
+
+          url = os.environ["DATABASE_URL"]
+          with psycopg.connect(url, autocommit=True) as conn:
+              conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+          PY
       - name: Start API server
         run: |
           cd apps/backend

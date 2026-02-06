@@ -140,6 +140,7 @@ compose.prod.local.yaml
 *credentials*.json
 *secret*.json
 service-account*.json
+leaks.json
 
 # SSH
 id_rsa
