@@ -11,17 +11,17 @@
  * =============================================================================
  */
 
-import path from "path";
 import { expect, test } from "@playwright/test";
+import path from "path";
 import {
-  adminCreateWorkspaceForUserId,
-  adminEnsureUser,
-  adminGetUserIdByEmail,
-  clearApiKeyStorage,
-  hasAdminCredentials,
-  login,
-  loginAsAdmin,
-  uploadDocumentAndWaitReady,
+    adminCreateWorkspaceForUserId,
+    adminEnsureUser,
+    adminGetUserIdByEmail,
+    clearApiKeyStorage,
+    hasAdminCredentials,
+    login,
+    loginAsAdmin,
+    uploadDocumentAndWaitReady,
 } from "./helpers";
 
 const EMP_USER = { email: "employee1@local", password: "employee1" };
@@ -68,7 +68,7 @@ test.describe("Sources flow", () => {
                     await page.getByTestId("sources-refresh").click();
                     return (await status.textContent()) || "";
                 },
-                { timeout: 60_000 }
+                { timeout: 120_000 }
             )
             .toContain("READY");
     });

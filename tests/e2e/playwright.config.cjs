@@ -60,10 +60,21 @@ module.exports = defineConfig({
     /* Base URL for navigation */
     baseURL,
 
+    /* Timeouts más amplios en CI (pipeline tests con worker) */
+    actionTimeout: process.env.CI ? 30_000 : 15_000,
+
     /* Collect trace/video on failure */
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+  },
+
+  /* Timeout por test: 120s en CI (upload->READY->chat requiere worker) */
+  timeout: process.env.CI ? 120_000 : 30_000,
+
+  /* Timeout global de expect */
+  expect: {
+    timeout: process.env.CI ? 30_000 : 10_000,
   },
 
   /* Configure projects for major browsers */

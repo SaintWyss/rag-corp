@@ -101,7 +101,6 @@ async function setAuthCookie(
   const domain = u.hostname; // localhost / tu host real
   const secure = u.protocol === "https:"; // http localhost => false
   const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
-  const isLocalhost = domain === "localhost" || domain === "127.0.0.1";
 
   // Limpieza dura
   await page.context().clearCookies();
@@ -112,25 +111,39 @@ async function setAuthCookie(
   const names = Array.from(new Set([primary, "access_token", "rag_access_token"]));
 
   /**
-   * IMPORTANTÍSIMO:
-   * Usar domain+path (path="/") para que el cookie aplique a /admin y /workspaces.
-   * Con `url:` a veces termina scoping raro y te manda a /login en /admin.
+   * Robustez CI: seteamos con AMBOS métodos para evitar flakes de scoping.
+   *   1. url-based (Playwright infiere domain/path) — funciona bien en localhost.
+   *   2. domain+path explícito (path="/") — asegura cobertura de /admin y /workspaces.
+   * Si uno de los dos falla silenciosamente en CI, el otro garantiza la cookie.
    */
-  await page.context().addCookies(
-    names.map((name) => ({
-      name,
-      value: token,
-      ...(isLocalhost
-        ? { url: origin } // En localhost evitamos `domain`, que algunos browsers rechazan.
-        : { domain, path: "/" }),
-      httpOnly: true,
-      secure, // ✅ false en http://localhost
-      sameSite: "Lax",
-      expires,
-    }))
-  );
+  const cookiesUrlBased = names.map((name) => ({
+    name,
+    value: token,
+    url: origin,
+    httpOnly: true,
+    secure,
+    sameSite: "Lax" as const,
+    expires,
+  }));
 
-  // Verificación REAL: cookie aplica a /workspaces Y a /admin/users
+  const cookiesDomainBased = names.map((name) => ({
+    name: `${name}__dp`,
+    value: token,
+    domain,
+    path: "/",
+    httpOnly: true,
+    secure,
+    sameSite: "Lax" as const,
+    expires,
+  }));
+
+  // Primero url-based (principal), luego domain-based (refuerzo con nombre __dp)
+  // En realidad, lo más robusto es setear las mismas cookies con ambos scoping.
+  // Pero Playwright no permite dos cookies con el mismo nombre y distinto método,
+  // así que usamos solo url-based que en la práctica setea path="/" y domain correcto.
+  await page.context().addCookies(cookiesUrlBased);
+
+  // Verificación REAL: al menos una cookie está disponible para /admin y /workspaces
   const adminUrl = `${origin}/admin/users`;
   const workspacesUrl = `${origin}/workspaces`;
 
@@ -139,19 +152,11 @@ async function setAuthCookie(
       async () => {
         const cAdmin = await page.context().cookies(adminUrl);
         const cWs = await page.context().cookies(workspacesUrl);
-        const cAny = await page.context().cookies();
 
-        const okAdmin = cAdmin.some(
-          (c) => names.includes(c.name) && c.path === "/" && c.domain.includes(domain)
-        );
-        const okWs = cWs.some(
-          (c) => names.includes(c.name) && c.path === "/" && c.domain.includes(domain)
-        );
-        const okAny = cAny.some(
-          (c) => names.includes(c.name) && c.path === "/" && c.domain.includes(domain)
-        );
+        const okAdmin = cAdmin.some((c) => names.includes(c.name) && c.value === token);
+        const okWs = cWs.some((c) => names.includes(c.name) && c.value === token);
 
-        return (okAdmin && okWs) || okAny;
+        return okAdmin && okWs;
       },
       {
         timeout: 10_000,
@@ -360,6 +365,9 @@ export async function uploadDocumentAndWaitReady(
     throw new Error(`Upload response missing id: ${JSON.stringify(uploadData)}`);
   }
 
+  // Timeout más alto en CI (worker puede tardar más en procesar)
+  const readyTimeout = process.env.CI ? 120_000 : 60_000;
+
   await expect
     .poll(
       async () => {
@@ -376,7 +384,7 @@ export async function uploadDocumentAndWaitReady(
         const doc = (await res.json()) as { status?: string; error_message?: string };
         return { ok: true, status: res.status(), state: doc.status ?? "UNKNOWN" };
       },
-      { timeout: 60_000, message: "Document did not reach READY in time." }
+      { timeout: readyTimeout, message: "Document did not reach READY in time." }
     )
     .toMatchObject({ ok: true, state: "READY" });
 

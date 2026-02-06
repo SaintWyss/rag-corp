@@ -29,6 +29,7 @@ export const options = {
     http_req_duration: ['p(95)<2000'],     // 95% < 2s
     ask_latency: ['p(95)<3000'],           // Ask < 3s
     health_latency: ['p(95)<100'],         // Health < 100ms
+    errors: ['rate<0.1'],                  // Custom error rate < 10%
   },
 };
 
@@ -98,6 +99,25 @@ export function setup() {
 
   if (!workspaceId) {
     throw new Error(`Workspace create missing id: ${workspaceRes.body}`);
+  }
+
+  // Ingest texto mínimo para que ask tenga contenido
+  const ingestRes = http.post(
+    `${BASE_URL}/v1/workspaces/${workspaceId}/ingest/text`,
+    JSON.stringify({
+      title: 'k6 seed document',
+      text: 'RAG significa Retrieval-Augmented Generation. Es una técnica que combina búsqueda semántica con generación de texto mediante LLMs. Los embeddings permiten representar texto como vectores numéricos para calcular similitud coseno.',
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (ingestRes.status !== 200 && ingestRes.status !== 201) {
+    console.warn(`Ingest text warning: ${ingestRes.status} ${ingestRes.body}`);
   }
 
   return { startTime: Date.now(), workspaceId, accessToken };

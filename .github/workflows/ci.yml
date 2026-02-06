@@ -267,6 +267,7 @@ jobs:
       MINIO_ROOT_PASSWORD: minioadmin
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
+      WORKER_HTTP_PORT: "8001"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -296,7 +297,7 @@ jobs:
             echo "S3_SECRET_KEY=minioadmin" >> "$GITHUB_ENV"
           fi
       - name: Start stack
-        run: docker compose --profile e2e --profile storage up -d --build
+        run: docker compose --profile e2e --profile worker --profile storage up -d --build
       - name: Wait for backend
         run: |
           for i in {1..30}; do
@@ -306,6 +307,15 @@ jobs:
             sleep 2
           done
           curl -sf http://localhost:8000/healthz
+      - name: Wait for worker readiness
+        run: |
+          for i in {1..30}; do
+            if docker compose exec -T worker python -c "import urllib.request as u; u.urlopen('http://localhost:8001/readyz')"; then
+              break
+            fi
+            sleep 2
+          done
+          docker compose exec -T worker python -c "import urllib.request as u; print(u.urlopen('http://localhost:8001/readyz').read().decode())"
       - name: Wait for MinIO readiness
         run: |
           for i in {1..30}; do
@@ -340,7 +350,7 @@ jobs:
             tests/e2e/test-results
       - name: Tear down stack
         if: always()
-        run: docker compose --profile e2e --profile storage down -v
+        run: docker compose --profile e2e --profile worker --profile storage down -v
 
   e2e-full:
     runs-on: ubuntu-latest
@@ -468,6 +478,7 @@ jobs:
       PGPORT: "5432"
       FAKE_LLM: "1"
       FAKE_EMBEDDINGS: "1"
+      GOOGLE_API_KEY: fake-key-for-ci
       E2E_SEED_ADMIN: "1"
       E2E_ADMIN_EMAIL: admin@example.com
       E2E_ADMIN_PASSWORD: admin
@@ -492,11 +503,21 @@ jobs:
           with psycopg.connect(url, autocommit=True) as conn:
               conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
           PY
+      - name: Run database migrations
+        run: cd apps/backend && alembic upgrade head
       - name: Start API server
         run: |
           cd apps/backend
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 10
+          echo "Waiting for API healthz..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:8000/healthz; then
+              echo "API ready"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://localhost:8000/healthz
       - name: Install k6
         run: |
           sudo gpg -k
