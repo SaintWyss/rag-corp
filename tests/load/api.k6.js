@@ -33,6 +33,8 @@ export const options = {
 };
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
+const ADMIN_EMAIL = __ENV.K6_ADMIN_EMAIL || 'admin@example.com';
+const ADMIN_PASSWORD = __ENV.K6_ADMIN_PASSWORD || 'admin';
 
 const testQueries = [
   '¿Qué es RAG?',
@@ -49,10 +51,37 @@ export function setup() {
     throw new Error(`API not healthy: ${healthRes.status}`);
   }
 
+  const loginRes = http.post(
+    `${BASE_URL}/auth/login`,
+    JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  if (loginRes.status !== 200) {
+    throw new Error(`Login failed: ${loginRes.status} ${loginRes.body}`);
+  }
+
+  let accessToken;
+  try {
+    const body = JSON.parse(loginRes.body);
+    accessToken = body.access_token;
+  } catch {
+    throw new Error(`Login response invalid JSON: ${loginRes.body}`);
+  }
+
+  if (!accessToken) {
+    throw new Error(`Login response missing access_token: ${loginRes.body}`);
+  }
+
   const workspaceRes = http.post(
     `${BASE_URL}/v1/workspaces`,
     JSON.stringify({ name: `k6-workspace-${Date.now()}` }),
-    { headers: { 'Content-Type': 'application/json' } }
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
   );
 
   if (workspaceRes.status !== 201) {
@@ -71,11 +100,12 @@ export function setup() {
     throw new Error(`Workspace create missing id: ${workspaceRes.body}`);
   }
 
-  return { startTime: Date.now(), workspaceId };
+  return { startTime: Date.now(), workspaceId, accessToken };
 }
 
 export default function (data) {
   const workspaceId = data.workspaceId;
+  const accessToken = data.accessToken;
   // Health check (20% of requests)
   if (Math.random() < 0.2) {
     const start = Date.now();
@@ -94,7 +124,10 @@ export default function (data) {
   const query = testQueries[Math.floor(Math.random() * testQueries.length)];
   const payload = JSON.stringify({ query, top_k: 3 });
   const params = {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
     timeout: '10s',
   };
 
