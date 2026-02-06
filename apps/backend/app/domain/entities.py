@@ -126,6 +126,9 @@ class Workspace:
     owner_user_id: Optional[UUID] = None
     description: Optional[str] = None
 
+    # Full-text search
+    fts_language: str = "spanish"
+
     # Control de acceso
     allowed_roles: List[str] = field(default_factory=list)
     shared_user_ids: List[UUID] = field(default_factory=list)
@@ -147,6 +150,21 @@ class Workspace:
     def unarchive(self) -> None:
         """Des-archiva el workspace."""
         self.archived_at = None
+
+
+# ---------------------------------------------------------------------------
+# FTS Language (allowlist + validación)
+# ---------------------------------------------------------------------------
+
+FTS_ALLOWED_LANGUAGES: frozenset[str] = frozenset({"spanish", "english", "simple"})
+FTS_DEFAULT_LANGUAGE: str = "spanish"
+
+
+def validate_fts_language(lang: str | None) -> str:
+    """Retorna lang válido o default. Nunca falla."""
+    if lang and lang in FTS_ALLOWED_LANGUAGES:
+        return lang
+    return FTS_DEFAULT_LANGUAGE
 
 
 # ---------------------------------------------------------------------------
