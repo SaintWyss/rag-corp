@@ -44,6 +44,10 @@ Desktop.ini
 .project
 .classpath
 .settings/
+rs.code-workspace
+audit_report_pr1.md
+surfsense_audit.md
+docs/architecture/surfsense-audit-rag-enhancements.md
 
 # -----------------------------------------------------------------------------
 # Node.js
