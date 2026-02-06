@@ -34,5 +34,6 @@
         "**/coverage/**",
         "**/.coverage",
         "**/coverage.xml"
-    ]
+    ],
+    "remote.autoForwardPortsFallback": 0
 }
