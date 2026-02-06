@@ -43,7 +43,6 @@ def _make_use_case(
     )
 
     mock_acl_repo = Mock(spec=WorkspaceAclRepository)
-    mock_acl_repo.get_acl_entry.return_value = None
 
     return SearchChunksUseCase(
         repository=mock_repo,
@@ -155,18 +154,22 @@ class TestTwoTierRetrieval:
         """Chunks retornados en orden de similitud (descendente)."""
         mock_resolve.return_value = (Mock(), None)
         nodes = [_make_node(0, span_start=0, span_end=2)]
-        # Chunks with different embeddings → different similarity scores
+        # Chunks with different embeddings → different cosine similarity scores.
+        # Note: uniform vectors like [c]*N always have cosine=1.0 regardless of c,
+        # so we use a mixed vector to get a genuinely lower similarity.
+        low_emb = [0.5] * 384 + [-0.5] * 384  # diverges from query direction
+        high_emb = [0.5] * 768  # identical direction to query
         span_chunks = [
             Chunk(
                 content="Chunk low",
-                embedding=[0.1] * 768,
+                embedding=low_emb,
                 document_id=_DOC_ID,
                 chunk_index=0,
                 chunk_id=uuid4(),
             ),
             Chunk(
                 content="Chunk high",
-                embedding=[0.5] * 768,
+                embedding=high_emb,
                 document_id=_DOC_ID,
                 chunk_index=1,
                 chunk_id=uuid4(),
@@ -180,7 +183,7 @@ class TestTwoTierRetrieval:
             SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None)
         )
 
-        # The chunk with embedding [0.5]*768 should rank higher (closer to query [0.5]*768)
+        # "Chunk high" (same direction as query) should rank first
         if result.matches:
             assert result.matches[0].content == "Chunk high"
 

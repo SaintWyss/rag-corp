@@ -41,7 +41,8 @@ def upgrade() -> None:
     Crea tabla nodes + columna embedding + índices para 2-tier retrieval.
     """
     # 1) Tabla nodes (sin embedding aún)
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE nodes (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -53,7 +54,8 @@ def upgrade() -> None:
             metadata JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
-    """)
+    """
+    )
 
     # 2) Columna embedding vector(768)
     op.execute("ALTER TABLE nodes ADD COLUMN embedding vector(768) NOT NULL")

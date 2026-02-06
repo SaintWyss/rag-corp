@@ -10,12 +10,12 @@ El pipeline de retrieval actual opera a nivel de chunks individuales. Para docum
 
 ### Opciones evaluadas
 
-| Opcion                                      | Pros                                                  | Contras                                                       |
-| ------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
-| Single-tier chunks (status quo)             | Simple, funcional, zero overhead                      | Pierde contexto de sección, chunks dispersos                  |
-| Chunks más grandes                          | Más contexto por chunk                                | Pierde granularidad, embeddings menos precisos                |
-| LLM summarization por sección              | Resúmenes semánticos de alta calidad                  | No determinístico, costoso, rompe CI con fake embeddings      |
-| **Nodos determinísticos (concatenación)**   | Determinístico, sin costo API extra, feature-flagged  | Concatenación naïve, no captura jerarquía semántica real      |
+| Opcion                                    | Pros                                                 | Contras                                                  |
+| ----------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
+| Single-tier chunks (status quo)           | Simple, funcional, zero overhead                     | Pierde contexto de sección, chunks dispersos             |
+| Chunks más grandes                        | Más contexto por chunk                               | Pierde granularidad, embeddings menos precisos           |
+| LLM summarization por sección             | Resúmenes semánticos de alta calidad                 | No determinístico, costoso, rompe CI con fake embeddings |
+| **Nodos determinísticos (concatenación)** | Determinístico, sin costo API extra, feature-flagged | Concatenación naïve, no captura jerarquía semántica real |
 
 ## Decisión
 

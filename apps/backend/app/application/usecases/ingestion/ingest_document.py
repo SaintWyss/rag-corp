@@ -522,7 +522,7 @@ class IngestDocumentUseCase:
             return None
 
         try:
-            from ...application.node_builder import build_nodes
+            from ...node_builder import build_nodes
 
             return build_nodes(
                 document_id=document_id,

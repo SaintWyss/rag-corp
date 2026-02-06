@@ -419,7 +419,7 @@ class ProcessUploadedDocumentUseCase:
             return
 
         try:
-            from ...application.node_builder import build_nodes
+            from ...node_builder import build_nodes
 
             # Borrar nodos previos (re-procesamiento seguro)
             self._documents.delete_nodes_for_document(
