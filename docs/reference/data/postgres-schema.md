@@ -32,14 +32,14 @@ RAG Corp uses PostgreSQL with the `pgvector` extension to store document chunks 
 
 ### Key Tables
 
-| Table | Purpose | Records |
-|-------|---------|---------|
-| `documents` | Document metadata + upload status | 1K-1M |
-| `chunks` | Document chunks with embeddings | 10K-1M |
-| `users` | JWT users (admin/employee) | 10-10K |
-| `workspaces` | Containers de documentos por owner/visibilidad | 1K-1M |
-| `workspace_acl` | ACL por workspace/usuario | 1K-1M |
-| `audit_events` | Audit trail | 1K-1M |
+| Table           | Purpose                                        | Records |
+| --------------- | ---------------------------------------------- | ------- |
+| `documents`     | Document metadata + upload status              | 1K-1M   |
+| `chunks`        | Document chunks with embeddings                | 10K-1M  |
+| `users`         | JWT users (admin/employee)                     | 10-10K  |
+| `workspaces`    | Containers de documentos por owner/visibilidad | 1K-1M   |
+| `workspace_acl` | ACL por workspace/usuario                      | 1K-1M   |
+| `audit_events`  | Audit trail                                    | 1K-1M   |
 
 ---
 
@@ -53,6 +53,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 **Purpose:** Adds support for:
+
 - `vector` data type (for embeddings)
 - Vector distance operators (`<=>`, `<->`, `<#>`)
 - Vector indexes (IVFFlat, HNSW)
@@ -86,23 +87,23 @@ CHECK (status IS NULL OR status IN ('PENDING', 'PROCESSING', 'READY', 'FAILED'))
 
 **Column Details:**
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `id` | UUID | NO | Document identifier |
-| `title` | TEXT | NO | Document title |
-| `source` | TEXT | YES | Optional source URL/identifier |
-| `metadata` | JSONB | NO | Custom metadata |
-| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
-| `deleted_at` | TIMESTAMPTZ | YES | Soft delete timestamp |
-| `file_name` | TEXT | YES | Nombre de archivo subido |
-| `mime_type` | TEXT | YES | MIME del archivo |
-| `storage_key` | TEXT | YES | Key en S3/MinIO |
-| `uploaded_by_user_id` | UUID | YES | Usuario que subio el archivo |
-| `workspace_id` | UUID | NO | Workspace asociado |
-| `status` | TEXT | YES | PENDING/PROCESSING/READY/FAILED |
-| `error_message` | TEXT | YES | Error de procesamiento |
-| `tags` | TEXT[] | NO | Tags normalizados |
-| `allowed_roles` | TEXT[] | YES | ACL por rol (admin/employee) |
+| Column                | Type        | Nullable | Description                     |
+| --------------------- | ----------- | -------- | ------------------------------- |
+| `id`                  | UUID        | NO       | Document identifier             |
+| `title`               | TEXT        | NO       | Document title                  |
+| `source`              | TEXT        | YES      | Optional source URL/identifier  |
+| `metadata`            | JSONB       | NO       | Custom metadata                 |
+| `created_at`          | TIMESTAMPTZ | NO       | Creation timestamp              |
+| `deleted_at`          | TIMESTAMPTZ | YES      | Soft delete timestamp           |
+| `file_name`           | TEXT        | YES      | Nombre de archivo subido        |
+| `mime_type`           | TEXT        | YES      | MIME del archivo                |
+| `storage_key`         | TEXT        | YES      | Key en S3/MinIO                 |
+| `uploaded_by_user_id` | UUID        | YES      | Usuario que subio el archivo    |
+| `workspace_id`        | UUID        | NO       | Workspace asociado              |
+| `status`              | TEXT        | YES      | PENDING/PROCESSING/READY/FAILED |
+| `error_message`       | TEXT        | YES      | Error de procesamiento          |
+| `tags`                | TEXT[]      | NO       | Tags normalizados               |
+| `allowed_roles`       | TEXT[]      | YES      | ACL por rol (admin/employee)    |
 
 ### Table: users
 
@@ -122,14 +123,14 @@ CHECK (role IN ('admin', 'employee'));
 
 **Column Details:**
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `id` | UUID | NO | User identifier |
-| `email` | TEXT | NO | Unique email |
-| `password_hash` | TEXT | NO | Argon2 hash |
-| `role` | TEXT | NO | admin/employee |
-| `is_active` | BOOLEAN | NO | Soft disable |
-| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+| Column          | Type        | Nullable | Description        |
+| --------------- | ----------- | -------- | ------------------ |
+| `id`            | UUID        | NO       | User identifier    |
+| `email`         | TEXT        | NO       | Unique email       |
+| `password_hash` | TEXT        | NO       | Argon2 hash        |
+| `role`          | TEXT        | NO       | admin/employee     |
+| `is_active`     | BOOLEAN     | NO       | Soft disable       |
+| `created_at`    | TIMESTAMPTZ | NO       | Creation timestamp |
 
 ### Table: workspaces
 
@@ -154,16 +155,16 @@ UNIQUE (owner_user_id, name);
 
 **Column Details:**
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `id` | UUID | NO | Workspace identifier |
-| `name` | TEXT | NO | Workspace name |
-| `description` | TEXT | YES | Optional description |
-| `visibility` | TEXT | NO | PRIVATE/ORG_READ/SHARED |
-| `owner_user_id` | UUID | NO | Owner user |
-| `archived_at` | TIMESTAMPTZ | YES | Archive timestamp |
-| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NO | Update timestamp |
+| Column          | Type        | Nullable | Description             |
+| --------------- | ----------- | -------- | ----------------------- |
+| `id`            | UUID        | NO       | Workspace identifier    |
+| `name`          | TEXT        | NO       | Workspace name          |
+| `description`   | TEXT        | YES      | Optional description    |
+| `visibility`    | TEXT        | NO       | PRIVATE/ORG_READ/SHARED |
+| `owner_user_id` | UUID        | NO       | Owner user              |
+| `archived_at`   | TIMESTAMPTZ | YES      | Archive timestamp       |
+| `created_at`    | TIMESTAMPTZ | NO       | Creation timestamp      |
+| `updated_at`    | TIMESTAMPTZ | NO       | Update timestamp        |
 
 ### Table: workspace_acl
 
@@ -184,12 +185,12 @@ CHECK (access IN ('READ'));
 
 **Column Details:**
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `workspace_id` | UUID | NO | Workspace reference |
-| `user_id` | UUID | NO | User reference |
-| `access` | TEXT | NO | Access level (READ) |
-| `created_at` | TIMESTAMPTZ | NO | Creation timestamp |
+| Column         | Type        | Nullable | Description         |
+| -------------- | ----------- | -------- | ------------------- |
+| `workspace_id` | UUID        | NO       | Workspace reference |
+| `user_id`      | UUID        | NO       | User reference      |
+| `access`       | TEXT        | NO       | Access level (READ) |
+| `created_at`   | TIMESTAMPTZ | NO       | Creation timestamp  |
 
 ### Table: audit_events
 
@@ -206,14 +207,14 @@ CREATE TABLE audit_events (
 
 **Column Details:**
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `id` | UUID | NO | Audit event ID |
-| `actor` | TEXT | NO | `user:<id>` o `service:<hash>` |
-| `action` | TEXT | NO | Evento (`documents.upload`, `auth.login`, etc.) |
-| `target_id` | UUID | YES | Entidad afectada |
-| `metadata` | JSONB | NO | Metadata asociada |
-| `created_at` | TIMESTAMPTZ | NO | Timestamp |
+| Column       | Type        | Nullable | Description                                     |
+| ------------ | ----------- | -------- | ----------------------------------------------- |
+| `id`         | UUID        | NO       | Audit event ID                                  |
+| `actor`      | TEXT        | NO       | `user:<id>` o `service:<hash>`                  |
+| `action`     | TEXT        | NO       | Evento (`documents.upload`, `auth.login`, etc.) |
+| `target_id`  | UUID        | YES      | Entidad afectada                                |
+| `metadata`   | JSONB       | NO       | Metadata asociada                               |
+| `created_at` | TIMESTAMPTZ | NO       | Timestamp                                       |
 
 ### Table: chunks
 
@@ -233,15 +234,15 @@ CREATE TABLE chunks (
 
 **Column Details:**
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `id` | UUID | NO | Chunk identifier |
-| `document_id` | UUID | NO | Parent document |
-| `chunk_index` | INTEGER | NO | Chunk position in document (0-based) |
-| `content` | TEXT | NO | Chunk text content (typically 900 chars) |
-| `embedding` | vector(768) | NO | 768-dimensional embedding vector |
-| `metadata` | JSONB | NO | Chunk metadata |
-| `created_at` | TIMESTAMPTZ | NO | Insertion timestamp |
+| Column        | Type        | Nullable | Description                              |
+| ------------- | ----------- | -------- | ---------------------------------------- |
+| `id`          | UUID        | NO       | Chunk identifier                         |
+| `document_id` | UUID        | NO       | Parent document                          |
+| `chunk_index` | INTEGER     | NO       | Chunk position in document (0-based)     |
+| `content`     | TEXT        | NO       | Chunk text content (typically 900 chars) |
+| `embedding`   | vector(768) | NO       | 768-dimensional embedding vector         |
+| `metadata`    | JSONB       | NO       | Chunk metadata                           |
+| `created_at`  | TIMESTAMPTZ | NO       | Insertion timestamp                      |
 
 **Design Decisions:**
 
@@ -253,7 +254,7 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-Note: Alembic creates `chunks_embedding_idx` and the workspace indexes below. Primary keys and the `users.email` unique index are implicit, and the optional indexes below are not created by default.
+Note: Alembic creates `ix_chunks_embedding_hnsw` (migration 002) and the workspace indexes below. Primary keys and the `users.email` unique index are implicit, and the optional indexes below are not created by default.
 
 ### Primary Key Indexes (Implicit)
 
@@ -265,30 +266,37 @@ Note: Alembic creates `chunks_embedding_idx` and the workspace indexes below. Pr
 **Type:** B-tree  
 **Usage:** `SELECT * FROM documents WHERE id = '...'`
 
-### Vector Similarity Index (IVFFlat)
+### Vector Similarity Index (HNSW)
+
+> **Nota**: Migrado de IVFFlat a HNSW en migración `002_hnsw_vector_index`. Ver [ADR-011](../../architecture/adr/ADR-011-hnsw-vector-index.md).
 
 ```sql
--- Create IVFFlat index for approximate nearest neighbor search
-CREATE INDEX chunks_embedding_idx 
-ON chunks 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+-- HNSW index for approximate nearest neighbor search
+CREATE INDEX ix_chunks_embedding_hnsw
+ON chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 ```
 
 **Parameters:**
-- **Type:** IVFFlat (Inverted File with Flat compression)
+
+- **Type:** HNSW (Hierarchical Navigable Small World)
 - **Operator:** `vector_cosine_ops` (cosine distance)
-- **Lists:** 100 (number of clusters)
+- **m:** 16 (connections per node, default)
+- **ef_construction:** 64 (build quality, default)
 
-**Tuning Guidelines:**
-- **Lists:** `sqrt(num_rows)` is a good starting point
-- For 10K rows: `lists = 100` (√10,000)
-- For 100K rows: `lists = 300` (√100,000)
-- For 1M rows: `lists = 1000` (√1,000,000)
+**Advantages over IVFFlat:**
 
-**Trade-offs:**
-- More lists → Better recall, slower index build
-- Fewer lists → Faster queries, lower recall
+- Better recall at same latency levels
+- No periodic REINDEX needed after inserts/deletes
+- Single query-time knob (`hnsw.ef_search`) vs IVFFlat's `lists` + `probes`
+
+**Query-time Tuning:**
+
+```sql
+-- Default ef_search = 40. Increase for better recall.
+SET hnsw.ef_search = 100;
+```
 
 ### Document ID Index (Optional)
 
@@ -341,11 +349,11 @@ CREATE INDEX ix_workspace_acl_user_id ON workspace_acl (user_id);
 
 pgvector provides three distance operators:
 
-| Operator | Distance Metric | Formula | Use Case |
-|----------|-----------------|---------|----------|
-| `<=>` | **Cosine distance** | `1 - cos(θ)` | Text similarity (preferred) |
-| `<->` | Euclidean (L2) | `√Σ(a - b)²` | Geometric distance |
-| `<#>` | Inner product | `-Σ(a × b)` | Normalized vectors |
+| Operator | Distance Metric     | Formula      | Use Case                    |
+| -------- | ------------------- | ------------ | --------------------------- |
+| `<=>`    | **Cosine distance** | `1 - cos(θ)` | Text similarity (preferred) |
+| `<->`    | Euclidean (L2)      | `√Σ(a - b)²` | Geometric distance          |
+| `<#>`    | Inner product       | `-Σ(a × b)`  | Normalized vectors          |
 
 **Recommendation:** Use `<=>` (cosine distance) for text embeddings.
 
@@ -355,7 +363,7 @@ Cosine distance returns `0-2` (0 = identical, 2 = opposite).
 Convert to similarity score (0-1):
 
 ```sql
-SELECT 
+SELECT
     id,
     content,
     1 - (embedding <=> query_embedding) AS similarity
@@ -365,6 +373,7 @@ LIMIT 5;
 ```
 
 **Similarity Interpretation:**
+
 - `> 0.9`: Highly similar
 - `0.7-0.9`: Relevant
 - `0.5-0.7`: Somewhat related
@@ -401,7 +410,7 @@ VALUES (
 Find top-5 most similar chunks to a query embedding:
 
 ```sql
-SELECT 
+SELECT
     id,
     document_id,
     chunk_index,
@@ -413,14 +422,14 @@ ORDER BY embedding <=> '[0.1, 0.2, 0.3, ...]'::vector
 LIMIT 5;
 ```
 
-**Performance:** ~10ms for 50K chunks (with IVFFlat index)
+**Performance:** ~5-15ms for 50K chunks (with HNSW index)
 
 ### 3. Hybrid Query (Vector + Metadata Filter)
 
 Search within a specific document:
 
 ```sql
-SELECT 
+SELECT
     id,
     chunk_index,
     content,
@@ -464,7 +473,7 @@ For debugging or benchmarking:
 ```sql
 SET enable_indexscan = OFF;  -- Disable index, force sequential scan
 
-SELECT 
+SELECT
     id,
     content,
     1 - (embedding <=> $1::vector) AS similarity
@@ -481,27 +490,30 @@ LIMIT 5;
 
 ### Index Build
 
-**Initial Build:**
+**Initial Build (HNSW):**
+
 ```sql
--- Takes 5-10 minutes for 100K rows
-CREATE INDEX chunks_embedding_idx 
-ON chunks 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+-- Takes ~1-5 minutes for 100K rows (slower than IVFFlat but better recall)
+CREATE INDEX ix_chunks_embedding_hnsw
+ON chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 ```
 
 **Parallel Workers:**
+
 ```sql
 SET max_parallel_maintenance_workers = 4;
-CREATE INDEX CONCURRENTLY chunks_embedding_idx ...;
+CREATE INDEX CONCURRENTLY ix_chunks_embedding_hnsw ...;
 ```
 
 ### Query Performance
 
-**Set probes at query time:**
+**Set ef_search at query time:**
+
 ```sql
--- Default: probes = lists / 10 (e.g., 10 for lists=100)
-SET ivfflat.probes = 20;  -- Increase for better recall
+-- Default: ef_search = 40
+SET hnsw.ef_search = 100;  -- Increase for better recall
 
 SELECT ...
 FROM chunks
@@ -510,12 +522,14 @@ LIMIT 5;
 ```
 
 **Trade-offs:**
-- More probes → Better recall, slower queries
-- Fewer probes → Faster queries, lower recall
+
+- Higher ef_search → Better recall, slower queries
+- Lower ef_search → Faster queries, lower recall
 
 **Recommended:**
-- Development: `probes = 20` (better accuracy)
-- Production: `probes = 10` (faster queries)
+
+- Development: `ef_search = 100` (better accuracy)
+- Production: `ef_search = 40` (default, balanced)
 
 ### Query Plan Analysis
 
@@ -528,7 +542,8 @@ LIMIT 5;
 ```
 
 **Look for:**
-- `Index Scan using chunks_embedding_idx` ✅ (good)
+
+- `Index Scan using ix_chunks_embedding_hnsw` ✅ (good)
 - `Seq Scan on chunks` ❌ (bad: no index used)
 
 ### Statistics Update
@@ -575,19 +590,19 @@ Run weekly or after large deletions.
 ### Index Rebuild
 
 ```sql
--- Rebuild index (if corrupted or after bulk updates)
-DROP INDEX chunks_embedding_idx;
-CREATE INDEX chunks_embedding_idx 
-ON chunks 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+-- Rebuild HNSW index (if corrupted or after major schema changes)
+DROP INDEX ix_chunks_embedding_hnsw;
+CREATE INDEX ix_chunks_embedding_hnsw
+ON chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 ```
 
 ### Monitor Index Health
 
 ```sql
 -- Check index size
-SELECT 
+SELECT
     indexname,
     pg_size_pretty(pg_relation_size(indexname::regclass)) AS size
 FROM pg_indexes
@@ -617,18 +632,18 @@ CREATE INDEX chunks_user_id_idx ON chunks (user_id);
 ### Change Vector Dimension (Requires Recreation)
 
 ```sql
--- Drop old index
-DROP INDEX chunks_embedding_idx;
+-- Drop HNSW index
+DROP INDEX ix_chunks_embedding_hnsw;
 
 -- Alter column (drops data!)
 ALTER TABLE chunks
 ALTER COLUMN embedding TYPE vector(1024);
 
--- Recreate index
-CREATE INDEX chunks_embedding_idx 
-ON chunks 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+-- Recreate HNSW index
+CREATE INDEX ix_chunks_embedding_hnsw
+ON chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 ```
 
 **Warning:** Changing vector dimension requires re-embedding all documents.
@@ -672,11 +687,11 @@ RAG Corp uses `psycopg_pool` for connection pooling. This reduces connection ove
 
 Pool settings are controlled via environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_POOL_MIN_SIZE` | 2 | Minimum idle connections |
-| `DB_POOL_MAX_SIZE` | 10 | Maximum connections |
-| `DB_STATEMENT_TIMEOUT_MS` | 30000 | Query timeout (ms) |
+| Variable                  | Default | Description              |
+| ------------------------- | ------- | ------------------------ |
+| `DB_POOL_MIN_SIZE`        | 2       | Minimum idle connections |
+| `DB_POOL_MAX_SIZE`        | 10      | Maximum connections      |
+| `DB_STATEMENT_TIMEOUT_MS` | 30000   | Query timeout (ms)       |
 
 ### Pool Initialization
 
@@ -708,27 +723,31 @@ with pool.connection() as conn:
 
 ### Sizing Guidelines
 
-| Workload | Min Size | Max Size | Notes |
-|----------|----------|----------|-------|
-| Development | 2 | 10 | Default settings |
-| Light production | 5 | 20 | Small instance |
-| Heavy production | 10 | 50 | High concurrency |
+| Workload         | Min Size | Max Size | Notes            |
+| ---------------- | -------- | -------- | ---------------- |
+| Development      | 2        | 10       | Default settings |
+| Light production | 5        | 20       | Small instance   |
+| Heavy production | 10       | 50       | High concurrency |
 
 **Formula:** `max_size = num_workers * 2` (for sync workers)
 
 ### Troubleshooting
 
 **Pool exhaustion:**
+
 ```
 psycopg_pool.PoolTimeout: getconn timeout
 ```
+
 - Increase `DB_POOL_MAX_SIZE`
 - Check for connection leaks (unclosed connections)
 
 **Connection refused:**
+
 ```
 psycopg.OperationalError: could not connect
 ```
+
 - Verify PostgreSQL is running
 - Check `DATABASE_URL` is correct
 
@@ -783,65 +802,50 @@ except QueryCanceled:
 
 ---
 
-## pgvector Index Reindexing
+## pgvector Index Maintenance
 
-When to rebuild the IVFFlat index:
+> **Nota**: Con HNSW, el reindexing periódico ya no es necesario (a diferencia de IVFFlat). HNSW mantiene la calidad del índice automáticamente tras inserts/deletes. Solo reconstruir si el índice se corrompe o si se cambian los parámetros `m`/`ef_construction`.
 
-### Signs You Need Reindexing
+### Signs You Need Rebuild
 
-1. **Query performance degraded** after many inserts/deletes
-2. **Recall dropped** (relevant results not appearing)
-3. **Index bloat** (index size > 2x expected)
+1. **Index corruption** after crash or hardware failure
+2. **Parameter change** (new `m` or `ef_construction` values)
+3. **Index bloat** (check with `pg_relation_size`)
 
-### Reindex Procedure
+### Rebuild Procedure
 
 ```sql
 -- 1. Check current index status
-SELECT 
+SELECT
     indexname,
     pg_size_pretty(pg_relation_size(indexname::regclass)) AS size
 FROM pg_indexes
 WHERE tablename = 'chunks';
 
--- 2. Drop old index
-DROP INDEX chunks_embedding_idx;
+-- 2. Drop and recreate
+DROP INDEX ix_chunks_embedding_hnsw;
+CREATE INDEX ix_chunks_embedding_hnsw
+ON chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 
--- 3. Calculate optimal lists based on row count
-SELECT COUNT(*) AS row_count, 
-       SQRT(COUNT(*))::int AS recommended_lists 
-FROM chunks;
-
--- 4. Rebuild with optimal settings
-CREATE INDEX chunks_embedding_idx 
-ON chunks 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);  -- Adjust based on row count
-
--- 5. Update statistics
+-- 3. Update statistics
 ANALYZE chunks;
 ```
 
-### Concurrent Reindexing (Production)
+### Concurrent Rebuild (Production)
 
 ```sql
 -- Avoid locking the table
-CREATE INDEX CONCURRENTLY chunks_embedding_idx_new
-ON chunks 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+CREATE INDEX CONCURRENTLY ix_chunks_embedding_hnsw_new
+ON chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 
 -- Swap indexes
-DROP INDEX chunks_embedding_idx;
-ALTER INDEX chunks_embedding_idx_new RENAME TO chunks_embedding_idx;
+DROP INDEX ix_chunks_embedding_hnsw;
+ALTER INDEX ix_chunks_embedding_hnsw_new RENAME TO ix_chunks_embedding_hnsw;
 ```
-
-### Scheduling
-
-| Data Growth | Reindex Frequency |
-|-------------|-------------------|
-| < 10% monthly | Quarterly |
-| 10-50% monthly | Monthly |
-| > 50% monthly | Weekly |
 
 ---
 
@@ -850,7 +854,9 @@ ALTER INDEX chunks_embedding_idx_new RENAME TO chunks_embedding_idx;
 - **pgvector GitHub:** https://github.com/pgvector/pgvector
 - **pgvector Performance Guide:** https://github.com/pgvector/pgvector#performance
 - **PostgreSQL Docs:** https://www.postgresql.org/docs/16/
-- **Alembic Migration:** [apps/backend/alembic/versions/001_foundation.py](../../../apps/backend/alembic/versions/001_foundation.py)
+- **Alembic Migrations:**
+  - [001_foundation.py](../../../apps/backend/alembic/versions/001_foundation.py) — Schema base
+  - [002_hnsw_vector_index.py](../../../apps/backend/alembic/versions/002_hnsw_vector_index.py) — HNSW index
 - **Init SQL (pgvector extension):** [infra/postgres/init.sql](../../../infra/postgres/init.sql)
 
 ---

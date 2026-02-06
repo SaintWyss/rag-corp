@@ -4,11 +4,14 @@
 
 **Aceptado** (2024-12)
 
+> **Nota (2026-02):** El índice IVFFlat fue reemplazado por HNSW en [ADR-011](./ADR-011-hnsw-vector-index.md). La decisión de usar pgvector como vector store sigue vigente.
+
 ## Contexto
 
 El sistema RAG requiere almacenamiento de embeddings (768 dimensiones) y búsqueda por similitud coseno eficiente.
 
 Opciones evaluadas:
+
 - Pinecone (SaaS)
 - Weaviate (self-hosted)
 - Qdrant (self-hosted)
@@ -34,18 +37,18 @@ CREATE TABLE chunks (
 );
 
 -- Índice IVFFlat para búsqueda aproximada
-CREATE INDEX chunks_embedding_idx 
+CREATE INDEX chunks_embedding_idx
   ON chunks USING ivfflat (embedding vector_cosine_ops)
   WITH (lists = 100);
 ```
 
 ### Parámetros clave
 
-| Parámetro | Valor | Razón |
-|-----------|-------|-------|
-| Dimensiones | 768 | Google text-embedding-004 |
-| Índice | IVFFlat | Balance precisión/velocidad <10M vectores |
-| Lists | 100 | Apropiado para ~100K-1M chunks |
+| Parámetro   | Valor   | Razón                                     |
+| ----------- | ------- | ----------------------------------------- |
+| Dimensiones | 768     | Google text-embedding-004                 |
+| Índice      | IVFFlat | Balance precisión/velocidad <10M vectores |
+| Lists       | 100     | Apropiado para ~100K-1M chunks            |
 
 ## Consecuencias
 
@@ -65,6 +68,7 @@ CREATE INDEX chunks_embedding_idx
 ## Migración futura
 
 Si superamos 10M vectores:
+
 1. Migrar a índice HNSW (disponible en pgvector 0.5+)
 2. Evaluar Qdrant/Weaviate si latencia crítica
 
