@@ -522,14 +522,7 @@ export const WorkspaceVisibility = {
   SHARED: 'SHARED',
 } as const;
 
-/**
- * Listado de workspaces.
- */
 export interface WorkspacesListRes {
-  workspaces: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes[];
-}
-
-export interface AppApiAdminRoutesWorkspacesListRes {
   workspaces: WorkspaceRes[];
 }
 
@@ -556,6 +549,13 @@ export interface AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes {
   created_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResCreatedAt;
   updated_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResUpdatedAt;
   archived_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResArchivedAt;
+}
+
+/**
+ * Listado de workspaces.
+ */
+export interface AppInterfacesApiHttpSchemasWorkspacesWorkspacesListRes {
+  workspaces: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes[];
 }
 
 export type ListWorkspacesV1WorkspacesGetParams = {
@@ -656,7 +656,7 @@ export type HTTPStatusCodes = HTTPStatusCode1xx | HTTPStatusCode2xx | HTTPStatus
  * @summary List Workspaces
  */
 export type listWorkspacesV1WorkspacesGetResponse200 = {
-  data: WorkspacesListRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspacesListRes
   status: 200
 }
 
@@ -3145,7 +3145,7 @@ export const adminCreateWorkspaceAdminWorkspacesPost = async (adminCreateWorkspa
  * @summary Listar workspaces por usuario (admin)
  */
 export type adminListUserWorkspacesAdminUsersUserIdWorkspacesGetResponse200 = {
-  data: AppApiAdminRoutesWorkspacesListRes
+  data: WorkspacesListRes
   status: 200
 }
 
@@ -3243,7 +3243,7 @@ export const adminListUserWorkspacesAdminUsersUserIdWorkspacesGet = async (userI
  * @summary List Workspaces
  */
 export type listWorkspacesApiV1WorkspacesGetResponse200 = {
-  data: WorkspacesListRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspacesListRes
   status: 200
 }
 
