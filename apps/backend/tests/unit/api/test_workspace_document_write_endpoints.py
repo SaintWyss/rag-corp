@@ -88,8 +88,8 @@ def _override_workspace_use_case(app: FastAPI, routes_module, workspace: Workspa
         workspace_repository=workspace_repo,
         acl_repository=acl_repo,
     )
-    app.dependency_overrides[routes_module.get_get_workspace_use_case] = (
-        lambda: use_case
+    app.dependency_overrides[routes_module.get_get_workspace_use_case] = lambda: (
+        use_case
     )
     return workspace_repo
 
@@ -108,8 +108,8 @@ def _override_upload_use_case(
         storage=mock_storage,
         queue=mock_queue,
     )
-    app.dependency_overrides[routes_module.get_upload_document_use_case] = (
-        lambda: use_case
+    app.dependency_overrides[routes_module.get_upload_document_use_case] = lambda: (
+        use_case
     )
 
 
@@ -123,8 +123,8 @@ def _override_delete_use_case(
         document_repository=mock_repo,
         workspace_repository=workspace_repo,
     )
-    app.dependency_overrides[routes_module.get_delete_document_use_case] = (
-        lambda: use_case
+    app.dependency_overrides[routes_module.get_delete_document_use_case] = lambda: (
+        use_case
     )
 
 
@@ -140,8 +140,8 @@ def _override_reprocess_use_case(
         workspace_repository=workspace_repo,
         queue=mock_queue,
     )
-    app.dependency_overrides[routes_module.get_reprocess_document_use_case] = (
-        lambda: use_case
+    app.dependency_overrides[routes_module.get_reprocess_document_use_case] = lambda: (
+        use_case
     )
 
 
