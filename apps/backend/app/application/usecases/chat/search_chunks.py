@@ -59,6 +59,7 @@ Collaborators:
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 from typing import Final
@@ -104,6 +105,7 @@ _META_RERANK_CANDIDATES: Final[str] = "candidates_count"
 _META_RERANK_RERANKED: Final[str] = "reranked_count"
 _META_RERANK_SELECTED: Final[str] = "selected_top_k"
 _META_HYBRID_USED: Final[str] = "hybrid_used"
+_META_2TIER_USED: Final[str] = "2tier_used"
 
 
 @dataclass(frozen=True)
@@ -146,6 +148,8 @@ class SearchChunksUseCase:
         rerank_max_candidates: int = _DEFAULT_RERANK_MAX_CANDIDATES,
         enable_hybrid_search: bool = False,
         rank_fusion: RankFusionService | None = None,
+        enable_2tier_retrieval: bool = False,
+        node_top_k: int = 10,
     ) -> None:
         self._documents = repository
         self._workspaces = workspace_repository
@@ -165,6 +169,10 @@ class SearchChunksUseCase:
         # Config de hybrid search (dense + sparse + RRF).
         self._enable_hybrid_search = enable_hybrid_search
         self._rank_fusion = rank_fusion
+
+        # Config de 2-tier retrieval (nodes → chunks).
+        self._enable_2tier_retrieval = enable_2tier_retrieval
+        self._node_top_k = node_top_k
 
     def execute(self, input_data: SearchChunksInput) -> SearchChunksResult:
         """
@@ -316,9 +324,17 @@ class SearchChunksUseCase:
         """
         Recupera chunks usando dense retrieval (similarity/MMR).
 
+        Si 2-tier retrieval está habilitado, delega a _retrieve_chunks_2tier.
         Si hybrid search está habilitado, también ejecuta sparse retrieval
         (full-text search) y fusiona ambos rankings con RRF.
         """
+        if self._2tier_enabled():
+            return self._retrieve_chunks_2tier(
+                embedding=embedding,
+                workspace_id=workspace_id,
+                top_k=top_k,
+            )
+
         from ....crosscutting.metrics import (
             observe_dense_latency,
             observe_fusion_latency,
@@ -422,6 +438,92 @@ class SearchChunksUseCase:
         Requiere flag habilitado y RankFusionService inyectado.
         """
         return bool(self._enable_hybrid_search and self._rank_fusion is not None)
+
+    def _2tier_enabled(self) -> bool:
+        """Feature flag efectiva de 2-tier retrieval."""
+        return bool(self._enable_2tier_retrieval)
+
+    def _retrieve_chunks_2tier(
+        self,
+        *,
+        embedding: list[float],
+        workspace_id: UUID,
+        top_k: int,
+    ):
+        """
+        Retrieval jerárquico 2-tier: nodos → chunks.
+
+        Flujo:
+          1) Buscar nodos similares al query (coarse).
+          2) Si no hay nodos → fallback a dense retrieval estándar.
+          3) Obtener chunks dentro de los spans de los nodos.
+          4) Rankear chunks por cosine similarity al query embedding.
+          5) Retornar top_k chunks.
+        """
+        from ....crosscutting.metrics import record_retrieval_fallback
+
+        # 1) Coarse: buscar nodos
+        nodes = self._documents.find_similar_nodes(
+            embedding=embedding,
+            top_k=self._node_top_k,
+            workspace_id=workspace_id,
+        )
+
+        # 2) Fallback si no hay nodos
+        if not nodes:
+            record_retrieval_fallback("2tier_no_nodes")
+            return self._documents.find_similar_chunks(
+                embedding=embedding,
+                top_k=top_k,
+                workspace_id=workspace_id,
+            )
+
+        # 3) Fine: obtener chunks dentro de los spans
+        node_spans = [
+            (n.document_id, n.span_start, n.span_end)
+            for n in nodes
+            if n.document_id and n.span_start is not None and n.span_end is not None
+        ]
+
+        if not node_spans:
+            record_retrieval_fallback("2tier_no_spans")
+            return self._documents.find_similar_chunks(
+                embedding=embedding,
+                top_k=top_k,
+                workspace_id=workspace_id,
+            )
+
+        chunks = self._documents.find_chunks_by_node_spans(
+            node_spans=node_spans,
+            workspace_id=workspace_id,
+        )
+
+        if not chunks:
+            return []
+
+        # 4) Rankear chunks por cosine similarity (pure Python, no numpy)
+        def _cosine_sim(a: list[float], b: list[float]) -> float:
+            dot = sum(x * y for x, y in zip(a, b))
+            norm_a = math.sqrt(sum(x * x for x in a))
+            norm_b = math.sqrt(sum(x * x for x in b))
+            if norm_a == 0 or norm_b == 0:
+                return 0.0
+            return dot / (norm_a * norm_b)
+
+        scored = [
+            (chunk, _cosine_sim(embedding, chunk.embedding))
+            for chunk in chunks
+            if chunk.embedding
+        ]
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        # 5) Top-k con similarity asignada
+        result = []
+        for chunk, sim in scored[:top_k]:
+            chunk.similarity = sim
+            result.append(chunk)
+
+        return result
 
     def _build_rerank_metadata(
         self,

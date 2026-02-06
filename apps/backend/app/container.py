@@ -306,6 +306,8 @@ def get_answer_query_use_case() -> AnswerQueryUseCase:
         rerank_max_candidates=settings.rerank_max_candidates,
         enable_hybrid_search=settings.enable_hybrid_search,
         rank_fusion=get_rank_fusion_service(),
+        enable_2tier_retrieval=settings.enable_2tier_retrieval,
+        node_top_k=settings.node_top_k,
     )
 
 
@@ -348,6 +350,8 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
         rerank_max_candidates=settings.rerank_max_candidates,
         enable_hybrid_search=settings.enable_hybrid_search,
         rank_fusion=get_rank_fusion_service(),
+        enable_2tier_retrieval=settings.enable_2tier_retrieval,
+        node_top_k=settings.node_top_k,
     )
 
 
