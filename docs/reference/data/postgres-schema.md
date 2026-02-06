@@ -228,7 +228,8 @@ CREATE TABLE chunks (
     content TEXT NOT NULL,
     embedding vector(768) NOT NULL,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', coalesce(content, ''))) STORED
 );
 ```
 
@@ -243,6 +244,7 @@ CREATE TABLE chunks (
 | `embedding`   | vector(768) | NO       | 768-dimensional embedding vector         |
 | `metadata`    | JSONB       | NO       | Chunk metadata                           |
 | `created_at`  | TIMESTAMPTZ | NO       | Insertion timestamp                      |
+| `tsv`         | tsvector    | NO       | Generated full-text search vector (spanish) |
 
 **Design Decisions:**
 
@@ -254,7 +256,7 @@ CREATE TABLE chunks (
 
 ## Indexes
 
-Note: Alembic creates `ix_chunks_embedding_hnsw` (migration 002) and the workspace indexes below. Primary keys and the `users.email` unique index are implicit, and the optional indexes below are not created by default.
+Note: Alembic creates `ix_chunks_embedding_hnsw` (migration 002), `ix_chunks_tsv` (migration 003), and the workspace indexes below. Primary keys and the `users.email` unique index are implicit, and the optional indexes below are not created by default.
 
 ### Primary Key Indexes (Implicit)
 
@@ -297,6 +299,30 @@ WITH (m = 16, ef_construction = 64);
 -- Default ef_search = 40. Increase for better recall.
 SET hnsw.ef_search = 100;
 ```
+
+### Full-Text Search Index (GIN)
+
+> **Nota**: Creado en migración `003_fts_tsvector_column`. Ver [ADR-012](../../architecture/adr/ADR-012-hybrid-retrieval-rrf.md).
+
+```sql
+-- GIN index on generated tsvector column for full-text search
+CREATE INDEX ix_chunks_tsv ON chunks USING gin (tsv);
+```
+
+**Details:**
+
+- **Type:** GIN (Generalized Inverted Index)
+- **Column:** `tsv` (generated tsvector from `content` using `'spanish'` config)
+- **Purpose:** Enables efficient full-text search for sparse retrieval in hybrid search pipeline
+- **Usage:**
+  ```sql
+  SELECT c.*, ts_rank_cd(c.tsv, websearch_to_tsquery('spanish', 'query')) AS score
+  FROM chunks c
+  WHERE c.tsv @@ websearch_to_tsquery('spanish', 'query')
+  ORDER BY score DESC
+  LIMIT 5;
+  ```
+- **Feature flag:** Only used when `ENABLE_HYBRID_SEARCH=true`
 
 ### Document ID Index (Optional)
 
@@ -857,9 +883,10 @@ ALTER INDEX ix_chunks_embedding_hnsw_new RENAME TO ix_chunks_embedding_hnsw;
 - **Alembic Migrations:**
   - [001_foundation.py](../../../apps/backend/alembic/versions/001_foundation.py) — Schema base
   - [002_hnsw_vector_index.py](../../../apps/backend/alembic/versions/002_hnsw_vector_index.py) — HNSW index
+  - [003_fts_tsvector_column.py](../../../apps/backend/alembic/versions/003_fts_tsvector_column.py) — Full-text search (tsvector + GIN)
 - **Init SQL (pgvector extension):** [infra/postgres/init.sql](../../../infra/postgres/init.sql)
 
 ---
 
-**Last Updated:** 2026-01-13  
+**Last Updated:** 2026-02-06  
 **Maintainer:** Engineering Team

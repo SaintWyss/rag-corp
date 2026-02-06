@@ -165,6 +165,9 @@ class Settings(BaseSettings):
     rerank_candidate_multiplier: int = 5
     rerank_max_candidates: int = 200
 
+    enable_hybrid_search: bool = False
+    rrf_k: int = 60
+
     # -------------------------------------------------------------------------
     # Retrys (resiliencia)
     # -------------------------------------------------------------------------
@@ -271,6 +274,13 @@ class Settings(BaseSettings):
     def _validate_rerank_max(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("rerank_max_candidates debe ser > 0")
+        return v
+
+    @field_validator("rrf_k")
+    @classmethod
+    def _validate_rrf_k(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("rrf_k debe ser > 0")
         return v
 
     # -------------------------------------------------------------------------

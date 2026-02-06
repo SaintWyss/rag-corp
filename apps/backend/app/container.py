@@ -31,7 +31,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from redis import Redis
+
 from .application import RerankerMode, get_chunk_reranker, get_query_rewriter
+from .application.rank_fusion import RankFusionService
 from .application.usecases import (
     AnswerQueryUseCase,
     ArchiveWorkspaceUseCase,
@@ -68,8 +71,6 @@ from .domain.services import (
 )
 from .infrastructure.cache import get_embedding_cache
 from .infrastructure.parsers import SimpleDocumentTextExtractor
-from redis import Redis
-
 from .infrastructure.queue import RQDocumentProcessingQueue, RQQueueConfig
 from .infrastructure.repositories import (
     InMemoryConversationRepository,
@@ -203,6 +204,17 @@ def get_chunk_reranker_service():
     return get_chunk_reranker(get_llm_service(), mode=RerankerMode.HEURISTIC)
 
 
+@lru_cache(maxsize=1)
+def get_rank_fusion_service() -> RankFusionService | None:
+    """
+    Devuelve RankFusionService si hybrid search está habilitado (feature flag).
+    """
+    settings = get_settings()
+    if not settings.enable_hybrid_search:
+        return None
+    return RankFusionService(k=settings.rrf_k)
+
+
 # =============================================================================
 # Adapters de infraestructura (singletons)
 # =============================================================================
@@ -292,6 +304,8 @@ def get_answer_query_use_case() -> AnswerQueryUseCase:
         enable_rerank=settings.enable_rerank,
         rerank_candidate_multiplier=settings.rerank_candidate_multiplier,
         rerank_max_candidates=settings.rerank_max_candidates,
+        enable_hybrid_search=settings.enable_hybrid_search,
+        rank_fusion=get_rank_fusion_service(),
     )
 
 
@@ -328,6 +342,8 @@ def get_search_chunks_use_case() -> SearchChunksUseCase:
         enable_rerank=settings.enable_rerank,
         rerank_candidate_multiplier=settings.rerank_candidate_multiplier,
         rerank_max_candidates=settings.rerank_max_candidates,
+        enable_hybrid_search=settings.enable_hybrid_search,
+        rank_fusion=get_rank_fusion_service(),
     )
 
 

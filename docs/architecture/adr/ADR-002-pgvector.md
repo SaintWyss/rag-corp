@@ -6,6 +6,8 @@
 
 > **Nota (2026-02):** El índice IVFFlat fue reemplazado por HNSW en [ADR-011](./ADR-011-hnsw-vector-index.md). La decisión de usar pgvector como vector store sigue vigente.
 
+> **Nota (2026-02):** Se agregó hybrid retrieval (dense + sparse) con PostgreSQL full-text search en [ADR-012](./ADR-012-hybrid-retrieval-rrf.md).
+
 ## Contexto
 
 El sistema RAG requiere almacenamiento de embeddings (768 dimensiones) y búsqueda por similitud coseno eficiente.

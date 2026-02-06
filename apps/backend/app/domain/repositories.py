@@ -83,6 +83,16 @@ class DocumentRepository(Protocol):
         """Búsqueda por similitud con MMR (diversidad)."""
         ...
 
+    def find_chunks_full_text(
+        self,
+        query_text: str,
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Chunk]:
+        """Búsqueda full-text (tsvector + ts_rank_cd) por workspace."""
+        ...
+
     def list_documents(
         self,
         limit: int = 50,
