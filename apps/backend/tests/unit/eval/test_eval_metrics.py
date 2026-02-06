@@ -176,8 +176,6 @@ class TestNdcgAtK:
         """Two relevant docs at ranks 1 and 2."""
         ret = [["a", "b", "c"]]
         rel = [{"a", "b"}]
-        dcg = 1.0 / math.log2(2) + 1.0 / math.log2(3)
-        idcg = dcg  # already perfect order
         assert ndcg_at_k(ret, rel, k=3) == pytest.approx(1.0)
 
     def test_no_relevant(self):

@@ -31,7 +31,6 @@ if os.getenv("RUN_INTEGRATION") != "1":
 from uuid import uuid4
 
 import psycopg
-from app.domain.entities import Chunk, Document
 from app.infrastructure.repositories.postgres.document import PostgresDocumentRepository
 
 pytestmark = pytest.mark.integration
@@ -193,7 +192,6 @@ def fts_context(db_conn):
 
 @pytest.mark.integration
 class TestFtsMultilang:
-
     def test_fts_spanish_workspace_finds_spanish_content(
         self, db_repository, fts_context
     ):
@@ -206,9 +204,9 @@ class TestFtsMultilang:
         )
 
         assert len(results) >= 1
-        assert any(
-            "algoritmos" in c.content for c in results
-        ), "Expected spanish chunk in results"
+        assert any("algoritmos" in c.content for c in results), (
+            "Expected spanish chunk in results"
+        )
 
     def test_fts_english_workspace_finds_english_content(
         self, db_repository, fts_context
@@ -222,9 +220,9 @@ class TestFtsMultilang:
         )
 
         assert len(results) >= 1
-        assert any(
-            "algorithms" in c.content for c in results
-        ), "Expected english chunk in results"
+        assert any("algorithms" in c.content for c in results), (
+            "Expected english chunk in results"
+        )
 
     def test_fts_cross_language_isolation(self, db_repository, fts_context):
         """R: Each workspace only finds content indexed in its own language."""
@@ -238,9 +236,9 @@ class TestFtsMultilang:
 
         # Workspace isolation: english workspace has no spanish content
         spanish_in_english = [c for c in results_wrong_ws if "algoritmos" in c.content]
-        assert (
-            len(spanish_in_english) == 0
-        ), "Spanish content should not appear in english workspace"
+        assert len(spanish_in_english) == 0, (
+            "Spanish content should not appear in english workspace"
+        )
 
         # English query on spanish workspace should find nothing
         results_wrong_ws2 = db_repository.find_chunks_full_text(
@@ -251,6 +249,6 @@ class TestFtsMultilang:
         )
 
         english_in_spanish = [c for c in results_wrong_ws2 if "algorithms" in c.content]
-        assert (
-            len(english_in_spanish) == 0
-        ), "English content should not appear in spanish workspace"
+        assert len(english_in_spanish) == 0, (
+            "English content should not appear in spanish workspace"
+        )

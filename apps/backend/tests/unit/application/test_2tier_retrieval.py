@@ -106,9 +106,7 @@ class TestTwoTierRetrieval:
         mock_embed = _make_mock_embed()
 
         uc = _make_use_case(mock_repo, mock_embed, enable_2tier=False)
-        result = uc.execute(
-            SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None)
-        )
+        uc.execute(SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None))
 
         mock_repo.find_similar_nodes.assert_not_called()
         mock_repo.find_similar_chunks.assert_called_once()
@@ -123,9 +121,7 @@ class TestTwoTierRetrieval:
         mock_embed = _make_mock_embed()
 
         uc = _make_use_case(mock_repo, mock_embed, enable_2tier=True)
-        result = uc.execute(
-            SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None)
-        )
+        uc.execute(SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None))
 
         mock_repo.find_similar_nodes.assert_called_once()
         mock_repo.find_chunks_by_node_spans.assert_called_once()
@@ -141,9 +137,7 @@ class TestTwoTierRetrieval:
         mock_embed = _make_mock_embed()
 
         uc = _make_use_case(mock_repo, mock_embed, enable_2tier=True)
-        result = uc.execute(
-            SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None)
-        )
+        uc.execute(SearchChunksInput(query="test", workspace_id=_WS_ID, actor=None))
 
         mock_repo.find_similar_nodes.assert_called_once()
         mock_repo.find_similar_chunks.assert_called_once()
