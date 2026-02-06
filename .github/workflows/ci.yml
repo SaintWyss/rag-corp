@@ -194,6 +194,8 @@ jobs:
 
   contracts-check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/ragcorp_test
       GOOGLE_API_KEY: fake-key-for-tests
@@ -215,7 +217,15 @@ jobs:
           python scripts/export_openapi.py --out ../../shared/contracts/openapi.json
       - run: pnpm install --frozen-lockfile
       - run: pnpm contracts:gen
-      - run: git diff --exit-code shared/contracts/
+      - name: Commit and push changes
+        run: |
+          if ! git diff --quiet shared/contracts/; then
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            git add shared/contracts/
+            git commit -m "chore(contracts): sync generated contracts [skip ci]"
+            git push
+          fi
 
   e2e:
     runs-on: ubuntu-latest
