@@ -485,9 +485,9 @@ export interface WorkspaceACL {
   allowed_roles?: string[];
 }
 
-export type WorkspaceResOwnerUserId = string | null;
-
 export type WorkspaceResDescription = string | null;
+
+export type WorkspaceResOwnerUserId = string | null;
 
 export type WorkspaceResCreatedAt = string | null;
 
@@ -496,18 +496,17 @@ export type WorkspaceResUpdatedAt = string | null;
 export type WorkspaceResArchivedAt = string | null;
 
 /**
- * Response de workspace.
+ * Respuesta: workspace (vista admin).
  */
 export interface WorkspaceRes {
   id: string;
   name: string;
+  description: WorkspaceResDescription;
   visibility: WorkspaceVisibility;
-  owner_user_id?: WorkspaceResOwnerUserId;
-  description?: WorkspaceResDescription;
-  acl?: WorkspaceACL;
-  created_at?: WorkspaceResCreatedAt;
-  updated_at?: WorkspaceResUpdatedAt;
-  archived_at?: WorkspaceResArchivedAt;
+  owner_user_id: WorkspaceResOwnerUserId;
+  created_at: WorkspaceResCreatedAt;
+  updated_at: WorkspaceResUpdatedAt;
+  archived_at: WorkspaceResArchivedAt;
 }
 
 /**
@@ -527,35 +526,36 @@ export const WorkspaceVisibility = {
  * Listado de workspaces.
  */
 export interface WorkspacesListRes {
-  workspaces: WorkspaceRes[];
-}
-
-export type AppApiAdminRoutesWorkspaceResDescription = string | null;
-
-export type AppApiAdminRoutesWorkspaceResOwnerUserId = string | null;
-
-export type AppApiAdminRoutesWorkspaceResCreatedAt = string | null;
-
-export type AppApiAdminRoutesWorkspaceResUpdatedAt = string | null;
-
-export type AppApiAdminRoutesWorkspaceResArchivedAt = string | null;
-
-/**
- * Respuesta: workspace (vista admin).
- */
-export interface AppApiAdminRoutesWorkspaceRes {
-  id: string;
-  name: string;
-  description: AppApiAdminRoutesWorkspaceResDescription;
-  visibility: WorkspaceVisibility;
-  owner_user_id: AppApiAdminRoutesWorkspaceResOwnerUserId;
-  created_at: AppApiAdminRoutesWorkspaceResCreatedAt;
-  updated_at: AppApiAdminRoutesWorkspaceResUpdatedAt;
-  archived_at: AppApiAdminRoutesWorkspaceResArchivedAt;
+  workspaces: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes[];
 }
 
 export interface AppApiAdminRoutesWorkspacesListRes {
-  workspaces: AppApiAdminRoutesWorkspaceRes[];
+  workspaces: WorkspaceRes[];
+}
+
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResOwnerUserId = string | null;
+
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResDescription = string | null;
+
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResCreatedAt = string | null;
+
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResUpdatedAt = string | null;
+
+export type AppInterfacesApiHttpSchemasWorkspacesWorkspaceResArchivedAt = string | null;
+
+/**
+ * Response de workspace.
+ */
+export interface AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes {
+  id: string;
+  name: string;
+  visibility: WorkspaceVisibility;
+  owner_user_id?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResOwnerUserId;
+  description?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResDescription;
+  acl?: WorkspaceACL;
+  created_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResCreatedAt;
+  updated_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResUpdatedAt;
+  archived_at?: AppInterfacesApiHttpSchemasWorkspacesWorkspaceResArchivedAt;
 }
 
 export type ListWorkspacesV1WorkspacesGetParams = {
@@ -752,7 +752,7 @@ export const listWorkspacesV1WorkspacesGet = async (params?: ListWorkspacesV1Wor
  * @summary Create Workspace
  */
 export type createWorkspaceV1WorkspacesPostResponse201 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 201
 }
 
@@ -842,7 +842,7 @@ export const createWorkspaceV1WorkspacesPost = async (createWorkspaceReq: Create
  * @summary Get Workspace
  */
 export type getWorkspaceV1WorkspacesWorkspaceIdGetResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -931,7 +931,7 @@ export const getWorkspaceV1WorkspacesWorkspaceIdGet = async (workspaceId: string
  * @summary Update Workspace
  */
 export type updateWorkspaceV1WorkspacesWorkspaceIdPatchResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -1112,7 +1112,7 @@ export const deleteWorkspaceV1WorkspacesWorkspaceIdDelete = async (workspaceId: 
  * @summary Publish Workspace
  */
 export type publishWorkspaceV1WorkspacesWorkspaceIdPublishPostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -1201,7 +1201,7 @@ export const publishWorkspaceV1WorkspacesWorkspaceIdPublishPost = async (workspa
  * @summary Share Workspace
  */
 export type shareWorkspaceV1WorkspacesWorkspaceIdSharePostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -3054,7 +3054,7 @@ Reglas:
  * @summary Crear workspace para usuario (admin)
  */
 export type adminCreateWorkspaceAdminWorkspacesPostResponse201 = {
-  data: AppApiAdminRoutesWorkspaceRes
+  data: WorkspaceRes
   status: 201
 }
 
@@ -3339,7 +3339,7 @@ export const listWorkspacesApiV1WorkspacesGet = async (params?: ListWorkspacesAp
  * @summary Create Workspace
  */
 export type createWorkspaceApiV1WorkspacesPostResponse201 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 201
 }
 
@@ -3429,7 +3429,7 @@ export const createWorkspaceApiV1WorkspacesPost = async (createWorkspaceReq: Cre
  * @summary Get Workspace
  */
 export type getWorkspaceApiV1WorkspacesWorkspaceIdGetResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -3518,7 +3518,7 @@ export const getWorkspaceApiV1WorkspacesWorkspaceIdGet = async (workspaceId: str
  * @summary Update Workspace
  */
 export type updateWorkspaceApiV1WorkspacesWorkspaceIdPatchResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -3699,7 +3699,7 @@ export const deleteWorkspaceApiV1WorkspacesWorkspaceIdDelete = async (workspaceI
  * @summary Publish Workspace
  */
 export type publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
@@ -3788,7 +3788,7 @@ export const publishWorkspaceApiV1WorkspacesWorkspaceIdPublishPost = async (work
  * @summary Share Workspace
  */
 export type shareWorkspaceApiV1WorkspacesWorkspaceIdSharePostResponse200 = {
-  data: WorkspaceRes
+  data: AppInterfacesApiHttpSchemasWorkspacesWorkspaceRes
   status: 200
 }
 
