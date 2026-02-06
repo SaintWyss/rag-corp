@@ -128,6 +128,23 @@ Ver `infra/grafana/dashboards/README.md` para el inventario y el flujo de export
 | `rag_llm_latency_seconds`     | Histogram | Latencia de llamadas a LLM            |
 | `rag_embed_latency_seconds`   | Histogram | Latencia de embeddings                |
 
+### Pipeline Stage Metrics
+
+Métricas de sub-etapas del pipeline RAG. Permiten identificar cuál etapa es el bottleneck.
+
+| Métrica                        | Tipo      | Labels  | Descripción                                  | Buckets (s) | Umbral p95 sugerido |
+| ------------------------------ | --------- | ------- | -------------------------------------------- | ----------- | ------------------- |
+| `rag_dense_latency_seconds`    | Histogram | —       | Latencia de dense retrieval (similarity/MMR) | 0.005–0.5   | < 100 ms            |
+| `rag_sparse_latency_seconds`   | Histogram | —       | Latencia de sparse retrieval (FTS)           | 0.005–0.5   | < 100 ms            |
+| `rag_fusion_latency_seconds`   | Histogram | —       | Latencia de RRF fusion                       | 0.0001–0.05 | < 5 ms              |
+| `rag_rerank_latency_seconds`   | Histogram | —       | Latencia de reranking                        | 0.005–1.0   | < 200 ms            |
+| `rag_retrieval_fallback_total` | Counter   | `stage` | Fallbacks por falla en etapa de retrieval    | —           | Alerta si > 0/5m    |
+
+**Labels de `rag_retrieval_fallback_total`:**
+
+- `stage="sparse"`: sparse retrieval (FTS) falló, se usó solo dense.
+- `stage="rerank"`: reranking falló, se usó orden original.
+
 ### Worker Metrics
 
 | Métrica                           | Tipo      | Descripción      |
@@ -172,6 +189,21 @@ sum(rate(rag_requests_total[5m]))
 
 ```promql
 rate(rag_worker_jobs_processed_total[1m]) * 60
+```
+
+### Pipeline sub-stage latency (p95)
+
+```promql
+histogram_quantile(0.95, sum(rate(rag_dense_latency_seconds_bucket[5m])) by (le)) * 1000
+histogram_quantile(0.95, sum(rate(rag_sparse_latency_seconds_bucket[5m])) by (le)) * 1000
+histogram_quantile(0.95, sum(rate(rag_fusion_latency_seconds_bucket[5m])) by (le)) * 1000
+histogram_quantile(0.95, sum(rate(rag_rerank_latency_seconds_bucket[5m])) by (le)) * 1000
+```
+
+### Retrieval fallback rate
+
+```promql
+sum(rate(rag_retrieval_fallback_total[5m])) by (stage)
 ```
 
 ---

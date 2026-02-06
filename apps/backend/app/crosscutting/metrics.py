@@ -87,6 +87,13 @@ _dedup_hit_total: Optional["Counter"] = None
 # Hybrid retrieval
 _hybrid_retrieval_total: Optional["Counter"] = None
 
+# Pipeline stages (sub-stage detail)
+_dense_latency: Optional["Histogram"] = None
+_sparse_latency: Optional["Histogram"] = None
+_fusion_latency: Optional["Histogram"] = None
+_rerank_latency: Optional["Histogram"] = None
+_retrieval_fallback_total: Optional["Counter"] = None
+
 # DB (baja cardinalidad)
 _db_query_duration: Optional["Histogram"] = None
 
@@ -101,6 +108,8 @@ def _init_metrics() -> None:
     global _cross_scope_block_total, _answer_without_sources_total
     global _sources_returned_count, _dedup_hit_total, _hybrid_retrieval_total
     global _db_query_duration
+    global _dense_latency, _sparse_latency, _fusion_latency
+    global _rerank_latency, _retrieval_fallback_total
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -239,6 +248,43 @@ def _init_metrics() -> None:
         "rag_hybrid_retrieval_total",
         "Requests que usaron hybrid retrieval (dense+sparse+RRF)",
         ["endpoint"],
+        registry=_registry,
+    )
+
+    # Pipeline stages (sub-stage)
+    # ------------------------
+    _dense_latency = Histogram(
+        "rag_dense_latency_seconds",
+        "Latencia de dense retrieval — similarity/MMR (segundos)",
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5),
+        registry=_registry,
+    )
+
+    _sparse_latency = Histogram(
+        "rag_sparse_latency_seconds",
+        "Latencia de sparse retrieval — full-text search (segundos)",
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5),
+        registry=_registry,
+    )
+
+    _fusion_latency = Histogram(
+        "rag_fusion_latency_seconds",
+        "Latencia de RRF fusion (segundos)",
+        buckets=(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05),
+        registry=_registry,
+    )
+
+    _rerank_latency = Histogram(
+        "rag_rerank_latency_seconds",
+        "Latencia de reranking (segundos)",
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+        registry=_registry,
+    )
+
+    _retrieval_fallback_total = Counter(
+        "rag_retrieval_fallback_total",
+        "Fallbacks por falla en una etapa de retrieval",
+        ["stage"],
         registry=_registry,
     )
 
@@ -423,6 +469,50 @@ def record_hybrid_retrieval(endpoint: str) -> None:
         return
     if _hybrid_retrieval_total:
         _hybrid_retrieval_total.labels(endpoint=endpoint).inc()
+
+
+def observe_dense_latency(seconds: float) -> None:
+    """Observa latencia de dense retrieval (similarity/MMR)."""
+    if not _prometheus_available:
+        return
+    if _dense_latency:
+        _dense_latency.observe(seconds)
+
+
+def observe_sparse_latency(seconds: float) -> None:
+    """Observa latencia de sparse retrieval (full-text search)."""
+    if not _prometheus_available:
+        return
+    if _sparse_latency:
+        _sparse_latency.observe(seconds)
+
+
+def observe_fusion_latency(seconds: float) -> None:
+    """Observa latencia de RRF fusion."""
+    if not _prometheus_available:
+        return
+    if _fusion_latency:
+        _fusion_latency.observe(seconds)
+
+
+def observe_rerank_latency(seconds: float) -> None:
+    """Observa latencia de reranking."""
+    if not _prometheus_available:
+        return
+    if _rerank_latency:
+        _rerank_latency.observe(seconds)
+
+
+def record_retrieval_fallback(stage: str) -> None:
+    """Cuenta fallbacks por falla en una etapa de retrieval.
+
+    Args:
+        stage: etapa que falló (baja cardinalidad: "sparse" | "rerank").
+    """
+    if not _prometheus_available:
+        return
+    if _retrieval_fallback_total:
+        _retrieval_fallback_total.labels(stage=stage).inc()
 
 
 # -----------------------------------------------------------------------------
