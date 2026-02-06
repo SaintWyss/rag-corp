@@ -21,6 +21,7 @@ _DATASET_DIR = Path(__file__).resolve().parents[3] / "eval" / "dataset"
 def eval_report():
     """Run evaluation once and share across tests in this module."""
     import os
+
     os.environ.setdefault("FAKE_EMBEDDINGS", "1")
     os.environ.setdefault("FAKE_LLM", "1")
     os.environ.setdefault("APP_ENV", "test")
