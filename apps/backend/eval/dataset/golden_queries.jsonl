@@ -1,0 +1,30 @@
+{"query_id": "q001", "query": "How many PTO days do employees get per year?", "relevant_docs": ["d001"], "category": "factual"}
+{"query_id": "q002", "query": "Can I carry over unused vacation days?", "relevant_docs": ["d001"], "category": "factual"}
+{"query_id": "q003", "query": "How many days per week can I work from home?", "relevant_docs": ["d002"], "category": "factual"}
+{"query_id": "q004", "query": "What are the core hours for remote work?", "relevant_docs": ["d002"], "category": "factual"}
+{"query_id": "q005", "query": "How do I submit expense reports?", "relevant_docs": ["d003"], "category": "how-to"}
+{"query_id": "q006", "query": "What is the deadline for expense reimbursement?", "relevant_docs": ["d003"], "category": "factual"}
+{"query_id": "q007", "query": "What should a new hire do in their first week?", "relevant_docs": ["d004"], "category": "how-to"}
+{"query_id": "q008", "query": "How many approvals are needed for a PR?", "relevant_docs": ["d005"], "category": "factual"}
+{"query_id": "q009", "query": "What is the SLA for code reviews?", "relevant_docs": ["d005"], "category": "factual"}
+{"query_id": "q010", "query": "What are the incident severity levels?", "relevant_docs": ["d006"], "category": "factual"}
+{"query_id": "q011", "query": "How long after an incident is a post-mortem required?", "relevant_docs": ["d006"], "category": "factual"}
+{"query_id": "q012", "query": "How long is customer data retained?", "relevant_docs": ["d007"], "category": "factual"}
+{"query_id": "q013", "query": "How are GDPR deletion requests handled?", "relevant_docs": ["d007"], "category": "compliance"}
+{"query_id": "q014", "query": "When are performance reviews conducted?", "relevant_docs": ["d008"], "category": "factual"}
+{"query_id": "q015", "query": "How often do I need to rotate my SSH keys?", "relevant_docs": ["d009"], "category": "factual"}
+{"query_id": "q016", "query": "What is the API rate limit for authenticated users?", "relevant_docs": ["d010"], "category": "factual"}
+{"query_id": "q017", "query": "What HTTP status code is returned when rate limited?", "relevant_docs": ["d010"], "category": "factual"}
+{"query_id": "q018", "query": "How are database backups performed?", "relevant_docs": ["d011"], "category": "how-to"}
+{"query_id": "q019", "query": "How far back can I do point-in-time recovery?", "relevant_docs": ["d011"], "category": "factual"}
+{"query_id": "q020", "query": "What deployment strategy does the project use?", "relevant_docs": ["d012"], "category": "factual"}
+{"query_id": "q021", "query": "How do production deployments get approved?", "relevant_docs": ["d012"], "category": "how-to"}
+{"query_id": "q022", "query": "What benefits does the company offer?", "relevant_docs": ["d013"], "category": "factual"}
+{"query_id": "q023", "query": "Does the company match 401k contributions?", "relevant_docs": ["d013"], "category": "factual"}
+{"query_id": "q024", "query": "How are application alerts routed?", "relevant_docs": ["d014"], "category": "factual"}
+{"query_id": "q025", "query": "What monitoring tools does the team use?", "relevant_docs": ["d014"], "category": "factual"}
+{"query_id": "q026", "query": "What is the git branching strategy?", "relevant_docs": ["d015"], "category": "factual"}
+{"query_id": "q027", "query": "What happens to stale feature branches?", "relevant_docs": ["d015"], "category": "factual"}
+{"query_id": "q028", "query": "How do I request time off and what is the policy?", "relevant_docs": ["d001"], "category": "how-to"}
+{"query_id": "q029", "query": "What security measures protect production systems?", "relevant_docs": ["d009"], "category": "factual"}
+{"query_id": "q030", "query": "What happens during the onboarding buddy program?", "relevant_docs": ["d004"], "category": "factual"}
