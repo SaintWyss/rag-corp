@@ -102,7 +102,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspacesListRes"
+                  "$ref": "#/components/schemas/WorkspacesListRes"
                 }
               }
             }
@@ -5869,7 +5869,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspacesListRes"
+                  "$ref": "#/components/schemas/app__api__admin_routes__WorkspacesListRes"
                 }
               }
             }
@@ -6117,7 +6117,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspacesListRes"
+                  "$ref": "#/components/schemas/WorkspacesListRes"
                 }
               }
             }
@@ -11628,6 +11628,23 @@
         "properties": {
           "workspaces": {
             "items": {
+              "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspaces"
+        ],
+        "title": "WorkspacesListRes",
+        "description": "Listado de workspaces."
+      },
+      "app__api__admin_routes__WorkspacesListRes": {
+        "properties": {
+          "workspaces": {
+            "items": {
               "$ref": "#/components/schemas/WorkspaceRes"
             },
             "type": "array",
@@ -11725,23 +11742,6 @@
         ],
         "title": "WorkspaceRes",
         "description": "Response de workspace."
-      },
-      "app__interfaces__api__http__schemas__workspaces__WorkspacesListRes": {
-        "properties": {
-          "workspaces": {
-            "items": {
-              "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
-            },
-            "type": "array",
-            "title": "Workspaces"
-          }
-        },
-        "type": "object",
-        "required": [
-          "workspaces"
-        ],
-        "title": "WorkspacesListRes",
-        "description": "Listado de workspaces."
       }
     },
     "securitySchemes": {
