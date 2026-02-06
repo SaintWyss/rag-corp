@@ -414,6 +414,7 @@ services:
     profiles:
       - rag
       - full
+      - storage
 
   # ==========================================================
   # Init: crea bucket y aplica policy (perfil rag/full) - one-shot
@@ -445,3 +446,4 @@ services:
     profiles:
       - rag
       - full
+      - storage

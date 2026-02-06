@@ -384,6 +384,15 @@ jobs:
             sleep 2
           done
           docker compose exec -T worker python -c "import urllib.request as u; print(u.urlopen('http://localhost:8001/readyz').read().decode())"
+      - name: Wait for MinIO readiness
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:9000/minio/health/ready; then
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://localhost:9000/minio/health/ready
       - name: Bootstrap admin
         run: docker compose exec -T rag-api python scripts/create_admin.py --email "$E2E_ADMIN_EMAIL" --password "$E2E_ADMIN_PASSWORD"
       - name: Run Playwright full pipeline tests

@@ -12,9 +12,9 @@
  * =============================================================================
  */
 
+import { expect, type Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
-import { expect, type Page } from "@playwright/test";
 
 const RATE_LIMIT_MAX_RETRIES = 6;
 const RATE_LIMIT_BASE_DELAY_MS = 200;
@@ -314,23 +314,44 @@ export async function uploadDocumentAndWaitReady(
   const fileBuffer = fs.readFileSync(filePath);
   const filename = path.basename(filePath);
 
-  const upload = await page.request.post(
-    `/api/workspaces/${workspaceId}/documents/upload`,
-    {
-      multipart: {
-        title,
-        file: {
-          name: filename,
-          mimeType: "application/pdf",
-          buffer: fileBuffer,
-        },
-      },
-    }
-  );
+  const maxUploadRetries = 3;
+  const uploadRetryDelayMs = 2_000;
+  let upload: Awaited<ReturnType<typeof page.request.post>> | undefined;
+  let lastError: Error | undefined;
 
-  if (!upload.ok()) {
+  for (let attempt = 0; attempt < maxUploadRetries; attempt += 1) {
+    upload = await page.request.post(
+      `/api/workspaces/${workspaceId}/documents/upload`,
+      {
+        multipart: {
+          title,
+          file: {
+            name: filename,
+            mimeType: "application/pdf",
+            buffer: fileBuffer,
+          },
+        },
+      }
+    );
+
+    if (upload.ok()) {
+      break;
+    }
+
+    if (upload.status() === 503 && attempt < maxUploadRetries - 1) {
+      await sleep(uploadRetryDelayMs * (attempt + 1));
+      continue;
+    }
+
     const body = await upload.text();
-    throw new Error(`Upload failed: ${upload.status()} ${body}`);
+    lastError = new Error(`Upload failed: ${upload.status()} ${body}`);
+    if (attempt === maxUploadRetries - 1) {
+      throw lastError;
+    }
+  }
+
+  if (!upload || !upload.ok()) {
+    throw lastError || new Error("Upload failed after retries");
   }
 
   const uploadData: any = await upload.json();
