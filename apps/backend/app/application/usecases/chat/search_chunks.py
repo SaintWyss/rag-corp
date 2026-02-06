@@ -59,6 +59,7 @@ Collaborators:
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Final
 from uuid import UUID
@@ -317,7 +318,15 @@ class SearchChunksUseCase:
         Si hybrid search está habilitado, también ejecuta sparse retrieval
         (full-text search) y fusiona ambos rankings con RRF.
         """
+        from ....crosscutting.metrics import (
+            observe_dense_latency,
+            observe_fusion_latency,
+            observe_sparse_latency,
+            record_retrieval_fallback,
+        )
+
         # Dense retrieval (siempre se ejecuta)
+        t0 = time.perf_counter()
         if use_mmr:
             fetch_k = self._compute_mmr_fetch_k(top_k)
             dense_results = self._documents.find_similar_chunks_mmr(
@@ -333,6 +342,7 @@ class SearchChunksUseCase:
                 top_k=top_k,
                 workspace_id=workspace_id,
             )
+        observe_dense_latency(time.perf_counter() - t0)
 
         # Si hybrid no está habilitado, retornar solo dense
         if not self._hybrid_enabled():
@@ -340,12 +350,15 @@ class SearchChunksUseCase:
 
         # Sparse retrieval (full-text search)
         try:
+            t0 = time.perf_counter()
             sparse_results = self._documents.find_chunks_full_text(
                 query_text=query_text,
                 top_k=top_k,
                 workspace_id=workspace_id,
             )
+            observe_sparse_latency(time.perf_counter() - t0)
         except Exception as exc:
+            record_retrieval_fallback("sparse")
             logger.warning(
                 "Sparse retrieval failed, using dense-only",
                 extra={"error": str(exc)},
@@ -354,7 +367,10 @@ class SearchChunksUseCase:
 
         # Fusionar con RRF
         assert self._rank_fusion is not None
-        return self._rank_fusion.fuse(dense_results, sparse_results)
+        t0 = time.perf_counter()
+        fused = self._rank_fusion.fuse(dense_results, sparse_results)
+        observe_fusion_latency(time.perf_counter() - t0)
+        return fused
 
     def _compute_candidate_top_k(self, top_k: int) -> int:
         """
@@ -438,6 +454,11 @@ class SearchChunksUseCase:
           - Si falla el reranker, retorna el orden original (fallback seguro).
           - Siempre devuelve metadata útil para observabilidad.
         """
+        from ....crosscutting.metrics import (
+            observe_rerank_latency,
+            record_retrieval_fallback,
+        )
+
         candidates_count = len(chunks)
         default_metadata = self._build_rerank_metadata(
             candidates_count=candidates_count,
@@ -454,11 +475,13 @@ class SearchChunksUseCase:
 
         try:
             # R: Pedimos rerank sobre todos los candidatos para luego recortar.
+            t0 = time.perf_counter()
             result = self._reranker.rerank(
                 query=query,
                 chunks=chunks,
                 top_k=min(candidates_count, self._rerank_max_candidates),
             )
+            observe_rerank_latency(time.perf_counter() - t0)
             reranked_chunks = result.chunks
             return {
                 "chunks": reranked_chunks,
@@ -470,6 +493,7 @@ class SearchChunksUseCase:
                 ),
             }
         except Exception as exc:
+            record_retrieval_fallback("rerank")
             logger.warning(
                 "Reranking failed, using original order",
                 extra={
