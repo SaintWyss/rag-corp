@@ -111,6 +111,7 @@ from ....domain.services import EmbeddingService, LLMService
 from ....domain.workspace_policy import WorkspaceActor
 from ...context_builder import ContextBuilder, get_context_builder
 from ...prompt_injection_detector import apply_injection_filter
+from ...rank_fusion import RankFusionService
 from ...reranker import ChunkReranker
 from ..documents.document_results import (
     AnswerQueryResult,
@@ -196,6 +197,8 @@ class AnswerQueryUseCase:
         enable_rerank: bool = False,
         rerank_candidate_multiplier: int = _DEFAULT_RERANK_CANDIDATE_MULTIPLIER,
         rerank_max_candidates: int = _DEFAULT_RERANK_MAX_CANDIDATES,
+        enable_hybrid_search: bool = False,
+        rank_fusion: RankFusionService | None = None,
     ) -> None:
         self._documents = repository
         self._workspaces = workspace_repository
@@ -213,6 +216,10 @@ class AnswerQueryUseCase:
         self._enable_rerank = enable_rerank
         self._rerank_candidate_multiplier = max(1, rerank_candidate_multiplier)
         self._rerank_max_candidates = max(_MAX_TOP_K, rerank_max_candidates)
+
+        # Config de hybrid search (dense + sparse + RRF).
+        self._enable_hybrid_search = enable_hybrid_search
+        self._rank_fusion = rank_fusion
 
     def execute(self, input_data: AnswerQueryInput) -> AnswerQueryResult:
         """
@@ -288,6 +295,7 @@ class AnswerQueryUseCase:
         try:
             with timings.measure(_STAGE_RETRIEVE):
                 chunks = self._retrieve_chunks(
+                    query_text=input_data.query,
                     embedding=query_embedding,
                     workspace_id=input_data.workspace_id,
                     top_k=candidate_top_k,
@@ -488,33 +496,56 @@ class AnswerQueryUseCase:
     def _retrieve_chunks(
         self,
         *,
+        query_text: str,
         embedding: list[float],
         workspace_id: UUID,
         top_k: int,
         use_mmr: bool,
     ):
         """
-        Recupera chunks similares usando similarity o MMR.
+        Recupera chunks usando dense retrieval (similarity/MMR).
 
-        MMR:
-          - fetch_k: se trae más para mejorar diversidad (4x)
-          - lambda_mult: trade-off diversidad vs relevancia
+        Si hybrid search está habilitado, también ejecuta sparse retrieval
+        (full-text search) y fusiona ambos rankings con RRF.
         """
+        # Dense retrieval (siempre se ejecuta)
         if use_mmr:
             fetch_k = self._compute_mmr_fetch_k(top_k)
-            return self._documents.find_similar_chunks_mmr(
+            dense_results = self._documents.find_similar_chunks_mmr(
                 embedding=embedding,
                 top_k=top_k,
                 fetch_k=fetch_k,
                 lambda_mult=0.5,
                 workspace_id=workspace_id,
             )
+        else:
+            dense_results = self._documents.find_similar_chunks(
+                embedding=embedding,
+                top_k=top_k,
+                workspace_id=workspace_id,
+            )
 
-        return self._documents.find_similar_chunks(
-            embedding=embedding,
-            top_k=top_k,
-            workspace_id=workspace_id,
-        )
+        # Si hybrid no está habilitado, retornar solo dense
+        if not self._hybrid_enabled():
+            return dense_results
+
+        # Sparse retrieval (full-text search)
+        try:
+            sparse_results = self._documents.find_chunks_full_text(
+                query_text=query_text,
+                top_k=top_k,
+                workspace_id=workspace_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Sparse retrieval failed, using dense-only",
+                extra={"error": str(exc)},
+            )
+            return dense_results
+
+        # Fusionar con RRF
+        assert self._rank_fusion is not None
+        return self._rank_fusion.fuse(dense_results, sparse_results)
 
     def _compute_candidate_top_k(self, top_k: int) -> int:
         """
@@ -557,6 +588,14 @@ class AnswerQueryUseCase:
           - Se requiere flag habilitado y reranker inyectado.
         """
         return bool(self._enable_rerank and self._reranker is not None)
+
+    def _hybrid_enabled(self) -> bool:
+        """
+        Feature flag efectiva de hybrid search.
+
+        Requiere flag habilitado y RankFusionService inyectado.
+        """
+        return bool(self._enable_hybrid_search and self._rank_fusion is not None)
 
     def _maybe_rerank(
         self,
