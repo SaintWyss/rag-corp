@@ -841,6 +841,94 @@ class PostgresDocumentRepository:
             raise DatabaseError(f"Restore failed: {exc}") from exc
 
     # ============================================================
+    # Full-text search (tsvector + GIN)
+    # ============================================================
+    def find_chunks_full_text(
+        self,
+        query_text: str,
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Chunk]:
+        """
+        Búsqueda full-text (sparse) usando tsvector + ts_rank_cd.
+
+        - Usa la columna generada `tsv` (to_tsvector('spanish', content)).
+        - Operador @@: match full-text.
+        - websearch_to_tsquery: parseo robusto de queries de usuario
+          (soporta operadores OR, -, "frase exacta", etc.).
+        - ts_rank_cd: ranking por cobertura de documento (cover density).
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "find_chunks_full_text"
+        )
+
+        if top_k <= 0 or not (query_text or "").strip():
+            return []
+
+        sql = """
+            SELECT
+              c.id,
+              c.document_id,
+              d.title,
+              d.source,
+              c.chunk_index,
+              c.content,
+              c.embedding,
+              c.metadata,
+              ts_rank_cd(c.tsv, websearch_to_tsquery('spanish', %s)) AS score
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            WHERE d.deleted_at IS NULL
+              AND d.workspace_id = %s
+              AND c.tsv @@ websearch_to_tsquery('spanish', %s)
+            ORDER BY score DESC
+            LIMIT %s
+        """
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                rows = conn.execute(
+                    sql,
+                    (query_text, scoped_workspace_id, query_text, top_k),
+                ).fetchall()
+
+            logger.info(
+                "PostgresDocumentRepository: Full-text search completed",
+                extra={
+                    "workspace_id": str(scoped_workspace_id),
+                    "count": len(rows),
+                    "top_k": top_k,
+                },
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Full-text search failed",
+                extra={
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
+            )
+            raise DatabaseError(f"Full-text search failed: {exc}") from exc
+
+        return [
+            Chunk(
+                chunk_id=r[0],
+                document_id=r[1],
+                document_title=r[2],
+                document_source=r[3],
+                chunk_index=r[4],
+                content=r[5],
+                embedding=r[6],
+                metadata=r[7] or {},
+                similarity=float(r[8]) if r[8] is not None else None,
+            )
+            for r in rows
+        ]
+
+    # ============================================================
     # Vector search (pgvector)
     # ============================================================
     def find_similar_chunks(
