@@ -10,11 +10,11 @@ El endpoint `/ask/stream` (SSE) necesita hybrid retrieval (FTS+RRF, ADR-012) con
 
 ### Arquitectura existente
 
-| Endpoint        | Use Case               | Retrieval         | Streaming |
-| --------------- | ---------------------- | ----------------- | --------- |
-| `/ask`          | `AnswerQueryUseCase`   | dense + hybrid    | No        |
-| `/query`        | `SearchChunksUseCase`  | dense + hybrid    | No        |
-| `/ask/stream`   | `SearchChunksUseCase`  | dense + hybrid    | SSE       |
+| Endpoint      | Use Case              | Retrieval      | Streaming |
+| ------------- | --------------------- | -------------- | --------- |
+| `/ask`        | `AnswerQueryUseCase`  | dense + hybrid | No        |
+| `/query`      | `SearchChunksUseCase` | dense + hybrid | No        |
+| `/ask/stream` | `SearchChunksUseCase` | dense + hybrid | SSE       |
 
 El router de streaming (`query.py`) ya usaba `SearchChunksUseCase` para retrieval y luego delegaba a `stream_answer()` (SSE) para la generación. `SearchChunksUseCase` ya estaba wired en `container.py` con `enable_hybrid_search` y `RankFusionService`.
 
@@ -22,10 +22,10 @@ Existía un archivo `StreamAnswerQueryUseCase` (443 líneas) con Protocols propi
 
 ### Opciones evaluadas
 
-| Opcion                                           | Pros                                  | Contras                                               |
-| ------------------------------------------------ | ------------------------------------- | ----------------------------------------------------- |
-| Actualizar `StreamAnswerQueryUseCase` con hybrid  | Use case dedicado para streaming      | Duplicar lógica de retrieval, mantener dos paths       |
-| **Confirmar reuso de `SearchChunksUseCase`**      | Zero cambios en pipeline, consistente | Streaming no tiene use case propio                     |
+| Opcion                                           | Pros                                  | Contras                                          |
+| ------------------------------------------------ | ------------------------------------- | ------------------------------------------------ |
+| Actualizar `StreamAnswerQueryUseCase` con hybrid | Use case dedicado para streaming      | Duplicar lógica de retrieval, mantener dos paths |
+| **Confirmar reuso de `SearchChunksUseCase`**     | Zero cambios en pipeline, consistente | Streaming no tiene use case propio               |
 
 ## Decision
 
