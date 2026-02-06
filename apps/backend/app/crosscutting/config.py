@@ -168,6 +168,8 @@ class Settings(BaseSettings):
     enable_hybrid_search: bool = False
     rrf_k: int = 60
 
+    fts_language_default: str = "spanish"
+
     enable_2tier_retrieval: bool = False
     node_group_size: int = 5
     node_text_max_chars: int = 2000
@@ -286,6 +288,17 @@ class Settings(BaseSettings):
     def _validate_rrf_k(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("rrf_k debe ser > 0")
+        return v
+
+    @field_validator("fts_language_default")
+    @classmethod
+    def _validate_fts_language_default(cls, v: str) -> str:
+        from ..domain.entities import FTS_ALLOWED_LANGUAGES
+
+        if v not in FTS_ALLOWED_LANGUAGES:
+            raise ValueError(
+                f"fts_language_default must be one of {sorted(FTS_ALLOWED_LANGUAGES)}"
+            )
         return v
 
     @field_validator("node_group_size")

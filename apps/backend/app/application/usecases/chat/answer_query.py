@@ -251,7 +251,7 @@ class AnswerQueryUseCase:
         # ---------------------------------------------------------------------
         # 2) Enforce acceso de lectura al workspace (policy centralizada).
         # ---------------------------------------------------------------------
-        _, workspace_error = resolve_workspace_for_read(
+        workspace, workspace_error = resolve_workspace_for_read(
             workspace_id=input_data.workspace_id,
             actor=input_data.actor,
             workspace_repository=self._workspaces,
@@ -259,6 +259,13 @@ class AnswerQueryUseCase:
         )
         if workspace_error is not None:
             return AnswerQueryResult(error=workspace_error)
+
+        # Extraer fts_language del workspace para hybrid search.
+        from ....domain.entities import validate_fts_language
+
+        fts_language = validate_fts_language(
+            getattr(workspace, "fts_language", None)
+        )
 
         # ---------------------------------------------------------------------
         # 3) Inicializar observabilidad.
@@ -310,6 +317,7 @@ class AnswerQueryUseCase:
                     workspace_id=input_data.workspace_id,
                     top_k=candidate_top_k,
                     use_mmr=input_data.use_mmr,
+                    fts_language=fts_language,
                 )
         except Exception:
             # Si el repositorio falla, es dependencia (DB/vector search).
@@ -511,6 +519,7 @@ class AnswerQueryUseCase:
         workspace_id: UUID,
         top_k: int,
         use_mmr: bool,
+        fts_language: str = "spanish",
     ):
         """
         Recupera chunks usando dense retrieval (similarity/MMR).
@@ -563,6 +572,7 @@ class AnswerQueryUseCase:
                 query_text=query_text,
                 top_k=top_k,
                 workspace_id=workspace_id,
+                fts_language=fts_language,
             )
             observe_sparse_latency(time.perf_counter() - t0)
         except Exception as exc:

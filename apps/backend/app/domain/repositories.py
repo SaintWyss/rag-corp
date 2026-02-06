@@ -90,6 +90,7 @@ class DocumentRepository(Protocol):
         top_k: int,
         *,
         workspace_id: UUID | None = None,
+        fts_language: str = "spanish",
     ) -> list[Chunk]:
         """Búsqueda full-text (tsvector + ts_rank_cd) por workspace."""
         ...
@@ -277,6 +278,7 @@ class WorkspaceRepository(Protocol):
         description: str | None = None,
         visibility: WorkspaceVisibility | None = None,
         allowed_roles: list[str] | None = None,
+        fts_language: str | None = None,
     ) -> Workspace | None:
         """Actualiza atributos de un workspace."""
         ...

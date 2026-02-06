@@ -31,7 +31,6 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
-from uuid import NAMESPACE_URL, UUID, uuid5
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -414,7 +413,7 @@ def main() -> None:
 
     # Summary on stderr
     print(f"\n{'='*50}", file=sys.stderr)
-    print(f"  RAG Evaluation Report", file=sys.stderr)
+    print("  RAG Evaluation Report", file=sys.stderr)
     print(f"  Model: {report.embedding_model}", file=sys.stderr)
     print(
         f"  Corpus: {report.corpus_size} docs | Queries: {report.query_count}",

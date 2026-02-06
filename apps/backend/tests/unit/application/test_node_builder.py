@@ -10,12 +10,12 @@ Responsibilities:
   - Verify smoke test with FakeEmbeddingService.
 """
 
-from unittest.mock import Mock, call
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 from app.application.node_builder import build_nodes
-from app.domain.entities import Chunk, Node
+from app.domain.entities import Chunk
 from app.domain.services import EmbeddingService
 
 pytestmark = pytest.mark.unit

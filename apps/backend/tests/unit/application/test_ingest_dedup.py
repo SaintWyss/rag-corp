@@ -11,12 +11,11 @@ Responsibilities:
 
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
 from app.application.content_hash import compute_content_hash
-from app.application.usecases.documents.document_results import DocumentErrorCode
 from app.application.usecases.ingestion.ingest_document import (
     IngestDocumentInput,
     IngestDocumentUseCase,
