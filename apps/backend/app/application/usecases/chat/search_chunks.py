@@ -103,6 +103,7 @@ _META_RERANK_APPLIED: Final[str] = "rerank_applied"
 _META_RERANK_CANDIDATES: Final[str] = "candidates_count"
 _META_RERANK_RERANKED: Final[str] = "reranked_count"
 _META_RERANK_SELECTED: Final[str] = "selected_top_k"
+_META_HYBRID_USED: Final[str] = "hybrid_used"
 
 
 @dataclass(frozen=True)
@@ -431,13 +432,14 @@ class SearchChunksUseCase:
         rerank_applied: bool,
     ) -> dict:
         """
-        Estructura metadata para observabilidad de rerank.
+        Estructura metadata para observabilidad de rerank y hybrid.
         """
         return {
             _META_RERANK_APPLIED: rerank_applied,
             _META_RERANK_CANDIDATES: candidates_count,
             _META_RERANK_RERANKED: reranked_count,
             _META_RERANK_SELECTED: selected_top_k,
+            _META_HYBRID_USED: self._hybrid_enabled(),
         }
 
     def _maybe_rerank(

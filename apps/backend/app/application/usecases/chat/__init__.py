@@ -11,7 +11,6 @@ Business Goal:
     (RAG), centralizando imports de:
       - Core RAG:
           * AnswerQueryUseCase (Q&A sincrónico con RAG)
-          * StreamAnswerQueryUseCase (Q&A con streaming de tokens)
           * SearchChunksUseCase (búsqueda semántica)
       - Conversation Management:
           * CreateConversationUseCase (iniciar sesión de chat)
@@ -73,11 +72,6 @@ from .record_answer_audit import (
     RecordAnswerAuditUseCase,
 )
 from .search_chunks import SearchChunksInput, SearchChunksUseCase
-from .stream_answer_query import (
-    StreamAnswerQueryInput,
-    StreamAnswerQueryUseCase,
-    StreamChunk,
-)
 
 # -----------------------------------------------------------------------------
 # Feedback & Audit Use Cases (RLHF / Compliance)
@@ -93,10 +87,6 @@ __all__ = [
     "AnswerQueryUseCase",
     "SearchChunksInput",
     "SearchChunksUseCase",
-    # Streaming RAG
-    "StreamAnswerQueryInput",
-    "StreamAnswerQueryUseCase",
-    "StreamChunk",
     # Conversation: Create
     "CreateConversationInput",
     "CreateConversationResult",

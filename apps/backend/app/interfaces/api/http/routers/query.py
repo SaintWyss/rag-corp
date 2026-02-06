@@ -53,6 +53,7 @@ from app.crosscutting.error_responses import (
     service_unavailable,
     validation_error,
 )
+from app.crosscutting.metrics import record_hybrid_retrieval
 from app.crosscutting.streaming import stream_answer
 from app.domain.entities import ConversationMessage
 from app.domain.repositories import ConversationRepository
@@ -223,6 +224,9 @@ def ask_workspace(
     if result.result is None:
         raise service_unavailable("RAG")
 
+    if result.result.metadata.get("hybrid_used"):
+        record_hybrid_retrieval("ask")
+
     try:
         conversation_repo.append_message(
             conv_id, ConversationMessage(role="user", content=req.query)
@@ -275,6 +279,9 @@ async def ask_stream_workspace(
         _raise_document_error(search.error)
     if search.matches is None:
         raise service_unavailable("RAG")
+
+    if search.metadata and search.metadata.get("hybrid_used"):
+        record_hybrid_retrieval("ask_stream")
 
     return await stream_answer(
         query=req.query,

@@ -149,6 +149,7 @@ _META_RERANK_APPLIED: Final[str] = "rerank_applied"
 _META_RERANK_CANDIDATES: Final[str] = "candidates_count"
 _META_RERANK_RERANKED: Final[str] = "reranked_count"
 _META_RERANK_SELECTED: Final[str] = "selected_top_k"
+_META_HYBRID_USED: Final[str] = "hybrid_used"
 
 # Stage names para StageTimings (evita typos).
 _STAGE_EMBED: Final[str] = "embed"
@@ -638,6 +639,7 @@ class AnswerQueryUseCase:
             _META_RERANK_CANDIDATES: candidates_count,
             _META_RERANK_RERANKED: 0,
             _META_RERANK_SELECTED: min(top_k, candidates_count),
+            _META_HYBRID_USED: self._hybrid_enabled(),
         }
 
         if not self._rerank_enabled() or candidates_count <= 0:
@@ -663,6 +665,7 @@ class AnswerQueryUseCase:
                     _META_RERANK_CANDIDATES: candidates_count,
                     _META_RERANK_RERANKED: result.original_count,
                     _META_RERANK_SELECTED: len(reranked_chunks[:top_k]),
+                    _META_HYBRID_USED: self._hybrid_enabled(),
                 },
             }
         except Exception as exc:

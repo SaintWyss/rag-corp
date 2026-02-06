@@ -91,6 +91,9 @@ _fusion_latency: Optional["Histogram"] = None
 _rerank_latency: Optional["Histogram"] = None
 _retrieval_fallback_total: Optional["Counter"] = None
 
+# Hybrid retrieval
+_hybrid_retrieval_total: Optional["Counter"] = None
+
 # DB (baja cardinalidad)
 _db_query_duration: Optional["Histogram"] = None
 
@@ -103,9 +106,14 @@ def _init_metrics() -> None:
     global _worker_processed_total, _worker_failed_total, _worker_duration
     global _policy_refusal_total, _prompt_injection_detected_total
     global _cross_scope_block_total, _answer_without_sources_total
+<<<<<<< HEAD
     global _sources_returned_count, _dedup_hit_total, _db_query_duration
     global _dense_latency, _sparse_latency, _fusion_latency
     global _rerank_latency, _retrieval_fallback_total
+=======
+    global _sources_returned_count, _dedup_hit_total, _hybrid_retrieval_total
+    global _db_query_duration
+>>>>>>> 00ab3a0 (feat(rag): add hybrid retrieval observability to streaming endpoint)
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -238,6 +246,7 @@ def _init_metrics() -> None:
     )
 
     # ------------------------
+<<<<<<< HEAD
     # Pipeline stages (sub-stage)
     # ------------------------
     _dense_latency = Histogram(
@@ -272,6 +281,14 @@ def _init_metrics() -> None:
         "rag_retrieval_fallback_total",
         "Fallbacks por falla en una etapa de retrieval",
         ["stage"],
+=======
+    # Hybrid retrieval
+    # ------------------------
+    _hybrid_retrieval_total = Counter(
+        "rag_hybrid_retrieval_total",
+        "Requests que usaron hybrid retrieval (dense+sparse+RRF)",
+        ["endpoint"],
+>>>>>>> 00ab3a0 (feat(rag): add hybrid retrieval observability to streaming endpoint)
         registry=_registry,
     )
 
@@ -446,6 +463,7 @@ def record_dedup_hit(count: int = 1) -> None:
         _dedup_hit_total.inc(count)
 
 
+<<<<<<< HEAD
 def observe_dense_latency(seconds: float) -> None:
     """Observa latencia de dense retrieval (similarity/MMR)."""
     if not _prometheus_available:
@@ -488,6 +506,18 @@ def record_retrieval_fallback(stage: str) -> None:
         return
     if _retrieval_fallback_total:
         _retrieval_fallback_total.labels(stage=stage).inc()
+=======
+def record_hybrid_retrieval(endpoint: str) -> None:
+    """Cuenta requests que usaron hybrid retrieval (dense+sparse+RRF).
+
+    Args:
+        endpoint: identificador del endpoint (baja cardinalidad: "ask" | "ask_stream").
+    """
+    if not _prometheus_available:
+        return
+    if _hybrid_retrieval_total:
+        _hybrid_retrieval_total.labels(endpoint=endpoint).inc()
+>>>>>>> 00ab3a0 (feat(rag): add hybrid retrieval observability to streaming endpoint)
 
 
 # -----------------------------------------------------------------------------
