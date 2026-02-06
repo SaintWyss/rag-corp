@@ -71,7 +71,6 @@ from app.domain.workspace_policy import WorkspaceActor
 from app.identity.access_control import can_access_document, filter_documents
 from app.identity.dual_auth import (
     Principal,
-    require_admin,
     require_employee_or_admin,
     require_principal,
 )

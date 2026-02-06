@@ -41,7 +41,7 @@ jobs:
       - name: Gitleaks scan (redacted)
         uses: gitleaks/gitleaks-action@v2
         with:
-          args: --redact --no-banner
+          args: --redact --no-banner --config .gitleaks.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -184,7 +184,7 @@ jobs:
       - name: Build frontend image (gate)
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/frontend
+          context: .
           file: ./apps/frontend/Dockerfile
           push: false
           cache-from: type=gha
@@ -229,7 +229,6 @@ jobs:
       E2E_BASE_URL: http://localhost:3000
       E2E_API_URL: http://localhost:8000
       E2E_ADMIN_EMAIL: admin@example.com
-      E2E_ADMIN_PASSWORD: admin-pass-123
       NEXT_PUBLIC_API_URL: http://rag-api:8000
     steps:
       - uses: actions/checkout@v4
@@ -245,6 +244,11 @@ jobs:
         run: |
           pnpm e2e:install
           pnpm -C tests/e2e exec playwright install --with-deps
+      - name: Prepare E2E credentials
+        run: |
+          if [[ -z "${E2E_ADMIN_PASSWORD:-}" ]]; then
+            echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          fi
       - name: Start stack
         run: docker compose --profile e2e up -d --build
       - name: Wait for backend
@@ -294,13 +298,8 @@ jobs:
       E2E_API_URL: http://localhost:8000
       NEXT_PUBLIC_API_URL: http://rag-api:8000
       E2E_ADMIN_EMAIL: admin@example.com
-      E2E_ADMIN_PASSWORD: admin-pass-123
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET: rag-documents
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
       WORKER_HTTP_PORT: "8001"
     steps:
       - uses: actions/checkout@v4
@@ -316,6 +315,23 @@ jobs:
         run: |
           pnpm e2e:install
           pnpm -C tests/e2e exec playwright install --with-deps
+      - name: Prepare E2E credentials
+        run: |
+          if [[ -z "${E2E_ADMIN_PASSWORD:-}" ]]; then
+            echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          fi
+          if [[ -z "${MINIO_ROOT_USER:-}" ]]; then
+            echo "MINIO_ROOT_USER=minio" >> "$GITHUB_ENV"
+          fi
+          if [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
+            echo "MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          fi
+          if [[ -z "${S3_ACCESS_KEY:-}" ]]; then
+            echo "S3_ACCESS_KEY=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+          fi
+          if [[ -z "${S3_SECRET_KEY:-}" ]]; then
+            echo "S3_SECRET_KEY=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          fi
       - name: Start full stack
         run: docker compose --profile e2e --profile worker --profile storage up -d --build
       - name: Wait for backend

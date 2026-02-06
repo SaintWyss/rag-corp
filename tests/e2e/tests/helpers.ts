@@ -101,6 +101,7 @@ async function setAuthCookie(
   const domain = u.hostname; // localhost / tu host real
   const secure = u.protocol === "https:"; // http localhost => false
   const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
+  const isLocalhost = domain === "localhost" || domain === "127.0.0.1";
 
   // Limpieza dura
   await page.context().clearCookies();
@@ -119,8 +120,9 @@ async function setAuthCookie(
     names.map((name) => ({
       name,
       value: token,
-      domain,
-      path: "/", // ✅ aplica a TODO el sitio
+      ...(isLocalhost
+        ? { url: origin } // En localhost evitamos `domain`, que algunos browsers rechazan.
+        : { domain, path: "/" }),
       httpOnly: true,
       secure, // ✅ false en http://localhost
       sameSite: "Lax",
@@ -395,8 +397,22 @@ export async function adminEnsureUser(
   role: "admin" | "employee" = "employee"
 ) {
   const users = await adminListUsers(page);
-  const exists = users.some((u: any) => u.email === user.email);
-  if (exists) return;
+  const existing = users.find((u: any) => u.email === user.email);
+  if (existing?.id) {
+    const reset = await requestWithRateLimitRetry(
+      () =>
+        page.request.post(`/auth/users/${existing.id}/reset-password`, {
+          data: { password: user.password },
+        }),
+      "POST /auth/users/:id/reset-password"
+    );
+    if (!reset.ok()) {
+      throw new Error(
+        `Failed to reset password for ${user.email}: ${reset.status()} ${await reset.text()}`
+      );
+    }
+    return;
+  }
 
   const res = await requestWithRateLimitRetry(
     () =>

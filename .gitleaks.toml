@@ -1,0 +1,32 @@
+# =============================================================================
+# TARJETA CRC - .gitleaks.toml (Allowlist gitleaks)
+# =============================================================================
+# Responsabilidades:
+# - Permitir falsos positivos conocidos en fixtures/tests no productivos.
+# - Mantener el escaneo activo para el resto del repo.
+#
+# Invariantes:
+# - No desactivar gitleaks globalmente.
+# - Solo excluir rutas específicas y justificadas.
+# =============================================================================
+
+[allowlist]
+paths = [
+  # Fixtures y tests E2E con credenciales de ejemplo (no sensibles).
+  '''tests/e2e/tests/chat\.spec\.ts''',
+  '''tests/e2e/tests/documents\.spec\.ts''',
+  '''tests/e2e/tests/full-pipeline\.spec\.ts''',
+  '''tests/e2e/tests/workspace-flow\.spec\.ts''',
+  '''tests/e2e/tests/role-separation\.spec\.ts''',
+  '''tests/e2e/tests/admin-employee-flow\.spec\.ts''',
+  '''scripts/e2e/run_e2e\.sh''',
+
+  # Tests backend con payloads de auth esperados.
+  '''apps/backend/tests/integration/test_api_endpoints\.py''',
+
+  # Templates y archivos historicos detectados por gitleaks.
+  '''infra/k8s/secret\.yaml''',
+  '''cookies\.txt''',
+  '''backend/alembic/versions/008_docs_workspace_id\.py''',
+  '''backend/tests/unit/test_observability\.py'''
+]

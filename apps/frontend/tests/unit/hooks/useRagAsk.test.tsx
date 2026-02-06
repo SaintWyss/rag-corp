@@ -58,6 +58,22 @@ describe("useRagAsk Hook", () => {
     expect(result.current.error).toBe("Escribi una pregunta antes de enviar.");
   });
 
+  it("shows error when workspace is missing", async () => {
+    const { result } = renderHook(() => useRagAsk({ workspaceId: "" }));
+
+    act(() => {
+      result.current.setQuery("test");
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.error).toBe(
+      "Selecciona un workspace antes de preguntar."
+    );
+  });
+
   it("handles 401 unauthorized error", async () => {
     mockJsonOnce(HTTP_ERROR_FIXTURES.unauthorized.status);
 
@@ -129,6 +145,24 @@ describe("useRagAsk Hook", () => {
     expect(result.current.error).toBe("");
   });
 
+  it("handles successful response with empty body", async () => {
+    mockJsonOnce(200);
+
+    const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
+
+    act(() => {
+      result.current.setQuery("test query");
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.answer).toBe("");
+    expect(result.current.sources).toEqual([]);
+    expect(result.current.error).toBe("");
+  });
+
   it("handles network error", async () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
@@ -143,6 +177,24 @@ describe("useRagAsk Hook", () => {
     });
 
     expect(result.current.error).toContain("Error de conexión");
+  });
+
+  it("handles abort error", async () => {
+    const abortError = new Error("Aborted");
+    abortError.name = "AbortError";
+    mockFetch.mockRejectedValueOnce(abortError);
+
+    const { result } = renderHook(() => useRagAsk({ workspaceId: "ws-1" }));
+
+    act(() => {
+      result.current.setQuery("test");
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.error).toContain("Tiempo de espera");
   });
 
   it("resets state when reset is called", () => {

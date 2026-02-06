@@ -175,7 +175,7 @@ class GoogleLLMService(LLMService):
             return self._context_builder
 
         # R: Import lazy para evitar dependencia directa de capa application al importar el módulo.
-        from ....application.context_builder import get_context_builder  # noqa: WPS433
+        from ....application.context_builder import get_context_builder  # noqa: PLC0415
 
         self._context_builder = get_context_builder()
         return self._context_builder

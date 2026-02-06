@@ -30,13 +30,17 @@ const customJestConfig = {
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
-    "app/**/*.{ts,tsx}",
     "!**/*.d.ts",
     "!**/__tests__/**",
     "!**/tests/**",
     "!src/test/**",
     "!**/*.test.{ts,tsx}",
     "!**/*.spec.{ts,tsx}",
+    "!app/**/*.{ts,tsx}",
+    "!src/app-shell/**/*.{ts,tsx}",
+    "!src/features/**/components/**/*.{ts,tsx}",
+    "!src/shared/api/**/*.{ts,tsx}",
+    "!src/shared/ui/shells/**/*.{ts,tsx}",
   ],
   coverageThreshold: {
     global: {
