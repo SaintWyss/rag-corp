@@ -9,8 +9,8 @@
  *   - Ramp down
  */
 
-import http from 'k6/http';
 import { check, sleep } from 'k6';
+import http from 'k6/http';
 import { Rate, Trend } from 'k6/metrics';
 
 // Custom metrics
@@ -44,18 +44,42 @@ const testQueries = [
 
 export function setup() {
   // Verify API is healthy before test
-  const healthRes = http.get(`${BASE_URL}/health`);
+  const healthRes = http.get(`${BASE_URL}/healthz`);
   if (healthRes.status !== 200) {
     throw new Error(`API not healthy: ${healthRes.status}`);
   }
-  return { startTime: Date.now() };
+
+  const workspaceRes = http.post(
+    `${BASE_URL}/v1/workspaces`,
+    JSON.stringify({ name: `k6-workspace-${Date.now()}` }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  if (workspaceRes.status !== 201) {
+    throw new Error(`Workspace create failed: ${workspaceRes.status} ${workspaceRes.body}`);
+  }
+
+  let workspaceId;
+  try {
+    const body = JSON.parse(workspaceRes.body);
+    workspaceId = body.id;
+  } catch {
+    throw new Error(`Workspace create response invalid JSON: ${workspaceRes.body}`);
+  }
+
+  if (!workspaceId) {
+    throw new Error(`Workspace create missing id: ${workspaceRes.body}`);
+  }
+
+  return { startTime: Date.now(), workspaceId };
 }
 
-export default function () {
+export default function (data) {
+  const workspaceId = data.workspaceId;
   // Health check (20% of requests)
   if (Math.random() < 0.2) {
     const start = Date.now();
-    const res = http.get(`${BASE_URL}/health`);
+    const res = http.get(`${BASE_URL}/healthz`);
     healthLatency.add(Date.now() - start);
     
     check(res, {
@@ -75,7 +99,7 @@ export default function () {
   };
 
   const start = Date.now();
-  const res = http.post(`${BASE_URL}/ask`, payload, params);
+  const res = http.post(`${BASE_URL}/v1/workspaces/${workspaceId}/ask`, payload, params);
   askLatency.add(Date.now() - start);
 
   const success = check(res, {

@@ -262,6 +262,9 @@ jobs:
       E2E_API_URL: http://localhost:8000
       E2E_ADMIN_EMAIL: admin@example.com
       NEXT_PUBLIC_API_URL: http://rag-api:8000
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET: rag-documents
+      MINIO_ROOT_USER: minio
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -281,8 +284,17 @@ jobs:
           if [[ -z "${E2E_ADMIN_PASSWORD:-}" ]]; then
             echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
           fi
+          if [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
+            echo "MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          fi
+          if [[ -z "${S3_ACCESS_KEY:-}" ]]; then
+            echo "S3_ACCESS_KEY=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+          fi
+          if [[ -z "${S3_SECRET_KEY:-}" ]]; then
+            echo "S3_SECRET_KEY=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          fi
       - name: Start stack
-        run: docker compose --profile e2e up -d --build
+        run: docker compose --profile e2e --profile storage up -d --build
       - name: Wait for backend
         run: |
           for i in {1..30}; do
@@ -292,6 +304,15 @@ jobs:
             sleep 2
           done
           curl -sf http://localhost:8000/healthz
+      - name: Wait for MinIO readiness
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:9000/minio/health/ready; then
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://localhost:9000/minio/health/ready
       - name: Bootstrap admin (E2E)
         run: docker compose exec -T rag-api python scripts/create_admin.py --email "$E2E_ADMIN_EMAIL" --password "$E2E_ADMIN_PASSWORD"
       - name: Wait for web
@@ -315,7 +336,7 @@ jobs:
             tests/e2e/test-results
       - name: Tear down stack
         if: always()
-        run: docker compose --profile e2e down -v
+        run: docker compose --profile e2e --profile storage down -v
 
   e2e-full:
     runs-on: ubuntu-latest
@@ -333,6 +354,10 @@ jobs:
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET: rag-documents
       WORKER_HTTP_PORT: "8001"
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -353,16 +378,16 @@ jobs:
             echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
           fi
           if [[ -z "${MINIO_ROOT_USER:-}" ]]; then
-            echo "MINIO_ROOT_USER=minio" >> "$GITHUB_ENV"
+            echo "MINIO_ROOT_USER=minioadmin" >> "$GITHUB_ENV"
           fi
           if [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
-            echo "MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+            echo "MINIO_ROOT_PASSWORD=minioadmin" >> "$GITHUB_ENV"
           fi
           if [[ -z "${S3_ACCESS_KEY:-}" ]]; then
-            echo "S3_ACCESS_KEY=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+            echo "S3_ACCESS_KEY=minioadmin" >> "$GITHUB_ENV"
           fi
           if [[ -z "${S3_SECRET_KEY:-}" ]]; then
-            echo "S3_SECRET_KEY=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+            echo "S3_SECRET_KEY=minioadmin" >> "$GITHUB_ENV"
           fi
       - name: Start full stack
         run: docker compose --profile e2e --profile worker --profile storage up -d --build
