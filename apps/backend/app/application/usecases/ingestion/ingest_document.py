@@ -96,13 +96,15 @@ from dataclasses import dataclass
 from typing import Any, Dict, Final, Optional
 from uuid import UUID, uuid4
 
-from ....crosscutting.metrics import record_prompt_injection_detected
+from ....crosscutting.logger import logger
+from ....crosscutting.metrics import record_dedup_hit, record_prompt_injection_detected
 from ....domain.access import normalize_allowed_roles
 from ....domain.entities import Chunk, Document
 from ....domain.repositories import DocumentRepository, WorkspaceRepository
 from ....domain.services import EmbeddingService, TextChunkerService
 from ....domain.tags import normalize_tags
 from ....domain.workspace_policy import WorkspaceActor
+from ...content_hash import compute_content_hash
 from ...prompt_injection_detector import detect
 from ..documents.document_results import (
     DocumentError,
@@ -188,12 +190,36 @@ class IngestDocumentUseCase:
             return IngestDocumentResult(error=workspace_error)
 
         # ---------------------------------------------------------------------
+        # 2b) Dedup: verificar si el contenido ya existe en el workspace.
+        # ---------------------------------------------------------------------
+        content_hash = self._compute_dedup_hash(input_data)
+        if content_hash is not None:
+            existing = self._documents.get_document_by_content_hash(
+                input_data.workspace_id, content_hash
+            )
+            if existing is not None:
+                logger.info(
+                    "Dedup hit: contenido ya existe en workspace",
+                    extra={
+                        "existing_document_id": str(existing.id),
+                        "workspace_id": str(input_data.workspace_id),
+                        "dedup_hit": True,
+                    },
+                )
+                record_dedup_hit()
+                return IngestDocumentResult(
+                    document_id=existing.id,
+                    chunks_created=0,
+                )
+
+        # ---------------------------------------------------------------------
         # 3) Construcción de entidades de dominio (Document + metadata normalizada).
         # ---------------------------------------------------------------------
         document_id = uuid4()
         document, document_metadata = self._build_document(
             document_id=document_id,
             input_data=input_data,
+            content_hash=content_hash,
         )
 
         # ---------------------------------------------------------------------
@@ -206,7 +232,13 @@ class IngestDocumentUseCase:
         # ---------------------------------------------------------------------
         if not chunks_text:
             # Persistencia atómica por contrato del repositorio.
-            self._documents.save_document_with_chunks(document, [])
+            try:
+                self._documents.save_document_with_chunks(document, [])
+            except Exception:
+                dup = self._resolve_dedup_race(input_data.workspace_id, content_hash)
+                if dup is not None:
+                    return dup
+                raise
             return IngestDocumentResult(document_id=document_id, chunks_created=0)
 
         # ---------------------------------------------------------------------
@@ -232,7 +264,13 @@ class IngestDocumentUseCase:
         # ---------------------------------------------------------------------
         # 7) Persistencia atómica (Documento + Chunks).
         # ---------------------------------------------------------------------
-        self._documents.save_document_with_chunks(document, chunk_entities)
+        try:
+            self._documents.save_document_with_chunks(document, chunk_entities)
+        except Exception:
+            dup = self._resolve_dedup_race(input_data.workspace_id, content_hash)
+            if dup is not None:
+                return dup
+            raise
 
         return IngestDocumentResult(
             document_id=document_id,
@@ -269,8 +307,55 @@ class IngestDocumentUseCase:
 
         return None
 
+    @staticmethod
+    def _compute_dedup_hash(input_data: IngestDocumentInput) -> str | None:
+        """
+        Computa hash de contenido para deduplicación.
+
+        Retorna None si el texto es vacío (no aplica dedup).
+        """
+        text = (input_data.text or "").strip()
+        if not text:
+            return None
+        return compute_content_hash(input_data.workspace_id, text)
+
+    def _resolve_dedup_race(
+        self, workspace_id: UUID, content_hash: str | None
+    ) -> IngestDocumentResult | None:
+        """
+        Maneja race condition de dedup: si un insert concurrente ganó el
+        constraint único, re-lee el documento existente y retorna resultado
+        idempotente.
+
+        Retorna None si no se puede resolver (error no relacionado con dedup).
+        """
+        if content_hash is None:
+            return None
+        try:
+            existing = self._documents.get_document_by_content_hash(
+                workspace_id, content_hash
+            )
+        except Exception:
+            return None
+        if existing is None:
+            return None
+        logger.info(
+            "Dedup race condition resuelta",
+            extra={
+                "existing_document_id": str(existing.id),
+                "workspace_id": str(workspace_id),
+                "dedup_hit": True,
+            },
+        )
+        record_dedup_hit()
+        return IngestDocumentResult(document_id=existing.id, chunks_created=0)
+
     def _build_document(
-        self, *, document_id: UUID, input_data: IngestDocumentInput
+        self,
+        *,
+        document_id: UUID,
+        input_data: IngestDocumentInput,
+        content_hash: str | None = None,
     ) -> tuple[Document, Dict[str, Any]]:
         """
         Construye la entidad Document asegurando metadata normalizada.
@@ -291,6 +376,7 @@ class IngestDocumentUseCase:
             metadata=metadata,
             tags=tags,
             allowed_roles=allowed_roles,
+            content_hash=content_hash,
         )
         return document, metadata
 

@@ -113,6 +113,12 @@ class DocumentRepository(Protocol):
         """Obtiene un documento por ID (opcionalmente scopiado)."""
         ...
 
+    def get_document_by_content_hash(
+        self, workspace_id: UUID, content_hash: str
+    ) -> Document | None:
+        """Busca documento por hash de contenido dentro de un workspace."""
+        ...
+
     def soft_delete_document(
         self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> bool:

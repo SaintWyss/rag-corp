@@ -81,6 +81,9 @@ _answer_without_sources_total: Optional["Counter"] = None
 
 _sources_returned_count: Optional["Histogram"] = None
 
+# Dedup
+_dedup_hit_total: Optional["Counter"] = None
+
 # DB (baja cardinalidad)
 _db_query_duration: Optional["Histogram"] = None
 
@@ -93,7 +96,7 @@ def _init_metrics() -> None:
     global _worker_processed_total, _worker_failed_total, _worker_duration
     global _policy_refusal_total, _prompt_injection_detected_total
     global _cross_scope_block_total, _answer_without_sources_total
-    global _sources_returned_count, _db_query_duration
+    global _sources_returned_count, _dedup_hit_total, _db_query_duration
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -213,6 +216,15 @@ def _init_metrics() -> None:
         "rag_sources_returned_count",
         "Cantidad de fuentes devueltas",
         buckets=(0, 1, 2, 3, 5, 8, 13, 21),
+        registry=_registry,
+    )
+
+    # ------------------------
+    # Dedup
+    # ------------------------
+    _dedup_hit_total = Counter(
+        "rag_dedup_hit_total",
+        "Documentos rechazados por deduplicación de contenido",
         registry=_registry,
     )
 
@@ -377,6 +389,14 @@ def observe_sources_returned_count(count: int) -> None:
         return
     if _sources_returned_count:
         _sources_returned_count.observe(count)
+
+
+def record_dedup_hit(count: int = 1) -> None:
+    """Cuenta documentos rechazados por deduplicación de contenido."""
+    if not _prometheus_available:
+        return
+    if _dedup_hit_total:
+        _dedup_hit_total.inc(count)
 
 
 # -----------------------------------------------------------------------------

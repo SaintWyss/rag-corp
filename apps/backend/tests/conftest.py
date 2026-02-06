@@ -144,6 +144,7 @@ def mock_repository(sample_chunks: List[Chunk]) -> Mock:
     mock.find_similar_chunks_mmr.return_value = sample_chunks  # MMR diversity search
     mock.save_document.return_value = None
     mock.save_chunks.return_value = None
+    mock.get_document_by_content_hash.return_value = None
 
     return mock
 

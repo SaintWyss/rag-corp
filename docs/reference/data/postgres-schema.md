@@ -78,7 +78,8 @@ CREATE TABLE documents (
     status TEXT,
     error_message TEXT,
     tags TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
-    allowed_roles TEXT[]
+    allowed_roles TEXT[],
+    content_hash VARCHAR(64)
 );
 
 ALTER TABLE documents ADD CONSTRAINT ck_documents_status
@@ -104,6 +105,7 @@ CHECK (status IS NULL OR status IN ('PENDING', 'PROCESSING', 'READY', 'FAILED'))
 | `error_message`       | TEXT        | YES      | Error de procesamiento          |
 | `tags`                | TEXT[]      | NO       | Tags normalizados               |
 | `allowed_roles`       | TEXT[]      | YES      | ACL por rol (admin/employee)    |
+| `content_hash`        | VARCHAR(64) | YES      | SHA-256 hex para deduplicación  |
 
 ### Table: users
 
@@ -323,6 +325,25 @@ CREATE INDEX ix_chunks_tsv ON chunks USING gin (tsv);
   LIMIT 5;
   ```
 - **Feature flag:** Only used when `ENABLE_HYBRID_SEARCH=true`
+
+### Content Dedup Index (Partial Unique)
+
+> **Nota**: Creado en migración `004_content_hash_dedup`. Ver [ADR-013](../../architecture/adr/ADR-013-content-dedup.md).
+
+```sql
+-- Partial unique index for content deduplication within a workspace
+CREATE UNIQUE INDEX ix_documents_workspace_content_hash
+ON documents (workspace_id, content_hash)
+WHERE content_hash IS NOT NULL;
+```
+
+**Details:**
+
+- **Type:** B-tree (partial unique)
+- **Columns:** `(workspace_id, content_hash)`
+- **Condition:** `WHERE content_hash IS NOT NULL` — NULLs no colisionan (documentos legacy)
+- **Purpose:** Previene re-ingesta de contenido duplicado dentro del mismo workspace
+- **Hash format:** SHA-256 hex digest (64 chars), scoped por workspace_id
 
 ### Document ID Index (Optional)
 
@@ -884,6 +905,7 @@ ALTER INDEX ix_chunks_embedding_hnsw_new RENAME TO ix_chunks_embedding_hnsw;
   - [001_foundation.py](../../../apps/backend/alembic/versions/001_foundation.py) — Schema base
   - [002_hnsw_vector_index.py](../../../apps/backend/alembic/versions/002_hnsw_vector_index.py) — HNSW index
   - [003_fts_tsvector_column.py](../../../apps/backend/alembic/versions/003_fts_tsvector_column.py) — Full-text search (tsvector + GIN)
+  - [004_content_hash_dedup.py](../../../apps/backend/alembic/versions/004_content_hash_dedup.py) — Content dedup (SHA-256 + partial unique index)
 - **Init SQL (pgvector extension):** [infra/postgres/init.sql](../../../infra/postgres/init.sql)
 
 ---
