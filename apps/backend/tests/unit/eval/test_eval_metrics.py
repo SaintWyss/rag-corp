@@ -20,6 +20,7 @@ pytestmark = pytest.mark.unit
 # Fixtures — reusable retrieval scenarios
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def perfect_retrieval():
     """Every query's top-1 result is relevant."""
