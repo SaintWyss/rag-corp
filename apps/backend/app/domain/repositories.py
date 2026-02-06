@@ -33,6 +33,7 @@ from .entities import (
     Chunk,
     ConversationMessage,
     Document,
+    Node,
     Workspace,
     WorkspaceVisibility,
 )
@@ -56,9 +57,9 @@ class DocumentRepository(Protocol):
         ...
 
     def save_document_with_chunks(
-        self, document: Document, chunks: list[Chunk]
+        self, document: Document, chunks: list[Chunk], nodes: list[Node] | None = None
     ) -> None:
-        """Persiste documento + chunks de forma atómica."""
+        """Persiste documento + chunks (+ nodos opcionales) de forma atómica."""
         ...
 
     def find_similar_chunks(
@@ -91,6 +92,48 @@ class DocumentRepository(Protocol):
         workspace_id: UUID | None = None,
     ) -> list[Chunk]:
         """Búsqueda full-text (tsvector + ts_rank_cd) por workspace."""
+        ...
+
+    # ------------------------------------------------------------------
+    # Nodes (2-tier retrieval)
+    # ------------------------------------------------------------------
+
+    def save_nodes(
+        self,
+        document_id: UUID,
+        nodes: list[Node],
+        *,
+        workspace_id: UUID | None = None,
+    ) -> None:
+        """Persiste nodos de un documento."""
+        ...
+
+    def find_similar_nodes(
+        self,
+        embedding: list[float],
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Node]:
+        """Búsqueda vectorial sobre nodos (coarse retrieval)."""
+        ...
+
+    def find_chunks_by_node_spans(
+        self,
+        node_spans: list[tuple[UUID, int, int]],
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Chunk]:
+        """Chunks dentro de spans de nodos (fine retrieval)."""
+        ...
+
+    def delete_nodes_for_document(
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> int:
+        """Borrar nodos de un documento."""
         ...
 
     def list_documents(

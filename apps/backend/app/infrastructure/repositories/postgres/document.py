@@ -38,7 +38,7 @@ from psycopg_pool import ConnectionPool
 
 from ....crosscutting.exceptions import DatabaseError
 from ....crosscutting.logger import logger
-from ....domain.entities import Chunk, Document
+from ....domain.entities import Chunk, Document, Node
 
 # ============================================================
 # Constantes de contrato (DB / embeddings)
@@ -134,6 +134,14 @@ class PostgresDocumentRepository:
             self._validate_embedding(
                 chunk.embedding,
                 ctx=f"Chunk[{i}]",
+            )
+
+    def _validate_node_embeddings(self, nodes: list[Node]) -> None:
+        """Valida embeddings de todos los nodos (fail fast)."""
+        for i, node in enumerate(nodes):
+            self._validate_embedding(
+                node.embedding,
+                ctx=f"Node[{i}]",
             )
 
     # ============================================================
@@ -501,20 +509,23 @@ class PostgresDocumentRepository:
             raise DatabaseError(f"Failed to save chunks: {exc}") from exc
 
     def save_document_with_chunks(
-        self, document: Document, chunks: list[Chunk]
+        self, document: Document, chunks: list[Chunk], nodes: list[Node] | None = None
     ) -> None:
         """
-        Guardado atómico: documento + chunks en una misma transacción.
+        Guardado atómico: documento + chunks (+ nodos opcionales) en una misma transacción.
 
         Qué garantiza:
-        - No quedan “documents sin chunks” por fallos intermedios.
-        - No quedan “chunks huérfanos” sin documento.
+        - No quedan "documents sin chunks" por fallos intermedios.
+        - No quedan "chunks huérfanos" sin documento.
+        - Si se pasan nodos, se persisten en la misma transacción.
         """
         workspace_id = self._require_workspace_id(
             document.workspace_id, "save_document_with_chunks"
         )
         if chunks:
             self._validate_embeddings(chunks)
+        if nodes:
+            self._validate_node_embeddings(nodes)
 
         try:
             pool = self._get_pool()
@@ -580,6 +591,35 @@ class PostgresDocumentRepository:
                                 VALUES (%s, %s, %s, %s, %s, %s)
                                 """,
                                 batch,
+                            )
+
+                    # 3) Inserción de nodos (si hay)
+                    if nodes:
+                        node_batch = [
+                            (
+                                node.node_id or uuid4(),
+                                workspace_id,
+                                document.id,
+                                node.node_index if node.node_index is not None else idx,
+                                node.node_text,
+                                node.span_start,
+                                node.span_end,
+                                node.embedding,
+                                Json(node.metadata or {}),
+                            )
+                            for idx, node in enumerate(nodes)
+                        ]
+
+                        with conn.cursor() as cur:
+                            cur.executemany(
+                                """
+                                INSERT INTO nodes (
+                                    id, workspace_id, document_id, node_index,
+                                    node_text, span_start, span_end, embedding, metadata
+                                )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """,
+                                node_batch,
                             )
 
             logger.info(
@@ -1181,6 +1221,305 @@ class PostgresDocumentRepository:
         if na == 0.0 or nb == 0.0:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
+
+    # ============================================================
+    # Nodes (2-tier retrieval)
+    # ============================================================
+    def save_nodes(
+        self,
+        document_id: UUID,
+        nodes: list[Node],
+        *,
+        workspace_id: UUID | None = None,
+    ) -> None:
+        """
+        Inserta nodos para un documento (batch insert).
+
+        Sigue el mismo patrón que save_chunks: valida embeddings, verifica
+        documento existente, e inserta batch con executemany.
+        """
+        if not nodes:
+            return
+
+        scoped_workspace_id = self._require_workspace_id(workspace_id, "save_nodes")
+        self._validate_node_embeddings(nodes)
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                exists = conn.execute(
+                    """
+                    SELECT 1
+                    FROM documents
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
+                    """,
+                    (document_id, scoped_workspace_id),
+                ).fetchone()
+
+                if not exists:
+                    raise DatabaseError(
+                        f"Document {document_id} not found for workspace {scoped_workspace_id}"
+                    )
+
+                batch = [
+                    (
+                        node.node_id or uuid4(),
+                        scoped_workspace_id,
+                        document_id,
+                        node.node_index if node.node_index is not None else idx,
+                        node.node_text,
+                        node.span_start,
+                        node.span_end,
+                        node.embedding,
+                        Json(node.metadata or {}),
+                    )
+                    for idx, node in enumerate(nodes)
+                ]
+
+                with conn.cursor() as cur:
+                    try:
+                        cur.executemany(
+                            """
+                            INSERT INTO nodes (
+                                id, workspace_id, document_id, node_index,
+                                node_text, span_start, span_end, embedding, metadata
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            batch,
+                        )
+                    except DuplicatePreparedStatement:
+                        conn.rollback()
+                        for row in batch:
+                            conn.execute(
+                                """
+                                INSERT INTO nodes (
+                                    id, workspace_id, document_id, node_index,
+                                    node_text, span_start, span_end, embedding, metadata
+                                )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """,
+                                row,
+                            )
+
+            logger.info(
+                "PostgresDocumentRepository: Saved nodes",
+                extra={"document_id": str(document_id), "count": len(nodes)},
+            )
+
+        except ValueError:
+            raise
+        except DatabaseError:
+            raise
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Failed to save nodes",
+                extra={"document_id": str(document_id), "error": str(exc)},
+            )
+            raise DatabaseError(f"Failed to save nodes: {exc}") from exc
+
+    def find_similar_nodes(
+        self,
+        embedding: list[float],
+        top_k: int,
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Node]:
+        """
+        Búsqueda vectorial sobre nodos (cosine distance).
+
+        Sigue el mismo patrón que find_similar_chunks pero consulta la tabla nodes.
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "find_similar_nodes"
+        )
+        self._validate_embedding(embedding, ctx="Query")
+
+        if top_k <= 0:
+            return []
+
+        sql = """
+            SELECT
+              n.id,
+              n.workspace_id,
+              n.document_id,
+              n.node_index,
+              n.node_text,
+              n.span_start,
+              n.span_end,
+              n.embedding,
+              n.metadata,
+              n.created_at,
+              (1 - (n.embedding <=> %s::vector)) as score
+            FROM nodes n
+            JOIN documents d ON d.id = n.document_id
+            WHERE d.deleted_at IS NULL
+              AND n.workspace_id = %s
+            ORDER BY n.embedding <=> %s::vector
+            LIMIT %s
+        """
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                rows = conn.execute(
+                    sql,
+                    (embedding, scoped_workspace_id, embedding, top_k),
+                ).fetchall()
+
+            logger.info(
+                "PostgresDocumentRepository: Similar nodes retrieved",
+                extra={
+                    "workspace_id": str(scoped_workspace_id),
+                    "count": len(rows),
+                    "top_k": top_k,
+                },
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Node search failed",
+                extra={"workspace_id": str(scoped_workspace_id), "error": str(exc)},
+            )
+            raise DatabaseError(f"Node search failed: {exc}") from exc
+
+        return [
+            Node(
+                node_id=r[0],
+                workspace_id=r[1],
+                document_id=r[2],
+                node_index=r[3],
+                node_text=r[4],
+                span_start=r[5],
+                span_end=r[6],
+                embedding=r[7],
+                metadata=r[8] or {},
+                created_at=r[9],
+                similarity=float(r[10]) if r[10] is not None else None,
+            )
+            for r in rows
+        ]
+
+    def find_chunks_by_node_spans(
+        self,
+        node_spans: list[tuple[UUID, int, int]],
+        *,
+        workspace_id: UUID | None = None,
+    ) -> list[Chunk]:
+        """
+        Recupera chunks que caen dentro de los spans dados.
+
+        Cada span es (document_id, span_start, span_end) donde span_start/span_end
+        son rangos de chunk_index.
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "find_chunks_by_node_spans"
+        )
+
+        if not node_spans:
+            return []
+
+        # Construir cláusula OR para cada span
+        or_clauses = []
+        params: list[object] = [scoped_workspace_id]
+        for doc_id, span_start, span_end in node_spans:
+            or_clauses.append(
+                "(c.document_id = %s AND c.chunk_index BETWEEN %s AND %s)"
+            )
+            params.extend([doc_id, span_start, span_end])
+
+        or_sql = " OR ".join(or_clauses)
+
+        sql = f"""
+            SELECT
+              c.id,
+              c.document_id,
+              d.title,
+              d.source,
+              c.chunk_index,
+              c.content,
+              c.embedding,
+              c.metadata
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            WHERE d.deleted_at IS NULL
+              AND d.workspace_id = %s
+              AND ({or_sql})
+            ORDER BY c.document_id, c.chunk_index
+        """
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                rows = conn.execute(sql, tuple(params)).fetchall()
+
+            logger.info(
+                "PostgresDocumentRepository: Chunks by node spans retrieved",
+                extra={
+                    "workspace_id": str(scoped_workspace_id),
+                    "spans": len(node_spans),
+                    "chunks_found": len(rows),
+                },
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Chunks by node spans failed",
+                extra={"workspace_id": str(scoped_workspace_id), "error": str(exc)},
+            )
+            raise DatabaseError(f"Chunks by node spans failed: {exc}") from exc
+
+        return [
+            Chunk(
+                chunk_id=r[0],
+                document_id=r[1],
+                document_title=r[2],
+                document_source=r[3],
+                chunk_index=r[4],
+                content=r[5],
+                embedding=r[6],
+                metadata=r[7] or {},
+            )
+            for r in rows
+        ]
+
+    def delete_nodes_for_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> int:
+        """
+        Borra nodos de un documento (scoped por workspace vía join).
+
+        Retorna cantidad de filas eliminadas.
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "delete_nodes_for_document"
+        )
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    DELETE FROM nodes n
+                    USING documents d
+                    WHERE n.document_id = d.id
+                      AND n.document_id = %s
+                      AND d.workspace_id = %s
+                    """,
+                    (document_id, scoped_workspace_id),
+                )
+            return int(result.rowcount or 0)
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Delete nodes failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
+            )
+            raise DatabaseError(f"Failed to delete nodes: {exc}") from exc
 
     # ============================================================
     # Health

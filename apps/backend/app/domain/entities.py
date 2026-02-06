@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 from uuid import UUID
 
 
@@ -173,6 +173,36 @@ class Chunk:
     chunk_id: Optional[UUID] = None
     similarity: Optional[float] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Node (2-tier retrieval: agrupación de chunks)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Node:
+    """
+    Nodo: sección que agrupa N chunks consecutivos.
+
+    Se usa para retrieval jerárquico 2-tier:
+      1) Buscar nodos relevantes (coarse).
+      2) Buscar chunks dentro de esos nodos (fine).
+
+    span_start/span_end definen el rango de chunk_index cubierto.
+    """
+
+    node_text: str
+    embedding: List[float]
+    workspace_id: Optional[UUID] = None
+    document_id: Optional[UUID] = None
+    node_index: Optional[int] = None
+    node_id: Optional[UUID] = None
+    span_start: Optional[int] = None
+    span_end: Optional[int] = None
+    similarity: Optional[float] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: Optional[datetime] = None
 
 
 # ---------------------------------------------------------------------------
