@@ -168,6 +168,11 @@ class Settings(BaseSettings):
     enable_hybrid_search: bool = False
     rrf_k: int = 60
 
+    enable_2tier_retrieval: bool = False
+    node_group_size: int = 5
+    node_text_max_chars: int = 2000
+    node_top_k: int = 10
+
     # -------------------------------------------------------------------------
     # Retrys (resiliencia)
     # -------------------------------------------------------------------------
@@ -281,6 +286,27 @@ class Settings(BaseSettings):
     def _validate_rrf_k(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("rrf_k debe ser > 0")
+        return v
+
+    @field_validator("node_group_size")
+    @classmethod
+    def _validate_node_group_size(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("node_group_size debe ser > 0")
+        return v
+
+    @field_validator("node_text_max_chars")
+    @classmethod
+    def _validate_node_text_max_chars(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("node_text_max_chars debe ser > 0")
+        return v
+
+    @field_validator("node_top_k")
+    @classmethod
+    def _validate_node_top_k(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("node_top_k debe ser > 0")
         return v
 
     # -------------------------------------------------------------------------

@@ -151,11 +151,17 @@ class IngestDocumentUseCase:
         workspace_repository: WorkspaceRepository,
         embedding_service: EmbeddingService,
         chunker: TextChunkerService,
+        enable_2tier_retrieval: bool = False,
+        node_group_size: int = 5,
+        node_text_max_chars: int = 2000,
     ) -> None:
         self._documents = repository
         self._workspaces = workspace_repository
         self._embeddings = embedding_service
         self._chunker = chunker
+        self._enable_2tier = enable_2tier_retrieval
+        self._node_group_size = node_group_size
+        self._node_text_max_chars = node_text_max_chars
 
     def execute(self, input_data: IngestDocumentInput) -> IngestDocumentResult:
         """
@@ -262,10 +268,16 @@ class IngestDocumentUseCase:
             # así que ya quedó actualizado en la entidad `document`.
 
         # ---------------------------------------------------------------------
-        # 7) Persistencia atómica (Documento + Chunks).
+        # 7) Persistencia atómica (Documento + Chunks + Nodos opcionales).
         # ---------------------------------------------------------------------
+        nodes = self._maybe_build_nodes(
+            document_id=document_id,
+            workspace_id=input_data.workspace_id,
+            chunk_entities=chunk_entities,
+        )
+
         try:
-            self._documents.save_document_with_chunks(document, chunk_entities)
+            self._documents.save_document_with_chunks(document, chunk_entities, nodes=nodes)
         except Exception:
             dup = self._resolve_dedup_race(input_data.workspace_id, content_hash)
             if dup is not None:
@@ -493,3 +505,37 @@ class IngestDocumentUseCase:
             message="Embedding service is unavailable.",
             resource="EmbeddingService",
         )
+
+    def _maybe_build_nodes(
+        self,
+        *,
+        document_id: UUID,
+        workspace_id: UUID,
+        chunk_entities: list[Chunk],
+    ) -> list | None:
+        """
+        Genera nodos si 2-tier retrieval está habilitado.
+
+        Graceful: si falla, loguea warning y retorna None (ingesta continúa sin nodos).
+        """
+        if not self._enable_2tier or not chunk_entities:
+            return None
+
+        try:
+            from ...application.node_builder import build_nodes
+
+            return build_nodes(
+                document_id=document_id,
+                workspace_id=workspace_id,
+                chunks=chunk_entities,
+                embedding_service=self._embeddings,
+                group_size=self._node_group_size,
+                max_chars=self._node_text_max_chars,
+            )
+        except Exception:
+            logger.warning(
+                "Node generation failed (graceful degradation)",
+                extra={"document_id": str(document_id)},
+                exc_info=True,
+            )
+            return None

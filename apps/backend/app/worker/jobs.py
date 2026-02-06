@@ -43,6 +43,7 @@ from ..container import (
     get_text_chunker,
 )
 from ..context import clear_context, http_method_var, http_path_var, request_id_var
+from ..crosscutting.config import get_settings
 from ..crosscutting.logger import logger
 from ..crosscutting.metrics import (
     observe_worker_duration,
@@ -78,12 +79,16 @@ def _build_use_case() -> ProcessUploadedDocumentUseCase:
       - El contenedor ya decide implementaciones concretas (infraestructura).
       - Este job no debe conocer detalles de Redis/S3/Postgres/etc.
     """
+    settings = get_settings()
     return ProcessUploadedDocumentUseCase(
         repository=get_document_repository(),
         storage=get_file_storage(),
         extractor=get_document_text_extractor(),
         chunker=get_text_chunker(),
         embedding_service=get_embedding_service(),
+        enable_2tier_retrieval=settings.enable_2tier_retrieval,
+        node_group_size=settings.node_group_size,
+        node_text_max_chars=settings.node_text_max_chars,
     )
 
 

@@ -176,12 +176,18 @@ class ProcessUploadedDocumentUseCase:
         extractor: DocumentTextExtractor,
         chunker: TextChunkerService,
         embedding_service: EmbeddingService,
+        enable_2tier_retrieval: bool = False,
+        node_group_size: int = 5,
+        node_text_max_chars: int = 2000,
     ) -> None:
         self._documents = repository
         self._storage = storage
         self._extractor = extractor
         self._chunker = chunker
         self._embeddings = embedding_service
+        self._enable_2tier = enable_2tier_retrieval
+        self._node_group_size = node_group_size
+        self._node_text_max_chars = node_text_max_chars
 
     def execute(
         self, input_data: ProcessUploadedDocumentInput
@@ -306,6 +312,13 @@ class ProcessUploadedDocumentUseCase:
                 )
                 chunks_created = len(chunk_entities)
 
+                # Node generation (2-tier retrieval)
+                self._maybe_generate_nodes(
+                    document_id=document_id,
+                    workspace_id=workspace_id,
+                    chunk_entities=chunk_entities,
+                )
+
             # -----------------------------------------------------------------
             # 10) Finalizar estado a READY.
             # -----------------------------------------------------------------
@@ -389,3 +402,46 @@ class ProcessUploadedDocumentUseCase:
             )
 
         return chunk_entities
+
+    def _maybe_generate_nodes(
+        self,
+        *,
+        document_id: UUID,
+        workspace_id: UUID | None,
+        chunk_entities: list[Chunk],
+    ) -> None:
+        """
+        Genera y persiste nodos si 2-tier retrieval está habilitado.
+
+        Graceful: si falla, loguea warning y continúa (chunks ya están guardados).
+        """
+        if not self._enable_2tier or not chunk_entities or not workspace_id:
+            return
+
+        try:
+            from ...application.node_builder import build_nodes
+
+            # Borrar nodos previos (re-procesamiento seguro)
+            self._documents.delete_nodes_for_document(
+                document_id, workspace_id=workspace_id
+            )
+
+            nodes = build_nodes(
+                document_id=document_id,
+                workspace_id=workspace_id,
+                chunks=chunk_entities,
+                embedding_service=self._embeddings,
+                group_size=self._node_group_size,
+                max_chars=self._node_text_max_chars,
+            )
+
+            if nodes:
+                self._documents.save_nodes(
+                    document_id, nodes, workspace_id=workspace_id
+                )
+        except Exception:
+            logger.warning(
+                "Node generation failed (graceful degradation)",
+                extra={"document_id": str(document_id)},
+                exc_info=True,
+            )

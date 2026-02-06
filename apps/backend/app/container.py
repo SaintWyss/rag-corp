@@ -320,11 +320,15 @@ def get_answer_query_with_history_use_case() -> AnswerQueryWithHistoryUseCase:
 
 def get_ingest_document_use_case() -> IngestDocumentUseCase:
     """Caso de uso: ingesta directa de texto."""
+    settings = get_settings()
     return IngestDocumentUseCase(
         repository=get_document_repository(),
         workspace_repository=get_workspace_repository(),
         embedding_service=get_embedding_service(),
         chunker=get_text_chunker(),
+        enable_2tier_retrieval=settings.enable_2tier_retrieval,
+        node_group_size=settings.node_group_size,
+        node_text_max_chars=settings.node_text_max_chars,
     )
 
 
