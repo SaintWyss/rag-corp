@@ -471,3 +471,185 @@ class TestHybridEnabledFlag:
             rank_fusion=rrf,
         )
         assert uc2._hybrid_enabled() is False
+
+
+# ============================================================
+# Tests: Streaming path — hybrid search via SearchChunksUseCase
+# ============================================================
+
+
+@pytest.mark.unit
+class TestStreamingHybridIntegration:
+    """Verificar que el streaming path usa hybrid retrieval correctamente.
+
+    El endpoint /ask/stream usa SearchChunksUseCase que ya tiene hybrid.
+    Estos tests validan ese contrato a nivel use case.
+    """
+
+    def test_stream_retrieval_uses_hybrid_when_enabled(
+        self, mock_repository, mock_embedding_service
+    ):
+        """Con hybrid ON, SearchChunksUseCase (usado por /ask/stream) invoca FTS+RRF."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+
+        shared_id = uuid4()
+        doc_id = uuid4()
+
+        dense_chunks = [
+            _make_chunk("dense_only"),
+            _make_chunk("shared", chunk_id=shared_id, document_id=doc_id),
+        ]
+        sparse_chunks = [
+            _make_chunk("shared", chunk_id=shared_id, document_id=doc_id),
+            _make_chunk("sparse_only"),
+        ]
+
+        mock_repository.find_similar_chunks.return_value = dense_chunks
+        mock_repository.find_chunks_full_text.return_value = sparse_chunks
+
+        rrf = RankFusionService(k=60)
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=True,
+            rank_fusion=rrf,
+        )
+
+        result = uc.execute(
+            SearchChunksInput(
+                query="stream hybrid query",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is None
+        assert result.matches[0].chunk_id == shared_id
+        assert len(result.matches) == 3
+        mock_repository.find_chunks_full_text.assert_called_once()
+
+    def test_stream_retrieval_dense_only_when_hybrid_off(
+        self, mock_repository, mock_embedding_service
+    ):
+        """Con hybrid OFF, solo dense retrieval (mismo path que /ask/stream sin flag)."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        dense = [_make_chunk("dense")]
+        mock_repository.find_similar_chunks.return_value = dense
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=False,
+        )
+
+        result = uc.execute(
+            SearchChunksInput(
+                query="stream query",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is None
+        assert len(result.matches) == 1
+        mock_repository.find_chunks_full_text.assert_not_called()
+
+    def test_stream_retrieval_fallback_when_sparse_fails(
+        self, mock_repository, mock_embedding_service
+    ):
+        """Si sparse falla, graceful degradation a dense-only."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        dense = [_make_chunk("dense_fallback")]
+        mock_repository.find_similar_chunks.return_value = dense
+        mock_repository.find_chunks_full_text.side_effect = RuntimeError("FTS down")
+
+        rrf = RankFusionService(k=60)
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=True,
+            rank_fusion=rrf,
+        )
+
+        result = uc.execute(
+            SearchChunksInput(
+                query="stream query",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is None
+        assert len(result.matches) == 1
+        assert result.matches[0].content == "dense_fallback"
+
+    def test_hybrid_used_flag_in_metadata(
+        self, mock_repository, mock_embedding_service
+    ):
+        """SearchChunksResult.metadata incluye hybrid_used=True cuando hybrid activo."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = [_make_chunk("c")]
+        mock_repository.find_chunks_full_text.return_value = [_make_chunk("c")]
+
+        rrf = RankFusionService(k=60)
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=True,
+            rank_fusion=rrf,
+        )
+
+        result = uc.execute(
+            SearchChunksInput(
+                query="q",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is None
+        assert result.metadata is not None
+        assert result.metadata["hybrid_used"] is True
+
+    def test_hybrid_used_flag_false_when_off(
+        self, mock_repository, mock_embedding_service
+    ):
+        """SearchChunksResult.metadata incluye hybrid_used=False cuando hybrid off."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = [_make_chunk("c")]
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=False,
+        )
+
+        result = uc.execute(
+            SearchChunksInput(
+                query="q",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is None
+        assert result.metadata is not None
+        assert result.metadata["hybrid_used"] is False

@@ -16,13 +16,13 @@ Notes:
   - Mark with @pytest.mark.unit
 """
 
-import pytest
 from uuid import uuid4
 
-from app.application.reranker import RerankResult, RerankerMode
+import pytest
+from app.application.reranker import RerankerMode, RerankResult
 from app.application.usecases.chat.search_chunks import (
-    SearchChunksUseCase,
     SearchChunksInput,
+    SearchChunksUseCase,
 )
 from app.domain.entities import Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
@@ -271,6 +271,36 @@ class TestSearchChunksUseCase:
 
         assert result.error is not None
         assert result.error.code.value == "VALIDATION_ERROR"
+
+    def test_metadata_contains_hybrid_used_flag(
+        self,
+        mock_repository,
+        mock_embedding_service,
+    ):
+        """R: Result metadata always includes hybrid_used flag."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = []
+
+        use_case = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+        )
+
+        result = use_case.execute(
+            SearchChunksInput(
+                query="test",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        assert result.error is None
+        assert result.metadata is not None
+        assert "hybrid_used" in result.metadata
+        assert result.metadata["hybrid_used"] is False
 
 
 @pytest.mark.unit
