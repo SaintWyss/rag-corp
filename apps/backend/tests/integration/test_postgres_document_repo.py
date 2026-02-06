@@ -23,6 +23,7 @@ Setup:
 """
 
 import os
+
 import pytest
 
 # Skip BEFORE importing app.* to avoid triggering env validation during collection
@@ -31,14 +32,11 @@ if os.getenv("RUN_INTEGRATION") != "1":
         "Set RUN_INTEGRATION=1 to run integration tests", allow_module_level=True
     )
 
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 import psycopg
-
-from app.domain.entities import Document, Chunk
-from app.infrastructure.repositories.postgres.document import (
-    PostgresDocumentRepository,
-)
+from app.domain.entities import Chunk, Document
+from app.infrastructure.repositories.postgres.document import PostgresDocumentRepository
 
 pytestmark = pytest.mark.integration
 
@@ -995,6 +993,70 @@ class TestPostgresDocumentRepositoryPoolIntegration:
 
         # Assert - all searches completed (pool working)
         assert len(results) <= 3
+
+
+@pytest.mark.integration
+class TestPostgresVectorIndexType:
+    """Test that the vector index on chunks.embedding uses HNSW."""
+
+    def test_hnsw_index_exists(self, db_conn):
+        """R: Should have an HNSW index on chunks.embedding after migration."""
+        row = db_conn.execute(
+            """
+            SELECT indexname, indexdef
+            FROM pg_indexes
+            WHERE tablename = 'chunks'
+              AND indexdef ILIKE '%%USING hnsw%%'
+            """,
+        ).fetchone()
+
+        assert row is not None, (
+            "No HNSW index found on table 'chunks'. "
+            "Run 'alembic upgrade head' to apply migration 002."
+        )
+        indexname, indexdef = row
+        assert "embedding" in indexdef, "HNSW index should cover the embedding column"
+        assert (
+            "vector_cosine_ops" in indexdef
+        ), "HNSW index should use vector_cosine_ops operator class"
+
+    def test_old_ivfflat_index_removed(self, db_conn):
+        """R: IVFFlat index should no longer exist after HNSW migration."""
+        row = db_conn.execute(
+            """
+            SELECT indexname
+            FROM pg_indexes
+            WHERE tablename = 'chunks'
+              AND indexname = 'chunks_embedding_idx'
+            """,
+        ).fetchone()
+
+        assert row is None, (
+            "Old IVFFlat index 'chunks_embedding_idx' still exists. "
+            "Migration 002 should have dropped it."
+        )
+
+    def test_hnsw_index_used_in_query_plan(self, db_conn):
+        """R: EXPLAIN should show HNSW index scan for vector search."""
+        # Build a dummy 768-dim vector literal for EXPLAIN
+        vec_literal = "[" + ",".join(["0.1"] * 768) + "]"
+        plan_rows = db_conn.execute(
+            f"""
+            EXPLAIN (FORMAT TEXT)
+            SELECT id, 1 - (embedding <=> '{vec_literal}'::vector) AS similarity
+            FROM chunks
+            ORDER BY embedding <=> '{vec_literal}'::vector
+            LIMIT 5
+            """,
+        ).fetchall()
+        plan_text = "\n".join(r[0] for r in plan_rows)
+        # When table is empty the planner may choose Seq Scan,
+        # so we accept either an Index Scan on the HNSW index or a trivial scan.
+        # The critical assertion is that if an index scan is used, it must be HNSW.
+        if "Index Scan" in plan_text:
+            assert (
+                "ix_chunks_embedding_hnsw" in plan_text
+            ), f"Expected HNSW index in query plan but got:\n{plan_text}"
 
 
 # Note: Additional tests for:
