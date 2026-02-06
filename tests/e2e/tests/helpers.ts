@@ -314,8 +314,8 @@ export async function uploadDocumentAndWaitReady(
   const fileBuffer = fs.readFileSync(filePath);
   const filename = path.basename(filePath);
 
-  const maxUploadRetries = 3;
-  const uploadRetryDelayMs = 2_000;
+  const maxUploadRetries = 6;
+  const uploadRetryDelayMs = 4_000;
   let upload: Awaited<ReturnType<typeof page.request.post>> | undefined;
   let lastError: Error | undefined;
 

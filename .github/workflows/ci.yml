@@ -326,6 +326,8 @@ jobs:
             sleep 2
           done
           curl -sf http://localhost:3000
+      - name: Final stabilization wait
+        run: sleep 5
       - name: Run Playwright tests
         run: pnpm -C tests/e2e test
       - name: Upload Playwright artifacts
@@ -466,9 +468,9 @@ jobs:
       PGPORT: "5432"
       FAKE_LLM: "1"
       FAKE_EMBEDDINGS: "1"
-      DEV_SEED_ADMIN: "1"
-      DEV_SEED_ADMIN_EMAIL: admin@example.com
-      DEV_SEED_ADMIN_PASSWORD: admin
+      E2E_SEED_ADMIN: "1"
+      E2E_ADMIN_EMAIL: admin@example.com
+      E2E_ADMIN_PASSWORD: admin
       K6_ADMIN_EMAIL: admin@example.com
       K6_ADMIN_PASSWORD: admin
     steps:
