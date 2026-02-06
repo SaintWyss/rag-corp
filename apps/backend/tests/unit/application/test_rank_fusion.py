@@ -42,7 +42,6 @@ def _chunk(
 
 
 class TestRankFusionServiceInit:
-
     def test_default_k(self):
         rrf = RankFusionService()
         assert rrf.k == 60
@@ -66,7 +65,6 @@ class TestRankFusionServiceInit:
 
 
 class TestRankFusionServiceFuse:
-
     def test_single_list_preserves_order(self):
         rrf = RankFusionService(k=60)
         c1 = _chunk(content="A")
@@ -185,7 +183,6 @@ class TestRankFusionServiceFuse:
 
 
 class TestRankFusionServiceDedup:
-
     def test_dedup_by_chunk_id(self):
         """Mismo chunk_id en ambas listas genera un solo resultado."""
         rrf = RankFusionService(k=60)
@@ -239,7 +236,6 @@ class TestRankFusionServiceDedup:
 
 
 class TestRankFusionServiceProperties:
-
     def test_result_is_union_of_inputs(self):
         """El resultado contiene la unión de todos los chunks únicos."""
         rrf = RankFusionService(k=60)

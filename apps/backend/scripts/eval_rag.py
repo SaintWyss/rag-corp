@@ -412,7 +412,7 @@ def main() -> None:
         print(output)
 
     # Summary on stderr
-    print(f"\n{'='*50}", file=sys.stderr)
+    print(f"\n{'=' * 50}", file=sys.stderr)
     print("  RAG Evaluation Report", file=sys.stderr)
     print(f"  Model: {report.embedding_model}", file=sys.stderr)
     print(
@@ -420,11 +420,11 @@ def main() -> None:
         file=sys.stderr,
     )
     print(f"  top_k: {report.top_k}", file=sys.stderr)
-    print(f"{'='*50}", file=sys.stderr)
+    print(f"{'=' * 50}", file=sys.stderr)
     for name, value in report.metrics.items():
         print(f"  {name:>12s}: {value:.4f}", file=sys.stderr)
     print(f"  {'elapsed':>12s}: {elapsed:.2f}s", file=sys.stderr)
-    print(f"{'='*50}", file=sys.stderr)
+    print(f"{'=' * 50}", file=sys.stderr)
 
 
 if __name__ == "__main__":

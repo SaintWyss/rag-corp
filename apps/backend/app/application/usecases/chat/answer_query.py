@@ -263,9 +263,7 @@ class AnswerQueryUseCase:
         # Extraer fts_language del workspace para hybrid search.
         from ....domain.entities import validate_fts_language
 
-        fts_language = validate_fts_language(
-            getattr(workspace, "fts_language", None)
-        )
+        fts_language = validate_fts_language(getattr(workspace, "fts_language", None))
 
         # ---------------------------------------------------------------------
         # 3) Inicializar observabilidad.

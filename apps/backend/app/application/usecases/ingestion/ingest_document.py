@@ -277,7 +277,9 @@ class IngestDocumentUseCase:
         )
 
         try:
-            self._documents.save_document_with_chunks(document, chunk_entities, nodes=nodes)
+            self._documents.save_document_with_chunks(
+                document, chunk_entities, nodes=nodes
+            )
         except Exception:
             dup = self._resolve_dedup_race(input_data.workspace_id, content_hash)
             if dup is not None:

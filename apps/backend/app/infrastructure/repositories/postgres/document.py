@@ -467,7 +467,9 @@ class PostgresDocumentRepository:
                     )
 
                 # 2) Lookup workspace fts_language
-                fts_lang = self._lookup_workspace_fts_language(conn, scoped_workspace_id)
+                fts_lang = self._lookup_workspace_fts_language(
+                    conn, scoped_workspace_id
+                )
 
                 # 3) Preparación del batch (cada fila corresponde a un INSERT)
                 batch = [
@@ -583,7 +585,9 @@ class PostgresDocumentRepository:
 
                     # 2) Inserción de chunks (si hay)
                     if chunks:
-                        fts_lang = self._lookup_workspace_fts_language(conn, workspace_id)
+                        fts_lang = self._lookup_workspace_fts_language(
+                            conn, workspace_id
+                        )
                         batch = [
                             (
                                 chunk.chunk_id or uuid4(),
@@ -992,7 +996,14 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 rows = conn.execute(
                     sql,
-                    (safe_lang, query_text, scoped_workspace_id, safe_lang, query_text, top_k),
+                    (
+                        safe_lang,
+                        query_text,
+                        scoped_workspace_id,
+                        safe_lang,
+                        query_text,
+                        top_k,
+                    ),
                 ).fetchall()
 
             logger.info(

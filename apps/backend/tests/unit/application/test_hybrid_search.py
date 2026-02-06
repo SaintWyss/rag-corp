@@ -78,7 +78,6 @@ def _make_chunk(content: str, chunk_id=None, document_id=None) -> Chunk:
 
 @pytest.mark.unit
 class TestSearchChunksHybrid:
-
     def test_hybrid_off_does_not_call_full_text(
         self, mock_repository, mock_embedding_service
     ):
@@ -227,7 +226,6 @@ class TestSearchChunksHybrid:
 
 @pytest.mark.unit
 class TestAnswerQueryHybrid:
-
     def test_hybrid_off_does_not_call_full_text(
         self,
         mock_repository,
@@ -401,7 +399,6 @@ class TestAnswerQueryHybrid:
 
 @pytest.mark.unit
 class TestHybridEnabledFlag:
-
     def test_search_hybrid_enabled_requires_both(
         self, mock_repository, mock_embedding_service
     ):
@@ -670,7 +667,6 @@ _ENGLISH_WORKSPACE_REPO = _WorkspaceRepo(_ENGLISH_WORKSPACE)
 
 @pytest.mark.unit
 class TestHybridFtsLanguage:
-
     def test_hybrid_passes_fts_language_to_full_text(
         self, mock_repository, mock_embedding_service
     ):
@@ -703,8 +699,7 @@ class TestHybridFtsLanguage:
         assert call_kwargs is not None
         # fts_language should be 'english' from workspace
         assert call_kwargs.kwargs.get("fts_language") == "english" or (
-            len(call_kwargs.args) > 0
-            and any(a == "english" for a in call_kwargs.args)
+            len(call_kwargs.args) > 0 and any(a == "english" for a in call_kwargs.args)
         )
 
     def test_hybrid_default_fts_language_is_spanish(

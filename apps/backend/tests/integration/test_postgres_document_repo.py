@@ -1016,9 +1016,9 @@ class TestPostgresVectorIndexType:
         )
         indexname, indexdef = row
         assert "embedding" in indexdef, "HNSW index should cover the embedding column"
-        assert (
-            "vector_cosine_ops" in indexdef
-        ), "HNSW index should use vector_cosine_ops operator class"
+        assert "vector_cosine_ops" in indexdef, (
+            "HNSW index should use vector_cosine_ops operator class"
+        )
 
     def test_old_ivfflat_index_removed(self, db_conn):
         """R: IVFFlat index should no longer exist after HNSW migration."""
@@ -1054,9 +1054,9 @@ class TestPostgresVectorIndexType:
         # so we accept either an Index Scan on the HNSW index or a trivial scan.
         # The critical assertion is that if an index scan is used, it must be HNSW.
         if "Index Scan" in plan_text:
-            assert (
-                "ix_chunks_embedding_hnsw" in plan_text
-            ), f"Expected HNSW index in query plan but got:\n{plan_text}"
+            assert "ix_chunks_embedding_hnsw" in plan_text, (
+                f"Expected HNSW index in query plan but got:\n{plan_text}"
+            )
 
 
 # Note: Additional tests for:

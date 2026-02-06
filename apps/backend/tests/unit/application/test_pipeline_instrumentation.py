@@ -100,9 +100,10 @@ class TestPipelineStageInstrumentation:
             rank_fusion=RankFusionService(k=60),
         )
 
-        with patch(f"{_METRICS_MODULE}.observe_sparse_latency") as mock_sparse, patch(
-            f"{_METRICS_MODULE}.observe_fusion_latency"
-        ) as mock_fusion:
+        with (
+            patch(f"{_METRICS_MODULE}.observe_sparse_latency") as mock_sparse,
+            patch(f"{_METRICS_MODULE}.observe_fusion_latency") as mock_fusion,
+        ):
             uc.execute(
                 SearchChunksInput(
                     query="test", workspace_id=_WORKSPACE.id, actor=_ACTOR, top_k=5
@@ -151,9 +152,7 @@ class TestPipelineStageInstrumentation:
             rank_fusion=RankFusionService(k=60),
         )
 
-        with patch(
-            f"{_METRICS_MODULE}.record_retrieval_fallback"
-        ) as mock_fallback:
+        with patch(f"{_METRICS_MODULE}.record_retrieval_fallback") as mock_fallback:
             uc.execute(
                 SearchChunksInput(
                     query="test", workspace_id=_WORKSPACE.id, actor=_ACTOR, top_k=5
@@ -213,9 +212,7 @@ class TestPipelineStageInstrumentation:
             enable_rerank=True,
         )
 
-        with patch(
-            f"{_METRICS_MODULE}.record_retrieval_fallback"
-        ) as mock_fallback:
+        with patch(f"{_METRICS_MODULE}.record_retrieval_fallback") as mock_fallback:
             uc.execute(
                 SearchChunksInput(
                     query="test", workspace_id=_WORKSPACE.id, actor=_ACTOR, top_k=5
