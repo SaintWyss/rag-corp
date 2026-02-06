@@ -23,7 +23,7 @@ Invariantes:
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 
 from ..domain.entities import Chunk, Node

@@ -349,3 +349,29 @@ class TestDatabasePoolSettings:
         settings = Settings()
 
         assert settings.db_statement_timeout_ms == 0
+
+    @pytest.mark.parametrize("lang", ["spanish", "english", "simple"])
+    def test_fts_language_default_valid(self, monkeypatch, lang: str):
+        """Valid fts_language_default values are accepted."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("FTS_LANGUAGE_DEFAULT", lang)
+
+        from app.crosscutting.config import Settings
+
+        settings = Settings()
+        assert settings.fts_language_default == lang
+
+    def test_fts_language_default_invalid_rejected(self, monkeypatch):
+        """Invalid fts_language_default raises ValidationError."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
+        monkeypatch.setenv("FTS_LANGUAGE_DEFAULT", "klingon")
+
+        from app.crosscutting.config import Settings
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert "fts_language_default" in str(exc_info.value)

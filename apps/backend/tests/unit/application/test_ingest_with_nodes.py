@@ -15,7 +15,6 @@ from app.application.usecases.ingestion.ingest_document import (
     IngestDocumentInput,
     IngestDocumentUseCase,
 )
-from app.domain.entities import Chunk, Document
 from app.domain.repositories import DocumentRepository, WorkspaceRepository
 from app.domain.services import EmbeddingService, TextChunkerService
 

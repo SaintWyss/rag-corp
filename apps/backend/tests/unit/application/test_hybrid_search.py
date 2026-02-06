@@ -13,7 +13,6 @@ Collaborators:
   - conftest: mock fixtures para dependencias
 """
 
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -38,6 +37,7 @@ _WORKSPACE = Workspace(
     id=uuid4(),
     name="HybridTestWorkspace",
     visibility=WorkspaceVisibility.PRIVATE,
+    fts_language="spanish",
 )
 _ACTOR = WorkspaceActor(user_id=uuid4(), role=UserRole.ADMIN)
 
@@ -653,3 +653,127 @@ class TestStreamingHybridIntegration:
         assert result.error is None
         assert result.metadata is not None
         assert result.metadata["hybrid_used"] is False
+
+
+# ============================================================
+# Tests: FTS language passthrough in hybrid search
+# ============================================================
+
+_ENGLISH_WORKSPACE = Workspace(
+    id=uuid4(),
+    name="EnglishWorkspace",
+    visibility=WorkspaceVisibility.PRIVATE,
+    fts_language="english",
+)
+_ENGLISH_WORKSPACE_REPO = _WorkspaceRepo(_ENGLISH_WORKSPACE)
+
+
+@pytest.mark.unit
+class TestHybridFtsLanguage:
+
+    def test_hybrid_passes_fts_language_to_full_text(
+        self, mock_repository, mock_embedding_service
+    ):
+        """find_chunks_full_text is called with the workspace's fts_language."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = [_make_chunk("dense")]
+        mock_repository.find_chunks_full_text.return_value = [_make_chunk("sparse")]
+
+        rrf = RankFusionService(k=60)
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_ENGLISH_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=True,
+            rank_fusion=rrf,
+        )
+
+        uc.execute(
+            SearchChunksInput(
+                query="test",
+                workspace_id=_ENGLISH_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        call_kwargs = mock_repository.find_chunks_full_text.call_args
+        assert call_kwargs is not None
+        # fts_language should be 'english' from workspace
+        assert call_kwargs.kwargs.get("fts_language") == "english" or (
+            len(call_kwargs.args) > 0
+            and any(a == "english" for a in call_kwargs.args)
+        )
+
+    def test_hybrid_default_fts_language_is_spanish(
+        self, mock_repository, mock_embedding_service
+    ):
+        """When workspace has default fts_language, spanish is passed."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = [_make_chunk("d")]
+        mock_repository.find_chunks_full_text.return_value = [_make_chunk("s")]
+
+        rrf = RankFusionService(k=60)
+
+        uc = SearchChunksUseCase(
+            repository=mock_repository,
+            workspace_repository=_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            enable_hybrid_search=True,
+            rank_fusion=rrf,
+        )
+
+        uc.execute(
+            SearchChunksInput(
+                query="test",
+                workspace_id=_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        call_kwargs = mock_repository.find_chunks_full_text.call_args
+        assert call_kwargs is not None
+        assert call_kwargs.kwargs.get("fts_language") == "spanish"
+
+    def test_answer_query_passes_fts_language(
+        self,
+        mock_repository,
+        mock_embedding_service,
+        mock_llm_service,
+        mock_context_builder,
+    ):
+        """AnswerQueryUseCase passes workspace fts_language to find_chunks_full_text."""
+        mock_embedding_service.embed_query.return_value = [0.5] * 768
+        mock_repository.find_similar_chunks.return_value = [_make_chunk("d")]
+        mock_repository.find_chunks_full_text.return_value = [_make_chunk("s")]
+        mock_llm_service.generate_answer.return_value = "answer"
+
+        rrf = RankFusionService(k=60)
+
+        uc = AnswerQueryUseCase(
+            repository=mock_repository,
+            workspace_repository=_ENGLISH_WORKSPACE_REPO,
+            acl_repository=_ACL_REPO,
+            embedding_service=mock_embedding_service,
+            llm_service=mock_llm_service,
+            context_builder=mock_context_builder,
+            enable_hybrid_search=True,
+            rank_fusion=rrf,
+        )
+
+        uc.execute(
+            AnswerQueryInput(
+                query="test",
+                workspace_id=_ENGLISH_WORKSPACE.id,
+                actor=_ACTOR,
+                top_k=5,
+            )
+        )
+
+        call_kwargs = mock_repository.find_chunks_full_text.call_args
+        assert call_kwargs is not None
+        assert call_kwargs.kwargs.get("fts_language") == "english"
