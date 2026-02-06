@@ -22,10 +22,10 @@ from __future__ import annotations
 import math
 from typing import List, Set
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _validate_parallel(
     retrieved: List[List[str]],
@@ -42,6 +42,7 @@ def _validate_parallel(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def mean_reciprocal_rank(
     retrieved: List[List[str]],
@@ -106,11 +107,7 @@ def hit_at_1(
     if not retrieved:
         return 0.0
 
-    hits = sum(
-        1
-        for ret, rel in zip(retrieved, relevant)
-        if ret and ret[0] in rel
-    )
+    hits = sum(1 for ret, rel in zip(retrieved, relevant) if ret and ret[0] in rel)
     return hits / len(retrieved)
 
 
