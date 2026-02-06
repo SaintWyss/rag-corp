@@ -400,7 +400,8 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/ragcorp_test
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      FAKE_LLM: "1"
+      FAKE_EMBEDDINGS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
