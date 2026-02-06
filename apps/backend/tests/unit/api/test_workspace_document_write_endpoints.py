@@ -102,6 +102,11 @@ def _override_upload_use_case(
     mock_storage: MagicMock,
     mock_queue: MagicMock,
 ):
+    # Dedup: por defecto no hay documento existente con ese hash
+    if not hasattr(
+        mock_repo.get_document_by_content_hash, "return_value"
+    ) or isinstance(mock_repo.get_document_by_content_hash.return_value, MagicMock):
+        mock_repo.get_document_by_content_hash.return_value = None
     use_case = UploadDocumentUseCase(
         repository=mock_repo,
         workspace_repository=workspace_repo,

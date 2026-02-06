@@ -74,12 +74,14 @@ from dataclasses import dataclass
 from typing import Any, Final
 from uuid import UUID, uuid4
 
+from ....crosscutting.metrics import record_dedup_hit
 from ....domain.access import normalize_allowed_roles
 from ....domain.entities import Document
 from ....domain.repositories import DocumentRepository, WorkspaceRepository
 from ....domain.services import DocumentProcessingQueue, FileStoragePort
 from ....domain.tags import normalize_tags
 from ....domain.workspace_policy import WorkspaceActor
+from ...content_hash import compute_file_hash
 from ..documents.document_results import (
     DocumentError,
     DocumentErrorCode,
@@ -166,6 +168,27 @@ class UploadDocumentUseCase:
             return UploadDocumentResult(error=workspace_error)
 
         # ---------------------------------------------------------------------
+        # 1b) Dedup: verificar si el archivo ya existe en el workspace.
+        # ---------------------------------------------------------------------
+        content_hash = compute_file_hash(input_data.workspace_id, input_data.content)
+        existing = self._documents.get_document_by_content_hash(
+            input_data.workspace_id, content_hash
+        )
+        if existing is not None:
+            logger.info(
+                "Upload dedup hit: archivo ya existe en workspace. document_id=%s",
+                existing.id,
+                extra={"dedup_hit": True},
+            )
+            record_dedup_hit()
+            return UploadDocumentResult(
+                document_id=existing.id,
+                status=existing.status,
+                file_name=existing.file_name,
+                mime_type=existing.mime_type,
+            )
+
+        # ---------------------------------------------------------------------
         # 2) Validar dependencias externas.
         # ---------------------------------------------------------------------
         if self._storage is None:
@@ -206,6 +229,7 @@ class UploadDocumentUseCase:
             metadata=metadata_payload,
             tags=tags,
             allowed_roles=allowed_roles,
+            content_hash=content_hash,
         )
 
         # ---------------------------------------------------------------------

@@ -71,7 +71,8 @@ class PostgresDocumentRepository:
     _DOC_SELECT_COLUMNS = """
         id, workspace_id, title, source, metadata, created_at, deleted_at,
         file_name, mime_type, storage_key,
-        uploaded_by_user_id, status, error_message, tags, allowed_roles
+        uploaded_by_user_id, status, error_message, tags, allowed_roles,
+        content_hash
     """
 
     def __init__(self, pool: ConnectionPool | None = None):
@@ -197,6 +198,7 @@ class PostgresDocumentRepository:
             error_message=row[12],
             tags=row[13] or [],
             allowed_roles=row[14] or [],
+            content_hash=row[15] if len(row) > 15 else None,
         )
 
     def _rows_to_documents(self, rows: list[tuple]) -> list[Document]:
@@ -226,16 +228,18 @@ class PostgresDocumentRepository:
                 source,
                 metadata,
                 tags,
-                allowed_roles
+                allowed_roles,
+                content_hash
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
             SET workspace_id = EXCLUDED.workspace_id,
                 title = EXCLUDED.title,
                 source = EXCLUDED.source,
                 metadata = EXCLUDED.metadata,
                 tags = EXCLUDED.tags,
-                allowed_roles = EXCLUDED.allowed_roles
+                allowed_roles = EXCLUDED.allowed_roles,
+                content_hash = EXCLUDED.content_hash
         """
 
         params = (
@@ -246,6 +250,7 @@ class PostgresDocumentRepository:
             Json(document.metadata),
             document.tags or [],
             document.allowed_roles or [],
+            document.content_hash,
         )
 
         try:
@@ -374,6 +379,34 @@ class PostgresDocumentRepository:
 
         return None if not row else self._row_to_document(row)
 
+    def get_document_by_content_hash(
+        self, workspace_id: UUID, content_hash: str
+    ) -> Document | None:
+        """
+        Busca documento por hash de contenido dentro de un workspace.
+
+        Retorna:
+        - Document si existe un documento activo con ese hash
+        - None si no existe (o si está soft-deleted)
+        """
+        row = self._fetchone(
+            query=f"""
+                SELECT {self._DOC_SELECT_COLUMNS}
+                FROM documents
+                WHERE workspace_id = %s
+                  AND content_hash = %s
+                  AND deleted_at IS NULL
+            """,
+            params=[workspace_id, content_hash],
+            context_msg="PostgresDocumentRepository: Get document by content hash failed",
+            extra={
+                "workspace_id": str(workspace_id),
+                "content_hash": content_hash[:8],
+            },
+        )
+
+        return None if not row else self._row_to_document(row)
+
     # ============================================================
     # Persistencia de Chunks
     # ============================================================
@@ -497,16 +530,18 @@ class PostgresDocumentRepository:
                             source,
                             metadata,
                             tags,
-                            allowed_roles
+                            allowed_roles,
+                            content_hash
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (id) DO UPDATE
                         SET workspace_id = EXCLUDED.workspace_id,
                             title = EXCLUDED.title,
                             source = EXCLUDED.source,
                             metadata = EXCLUDED.metadata,
                             tags = EXCLUDED.tags,
-                            allowed_roles = EXCLUDED.allowed_roles
+                            allowed_roles = EXCLUDED.allowed_roles,
+                            content_hash = EXCLUDED.content_hash
                         """,
                         (
                             document.id,
@@ -516,6 +551,7 @@ class PostgresDocumentRepository:
                             Json(document.metadata),
                             document.tags or [],
                             document.allowed_roles or [],
+                            document.content_hash,
                         ),
                     )
 

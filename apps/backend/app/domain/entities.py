@@ -73,6 +73,9 @@ class Document:
     tags: List[str] = field(default_factory=list)
     allowed_roles: List[str] = field(default_factory=list)
 
+    # Deduplicación de contenido
+    content_hash: Optional[str] = None
+
     @property
     def is_deleted(self) -> bool:
         """True si está soft-deleted."""
