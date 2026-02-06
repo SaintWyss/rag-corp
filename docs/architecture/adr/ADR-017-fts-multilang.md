@@ -15,12 +15,12 @@ Esto funciona para workspaces en español, pero impide buscar correctamente en o
 
 ### Opciones evaluadas
 
-| Opcion | Pros | Contras |
-| --- | --- | --- |
-| Config global (`FTS_LANGUAGE_DEFAULT`) | Simple, un solo valor | No permite workspaces multi-idioma |
-| Trigger PostgreSQL | Transparente a la app | Complejidad oculta, difícil de testear |
-| GENERATED con función custom | Automático en INSERT | GENERATED no soporta expresiones que varían por fila |
-| **Per-workspace `fts_language`** | Flexible, explícito, seguro | Migration destructiva para tsv, requiere reprocessing al cambiar idioma |
+| Opcion                                 | Pros                        | Contras                                                                 |
+| -------------------------------------- | --------------------------- | ----------------------------------------------------------------------- |
+| Config global (`FTS_LANGUAGE_DEFAULT`) | Simple, un solo valor       | No permite workspaces multi-idioma                                      |
+| Trigger PostgreSQL                     | Transparente a la app       | Complejidad oculta, difícil de testear                                  |
+| GENERATED con función custom           | Automático en INSERT        | GENERATED no soporta expresiones que varían por fila                    |
+| **Per-workspace `fts_language`**       | Flexible, explícito, seguro | Migration destructiva para tsv, requiere reprocessing al cambiar idioma |
 
 ## Decisión
 
