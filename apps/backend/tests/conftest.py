@@ -146,6 +146,12 @@ def mock_repository(sample_chunks: List[Chunk]) -> Mock:
     mock.save_chunks.return_value = None
     mock.get_document_by_content_hash.return_value = None
 
+    # Node methods (2-tier retrieval)
+    mock.find_similar_nodes.return_value = []
+    mock.find_chunks_by_node_spans.return_value = []
+    mock.save_nodes.return_value = None
+    mock.delete_nodes_for_document.return_value = 0
+
     return mock
 
 
