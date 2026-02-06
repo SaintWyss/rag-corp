@@ -1,0 +1,82 @@
+# =============================================================================
+# RAG Evaluation Harness — optional/manual CI job
+# =============================================================================
+# Responsabilidades:
+#   - Ejecutar el eval harness offline contra el dataset golden.
+#   - Subir el reporte JSON como artifact para revision.
+#   - Non-blocking: no falla el CI si los scores son bajos.
+#
+# Trigger: manual (workflow_dispatch) o por push cuando cambian archivos eval.
+# =============================================================================
+
+name: RAG Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      top_k:
+        description: "Number of results per query (default: 5)"
+        required: false
+        default: "5"
+  push:
+    branches: [main, develop]
+    paths:
+      - "apps/backend/eval/**"
+      - "apps/backend/scripts/eval_rag.py"
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    env:
+      FAKE_EMBEDDINGS: "1"
+      FAKE_LLM: "1"
+      APP_ENV: test
+      DATABASE_URL: "postgresql://x:x@localhost/x"
+      JWT_SECRET: "eval-ci"
+      GOOGLE_API_KEY: "eval-ci-fake"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run RAG evaluation
+        run: |
+          python scripts/eval_rag.py \
+            --top-k ${{ github.event.inputs.top_k || '5' }} \
+            --out eval-report.json \
+            --verbose
+
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f eval-report.json ]; then
+            python -c "
+          import json, sys
+          r = json.load(open('eval-report.json'))
+          print('## RAG Evaluation Results')
+          print(f\"Model: {r['embedding_model']}\")
+          print(f\"Corpus: {r['corpus_size']} docs | Queries: {r['query_count']}\")
+          print(f\"top_k: {r['top_k']}\")
+          print()
+          for k, v in r['metrics'].items():
+              print(f'  {k}: {v:.4f}')
+          " >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: apps/backend/eval-report.json
+          retention-days: 30
