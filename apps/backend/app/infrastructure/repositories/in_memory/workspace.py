@@ -274,7 +274,8 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
             description=workspace.description,
             visibility=workspace.visibility,
             owner_user_id=workspace.owner_user_id,
-            # Campos “de presentación/ACL” en memoria: copias defensivas
+            fts_language=workspace.fts_language or "spanish",
+            # Campos "de presentación/ACL" en memoria: copias defensivas
             allowed_roles=self._copy_roles(workspace.allowed_roles),
             shared_user_ids=self._copy_shared_ids(
                 getattr(workspace, "shared_user_ids", None)
@@ -297,6 +298,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
         description: str | None = None,
         visibility: WorkspaceVisibility | None = None,
         allowed_roles: list[str] | None = None,
+        fts_language: str | None = None,
     ) -> Optional[Workspace]:
         """
         Actualiza atributos.
@@ -310,6 +312,12 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
             if current is None:
                 return None
 
+            resolved_fts_language = current.fts_language
+            if fts_language is not None:
+                from ....domain.entities import validate_fts_language
+
+                resolved_fts_language = validate_fts_language(fts_language)
+
             updated = Workspace(
                 id=current.id,
                 name=name if name is not None else current.name,
@@ -318,6 +326,7 @@ class InMemoryWorkspaceRepository(WorkspaceRepository):
                 ),
                 visibility=visibility if visibility is not None else current.visibility,
                 owner_user_id=current.owner_user_id,
+                fts_language=resolved_fts_language,
                 allowed_roles=(
                     self._copy_roles(allowed_roles)
                     if allowed_roles is not None

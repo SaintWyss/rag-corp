@@ -48,7 +48,7 @@ class PostgresWorkspaceRepository:
     # R: SELECT base reutilizable (mismo orden de columnas para mapping consistente)
     _SELECT_COLUMNS = """
         id, name, description, visibility, owner_user_id,
-        archived_at, created_at, updated_at
+        archived_at, created_at, updated_at, fts_language
     """
 
     # R: Orden determinístico: primero más recientes, luego nombre (estable)
@@ -81,6 +81,7 @@ class PostgresWorkspaceRepository:
             archived_at,
             created_at,
             updated_at,
+            fts_language,
         ) = row
 
         return Workspace(
@@ -89,6 +90,7 @@ class PostgresWorkspaceRepository:
             description=description,
             visibility=WorkspaceVisibility(visibility),
             owner_user_id=owner_user_id,
+            fts_language=fts_language or "spanish",
             created_at=created_at,
             updated_at=updated_at,
             archived_at=archived_at,
@@ -315,11 +317,12 @@ class PostgresWorkspaceRepository:
                     description,
                     visibility,
                     owner_user_id,
-                    archived_at
+                    archived_at,
+                    fts_language
                 )
-                VALUES (%s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, name, description, visibility, owner_user_id,
-                          archived_at, created_at, updated_at
+                          archived_at, created_at, updated_at, fts_language
             """,
             params=[
                 workspace.id,
@@ -328,6 +331,7 @@ class PostgresWorkspaceRepository:
                 workspace.visibility.value,
                 workspace.owner_user_id,
                 workspace.archived_at,
+                workspace.fts_language or "spanish",
             ],
             context_msg="PostgresWorkspaceRepository: Failed to create workspace",
             extra={"workspace_id": str(workspace.id)},
@@ -347,6 +351,7 @@ class PostgresWorkspaceRepository:
         description: str | None = None,
         visibility: WorkspaceVisibility | None = None,
         allowed_roles: list[str] | None = None,
+        fts_language: str | None = None,
     ) -> Workspace | None:
         """
         R: Actualiza atributos del workspace.
@@ -369,6 +374,12 @@ class PostgresWorkspaceRepository:
             fields.append("visibility = %s")
             params.append(visibility.value)
 
+        if fts_language is not None:
+            from ....domain.entities import validate_fts_language
+
+            fields.append("fts_language = %s")
+            params.append(validate_fts_language(fts_language))
+
         # R: Se ignora explícitamente (documentación de contrato)
         _ = allowed_roles
 
@@ -383,7 +394,7 @@ class PostgresWorkspaceRepository:
             SET {", ".join(fields)}
             WHERE id = %s
             RETURNING id, name, description, visibility, owner_user_id,
-                      archived_at, created_at, updated_at
+                      archived_at, created_at, updated_at, fts_language
         """
         params.append(workspace_id)
 

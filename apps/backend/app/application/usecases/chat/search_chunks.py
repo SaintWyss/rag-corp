@@ -195,7 +195,7 @@ class SearchChunksUseCase:
         # ---------------------------------------------------------------------
         # 2) Enforce workspace read access.
         # ---------------------------------------------------------------------
-        _, workspace_error = resolve_workspace_for_read(
+        workspace, workspace_error = resolve_workspace_for_read(
             workspace_id=input_data.workspace_id,
             actor=input_data.actor,
             workspace_repository=self._workspaces,
@@ -203,6 +203,13 @@ class SearchChunksUseCase:
         )
         if workspace_error is not None:
             return SearchChunksResult(matches=[], error=workspace_error)
+
+        # Extraer fts_language del workspace para hybrid search.
+        from ....domain.entities import validate_fts_language
+
+        fts_language = validate_fts_language(
+            getattr(workspace, "fts_language", None)
+        )
 
         # ---------------------------------------------------------------------
         # 3) Sanitizar top_k (defensivo).
@@ -245,6 +252,7 @@ class SearchChunksUseCase:
             workspace_id=input_data.workspace_id,
             top_k=candidate_top_k,
             use_mmr=input_data.use_mmr,
+            fts_language=fts_language,
         )
 
         # ---------------------------------------------------------------------
@@ -320,6 +328,7 @@ class SearchChunksUseCase:
         workspace_id: UUID,
         top_k: int,
         use_mmr: bool,
+        fts_language: str = "spanish",
     ):
         """
         Recupera chunks usando dense retrieval (similarity/MMR).
@@ -372,6 +381,7 @@ class SearchChunksUseCase:
                 query_text=query_text,
                 top_k=top_k,
                 workspace_id=workspace_id,
+                fts_language=fts_language,
             )
             observe_sparse_latency(time.perf_counter() - t0)
         except Exception as exc:

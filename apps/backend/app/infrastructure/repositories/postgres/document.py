@@ -418,6 +418,16 @@ class PostgresDocumentRepository:
     # ============================================================
     # Persistencia de Chunks
     # ============================================================
+    # Chunk persistence (batch)
+    # ============================================================
+    def _lookup_workspace_fts_language(self, conn, workspace_id: UUID) -> str:
+        """Obtiene fts_language del workspace. Fallback a 'spanish'."""
+        row = conn.execute(
+            "SELECT COALESCE(w.fts_language, 'spanish') FROM workspaces w WHERE w.id = %s",
+            (workspace_id,),
+        ).fetchone()
+        return row[0] if row else "spanish"
+
     def save_chunks(
         self,
         document_id: UUID,
@@ -456,7 +466,10 @@ class PostgresDocumentRepository:
                         f"Document {document_id} not found for workspace {scoped_workspace_id}"
                     )
 
-                # 2) Preparación del batch (cada fila corresponde a un INSERT)
+                # 2) Lookup workspace fts_language
+                fts_lang = self._lookup_workspace_fts_language(conn, scoped_workspace_id)
+
+                # 3) Preparación del batch (cada fila corresponde a un INSERT)
                 batch = [
                     (
                         chunk.chunk_id or uuid4(),
@@ -465,17 +478,19 @@ class PostgresDocumentRepository:
                         chunk.content,
                         chunk.embedding,  # pgvector acepta lista/array
                         Json(chunk.metadata or {}),
+                        fts_lang,
+                        chunk.content,
                     )
                     for idx, chunk in enumerate(chunks)
                 ]
 
-                # 3) Inserción batch (con fallback por colisiones de prepared statements).
+                # 4) Inserción batch (con fallback por colisiones de prepared statements).
                 with conn.cursor() as cur:
                     try:
                         cur.executemany(
                             """
-                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+                            INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata, tsv)
+                            VALUES (%s, %s, %s, %s, %s, %s, to_tsvector(%s::regconfig, coalesce(%s, '')))
                             """,
                             batch,
                         )
@@ -485,8 +500,8 @@ class PostgresDocumentRepository:
                         for row in batch:
                             conn.execute(
                                 """
-                                INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
-                                VALUES (%s, %s, %s, %s, %s, %s)
+                                INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata, tsv)
+                                VALUES (%s, %s, %s, %s, %s, %s, to_tsvector(%s::regconfig, coalesce(%s, '')))
                                 """,
                                 row,
                             )
@@ -568,6 +583,7 @@ class PostgresDocumentRepository:
 
                     # 2) Inserción de chunks (si hay)
                     if chunks:
+                        fts_lang = self._lookup_workspace_fts_language(conn, workspace_id)
                         batch = [
                             (
                                 chunk.chunk_id or uuid4(),
@@ -580,6 +596,8 @@ class PostgresDocumentRepository:
                                 chunk.content,
                                 chunk.embedding,
                                 Json(chunk.metadata or {}),
+                                fts_lang,
+                                chunk.content,
                             )
                             for idx, chunk in enumerate(chunks)
                         ]
@@ -587,8 +605,8 @@ class PostgresDocumentRepository:
                         with conn.cursor() as cur:
                             cur.executemany(
                                 """
-                                INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata)
-                                VALUES (%s, %s, %s, %s, %s, %s)
+                                INSERT INTO chunks (id, document_id, chunk_index, content, embedding, metadata, tsv)
+                                VALUES (%s, %s, %s, %s, %s, %s, to_tsvector(%s::regconfig, coalesce(%s, '')))
                                 """,
                                 batch,
                             )
@@ -925,15 +943,17 @@ class PostgresDocumentRepository:
         top_k: int,
         *,
         workspace_id: UUID | None = None,
+        fts_language: str = "spanish",
     ) -> list[Chunk]:
         """
         Búsqueda full-text (sparse) usando tsvector + ts_rank_cd.
 
-        - Usa la columna generada `tsv` (to_tsvector('spanish', content)).
+        - Usa la columna `tsv` computada al INSERT con to_tsvector(lang, content).
         - Operador @@: match full-text.
         - websearch_to_tsquery: parseo robusto de queries de usuario
           (soporta operadores OR, -, "frase exacta", etc.).
         - ts_rank_cd: ranking por cobertura de documento (cover density).
+        - fts_language: idioma del workspace (parametrizado vía %s::regconfig).
         """
         scoped_workspace_id = self._require_workspace_id(
             workspace_id, "find_chunks_full_text"
@@ -941,6 +961,11 @@ class PostgresDocumentRepository:
 
         if top_k <= 0 or not (query_text or "").strip():
             return []
+
+        # Validar idioma contra allowlist del dominio (doble barrera).
+        from ....domain.entities import validate_fts_language
+
+        safe_lang = validate_fts_language(fts_language)
 
         sql = """
             SELECT
@@ -952,12 +977,12 @@ class PostgresDocumentRepository:
               c.content,
               c.embedding,
               c.metadata,
-              ts_rank_cd(c.tsv, websearch_to_tsquery('spanish', %s)) AS score
+              ts_rank_cd(c.tsv, websearch_to_tsquery(%s::regconfig, %s)) AS score
             FROM chunks c
             JOIN documents d ON d.id = c.document_id
             WHERE d.deleted_at IS NULL
               AND d.workspace_id = %s
-              AND c.tsv @@ websearch_to_tsquery('spanish', %s)
+              AND c.tsv @@ websearch_to_tsquery(%s::regconfig, %s)
             ORDER BY score DESC
             LIMIT %s
         """
@@ -967,7 +992,7 @@ class PostgresDocumentRepository:
             with pool.connection() as conn:
                 rows = conn.execute(
                     sql,
-                    (query_text, scoped_workspace_id, query_text, top_k),
+                    (safe_lang, query_text, scoped_workspace_id, safe_lang, query_text, top_k),
                 ).fetchall()
 
             logger.info(
