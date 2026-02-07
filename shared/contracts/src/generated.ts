@@ -113,6 +113,63 @@ export interface BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUplo
   metadata?: BodyUploadWorkspaceDocumentV1WorkspacesWorkspaceIdDocumentsUploadPostMetadata;
 }
 
+/**
+ * Representación HTTP de una cuenta vinculada.
+ */
+export interface ConnectorAccountRes {
+  id: string;
+  workspace_id: string;
+  provider: string;
+  account_email: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Respuesta de eliminación de fuente.
+ */
+export interface ConnectorDeleteRes {
+  deleted: boolean;
+}
+
+/**
+ * Respuesta de listado de fuentes.
+ */
+export interface ConnectorSourceListRes {
+  sources: ConnectorSourceRes[];
+  count: number;
+}
+
+export type ConnectorSourceResCursorJsonAnyOf = { [key: string]: unknown };
+
+export type ConnectorSourceResCursorJson = ConnectorSourceResCursorJsonAnyOf | null;
+
+/**
+ * Representación HTTP de un ConnectorSource.
+ */
+export interface ConnectorSourceRes {
+  id: string;
+  workspace_id: string;
+  provider: string;
+  folder_id: string;
+  status: string;
+  cursor_json?: ConnectorSourceResCursorJson;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Request para crear una fuente Google Drive.
+ */
+export interface CreateConnectorSourceReq {
+  /**
+   * ID de la carpeta de Google Drive
+   * @minLength 1
+   * @maxLength 500
+   */
+  folder_id: string;
+}
+
 export interface CreateUserRequest {
   /**
    * @minLength 3
@@ -409,6 +466,31 @@ export interface ShareWorkspaceReq {
 }
 
 /**
+ * URL de autorización OAuth para el proveedor.
+ */
+export interface StartOAuthRes {
+  authorization_url: string;
+}
+
+/**
+ * Estadísticas de una ejecución de sync.
+ */
+export interface SyncStatsRes {
+  files_found: number;
+  files_ingested: number;
+  files_skipped: number;
+  files_errored: number;
+}
+
+/**
+ * Respuesta del trigger de sync.
+ */
+export interface SyncTriggerRes {
+  source_id: string;
+  stats: SyncStatsRes;
+}
+
+/**
  * Nuevo nombre del workspace
  */
 export type UpdateWorkspaceReqName = string | null;
@@ -578,6 +660,17 @@ limit?: number;
 offset?: number;
 };
 
+export type OauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetParams = {
+/**
+ * Authorization code de Google
+ */
+code: string;
+/**
+ * Estado OAuth (JSON)
+ */
+state: string;
+};
+
 export type ListAuditEventsV1AdminAuditGetParams = {
 workspace_id: string | null;
 actor_id?: string | null;
@@ -622,6 +715,17 @@ export type ListWorkspaceDocumentsApiV1WorkspacesWorkspaceIdDocumentsGetParams =
 status?: string | null;
 limit?: number;
 offset?: number;
+};
+
+export type OauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetParams = {
+/**
+ * Authorization code de Google
+ */
+code: string;
+/**
+ * Estado OAuth (JSON)
+ */
+state: string;
 };
 
 export type ListAuditEventsApiV1AdminAuditGetParams = {
@@ -2299,6 +2403,644 @@ export const askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPost = async (wor
   
   const data: askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as askStreamWorkspaceV1WorkspacesWorkspaceIdAskStreamPostResponse
+}
+
+
+
+/**
+ * @summary Crear fuente Google Drive
+ */
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse201 = {
+  data: ConnectorSourceRes
+  status: 201
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseSuccess = (createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse201) & {
+  headers: Headers;
+};
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseError = (createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse400 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse401 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse403 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse404 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse409 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse413 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse415 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse422 | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse = (createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseSuccess | createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseError)
+
+export const getCreateGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/connectors/google-drive/sources`
+}
+
+export const createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPost = async (workspaceId: string,
+    createConnectorSourceReq: CreateConnectorSourceReq, options?: RequestInit): Promise<createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse> => {
+  
+  const res = await fetch(getCreateGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createConnectorSourceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createGoogleDriveSourceV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse
+}
+
+
+
+/**
+ * @summary Listar fuentes de conectores
+ */
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse200 = {
+  data: ConnectorSourceListRes
+  status: 200
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseSuccess = (listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse200) & {
+  headers: Headers;
+};
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseError = (listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse400 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse401 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse403 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse404 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse409 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse413 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse415 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse422 | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse = (listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseSuccess | listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseError)
+
+export const getListConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/connectors/sources`
+}
+
+export const listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGet = async (workspaceId: string, options?: RequestInit): Promise<listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse> => {
+  
+  const res = await fetch(getListConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listConnectorSourcesV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse
+}
+
+
+
+/**
+ * @summary Eliminar fuente de conector
+ */
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse200 = {
+  data: ConnectorDeleteRes
+  status: 200
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseSuccess = (deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseError = (deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse400 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse401 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse403 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse404 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse409 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse413 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse415 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse422 | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseDefault) & {
+  headers: Headers;
+};
+
+export type deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse = (deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseSuccess | deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseError)
+
+export const getDeleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteUrl = (workspaceId: string,
+    sourceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/connectors/sources/${sourceId}`
+}
+
+export const deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDelete = async (workspaceId: string,
+    sourceId: string, options?: RequestInit): Promise<deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse> => {
+  
+  const res = await fetch(getDeleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteUrl(workspaceId,sourceId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteConnectorSourceV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Iniciar flujo OAuth Google Drive
+ */
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse200 = {
+  data: StartOAuthRes
+  status: 200
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseSuccess = (startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse200) & {
+  headers: Headers;
+};
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseError = (startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse400 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse401 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse403 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse404 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse409 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse413 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse415 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse422 | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse = (startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseSuccess | startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseError)
+
+export const getStartOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/connectors/google-drive/auth/start`
+}
+
+export const startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGet = async (workspaceId: string, options?: RequestInit): Promise<startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse> => {
+  
+  const res = await fetch(getStartOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as startOauthV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse
+}
+
+
+
+/**
+ * @summary Callback OAuth Google Drive
+ */
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse200 = {
+  data: ConnectorAccountRes
+  status: 200
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseSuccess = (oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse200) & {
+  headers: Headers;
+};
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseError = (oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse400 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse401 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse403 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse404 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse409 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse413 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse415 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse422 | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse = (oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseSuccess | oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseError)
+
+export const getOauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetUrl = (workspaceId: string,
+    params: OauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/workspaces/${workspaceId}/connectors/google-drive/auth/callback?${stringifiedParams}` : `/v1/workspaces/${workspaceId}/connectors/google-drive/auth/callback`
+}
+
+export const oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGet = async (workspaceId: string,
+    params: OauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetParams, options?: RequestInit): Promise<oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse> => {
+  
+  const res = await fetch(getOauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetUrl(workspaceId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as oauthCallbackV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse
+}
+
+
+
+/**
+ * @summary Estado de cuenta Google Drive vinculada
+ */
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse200 = {
+  data: ConnectorAccountRes
+  status: 200
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseSuccess = (getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse200) & {
+  headers: Headers;
+};
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseError = (getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse400 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse401 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse403 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse404 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse409 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse413 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse415 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse422 | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse = (getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseSuccess | getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseError)
+
+export const getGetConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/connectors/google-drive/account`
+}
+
+export const getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGet = async (workspaceId: string, options?: RequestInit): Promise<getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse> => {
+  
+  const res = await fetch(getGetConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getConnectorAccountV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse
+}
+
+
+
+/**
+ * @summary Trigger sync de fuente de conector
+ */
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse200 = {
+  data: SyncTriggerRes
+  status: 200
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseSuccess = (triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse200) & {
+  headers: Headers;
+};
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseError = (triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse400 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse401 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse403 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse404 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse409 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse413 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse415 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse422 | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse = (triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseSuccess | triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseError)
+
+export const getTriggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostUrl = (workspaceId: string,
+    sourceId: string,) => {
+
+
+  
+
+  return `/v1/workspaces/${workspaceId}/connectors/sources/${sourceId}/sync`
+}
+
+export const triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPost = async (workspaceId: string,
+    sourceId: string, options?: RequestInit): Promise<triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse> => {
+  
+  const res = await fetch(getTriggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostUrl(workspaceId,sourceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as triggerSyncV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse
 }
 
 
@@ -4886,6 +5628,644 @@ export const askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPost = async (
   
   const data: askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as askStreamWorkspaceApiV1WorkspacesWorkspaceIdAskStreamPostResponse
+}
+
+
+
+/**
+ * @summary Crear fuente Google Drive
+ */
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse201 = {
+  data: ConnectorSourceRes
+  status: 201
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 201 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseSuccess = (createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse201) & {
+  headers: Headers;
+};
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseError = (createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse400 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse401 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse403 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse404 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse409 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse413 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse415 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse422 | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse = (createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseSuccess | createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponseError)
+
+export const getCreateGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/connectors/google-drive/sources`
+}
+
+export const createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPost = async (workspaceId: string,
+    createConnectorSourceReq: CreateConnectorSourceReq, options?: RequestInit): Promise<createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse> => {
+  
+  const res = await fetch(getCreateGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createConnectorSourceReq,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createGoogleDriveSourceApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveSourcesPostResponse
+}
+
+
+
+/**
+ * @summary Listar fuentes de conectores
+ */
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse200 = {
+  data: ConnectorSourceListRes
+  status: 200
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseSuccess = (listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse200) & {
+  headers: Headers;
+};
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseError = (listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse400 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse401 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse403 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse404 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse409 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse413 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse415 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse422 | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse = (listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseSuccess | listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponseError)
+
+export const getListConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/connectors/sources`
+}
+
+export const listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGet = async (workspaceId: string, options?: RequestInit): Promise<listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse> => {
+  
+  const res = await fetch(getListConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listConnectorSourcesApiV1WorkspacesWorkspaceIdConnectorsSourcesGetResponse
+}
+
+
+
+/**
+ * @summary Eliminar fuente de conector
+ */
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse200 = {
+  data: ConnectorDeleteRes
+  status: 200
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseSuccess = (deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseError = (deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse400 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse401 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse403 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse404 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse409 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse413 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse415 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse422 | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseDefault) & {
+  headers: Headers;
+};
+
+export type deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse = (deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseSuccess | deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponseError)
+
+export const getDeleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteUrl = (workspaceId: string,
+    sourceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/connectors/sources/${sourceId}`
+}
+
+export const deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDelete = async (workspaceId: string,
+    sourceId: string, options?: RequestInit): Promise<deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse> => {
+  
+  const res = await fetch(getDeleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteUrl(workspaceId,sourceId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteConnectorSourceApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdDeleteResponse
+}
+
+
+
+/**
+ * @summary Iniciar flujo OAuth Google Drive
+ */
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse200 = {
+  data: StartOAuthRes
+  status: 200
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseSuccess = (startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse200) & {
+  headers: Headers;
+};
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseError = (startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse400 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse401 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse403 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse404 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse409 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse413 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse415 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse422 | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse = (startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseSuccess | startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponseError)
+
+export const getStartOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/connectors/google-drive/auth/start`
+}
+
+export const startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGet = async (workspaceId: string, options?: RequestInit): Promise<startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse> => {
+  
+  const res = await fetch(getStartOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as startOauthApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthStartGetResponse
+}
+
+
+
+/**
+ * @summary Callback OAuth Google Drive
+ */
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse200 = {
+  data: ConnectorAccountRes
+  status: 200
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseSuccess = (oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse200) & {
+  headers: Headers;
+};
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseError = (oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse400 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse401 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse403 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse404 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse409 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse413 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse415 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse422 | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse = (oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseSuccess | oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponseError)
+
+export const getOauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetUrl = (workspaceId: string,
+    params: OauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/workspaces/${workspaceId}/connectors/google-drive/auth/callback?${stringifiedParams}` : `/api/v1/workspaces/${workspaceId}/connectors/google-drive/auth/callback`
+}
+
+export const oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGet = async (workspaceId: string,
+    params: OauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetParams, options?: RequestInit): Promise<oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse> => {
+  
+  const res = await fetch(getOauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetUrl(workspaceId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as oauthCallbackApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAuthCallbackGetResponse
+}
+
+
+
+/**
+ * @summary Estado de cuenta Google Drive vinculada
+ */
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse200 = {
+  data: ConnectorAccountRes
+  status: 200
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseSuccess = (getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse200) & {
+  headers: Headers;
+};
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseError = (getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse400 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse401 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse403 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse404 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse409 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse413 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse415 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse422 | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse = (getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseSuccess | getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponseError)
+
+export const getGetConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/connectors/google-drive/account`
+}
+
+export const getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGet = async (workspaceId: string, options?: RequestInit): Promise<getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse> => {
+  
+  const res = await fetch(getGetConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetUrl(workspaceId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getConnectorAccountApiV1WorkspacesWorkspaceIdConnectorsGoogleDriveAccountGetResponse
+}
+
+
+
+/**
+ * @summary Trigger sync de fuente de conector
+ */
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse200 = {
+  data: SyncTriggerRes
+  status: 200
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse400 = {
+  data: ErrorDetail
+  status: 400
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse401 = {
+  data: ErrorDetail
+  status: 401
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse403 = {
+  data: ErrorDetail
+  status: 403
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse404 = {
+  data: ErrorDetail
+  status: 404
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse409 = {
+  data: ErrorDetail
+  status: 409
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse413 = {
+  data: ErrorDetail
+  status: 413
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse415 = {
+  data: ErrorDetail
+  status: 415
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse422 = {
+  data: ErrorDetail
+  status: 422
+}
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseDefault = {
+  data: ErrorDetail
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422>
+}
+    
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseSuccess = (triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse200) & {
+  headers: Headers;
+};
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseError = (triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse400 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse401 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse403 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse404 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse409 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse413 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse415 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse422 | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseDefault) & {
+  headers: Headers;
+};
+
+export type triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse = (triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseSuccess | triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponseError)
+
+export const getTriggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostUrl = (workspaceId: string,
+    sourceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/connectors/sources/${sourceId}/sync`
+}
+
+export const triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPost = async (workspaceId: string,
+    sourceId: string, options?: RequestInit): Promise<triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse> => {
+  
+  const res = await fetch(getTriggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostUrl(workspaceId,sourceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as triggerSyncApiV1WorkspacesWorkspaceIdConnectorsSourcesSourceIdSyncPostResponse
 }
 
 
