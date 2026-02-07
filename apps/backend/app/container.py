@@ -53,7 +53,17 @@ from .application.usecases import (
     UploadDocumentUseCase,
 )
 from .application.usecases.chat import AnswerQueryWithHistoryUseCase
+from .application.usecases.connectors.create_connector_source import (
+    CreateConnectorSourceUseCase,
+)
+from .application.usecases.connectors.delete_connector_source import (
+    DeleteConnectorSourceUseCase,
+)
+from .application.usecases.connectors.list_connector_sources import (
+    ListConnectorSourcesUseCase,
+)
 from .crosscutting.config import get_settings
+from .domain.connectors import ConnectorSourceRepository
 from .domain.repositories import (
     AuditEventRepository,
     ConversationRepository,
@@ -77,6 +87,7 @@ from .infrastructure.repositories import (
     InMemoryWorkspaceAclRepository,
     InMemoryWorkspaceRepository,
     PostgresAuditEventRepository,
+    PostgresConnectorSourceRepository,
     PostgresDocumentRepository,
     PostgresWorkspaceAclRepository,
     PostgresWorkspaceRepository,
@@ -444,4 +455,38 @@ def get_share_workspace_use_case() -> ShareWorkspaceUseCase:
     return ShareWorkspaceUseCase(
         repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
+    )
+
+
+# =============================================================================
+# Connector Sources
+# =============================================================================
+
+
+@lru_cache(maxsize=1)
+def get_connector_source_repository() -> ConnectorSourceRepository:
+    """Repositorio de connector sources (Postgres)."""
+    return PostgresConnectorSourceRepository()
+
+
+def get_create_connector_source_use_case() -> CreateConnectorSourceUseCase:
+    """Caso de uso: registrar fuente Google Drive."""
+    return CreateConnectorSourceUseCase(
+        connector_repo=get_connector_source_repository(),
+        workspace_repo=get_workspace_repository(),
+    )
+
+
+def get_list_connector_sources_use_case() -> ListConnectorSourcesUseCase:
+    """Caso de uso: listar fuentes de un workspace."""
+    return ListConnectorSourcesUseCase(
+        connector_repo=get_connector_source_repository(),
+        workspace_repo=get_workspace_repository(),
+    )
+
+
+def get_delete_connector_source_use_case() -> DeleteConnectorSourceUseCase:
+    """Caso de uso: eliminar fuente de conector."""
+    return DeleteConnectorSourceUseCase(
+        connector_repo=get_connector_source_repository(),
     )

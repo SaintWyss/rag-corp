@@ -31,6 +31,22 @@ from .chat import (
     SearchChunksUseCase,
 )
 
+# Connectors
+from .connectors import (
+    ConnectorDeleteResult,
+    ConnectorError,
+    ConnectorErrorCode,
+    ConnectorSourceListResult,
+    ConnectorSourceResult,
+)
+from .connectors.create_connector_source import (
+    CreateConnectorSourceInput,
+    CreateConnectorSourceUseCase,
+)
+from .connectors.delete_connector_source import DeleteConnectorSourceUseCase
+from .connectors.list_connector_sources import ListConnectorSourcesUseCase
+from .connectors.sync_connector_source import SyncConnectorSourceUseCase
+
 # Documents
 from .documents import (
     AnswerQueryResult,
@@ -120,4 +136,15 @@ __all__ = [
     "ArchiveWorkspaceResult",
     "WorkspaceError",
     "WorkspaceErrorCode",
+    # Connectors
+    "ConnectorSourceResult",
+    "ConnectorSourceListResult",
+    "ConnectorDeleteResult",
+    "ConnectorError",
+    "ConnectorErrorCode",
+    "CreateConnectorSourceInput",
+    "CreateConnectorSourceUseCase",
+    "ListConnectorSourcesUseCase",
+    "DeleteConnectorSourceUseCase",
+    "SyncConnectorSourceUseCase",
 ]
