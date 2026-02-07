@@ -554,10 +554,25 @@ def get_handle_oauth_callback_use_case() -> HandleOAuthCallbackUseCase:
 
 def get_sync_connector_source_use_case() -> SyncConnectorSourceUseCase:
     """Caso de uso: sincronizar fuente de conector (Google Drive)."""
+    settings = get_settings()
+
+    def _drive_factory(access_token: str):
+        from app.infrastructure.services.google_drive_client import GoogleDriveClient
+
+        return GoogleDriveClient(
+            access_token,
+            max_file_bytes=settings.max_connector_file_mb * 1024 * 1024,
+            retry_max_attempts=settings.connector_retry_max_attempts,
+            retry_base_delay_s=settings.connector_retry_base_delay_s,
+            retry_max_delay_s=settings.connector_retry_max_delay_s,
+            timeout_s=settings.connector_http_timeout_s,
+        )
+
     return SyncConnectorSourceUseCase(
         connector_repo=get_connector_source_repository(),
         account_repo=get_connector_account_repository(),
         document_repo=get_document_repository(),
         encryption=get_token_encryption(),
         oauth_port=get_oauth_port(),
+        drive_client_factory=_drive_factory,
     )

@@ -136,6 +136,15 @@ class Settings(BaseSettings):
     connector_encryption_key: str = ""
 
     # -------------------------------------------------------------------------
+    # Connector: límites y resiliencia
+    # -------------------------------------------------------------------------
+    max_connector_file_mb: int = 25  # Tamaño máximo por archivo descargado (MB)
+    connector_retry_max_attempts: int = 4
+    connector_retry_base_delay_s: float = 1.0
+    connector_retry_max_delay_s: float = 30.0
+    connector_http_timeout_s: float = 60.0
+
+    # -------------------------------------------------------------------------
     # S3/MinIO
     # -------------------------------------------------------------------------
     s3_endpoint_url: str = ""
