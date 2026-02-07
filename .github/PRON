@@ -10,7 +10,7 @@ Repo layout canonical: apps/backend, apps/frontend, shared/contracts, infra, doc
 ---
 
 @workspace
-# PRON baseline — AUDITORÍA + % PROGRESO (PROD-READY) — SIN CAMBIOS
+# PRON baseline — AUDITORÍA + % PROGRESO (PROD-READY) — SIN CAMBIOS (v2)
 Objetivo: informe maestro verificable (TO-BE vs AS-IS) + % progreso + Top gaps BLOQUEANTES para deploy.
 Prohibido modificar archivos (0 edits, 0 commits).
 
@@ -20,9 +20,8 @@ REGLAS DURAS
   - Si falta: “NO ENCONTRADO” + TODO(verify).
 - Repo layout canónico: apps/backend, apps/frontend, shared/contracts, docs, infra, tests, .github.
 - No leer todo el repo: usar SOLO fuentes + búsquedas puntuales (rg/grep).
-- Citas: para cada evidencia, incluir:
-  - path:lineStart-lineEnd + snippet breve (máx 8 líneas).
-  - Tip: usa `nl -ba <file> | sed -n 'X,Yp'`.
+- Citas obligatorias: path:lineStart-lineEnd + snippet breve (máx 8 líneas).
+  - Tip: usar `nl -ba <file> | sed -n 'X,Yp'`.
 
 FUENTES DE VERDAD (PRIORIDAD — USAR EN ESTE ORDEN)
 0) docs/project/guia_definitiva_de_produccion_rag_corp.md

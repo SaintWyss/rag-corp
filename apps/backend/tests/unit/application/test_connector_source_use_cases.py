@@ -7,15 +7,18 @@ Responsibilities:
     - Validar ListConnectorSourcesUseCase (happy path, ws inexistente).
     - Validar DeleteConnectorSourceUseCase (happy path, no encontrado, cross-ws).
     - Validar SyncConnectorSourceUseCase (full implementation con fakes).
+    - Validar sync update-aware: CREATE, UPDATE, SKIP_UNCHANGED scenarios.
 
 Collaborators:
     - FakeConnectorSourceRepository
     - FakeWorkspaceRepository (subset mínimo)
+    - FakeDocumentRepository (métodos update-aware)
 ===============================================================================
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -32,6 +35,7 @@ from app.application.usecases.connectors.list_connector_sources import (
     ListConnectorSourcesUseCase,
 )
 from app.application.usecases.connectors.sync_connector_source import (
+    SyncAction,
     SyncConnectorSourceUseCase,
 )
 from app.domain.connectors import (
@@ -326,7 +330,7 @@ class TestDeleteConnectorSource:
 
 
 # ===========================================================================
-# SyncConnectorSourceUseCase (Full)
+# SyncConnectorSourceUseCase (Full + Update-Aware)
 # ===========================================================================
 
 
@@ -377,10 +381,12 @@ class FakeConnectorAccountRepository:
 
 
 class FakeDocumentRepository:
-    """In-memory document repo (only methods used by sync)."""
+    """In-memory document repo with update-aware support."""
 
     def __init__(self):
         self._docs: dict[UUID, Document] = {}
+        self._chunks_deleted: list[UUID] = []
+        self._nodes_deleted: list[UUID] = []
 
     def save_document(self, document: Document) -> None:
         self._docs[document.id] = document
@@ -395,6 +401,37 @@ class FakeDocumentRepository:
             ):
                 return doc
         return None
+
+    def delete_chunks_for_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> int:
+        self._chunks_deleted.append(document_id)
+        return 1
+
+    def delete_nodes_for_document(
+        self, document_id: UUID, *, workspace_id: UUID | None = None
+    ) -> int:
+        self._nodes_deleted.append(document_id)
+        return 1
+
+    def update_external_source_metadata(
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
+        external_source_provider: str | None = None,
+        external_modified_time=None,
+        external_etag: str | None = None,
+        external_mime_type: str | None = None,
+    ) -> bool:
+        doc = self._docs.get(document_id)
+        if doc is None:
+            return False
+        doc.external_source_provider = external_source_provider
+        doc.external_modified_time = external_modified_time
+        doc.external_etag = external_etag
+        doc.external_mime_type = external_mime_type
+        return True
 
 
 class FakeDriveClient:
@@ -470,6 +507,8 @@ def _make_sync_uc(
 
 
 class TestSyncConnectorSource:
+    """Tests para sync básico (CREATE flow)."""
+
     def test_happy_path(self, workspace, workspace_repo, connector_repo):
         """Sync ingests new files and updates cursor."""
         # Setup source
@@ -517,44 +556,6 @@ class TestSyncConnectorSource:
         # Documents persisted with external_source_id
         assert doc_repo.get_by_external_source_id(workspace.id, "gdrive:f1") is not None
         assert doc_repo.get_by_external_source_id(workspace.id, "gdrive:f2") is not None
-
-    def test_idempotency_skips_existing(
-        self, workspace, workspace_repo, connector_repo
-    ):
-        """Second sync skips already-ingested files."""
-        create_uc = CreateConnectorSourceUseCase(
-            connector_repo=connector_repo,
-            workspace_repo=workspace_repo,
-        )
-        r = create_uc.execute(
-            CreateConnectorSourceInput(
-                workspace_id=workspace.id, folder_id="idem-folder"
-            )
-        )
-        source_id = r.source.id
-
-        files = [
-            ConnectorFile(file_id="f1", name="doc1.txt", mime_type="text/plain"),
-        ]
-        client = FakeDriveClient(files=files)
-        doc_repo = FakeDocumentRepository()
-
-        sync_uc = _make_sync_uc(
-            workspace,
-            connector_repo,
-            workspace_repo,
-            document_repo=doc_repo,
-            drive_client=client,
-        )
-
-        # First sync
-        r1 = sync_uc.execute(workspace.id, source_id)
-        assert r1.stats.files_ingested == 1
-
-        # Second sync — file already exists by external_source_id
-        r2 = sync_uc.execute(workspace.id, source_id)
-        assert r2.stats.files_ingested == 0
-        assert r2.stats.files_skipped == 1
 
     def test_unsupported_mime_skipped(self, workspace, workspace_repo, connector_repo):
         """Files with unsupported MIME types are skipped."""
@@ -646,3 +647,339 @@ class TestSyncConnectorSource:
         # Source should be marked ERROR
         src = connector_repo.get(source_id)
         assert src.status == ConnectorSourceStatus.ERROR
+
+
+class TestSyncUpdateAware:
+    """Tests para sync update-aware (UPDATE / SKIP_UNCHANGED flows)."""
+
+    def test_idempotency_skips_unchanged(
+        self, workspace, workspace_repo, connector_repo
+    ):
+        """
+        Sync debe skipear archivos que no cambiaron.
+
+        Scenario:
+        1. Primer sync: archivo se crea con modified_time=T1.
+        2. Segundo sync: mismo archivo con mismo modified_time=T1.
+        3. Resultado: SKIP_UNCHANGED (no duplicado, no re-ingesta).
+        """
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="idem-folder"
+            )
+        )
+        source_id = r.source.id
+
+        # Timestamp fijo
+        fixed_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+        files = [
+            ConnectorFile(
+                file_id="f1",
+                name="doc1.txt",
+                mime_type="text/plain",
+                modified_time=fixed_time,
+                etag="checksum123",
+            ),
+        ]
+        client = FakeDriveClient(files=files)
+        doc_repo = FakeDocumentRepository()
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client,
+        )
+
+        # First sync: should create
+        r1 = sync_uc.execute(workspace.id, source_id)
+        assert r1.stats.files_ingested == 1
+        assert r1.stats.files_skipped == 0
+
+        # Verificar que el documento tiene metadata externa
+        created_doc = doc_repo.get_by_external_source_id(workspace.id, "gdrive:f1")
+        assert created_doc is not None
+        assert created_doc.external_source_provider == "google_drive"
+        assert created_doc.external_modified_time == fixed_time
+        assert created_doc.external_etag == "checksum123"
+
+        # Second sync: same file, same metadata → SKIP_UNCHANGED
+        r2 = sync_uc.execute(workspace.id, source_id)
+        assert r2.stats.files_ingested == 0
+        assert r2.stats.files_skipped == 1
+        assert r2.stats.files_updated == 0
+
+    def test_update_when_modified_time_changed(
+        self, workspace, workspace_repo, connector_repo
+    ):
+        """
+        Sync debe actualizar (UPDATE) si modified_time cambió.
+
+        Scenario:
+        1. Primer sync: archivo con modified_time=T1.
+        2. Segundo sync: mismo file_id pero modified_time=T2 (>T1).
+        3. Resultado: UPDATE (re-ingesta, chunks borrados, metadata actualizada).
+        """
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="update-folder"
+            )
+        )
+        source_id = r.source.id
+
+        time_v1 = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        time_v2 = datetime(2024, 1, 16, 14, 30, 0, tzinfo=timezone.utc)
+
+        doc_repo = FakeDocumentRepository()
+
+        # First sync: create with T1
+        files_v1 = [
+            ConnectorFile(
+                file_id="f1",
+                name="report.txt",
+                mime_type="text/plain",
+                modified_time=time_v1,
+            ),
+        ]
+        client_v1 = FakeDriveClient(files=files_v1)
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client_v1,
+        )
+
+        r1 = sync_uc.execute(workspace.id, source_id)
+        assert r1.stats.files_ingested == 1
+        created_doc = doc_repo.get_by_external_source_id(workspace.id, "gdrive:f1")
+        original_doc_id = created_doc.id
+        assert created_doc.external_modified_time == time_v1
+
+        # Second sync: update with T2 (changed)
+        files_v2 = [
+            ConnectorFile(
+                file_id="f1",
+                name="report.txt",
+                mime_type="text/plain",
+                modified_time=time_v2,  # Changed!
+            ),
+        ]
+        client_v2 = FakeDriveClient(files=files_v2)
+
+        sync_uc2 = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client_v2,
+        )
+
+        r2 = sync_uc2.execute(workspace.id, source_id)
+        assert r2.stats.files_ingested == 0
+        assert r2.stats.files_updated == 1
+        assert r2.stats.files_skipped == 0
+
+        # Verificar que el documento se actualizó (mismo ID, nueva metadata)
+        updated_doc = doc_repo.get_by_external_source_id(workspace.id, "gdrive:f1")
+        assert updated_doc.id == original_doc_id  # Same document ID
+        assert updated_doc.external_modified_time == time_v2  # Updated metadata
+
+        # Verificar que se borraron los chunks
+        assert original_doc_id in doc_repo._chunks_deleted
+
+    def test_update_when_etag_changed(self, workspace, workspace_repo, connector_repo):
+        """
+        Sync debe actualizar (UPDATE) si etag cambió (incluso si modified_time igual).
+
+        Scenario:
+        1. Primer sync: archivo con etag=ABC.
+        2. Segundo sync: mismo file_id pero etag=XYZ.
+        3. Resultado: UPDATE.
+        """
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="etag-folder"
+            )
+        )
+        source_id = r.source.id
+
+        fixed_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        doc_repo = FakeDocumentRepository()
+
+        # First sync: etag ABC
+        files_v1 = [
+            ConnectorFile(
+                file_id="f1",
+                name="config.txt",
+                mime_type="text/plain",
+                modified_time=fixed_time,
+                etag="md5-ABC",
+            ),
+        ]
+        client_v1 = FakeDriveClient(files=files_v1)
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client_v1,
+        )
+
+        r1 = sync_uc.execute(workspace.id, source_id)
+        assert r1.stats.files_ingested == 1
+
+        # Second sync: etag changed to XYZ
+        files_v2 = [
+            ConnectorFile(
+                file_id="f1",
+                name="config.txt",
+                mime_type="text/plain",
+                modified_time=fixed_time,  # Same time
+                etag="md5-XYZ",  # Different etag!
+            ),
+        ]
+        client_v2 = FakeDriveClient(files=files_v2)
+
+        sync_uc2 = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client_v2,
+        )
+
+        r2 = sync_uc2.execute(workspace.id, source_id)
+        assert r2.stats.files_updated == 1
+        assert r2.stats.files_skipped == 0
+
+    def test_cross_workspace_isolation(self, connector_repo):
+        """
+        Documentos de un workspace no deben afectar sync de otro workspace.
+
+        Scenario:
+        1. ws1 sincroniza archivo f1 → crea doc.
+        2. ws2 sincroniza mismo archivo f1 → debe crear nuevo doc (no encontrar el de ws1).
+        """
+        ws1 = _make_workspace()
+        ws2 = _make_workspace()
+        ws_repo = FakeWorkspaceRepository(workspaces=[ws1, ws2])
+
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=ws_repo,
+        )
+
+        # Create sources in both workspaces
+        r1 = create_uc.execute(
+            CreateConnectorSourceInput(workspace_id=ws1.id, folder_id="shared-drive")
+        )
+        r2 = create_uc.execute(
+            CreateConnectorSourceInput(workspace_id=ws2.id, folder_id="shared-drive")
+        )
+        source_id_1 = r1.source.id
+        source_id_2 = r2.source.id
+
+        # Same file in both syncs
+        files = [
+            ConnectorFile(
+                file_id="shared-f1",
+                name="shared.txt",
+                mime_type="text/plain",
+            ),
+        ]
+        client = FakeDriveClient(files=files)
+        doc_repo = FakeDocumentRepository()
+
+        # Sync ws1
+        sync_uc1 = _make_sync_uc(
+            ws1,
+            connector_repo,
+            ws_repo,
+            document_repo=doc_repo,
+            drive_client=client,
+        )
+        result1 = sync_uc1.execute(ws1.id, source_id_1)
+        assert result1.stats.files_ingested == 1  # Created in ws1
+
+        # Sync ws2: should also CREATE (not find ws1's document)
+        sync_uc2 = _make_sync_uc(
+            ws2,
+            connector_repo,
+            ws_repo,
+            document_repo=doc_repo,
+            drive_client=client,
+        )
+        result2 = sync_uc2.execute(ws2.id, source_id_2)
+        assert result2.stats.files_ingested == 1  # Created in ws2
+
+        # Verify both workspaces have their own document
+        doc_ws1 = doc_repo.get_by_external_source_id(ws1.id, "gdrive:shared-f1")
+        doc_ws2 = doc_repo.get_by_external_source_id(ws2.id, "gdrive:shared-f1")
+        assert doc_ws1 is not None
+        assert doc_ws2 is not None
+        assert doc_ws1.id != doc_ws2.id  # Different documents
+
+    def test_external_metadata_persisted_on_create(
+        self, workspace, workspace_repo, connector_repo
+    ):
+        """
+        Al crear un documento, la metadata externa debe persistirse correctamente.
+        """
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="meta-folder"
+            )
+        )
+        source_id = r.source.id
+
+        file_time = datetime(2024, 6, 20, 10, 30, 0, tzinfo=timezone.utc)
+        files = [
+            ConnectorFile(
+                file_id="meta-f1",
+                name="metadata-test.txt",
+                mime_type="text/plain",
+                modified_time=file_time,
+                etag="md5-hash-123",
+            ),
+        ]
+        client = FakeDriveClient(files=files)
+        doc_repo = FakeDocumentRepository()
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client,
+        )
+
+        sync_uc.execute(workspace.id, source_id)
+
+        doc = doc_repo.get_by_external_source_id(workspace.id, "gdrive:meta-f1")
+        assert doc is not None
+        assert doc.external_source_id == "gdrive:meta-f1"
+        assert doc.external_source_provider == "google_drive"
+        assert doc.external_modified_time == file_time
+        assert doc.external_etag == "md5-hash-123"
+        assert doc.external_mime_type == "text/plain"

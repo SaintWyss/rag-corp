@@ -35,7 +35,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 
 ```bash
 cd apps/backend
-alembic upgrade head  # Aplica 007_connector_sources + 008_connector_accounts
+alembic upgrade head  # Aplica todas las migraciones incluyendo 010_external_source_metadata
 ```
 
 ---
@@ -129,18 +129,53 @@ Respuesta exitosa:
   "source_id": "...",
   "stats": {
     "files_found": 10,
-    "files_ingested": 8,
-    "files_skipped": 2,
+    "files_ingested": 5,
+    "files_updated": 2,
+    "files_skipped": 3,
     "files_errored": 0
   }
 }
+```
+
+### Sync Update-Aware
+
+El connector implementa **sincronización update-aware** (v2), que detecta cambios
+en archivos de Google Drive sin re-ingestar todo el contenido:
+
+| Situación                       | Acción           | Descripción                                             |
+| ------------------------------- | ---------------- | ------------------------------------------------------- |
+| Archivo nuevo (no existe en DB) | `CREATE`         | Se ingesta normalmente y se guarda la metadata externa  |
+| Archivo existente sin cambios   | `SKIP_UNCHANGED` | Se omite (idempotente)                                  |
+| Archivo existente con cambios   | `UPDATE`         | Se re-ingesta: borrar chunks antiguos → insertar nuevos |
+
+#### Detección de cambios
+
+Se usan dos campos para detectar si un archivo cambió:
+
+1. **`md5Checksum`** (preferido): Hash del contenido reportado por Drive.
+   - Solo disponible para archivos binarios (PDF, imágenes, etc.).
+   - No disponible para Google Docs, Sheets, Slides.
+
+2. **`modifiedTime`** (fallback): Timestamp de última modificación.
+   - Siempre disponible.
+   - Puede generar falsos positivos (ej: cambio de permisos sin cambio de contenido).
+
+#### Métricas de observabilidad
+
+```
+rag_connector_files_created_total    # Archivos nuevos ingestados
+rag_connector_files_updated_total    # Archivos actualizados (re-ingestados)
+rag_connector_files_skipped_unchanged_total  # Archivos omitidos (sin cambios)
 ```
 
 ### Idempotencia
 
 Los documentos ingestados desde Google Drive tienen un `external_source_id` con formato
 `gdrive:{file_id}`. Si el archivo ya fue ingestado (misma `external_source_id` + `workspace_id`),
-se omite en syncs posteriores.
+el sync lo detecta y decide según la metadata externa si debe:
+
+- **Skipear** (sin cambios)
+- **Actualizar** (cambios detectados)
 
 ### Tipos de archivo soportados (MVP)
 
@@ -163,3 +198,75 @@ El connector usa Google Drive Changes API para sincronización incremental.
 El cursor se almacena como JSON en `connector_sources.cursor_json`.
 En la primera sincronización se listan todos los archivos y se obtiene el `startPageToken`.
 En syncs posteriores solo se procesan los cambios desde el último cursor.
+
+---
+
+## Troubleshooting de Sync
+
+### Datos obsoletos (stale data)
+
+**Síntoma**: Un archivo fue modificado en Drive pero la versión en RAG Corp no se actualizó.
+
+**Causas posibles**:
+
+1. El cursor está muy atrasado (>24h sin sync).
+2. Google Drive Changes API tiene un delay (hasta 1-2 minutos).
+3. El archivo no tiene `modifiedTime` actualizado (raro).
+
+**Solución**:
+
+1. Ejecutar sync manualmente.
+2. Si persiste, resetear el cursor (borrar `cursor_json` del source y re-sincronizar).
+
+### Rate limiting (429 errors)
+
+**Síntoma**: Sync falla con error 429 o "quota exceeded".
+
+**Causas**:
+
+- Demasiados syncs en paralelo.
+- Workspace con muchos archivos (>1000).
+
+**Solución**:
+
+1. Implementar backoff exponencial (ya incluido en el cliente).
+2. Espaciar syncs (mínimo 5 minutos entre ejecuciones).
+3. Solicitar aumento de cuota en Google Cloud Console.
+
+### Re-sync forzado (clear state)
+
+Para forzar una re-sincronización completa:
+
+```sql
+-- Resetear cursor del source
+UPDATE connector_sources
+SET cursor_json = NULL
+WHERE id = '<source_id>';
+
+-- (Opcional) Limpiar documentos del source para re-ingestar desde cero
+UPDATE documents
+SET deleted_at = NOW()
+WHERE source LIKE 'google_drive:<source_id>%';
+```
+
+Luego ejecutar sync manualmente.
+
+---
+
+## Schema de metadatos externos
+
+Los documentos sincronizados desde Google Drive almacenan metadata adicional:
+
+| Campo                      | Tipo        | Descripción                              |
+| -------------------------- | ----------- | ---------------------------------------- |
+| `external_source_id`       | TEXT        | `gdrive:{file_id}` — identificador único |
+| `external_source_provider` | TEXT        | `google_drive`                           |
+| `external_modified_time`   | TIMESTAMPTZ | Timestamp de Drive                       |
+| `external_etag`            | TEXT        | `md5Checksum` de Drive (si disponible)   |
+| `external_mime_type`       | TEXT        | MIME type reportado por Drive            |
+
+Estos campos se usan para:
+
+1. Idempotencia (evitar duplicados).
+2. Detección de cambios (update-aware sync).
+3. Trazabilidad (origen del documento).
