@@ -59,11 +59,15 @@ from .application.usecases.connectors.create_connector_source import (
 from .application.usecases.connectors.delete_connector_source import (
     DeleteConnectorSourceUseCase,
 )
+from .application.usecases.connectors.handle_oauth_callback import (
+    HandleOAuthCallbackUseCase,
+)
 from .application.usecases.connectors.list_connector_sources import (
     ListConnectorSourcesUseCase,
 )
+from .application.usecases.connectors.start_oauth import StartOAuthUseCase
 from .crosscutting.config import get_settings
-from .domain.connectors import ConnectorSourceRepository
+from .domain.connectors import ConnectorAccountRepository, ConnectorSourceRepository
 from .domain.repositories import (
     AuditEventRepository,
     ConversationRepository,
@@ -87,6 +91,7 @@ from .infrastructure.repositories import (
     InMemoryWorkspaceAclRepository,
     InMemoryWorkspaceRepository,
     PostgresAuditEventRepository,
+    PostgresConnectorAccountRepository,
     PostgresConnectorSourceRepository,
     PostgresDocumentRepository,
     PostgresWorkspaceAclRepository,
@@ -96,8 +101,10 @@ from .infrastructure.services import (
     CachingEmbeddingService,
     FakeEmbeddingService,
     FakeLLMService,
+    FernetTokenEncryption,
     GoogleEmbeddingService,
     GoogleLLMService,
+    GoogleOAuthAdapter,
 )
 from .infrastructure.storage import S3Config, S3FileStorageAdapter
 from .infrastructure.text import SimpleTextChunker
@@ -489,4 +496,54 @@ def get_delete_connector_source_use_case() -> DeleteConnectorSourceUseCase:
     """Caso de uso: eliminar fuente de conector."""
     return DeleteConnectorSourceUseCase(
         connector_repo=get_connector_source_repository(),
+    )
+
+
+# =============================================================================
+# Connector OAuth + Accounts
+# =============================================================================
+
+
+@lru_cache(maxsize=1)
+def get_connector_account_repository() -> ConnectorAccountRepository:
+    """Repositorio de cuentas vinculadas (Postgres)."""
+    return PostgresConnectorAccountRepository()
+
+
+@lru_cache(maxsize=1)
+def get_token_encryption() -> FernetTokenEncryption:
+    """Servicio de cifrado de tokens (Fernet). Fail-fast si falta la clave."""
+    settings = get_settings()
+    return FernetTokenEncryption(key=settings.connector_encryption_key)
+
+
+@lru_cache(maxsize=1)
+def get_oauth_port() -> GoogleOAuthAdapter:
+    """Adapter OAuth para Google (client_id + secret)."""
+    settings = get_settings()
+    return GoogleOAuthAdapter(
+        client_id=settings.google_oauth_client_id,
+        client_secret=settings.google_oauth_client_secret,
+    )
+
+
+def get_start_oauth_use_case() -> StartOAuthUseCase:
+    """Caso de uso: iniciar flujo OAuth."""
+    settings = get_settings()
+    return StartOAuthUseCase(
+        oauth_port=get_oauth_port(),
+        workspace_repo=get_workspace_repository(),
+        redirect_uri_template=settings.google_oauth_redirect_uri,
+    )
+
+
+def get_handle_oauth_callback_use_case() -> HandleOAuthCallbackUseCase:
+    """Caso de uso: procesar callback OAuth."""
+    settings = get_settings()
+    return HandleOAuthCallbackUseCase(
+        oauth_port=get_oauth_port(),
+        account_repo=get_connector_account_repository(),
+        workspace_repo=get_workspace_repository(),
+        encryption=get_token_encryption(),
+        redirect_uri_template=settings.google_oauth_redirect_uri,
     )

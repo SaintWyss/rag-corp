@@ -35,6 +35,7 @@ from .in_memory import (
 # =============================================================================
 from .postgres import (
     PostgresAuditEventRepository,
+    PostgresConnectorAccountRepository,
     PostgresConnectorSourceRepository,
     PostgresDocumentRepository,
     PostgresUserRepository,
@@ -47,6 +48,7 @@ from .postgres import (
 # =============================================================================
 __all__ = [
     # Postgres
+    "PostgresConnectorAccountRepository",
     "PostgresConnectorSourceRepository",
     "PostgresDocumentRepository",
     "PostgresWorkspaceRepository",

@@ -12,6 +12,10 @@ Responsabilidades:
     - Definir ConnectorSourceStatus (estados del ciclo de vida).
     - Definir ConnectorSourceRepository (puerto de persistencia).
     - Definir ConnectorClient (puerto para interacción con proveedores).
+    - Definir ConnectorAccount (entidad para cuentas OAuth vinculadas).
+    - Definir ConnectorAccountRepository (puerto de persistencia de cuentas).
+    - Definir OAuthPort (puerto para flujos OAuth con proveedores).
+    - Definir TokenEncryptionPort (puerto para cifrado de tokens).
 
 Colaboradores:
     - infrastructure/repositories: implementaciones concretas.
@@ -179,4 +183,93 @@ class ConnectorClient(Protocol):
         self, folder_id: str, *, cursor: Dict[str, Any] | None = None
     ) -> ConnectorDelta:
         """Obtiene cambios incrementales desde el último cursor."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Entidad: Cuenta OAuth vinculada
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ConnectorAccount:
+    """
+    Cuenta OAuth vinculada a un workspace.
+
+    Contiene el refresh_token cifrado (nunca en claro en memoria persistente).
+    """
+
+    id: UUID
+    workspace_id: UUID
+    provider: ConnectorProvider
+    account_email: str
+    encrypted_refresh_token: str  # Cifrado con Fernet
+    created_at: datetime = field(default_factory=_utcnow)
+    updated_at: datetime = field(default_factory=_utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Puerto: Persistencia de cuentas OAuth
+# ---------------------------------------------------------------------------
+
+
+class ConnectorAccountRepository(Protocol):
+    """Contrato de persistencia para ConnectorAccount."""
+
+    def upsert(self, account: ConnectorAccount) -> None:
+        """Crea o actualiza la cuenta (idempotente por workspace+provider)."""
+        ...
+
+    def get_by_workspace(
+        self, workspace_id: UUID, provider: ConnectorProvider
+    ) -> Optional[ConnectorAccount]:
+        """Obtiene la cuenta vinculada al workspace/provider."""
+        ...
+
+    def delete(self, account_id: UUID) -> bool:
+        """Elimina una cuenta. Devuelve True si existía."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Puerto: Cifrado de tokens
+# ---------------------------------------------------------------------------
+
+
+class TokenEncryptionPort(Protocol):
+    """Contrato para cifrar/descifrar tokens sensibles."""
+
+    def encrypt(self, plaintext: str) -> str:
+        """Cifra y devuelve un string base64-safe."""
+        ...
+
+    def decrypt(self, ciphertext: str) -> str:
+        """Descifra y devuelve el texto plano original."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Puerto: Flujo OAuth con proveedores
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class OAuthTokenResponse:
+    """Resultado de un token exchange exitoso."""
+
+    access_token: str
+    refresh_token: str
+    email: str
+    expires_in: int = 3600
+
+
+class OAuthPort(Protocol):
+    """Contrato para flujos OAuth con proveedores externos."""
+
+    def build_authorization_url(self, *, state: str, redirect_uri: str) -> str:
+        """Construye la URL de autorización del proveedor."""
+        ...
+
+    def exchange_code(self, *, code: str, redirect_uri: str) -> OAuthTokenResponse:
+        """Intercambia authorization code por tokens."""
         ...

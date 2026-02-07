@@ -68,3 +68,25 @@ class ConnectorDeleteRes(BaseModel):
     """Respuesta de eliminación de fuente."""
 
     deleted: bool
+
+
+# ---------------------------------------------------------------------------
+# OAuth
+# ---------------------------------------------------------------------------
+
+
+class StartOAuthRes(BaseModel):
+    """URL de autorización OAuth para el proveedor."""
+
+    authorization_url: str
+
+
+class ConnectorAccountRes(BaseModel):
+    """Representación HTTP de una cuenta vinculada."""
+
+    id: UUID
+    workspace_id: UUID
+    provider: str
+    account_email: str
+    created_at: datetime
+    updated_at: datetime

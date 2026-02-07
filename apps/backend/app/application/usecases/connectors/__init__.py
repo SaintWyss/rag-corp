@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
 
-from app.domain.connectors import ConnectorSource
+from app.domain.connectors import ConnectorAccount, ConnectorSource
 
 
 class ConnectorErrorCode(str, Enum):
@@ -45,4 +45,10 @@ class ConnectorSourceListResult:
 @dataclass
 class ConnectorDeleteResult:
     deleted: bool = False
+    error: Optional[ConnectorError] = None
+
+
+@dataclass
+class ConnectorAccountResult:
+    account: Optional[ConnectorAccount] = None
     error: Optional[ConnectorError] = None
