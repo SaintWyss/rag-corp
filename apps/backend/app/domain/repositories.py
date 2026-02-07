@@ -169,6 +169,19 @@ class DocumentRepository(Protocol):
         """Busca documento por external_source_id dentro de un workspace."""
         ...
 
+    def update_external_source_metadata(
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
+        external_source_provider: str | None = None,
+        external_modified_time: datetime | None = None,
+        external_etag: str | None = None,
+        external_mime_type: str | None = None,
+    ) -> bool:
+        """Actualiza metadata externa para sync update-aware."""
+        ...
+
     def soft_delete_document(
         self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> bool:

@@ -72,7 +72,8 @@ class PostgresDocumentRepository:
         id, workspace_id, title, source, metadata, created_at, deleted_at,
         file_name, mime_type, storage_key,
         uploaded_by_user_id, status, error_message, tags, allowed_roles,
-        content_hash, external_source_id
+        content_hash, external_source_id,
+        external_source_provider, external_modified_time, external_etag, external_mime_type
     """
 
     def __init__(self, pool: ConnectionPool | None = None):
@@ -208,6 +209,11 @@ class PostgresDocumentRepository:
             allowed_roles=row[14] or [],
             content_hash=row[15] if len(row) > 15 else None,
             external_source_id=row[16] if len(row) > 16 else None,
+            # Campos de metadata externa para sync update-aware
+            external_source_provider=row[17] if len(row) > 17 else None,
+            external_modified_time=row[18] if len(row) > 18 else None,
+            external_etag=row[19] if len(row) > 19 else None,
+            external_mime_type=row[20] if len(row) > 20 else None,
         )
 
     def _rows_to_documents(self, rows: list[tuple]) -> list[Document]:
@@ -445,6 +451,73 @@ class PostgresDocumentRepository:
         )
 
         return None if not row else self._row_to_document(row)
+
+    def update_external_source_metadata(
+        self,
+        document_id: UUID,
+        *,
+        workspace_id: UUID | None = None,
+        external_source_provider: str | None = None,
+        external_modified_time=None,  # datetime | None
+        external_etag: str | None = None,
+        external_mime_type: str | None = None,
+    ) -> bool:
+        """
+        Actualiza la metadata externa de un documento.
+
+        Usado durante sync update-aware para registrar el fingerprint del proveedor
+        después de re-ingestar un archivo que cambió.
+
+        Retorna:
+        - True si se actualizó una fila
+        - False si no existe (o no matchea el workspace)
+        """
+        scoped_workspace_id = self._require_workspace_id(
+            workspace_id, "update_external_source_metadata"
+        )
+
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    """
+                    UPDATE documents
+                    SET external_source_provider = %s,
+                        external_modified_time = %s,
+                        external_etag = %s,
+                        external_mime_type = %s
+                    WHERE id = %s AND workspace_id = %s AND deleted_at IS NULL
+                    """,
+                    (
+                        external_source_provider,
+                        external_modified_time,
+                        external_etag,
+                        external_mime_type,
+                        document_id,
+                        scoped_workspace_id,
+                    ),
+                )
+            updated = bool(result.rowcount and result.rowcount > 0)
+            if updated:
+                logger.info(
+                    "PostgresDocumentRepository: External metadata updated",
+                    extra={
+                        "document_id": str(document_id),
+                        "provider": external_source_provider,
+                    },
+                )
+            return updated
+
+        except Exception as exc:
+            logger.exception(
+                "PostgresDocumentRepository: Update external metadata failed",
+                extra={
+                    "document_id": str(document_id),
+                    "workspace_id": str(scoped_workspace_id),
+                    "error": str(exc),
+                },
+            )
+            raise DatabaseError(f"Failed to update external metadata: {exc}") from exc
 
     # ============================================================
     # Persistencia de Chunks

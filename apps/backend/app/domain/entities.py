@@ -79,6 +79,12 @@ class Document:
     # Identificador externo (connector-ingested docs)
     external_source_id: Optional[str] = None
 
+    # Metadata externa para sync update-aware (detectar cambios sin re-ingestar)
+    external_source_provider: Optional[str] = None  # ej: "google_drive"
+    external_modified_time: Optional[datetime] = None  # timestamp del proveedor
+    external_etag: Optional[str] = None  # fingerprint/hash del proveedor
+    external_mime_type: Optional[str] = None  # tipo MIME reportado
+
     @property
     def is_deleted(self) -> bool:
         """True si está soft-deleted."""
