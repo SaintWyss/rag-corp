@@ -72,7 +72,7 @@ class PostgresDocumentRepository:
         id, workspace_id, title, source, metadata, created_at, deleted_at,
         file_name, mime_type, storage_key,
         uploaded_by_user_id, status, error_message, tags, allowed_roles,
-        content_hash
+        content_hash, external_source_id
     """
 
     def __init__(self, pool: ConnectionPool | None = None):
@@ -207,6 +207,7 @@ class PostgresDocumentRepository:
             tags=row[13] or [],
             allowed_roles=row[14] or [],
             content_hash=row[15] if len(row) > 15 else None,
+            external_source_id=row[16] if len(row) > 16 else None,
         )
 
     def _rows_to_documents(self, rows: list[tuple]) -> list[Document]:
@@ -237,9 +238,10 @@ class PostgresDocumentRepository:
                 metadata,
                 tags,
                 allowed_roles,
-                content_hash
+                content_hash,
+                external_source_id
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
             SET workspace_id = EXCLUDED.workspace_id,
                 title = EXCLUDED.title,
@@ -247,7 +249,8 @@ class PostgresDocumentRepository:
                 metadata = EXCLUDED.metadata,
                 tags = EXCLUDED.tags,
                 allowed_roles = EXCLUDED.allowed_roles,
-                content_hash = EXCLUDED.content_hash
+                content_hash = EXCLUDED.content_hash,
+                external_source_id = EXCLUDED.external_source_id
         """
 
         params = (
@@ -259,6 +262,7 @@ class PostgresDocumentRepository:
             document.tags or [],
             document.allowed_roles or [],
             document.content_hash,
+            document.external_source_id,
         )
 
         try:
@@ -410,6 +414,33 @@ class PostgresDocumentRepository:
             extra={
                 "workspace_id": str(workspace_id),
                 "content_hash": content_hash[:8],
+            },
+        )
+
+        return None if not row else self._row_to_document(row)
+
+    def get_by_external_source_id(
+        self, workspace_id: UUID, external_source_id: str
+    ) -> Document | None:
+        """
+        Busca documento por external_source_id dentro de un workspace.
+
+        Usado para idempotencia en connector sync: evita re-ingestar
+        archivos que ya existen con el mismo ID externo.
+        """
+        row = self._fetchone(
+            query=f"""
+                SELECT {self._DOC_SELECT_COLUMNS}
+                FROM documents
+                WHERE workspace_id = %s
+                  AND external_source_id = %s
+                  AND deleted_at IS NULL
+            """,
+            params=[workspace_id, external_source_id],
+            context_msg="PostgresDocumentRepository: Get document by external_source_id failed",
+            extra={
+                "workspace_id": str(workspace_id),
+                "external_source_id": external_source_id[:30],
             },
         )
 

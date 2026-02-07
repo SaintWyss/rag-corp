@@ -12,12 +12,12 @@ seguro del refresh_token (larga duración, equivalente a credenciales).
 
 ### Opciones evaluadas
 
-| Opción                         | Pros                                | Contras                                |
-| ------------------------------ | ----------------------------------- | -------------------------------------- |
-| Token en claro en DB           | Simple                              | Riesgo crítico si hay data breach      |
-| Vault externo (HashiCorp/KMS)  | Máxima seguridad                    | Complejidad operacional, latencia      |
-| **Fernet en app + clave env**  | Buena seguridad, simple, auditable  | Rotación manual de clave               |
-| OAuth sin almacenamiento       | Sin riesgo de tokens                | Requiere re-auth en cada sync          |
+| Opción                        | Pros                               | Contras                           |
+| ----------------------------- | ---------------------------------- | --------------------------------- |
+| Token en claro en DB          | Simple                             | Riesgo crítico si hay data breach |
+| Vault externo (HashiCorp/KMS) | Máxima seguridad                   | Complejidad operacional, latencia |
+| **Fernet en app + clave env** | Buena seguridad, simple, auditable | Rotación manual de clave          |
+| OAuth sin almacenamiento      | Sin riesgo de tokens               | Requiere re-auth en cada sync     |
 
 ## Decisión
 
@@ -42,8 +42,8 @@ seguro del refresh_token (larga duración, equivalente a credenciales).
 
 ### 4. Endpoints
 
-| Método | Path                                                   | Descripción            |
-| ------ | ------------------------------------------------------ | ---------------------- |
+| Método | Path                                                        | Descripción            |
+| ------ | ----------------------------------------------------------- | ---------------------- |
 | GET    | `/v1/workspaces/{id}/connectors/google-drive/auth/start`    | Inicia flujo OAuth     |
 | GET    | `/v1/workspaces/{id}/connectors/google-drive/auth/callback` | Procesa callback OAuth |
 | GET    | `/v1/workspaces/{id}/connectors/google-drive/account`       | Estado de cuenta       |
@@ -58,12 +58,14 @@ seguro del refresh_token (larga duración, equivalente a credenciales).
 ## Consecuencias
 
 ### Positivas
+
 - Tokens protegidos at-rest con criptografía simétrica estándar
 - Clean Architecture respetada: dominio define puertos, infra implementa
 - Upsert idempotente simplifica re-autenticación
 - Fail-fast previene arranque con configuración insegura
 
 ### Negativas
+
 - Rotación de clave requiere re-cifrar todos los tokens (procedimiento manual)
 - Sin revocación automática de tokens al desconectar cuenta (TODO: Commit 3)
 - Sin soporte multi-proveedor aún (extensible vía `ConnectorProvider` enum)

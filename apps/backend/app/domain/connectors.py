@@ -273,3 +273,7 @@ class OAuthPort(Protocol):
     def exchange_code(self, *, code: str, redirect_uri: str) -> OAuthTokenResponse:
         """Intercambia authorization code por tokens."""
         ...
+
+    def refresh_access_token(self, refresh_token: str) -> str:
+        """Refresca el access_token usando un refresh_token. Devuelve nuevo access_token."""
+        ...

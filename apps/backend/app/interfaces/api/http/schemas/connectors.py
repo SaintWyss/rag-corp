@@ -90,3 +90,24 @@ class ConnectorAccountRes(BaseModel):
     account_email: str
     created_at: datetime
     updated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Sync
+# ---------------------------------------------------------------------------
+
+
+class SyncStatsRes(BaseModel):
+    """Estadísticas de una ejecución de sync."""
+
+    files_found: int
+    files_ingested: int
+    files_skipped: int
+    files_errored: int
+
+
+class SyncTriggerRes(BaseModel):
+    """Respuesta del trigger de sync."""
+
+    source_id: UUID
+    stats: SyncStatsRes

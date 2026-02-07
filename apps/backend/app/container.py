@@ -66,6 +66,9 @@ from .application.usecases.connectors.list_connector_sources import (
     ListConnectorSourcesUseCase,
 )
 from .application.usecases.connectors.start_oauth import StartOAuthUseCase
+from .application.usecases.connectors.sync_connector_source import (
+    SyncConnectorSourceUseCase,
+)
 from .crosscutting.config import get_settings
 from .domain.connectors import ConnectorAccountRepository, ConnectorSourceRepository
 from .domain.repositories import (
@@ -546,4 +549,15 @@ def get_handle_oauth_callback_use_case() -> HandleOAuthCallbackUseCase:
         workspace_repo=get_workspace_repository(),
         encryption=get_token_encryption(),
         redirect_uri_template=settings.google_oauth_redirect_uri,
+    )
+
+
+def get_sync_connector_source_use_case() -> SyncConnectorSourceUseCase:
+    """Caso de uso: sincronizar fuente de conector (Google Drive)."""
+    return SyncConnectorSourceUseCase(
+        connector_repo=get_connector_source_repository(),
+        account_repo=get_connector_account_repository(),
+        document_repo=get_document_repository(),
+        encryption=get_token_encryption(),
+        oauth_port=get_oauth_port(),
     )

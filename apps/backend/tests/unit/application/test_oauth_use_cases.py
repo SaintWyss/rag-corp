@@ -19,7 +19,6 @@ from typing import Dict, Optional
 from uuid import UUID, uuid4
 
 import pytest
-
 from app.application.usecases.connectors import ConnectorErrorCode
 from app.application.usecases.connectors.handle_oauth_callback import (
     HandleOAuthCallbackInput,
@@ -35,7 +34,6 @@ from app.domain.connectors import (
     OAuthTokenResponse,
 )
 from app.infrastructure.services.encryption import FernetTokenEncryption
-
 
 # ---------------------------------------------------------------------------
 # Fakes

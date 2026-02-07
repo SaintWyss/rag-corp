@@ -42,6 +42,7 @@ from app.container import (
     get_handle_oauth_callback_use_case,
     get_list_connector_sources_use_case,
     get_start_oauth_use_case,
+    get_sync_connector_source_use_case,
 )
 from app.crosscutting.error_responses import (
     conflict,
@@ -59,6 +60,8 @@ from ..schemas.connectors import (
     ConnectorSourceRes,
     CreateConnectorSourceReq,
     StartOAuthRes,
+    SyncStatsRes,
+    SyncTriggerRes,
 )
 
 router = APIRouter()
@@ -236,3 +239,33 @@ def get_connector_account(
     if gdrive_account is None:
         raise not_found("ConnectorAccount", str(workspace_id))
     return _to_account_response(gdrive_account)
+
+
+# ---------------------------------------------------------------------------
+# Sync trigger
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/workspaces/{workspace_id}/connectors/sources/{source_id}/sync",
+    response_model=SyncTriggerRes,
+    tags=["connectors"],
+    summary="Trigger sync de fuente de conector",
+)
+def trigger_sync(
+    workspace_id: UUID,
+    source_id: UUID,
+    use_case=Depends(get_sync_connector_source_use_case),
+):
+    result = use_case.execute(workspace_id, source_id)
+    if result.error:
+        _raise_connector_error(result.error, workspace_id=workspace_id)
+    return SyncTriggerRes(
+        source_id=result.source_id,
+        stats=SyncStatsRes(
+            files_found=result.stats.files_found,
+            files_ingested=result.stats.files_ingested,
+            files_skipped=result.stats.files_skipped,
+            files_errored=result.stats.files_errored,
+        ),
+    )

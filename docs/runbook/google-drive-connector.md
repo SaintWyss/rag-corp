@@ -51,11 +51,13 @@ alembic upgrade head  # Aplica 007_connector_sources + 008_connector_accounts
 ### Procedimiento
 
 1. **Generar nueva clave**:
+
    ```bash
    python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
    ```
 
 2. **Re-cifrar tokens existentes** (script de migración):
+
    ```python
    from cryptography.fernet import Fernet
 
@@ -105,6 +107,59 @@ Posible CSRF o redirect_uri mal configurado.
 ### Error: "token exchange failed"
 
 Google rechazó el authorization code. Causas comunes:
+
 - Code expirado (válido ~10 min)
 - `redirect_uri` no coincide con lo configurado en Google Cloud Console
 - Client ID/Secret incorrectos
+
+---
+
+## Sync
+
+### Trigger manual
+
+```bash
+curl -X POST https://app.example.com/v1/workspaces/{workspace_id}/connectors/sources/{source_id}/sync
+```
+
+Respuesta exitosa:
+
+```json
+{
+  "source_id": "...",
+  "stats": {
+    "files_found": 10,
+    "files_ingested": 8,
+    "files_skipped": 2,
+    "files_errored": 0
+  }
+}
+```
+
+### Idempotencia
+
+Los documentos ingestados desde Google Drive tienen un `external_source_id` con formato
+`gdrive:{file_id}`. Si el archivo ya fue ingestado (misma `external_source_id` + `workspace_id`),
+se omite en syncs posteriores.
+
+### Tipos de archivo soportados (MVP)
+
+- Google Docs → exporta como texto plano
+- Google Sheets → exporta como CSV
+- Google Slides → exporta como texto plano
+- text/plain, text/csv, text/markdown → descarga directa
+- application/pdf → descarga directa
+
+Otros tipos MIME se omiten (skipped).
+
+### Límites
+
+- Máximo 100 archivos por ejecución de sync (safety guard)
+- Timeout de 30s por operación HTTP contra Google Drive API
+
+### Cursor (delta sync)
+
+El connector usa Google Drive Changes API para sincronización incremental.
+El cursor se almacena como JSON en `connector_sources.cursor_json`.
+En la primera sincronización se listan todos los archivos y se obtiene el `startPageToken`.
+En syncs posteriores solo se procesan los cambios desde el último cursor.

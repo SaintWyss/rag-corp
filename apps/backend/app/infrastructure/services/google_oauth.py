@@ -116,3 +116,32 @@ class GoogleOAuthAdapter:
                 extra={"error": str(exc)},
             )
             raise ValueError(f"Google OAuth error: {exc}") from exc
+
+    def refresh_access_token(self, refresh_token: str) -> str:
+        """Refresca el access_token usando un refresh_token almacenado."""
+        try:
+            resp = httpx.post(
+                _GOOGLE_TOKEN_URL,
+                data={
+                    "client_id": self._client_id,
+                    "client_secret": self._client_secret,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["access_token"]
+        except httpx.HTTPStatusError as exc:
+            logger.error(
+                "google oauth refresh failed",
+                extra={"status": exc.response.status_code},
+            )
+            raise ValueError(f"Google OAuth refresh failed: {exc}") from exc
+        except Exception as exc:
+            logger.error(
+                "google oauth refresh error",
+                extra={"error": str(exc)},
+            )
+            raise ValueError(f"Google OAuth refresh error: {exc}") from exc

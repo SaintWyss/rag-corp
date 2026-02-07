@@ -55,6 +55,7 @@ from .cached_embedding_service import CachingEmbeddingService  # noqa: F401
 # ---------------------------------------------------------------------------
 from .encryption import FernetTokenEncryption  # noqa: F401
 from .fake_embedding_service import FakeEmbeddingService  # noqa: F401
+from .google_drive_client import GoogleDriveClient  # noqa: F401
 from .google_embedding_service import GoogleEmbeddingService  # noqa: F401
 from .google_oauth import GoogleOAuthAdapter  # noqa: F401
 
@@ -86,8 +87,9 @@ __all__ = [
     # LLM
     "FakeLLMService",
     "GoogleLLMService",
-    # Connector OAuth + Encryption
+    # Connector OAuth + Encryption + Drive Client
     "FernetTokenEncryption",
+    "GoogleDriveClient",
     "GoogleOAuthAdapter",
     # Resilience / Retry
     "is_transient_error",
