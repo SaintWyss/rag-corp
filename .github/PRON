@@ -1,329 +1,276 @@
+REGLAS GLOBALES
 
-REGLAS GLOBALES:
 - Modo SIN CAMBIOS: no modificar archivos, no commits.
 - Modo 1 COMMIT: cambios directos + 1 commit final (sin ramas/PR).
-- NO CAMBIOS FUNCIONALES (salvo prompts de feature/test/obs que lo pidan explícitamente).
-- CERO INVENCIÓN: toda afirmación importante debe citar rutas reales; si no existe → NO ENCONTRADO + TODO(verify).
+- NO CAMBIOS FUNCIONALES (salvo prompts de feature/test/obs que lo pidan explicitamente).
+- CERO INVENCION: toda afirmacion importante debe citar rutas reales; si no existe -> NO ENCONTRADO + TODO(verify).
 - SALIDA: no pegar archivos completos; entregar unified diff/patch + lista de archivos tocados.
-Repo layout canonical: apps/backend, apps/frontend, shared/contracts, infra, docs, tests.
+- Repo layout canonical: apps/backend, apps/frontend, shared/contracts, infra, docs, tests.
 
 ---
 
 @workspace
-# PRON baseline — AUDITORÍA + % PROGRESO (PROD-READY) — SIN CAMBIOS (v2)
-Objetivo: informe maestro verificable (TO-BE vs AS-IS) + % progreso + Top gaps BLOQUEANTES para deploy.
+
+# PRON BASELINE (AUDITORIA + % PROGRESO) - SIN CAMBIOS
+
+Objetivo: informe maestro verificable (TO-BE vs AS-IS) + % progreso + gaps bloqueantes para deploy.
 Prohibido modificar archivos (0 edits, 0 commits).
 
 REGLAS DURAS
+
 - MODO: SOLO LECTURA. No crear/editar/formattear archivos.
-- CERO INVENCIÓN: toda afirmación clave debe tener evidencia con ruta + líneas.
-  - Si falta: “NO ENCONTRADO” + TODO(verify).
-- Repo layout canónico: apps/backend, apps/frontend, shared/contracts, docs, infra, tests, .github.
-- No leer todo el repo: usar SOLO fuentes + búsquedas puntuales (rg/grep).
-- Citas obligatorias: path:lineStart-lineEnd + snippet breve (máx 8 líneas).
+- CERO INVENCION: toda afirmacion clave debe tener evidencia con ruta + lineas.
+  - Si falta: NO ENCONTRADO + TODO(verify).
+- No leer todo el repo: usar SOLO fuentes + busquedas puntuales (rg/grep).
+- Citas obligatorias: path:lineStart-lineEnd + snippet breve (max 8 lineas).
   - Tip: usar `nl -ba <file> | sed -n 'X,Yp'`.
 
-FUENTES DE VERDAD (PRIORIDAD — USAR EN ESTE ORDEN)
-0) docs/project/guia_definitiva_de_produccion_rag_corp.md
-1) docs/project/guia_definitiva_de_readme_rag_corp_raiz_padres_y_hojas.md
-2) docs/project/informe_de_negocio_brd_srs_rag_corp.md
-3) docs/project/informe_de_sistemas_rag_corp.md
-4) docs/requirements/functional.md + docs/requirements/non-functional.md
-5) docs/reference/** + docs/architecture/** (ADRs + diagrams)
-6) shared/contracts/openapi.json
-7) apps/backend/alembic/versions/** (migraciones)
-8) apps/backend/app/main.py + apps/backend/app/interfaces/api/http/** + apps/backend/app/crosscutting/**
-9) apps/frontend/app/** + apps/frontend/src/** + apps/frontend/middleware.ts + apps/frontend/next.config.mjs
-10) infra/** + compose*.yaml + .github/workflows/** + package.json
-Si una ruta no existe: reportar NO ENCONTRADO y seguir.
+FUENTES DE VERDAD (PRIORIDAD - USAR EN ESTE ORDEN) 0) docs/project/guia_definitiva_de_produccion_rag_corp.md
+
+1. docs/project/guia_definitiva_de_readme_rag_corp_raiz_padres_y_hojas.md
+2. docs/project/informe_de_negocio_brd_srs_rag_corp.md
+3. docs/project/informe_de_sistemas_rag_corp.md
+4. docs/requirements/functional.md + docs/requirements/non-functional.md
+5. docs/reference/** + docs/architecture/** (ADRs + diagrams)
+6. shared/contracts/openapi.json
+7. apps/backend/alembic/versions/\*\* (migraciones)
+8. apps/backend/app/main.py + apps/backend/app/interfaces/api/http/** + apps/backend/app/crosscutting/**
+9. apps/frontend/app/** + apps/frontend/src/** + apps/frontend/middleware.ts + apps/frontend/next.config.mjs
+10. infra/** + compose\*.yaml + .github/workflows/** + package.json
+    Si una ruta no existe: reportar NO ENCONTRADO y seguir.
 
 SANITY CHECKS (antes de analizar)
 A) Verificar existencia de las 4 fuentes top (0..3).
 B) Verificar que shared/contracts/openapi.json existe.
 C) Verificar workflows:
-   - .github/workflows/ci.yml existe
-   - .github/workflows/deploy.yml existe
-D) Verificar “referencias rotas”:
-   - Todo Dockerfile path en workflows debe existir.
-   - Todo compose*.yaml citado en docs debe existir.
-   - Si hay mismatch: marcar como GAP BLOQUEANTE con evidencia.
 
-MÉTODO (EJECUCIÓN MÍNIMA, SIN SALTOS)
+- .github/workflows/ci.yml existe
+- .github/workflows/deploy.yml existe
+  D) Verificar referencias rotas:
+- Todo Dockerfile path en workflows debe existir.
+- Todo compose\*.yaml citado en docs debe existir.
+- Si hay mismatch: marcar como GAP BLOQUEANTE con evidencia.
 
-1) CONTRATO BASELINE (TO-BE) — 15 a 25 bullets, máximo
-- Extraer del conjunto docs/project/* + docs/requirements/*
-- Cada bullet debe tener 1 evidencia (ruta + líneas).
-- Enfocar en: producto, seguridad, operación, calidad, observabilidad, documentación.
+METODO (EJECUCION MINIMA, SIN SALTOS)
 
-2) SNAPSHOT AS-IS (solo hechos verificables)
-- Stack: FE / BE / DB / Queue-Worker / Storage / Obs / CI / Deploy (1–2 bullets c/u)
-- Para cada ítem: 1 evidencia (ruta + líneas).
+1. CONTRATO BASELINE (TO-BE) - 15 a 25 bullets maximo
+
+- Extraer del conjunto docs/project/_ + docs/requirements/_
+- Cada bullet debe tener 1 evidencia (ruta + lineas).
+- Enfocar en: producto, seguridad, operacion, calidad, observabilidad, documentacion.
+
+2. SNAPSHOT AS-IS (solo hechos verificables)
+
+- Stack: FE / BE / DB / Queue-Worker / Storage / Obs / CI / Deploy (1-2 bullets c/u)
+- Para cada item: 1 evidencia (ruta + lineas).
 - Comandos reales: SOLO scripts existentes en package.json (root y apps/frontend) y docs/runbook si coincide.
 
-3) MATRIZ DE CUMPLIMIENTO (tabla compacta, 6 áreas)
-Áreas:
+3. MATRIZ DE CUMPLIMIENTO (tabla compacta, 6 areas)
+   Areas:
+
 - Producto (Workspaces/ACL/Scoping/RAG)
 - Seguridad/Gobernanza (Auth/RBAC/headers/secrets/metrics auth)
-- Operación/Deploy (compose/k8s/release/rollback/backup/DR)
+- Operacion/Deploy (compose/k8s/release/rollback/backup/DR)
 - Calidad (tests/CI/contracts/RFC7807)
 - Observabilidad (health/ready/metrics/logs/dashboards)
-- Documentación (canon/stubs/drift/runbooks)
-Para cada área:
+- Documentacion (canon/stubs/drift/runbooks)
+  Para cada area:
 - Estado: ✅ / ⚠️ / ❌
-- Evidencias: 2 (rutas + líneas)
-- Riesgo: 1 línea
-- Acción mínima: 1 línea (fix incremental)
+- Evidencias: 2 (rutas + lineas)
+- Riesgo: 1 linea
+- Accion minima: 1 linea (fix incremental)
 
-4) % PROGRESO (con fórmula explícita)
-- Definir pesos (suman 100) SOLO por las 6 áreas.
-- Pesos RECOMENDADOS (prod-ready):
+4. % PROGRESO (con formula explicita)
+
+- Definir pesos (suman 100) SOLO por las 6 areas.
+- Pesos recomendados (prod-ready):
   - Seguridad 25
-  - Operación/Deploy 25
+  - Operacion/Deploy 25
   - Producto 20
   - Calidad 15
   - Observabilidad 10
-  - Documentación 5
+  - Documentacion 5
 - Score: ✅=1, ⚠️=0.5, ❌=0
-- Progreso = Σ(peso_area * score_area)
-- Mostrar tabla: Área | Peso | Estado | Score | Contrib | Evidencias.
+- Progreso = sumatoria(peso_area \* score_area)
+- Mostrar tabla: Area | Peso | Estado | Score | Contrib | Evidencias.
 
-5) TOP 10 GAPS BLOQUEANTES (solo los que frenan prod)
-Formato fijo por gap (1 línea):
-[Área] Gap — Impacto — Evidencia (path:lines) — Fix mínimo
-Regla: al menos 6/10 deben ser “deploy blockers” o “security blockers”.
+5. TOP 10 GAPS BLOQUEANTES (solo los que frenan prod)
+   Formato fijo por gap (1 linea):
+   [Area] Gap - Impacto - Evidencia (path:lines) - Fix minimo
+   Regla: al menos 6/10 deben ser deploy blockers o security blockers.
 
-6) DONE BASELINE CHECKLIST (10–15 items)
-Cada item debe incluir:
+6. DONE BASELINE CHECKLIST (10-15 items)
+   Cada item debe incluir:
+
 - Evidencia (path:lines)
-- Comando de verificación real (script/compose/pytest/pnpm/curl) o TODO(verify)
+- Comando de verificacion real (script/compose/pytest/pnpm/curl) o TODO(verify)
 
-7) CIERRE
+7. CIERRE
+
 - % total final
 - 3 fortalezas (con evidencia)
 - 3 riesgos (con evidencia)
-- 1 próximo paso inmediato (con evidencia)
+- 1 proximo paso inmediato (con evidencia)
 
 SALIDA (FORMATO CONSTANTE)
-1) CONTRATO baseline (15–25 bullets + evidencias)
-2) AS-IS snapshot (stack + comandos + evidencias)
-3) MATRIZ (tabla)
-4) % PROGRESO (tabla + fórmula)
-5) TOP 10 GAPS (10 líneas)
-6) DONE checklist (10–15 checks)
-7) CIERRE
+
+1. CONTRATO baseline (15-25 bullets + evidencias)
+2. AS-IS snapshot (stack + comandos + evidencias)
+3. MATRIZ (tabla)
+4. % PROGRESO (tabla + formula)
+5. TOP 10 GAPS (10 lineas)
+6. DONE checklist (10-15 checks)
+7. CIERRE
 
 ---
 
 @workspace
-# PRON — DEUDA TÉCNICA + QUICK WINS (SIN CAMBIOS)
+
+# PRON DEUDA TECNICA + QUICK WINS - SIN CAMBIOS
+
 Objetivo: backlog senior baseline (solo evidencia) con Top 10 + quick wins + medianas + no tocar.
 
 REGLAS
+
 - MODO: SIN CAMBIOS.
-- CERO INVENCIÓN: cada ítem debe citar 2 evidencias (path:lines).
+- CERO INVENCION: cada item debe citar 2 evidencias (path:lines).
 - Incremental only: prohibidas re-arquitecturas.
-- Usar mismas FUENTES (prioridad) que la auditoría.
+- Usar mismas FUENTES (prioridad) que la auditoria.
 
-MÉTODO
-A) Detectar hallazgos: listar 20–30 candidatos (bullets) con rutas.
+METODO
+A) Detectar hallazgos: listar 20-30 candidatos (bullets) con rutas.
 B) Priorizar Top 10 (riesgo/impacto/urgencia/CI/deploy).
-C) Clasificar resto: Quick Wins (≤2h) y Medianas (1–2d).
-D) Marcar “No tocar todavía” (3–5) por riesgo/ambigüedad/out-of-scope.
+C) Clasificar resto: Quick Wins (<=2h) y Medianas (1-2d).
+D) Marcar No tocar todavia (3-5) por riesgo/ambiguedad/out-of-scope.
 
-FORMATO ESTRICTO (máx 6 líneas por ítem)
-[ID] Título corto
-- Impacto: Alto|Medio|Bajo | Riesgo: Seguridad|Perf|Mantenibilidad|UX (1–2)
+FORMATO ESTRICTO (max 6 lineas por item)
+[ID] Titulo corto
+
+- Impacto: Alto|Medio|Bajo | Riesgo: Seguridad|Perf|Mantenibilidad|UX (1-2)
 - Evidencia: path1:lines ; path2:lines
-- Problema: 1 línea
-- Fix (incremental): 1–2 líneas
-- Validación: comando real (script/compose/pytest/pnpm/curl) o TODO(verify)
+- Problema: 1 linea
+- Fix (incremental): 1-2 lineas
+- Validacion: comando real (script/compose/pytest/pnpm/curl) o TODO(verify)
 
 ENTREGABLES
-1) TOP 10 DEUDA (10 ítems)
-2) QUICK WINS (5–12 ítems, ≤2h)
-3) MEDIANAS (5–10 ítems, 1–2d)
-4) NO TOCAR TODAVÍA (3–5 ítems, con “por qué” 1 línea)
-5) ORDEN DE EJECUCIÓN (1..N) con dependencias (máx 8 líneas)
+
+1. TOP 10 DEUDA (10 items)
+2. QUICK WINS (5-12 items, <=2h)
+3. MEDIANAS (5-10 items, 1-2d)
+4. NO TOCAR TODAVIA (3-5 items, con por que 1 linea)
+5. ORDEN DE EJECUCION (1..N) con dependencias (max 8 lineas)
 
 ---
 
 @workspace
-# PRON E2E FULL PIPELINE (WORKSPACES) (1 COMMIT)
-Objetivo: E2E robusto (Playwright) para flujo baseline completo con Workspaces, determinista y sin flakes. 1 commit.
+
+# PRON OBSERVABILIDAD (AUDIT + METRICAS) - 1 COMMIT
+
+Objetivo: trazabilidad y metricas accionables alineadas a Workspaces, sin ruido.
 
 REGLAS
-- 1 COMMIT, sin rama/PR. Commit: `test(e2e): full pipeline workspace-scoped (baseline)`
-- Solo tocar: `tests/e2e/**` y (si es necesario) `docs/quality/testing.md`.
-- Reusar compose profiles existentes (NO crear nuevos servicios).
-- Determinismo: usar `FAKE_LLM/FAKE_EMBEDDINGS` si existen en `.env.example` o docs. Si no existen: NO inventar, TODO(verify).
-- No inventar endpoints: derivar TODO de `shared/contracts/openapi.json` y/o `shared/contracts/src/generated.ts`.
-- No pegar archivos completos: diff/patch.
 
-PRECHECK (obligatorio)
-1) Identificar endpoints necesarios desde OpenAPI:
-   - auth/login
-   - workspaces: list/create/select (según contrato)
-   - documents: upload/list/status/reprocess/delete (según contrato)
-   - chat/ask (y stream solo si existe en contrato)
-2) Identificar health endpoints reales:
-   - /healthz y /readyz (solo si existen; si no, usar el endpoint de health real encontrado).
-3) Identificar cómo se representa el “estado READY” de un documento (campo exacto) en el contrato.
-4) Identificar si existe “viewer role” y cómo asignarlo (endpoint real o seed real). Si no existe: NO inventar → el caso 3 se degrada a “UI hides write actions when role=viewer is present” solo si hay forma real de obtenerlo.
-
-STACK/SETUP (no inventar)
-- Usar comandos existentes en repo para levantar stack:
-  - preferir scripts `pnpm stack:*` si existen, si no `docker compose --profile ... up`.
-- Asegurar que para pipeline completo estén corriendo: api + db + redis + worker + minio.
-- Si el repo ya tiene fixtures/seed admin (DEV_SEED_ADMIN), usarlo.
-
-E2E SPECS (crear/actualizar)
-Crear 1 spec principal: `tests/e2e/tests/workspace_full_pipeline.spec.ts` (o nombre existente equivalente).
-Estructura: 3 tests con el mismo setup de login.
-
-Caso 1 — Happy path (workspace scoped)
-- Login como admin (real).
-- Crear workspace (o usar existente si contrato no permite create).
-- Seleccionar workspace (mecanismo real: header selector / query param / storage, según app).
-- Upload 1 doc fixture (usar `tests/e2e/fixtures/**` existentes).
-- Esperar READY de forma determinista:
-  - Polling por API: GET list/status hasta status==READY (timeout 60–120s).
-  - NO usar sleep fijo salvo 1 backoff pequeño.
-- Ejecutar ask/chat scoped al workspace:
-  - Validar que la respuesta incluye al menos 1 source del doc (según UI/contrato real).
-  - Si streaming existe, validar que llega texto incremental; si no existe, validar respuesta normal.
-
-Caso 2 — Cross-workspace negative
-- Crear WS1, subir docA y esperar READY.
-- Crear WS2 (nuevo), NO subir nada.
-- Ask en WS2: validar que NO aparece docA en sources/attachments/listado.
-- Validación debe basarse en señales reales (UI list o API list filtrada por workspace).
-
-Caso 3 — Permisos (solo si el contrato lo permite sin inventar)
-- Si existe endpoint/seed real para crear usuario viewer o asignar rol:
-  - Crear/login viewer.
-  - Entrar a workspace: verificar que botones upload/delete están deshabilitados/ocultos y que acciones write fallan con error claro.
-- Si NO hay forma real verificable:
-  - Marcar TODO(verify) y NO implementar caso 3 (no inventar).
-
-READINESS / WAITS (anti-flake)
-- Esperar backend readiness:
-  - usar endpoint real de health/ready encontrado.
-- Para UI: `page.goto` + esperar elemento estable (data-testid si existe; si no, selector estable existente).
-- Guardar artifacts en fallo (screenshots/videos) usando la config existente.
-
-CI INTEGRATION
-- Si el workflow usa grep/tag (`e2e-full`), alinear el nombre del test o título con ese grep (solo si existe).
-- No cambiar workflows en este prompt.
-
-VALIDACIÓN (obligatoria)
-- `pnpm -C tests/e2e test`
-- Si hay grep existente: `pnpm -C tests/e2e test --grep "Full pipeline"`
-
-SALIDA FINAL
-- Archivos tocados
-- Qué endpoints se usaron (lista corta con rutas OpenAPI)
-- Estrategia anti-flake (3 bullets)
-- Comandos corridos + resultado
-- TODOs (si faltó soporte real de viewer/stream)
-  
----
-
-@workspace
-# PRON OBSERVABILIDAD: MÉTRICAS + AUDIT (1 COMMIT)
-QUIERO COMPLETAR OBSERVABILIDAD baseline (AUDITORÍA + MÉTRICAS) ALINEADA A WORKSPACES, Y HACER 1 SOLO COMMIT.
-
-OBJETIVO
-Trazabilidad y métricas accionables: eventos auditables con workspace_id, métricas para ingest/ask/retrieval/worker, sin ruido.
-
-REGLAS
-- No rama/PR. 1 commit final.
-- No inventar eventos/métricas: basarse en flujos reales y docs baseline.
+- 1 COMMIT, sin rama/PR. Commit: `feat(obs): workspace audit + metrics alignment (baseline)`
+- No inventar eventos/metricas: basarse en flujos reales y docs baseline.
 - Labels razonables (evitar cardinalidad alta).
-- Mantener Clean Architecture: emission en app layer cuando corresponda.
+- Mantener Clean Architecture: emision en app layer cuando corresponda.
 
 TAREAS
-(1) Auditoría:
-- Asegurar eventos críticos: workspace.*, doc.*, auth.*, admin.user.* (solo si existen en contrato).
-- `workspace_id` donde aplique.
-(2) Métricas:
-- Counters/histograms para:
-  - ask latency, retrieval latency, ingest pipeline, worker processing, errors
-  - cache hit/miss si existe
-- Proteger /metrics según config.
-(3) Docs:
-- Actualizar docs de observabilidad si existe sección; sino, agregar doc mínimo en `docs/observability/**` y linkear en índice.
-(4) Tests mínimos:
-- Que la emisión de audit no rompa y que métricas expongan nombres esperados.
-(5) Validación:
-- `cd backend && pytest -q`
 
-COMMIT
-- `feat(obs): workspace audit + metrics alignment (baseline)`
+1. Auditoria:
+   - Asegurar eventos criticos: workspace._, doc._, auth._, admin.user._ (solo si existen en contrato).
+   - Incluir workspace_id donde aplique.
+2. Metricas:
+   - Counters/histograms para ask latency, retrieval latency, ingest pipeline, worker processing, errors.
+   - Cache hit/miss solo si existe.
+   - Proteger /metrics segun config real.
+3. Docs:
+   - Actualizar docs de observabilidad si existe seccion; si no, agregar doc minimo en docs/observability/\*\* y linkear en indice.
+4. Tests minimos:
+   - Que la emision de audit no rompa y que metricas expongan nombres esperados.
+5. Validacion:
+   - `cd apps/backend && pytest -q`
 
+SALIDA FINAL
+
+- Archivos tocados
+- Lista de metricas/eventos agregados (corto)
+- Comandos corridos + resultado
+- TODOs (si faltaron soportes reales)
 
 ---
 
 @workspace
-# PRON baseline-CI1 — CI HYGIENE + STABILITY (1 COMMIT) [CLÍNICO]
-Objetivo: arreglar CI que falla por configuración (paths/scripts/caches/timeouts/perms) SIN tocar producto. 1 commit.
+
+# PRON CI1 - HYGIENE + STABILITY (1 COMMIT)
+
+Objetivo: arreglar CI que falla por configuracion (paths/scripts/caches/timeouts/perms) sin tocar producto.
 
 REGLAS
+
 - 1 COMMIT, sin rama/PR. Commit: `chore(ci): hygiene + stability (baseline)`
-- PROHIBIDO tocar lógica de negocio. Permitido: .github/workflows/**, docs/quality/testing.md, configs de tooling (solo si afecta CI), scripts si son no-funcionales.
+- Prohibido tocar logica de negocio. Permitido: .github/workflows/\*\*, docs/quality/testing.md, configs de tooling (solo si afecta CI), scripts no funcionales.
 - No cambiar triggers (on:), ni estrategia/matriz de jobs; solo alinear y estabilizar.
-- CERO INVENCIÓN: cada cambio debe referenciar evidencia (ruta real + error que corrige).
+- CERO INVENCION: cada cambio debe referenciar evidencia (ruta real + error que corrige).
 - Output: unified diff/patch (no archivos completos).
 
-PASO 1 — DIAGNÓSTICO (sin cambios)
-- Leer TODOS `.github/workflows/*.yml`
-- Listar fallas potenciales por categoría:
-  A) paths inexistentes, B) scripts inexistentes, C) caches mal apuntados, D) coverage paths, E) timeouts, F) permisos.
-- Evidencia por ítem: línea o snippet + ruta.
+PASO 1 - DIAGNOSTICO (sin cambios)
 
-PASO 2 — FIXES (solo si aplica, mínimos)
+- Leer TODOS .github/workflows/\*.yml
+- Listar fallas potenciales por categoria:
+  A) paths inexistentes, B) scripts inexistentes, C) caches mal apuntados, D) coverage paths, E) timeouts, F) permisos.
+- Evidencia por item: linea o snippet + ruta.
+
+PASO 2 - FIXES (minimos)
+
 - Paths: corregir a layout real (apps/backend, apps/frontend, shared/contracts, tests, infra).
-- Scripts: usar scripts reales de package.json; si falta, NO inventar → TODO(verify).
+- Scripts: usar scripts reales de package.json; si falta, NO inventar -> TODO(verify).
 - Cache:
   - pnpm: cache-dependency-path a pnpm-lock.yaml real
   - python: requirements.txt real y/o uv/poetry si existe
 - Coverage: apuntar a la ruta real de coverage.xml/lcov.info si existe; si no existe, NO agregar coverage nuevo.
 - Timeouts: subir solo donde sea claro que es E2E pesado (sin exagerar).
-- Permissions: agregar `permissions:` mínimos si faltan (read-only por defecto).
+- Permissions: agregar permissions minimos si faltan (read-only por defecto).
 
-PASO 3 — DOC (si cambió algo visible)
-- Actualizar `docs/quality/testing.md` (solo notas de “cómo corre CI” y comandos equivalentes local).
+PASO 3 - DOC (si cambio algo visible)
 
-VALIDACIÓN (obligatoria)
+- Actualizar docs/quality/testing.md (solo notas de como corre CI y comandos equivalentes locales).
+
+VALIDACION (obligatoria)
+
 - Verificar que workflows no referencien paths inexistentes (grep/lista).
 - Listar comandos locales equivalentes (solo si existen).
 
-COMMIT
-- `chore(ci): hygiene + stability (baseline)`
-
 SALIDA FINAL
+
 - Archivos tocados
-- Top 10 fixes (≤10 bullets)
-- Qué NO se pudo verificar (TODOs)
-  
+- Top 10 fixes (<=10 bullets)
+- TODOs de verificacion
+
 ---
 
 @workspace
-# PRON baseline-CI2 — TEST STABILITY (unit/integration/e2e) (1 COMMIT)
-Objetivo: reducir flakes y hacer tests deterministas para CI. 1 commit.
+
+# PRON CI2 - TEST STABILITY (1 COMMIT)
+
+Objetivo: reducir flakes y hacer tests deterministas para CI.
 
 REGLAS
+
 - 1 COMMIT, sin rama/PR. Commit: `test(ci): stabilize test suite (baseline)`
-- Permitido: tests/**, config de test (pytest.ini/playwright.config), scripts de test, fixtures/seeds.
-- PROHIBIDO: cambios de producto (endpoints/negocio/UI behavior). Si un test requiere un cambio funcional → NO hacerlo aquí, dejar TODO y pasar a CI3.
-- CERO INVENCIÓN: endpoints/flows deben venir de OpenAPI/routes reales.
+- Permitido: tests/\*\*, config de test (pytest.ini/playwright.config), scripts de test, fixtures/seeds.
+- Prohibido: cambios de producto (endpoints/negocio/UI behavior). Si un test requiere cambio funcional -> NO hacerlo aqui, dejar TODO y pasar a CI3.
+- CERO INVENCION: endpoints/flows deben venir de OpenAPI/routes reales.
 - Output: unified diff/patch.
 
-PASO 1 — MAPEO DE TESTS
-- Identificar qué corre en CI (workflows) y qué scripts llama.
+PASO 1 - MAPEO DE TESTS
+
+- Identificar que corre en CI (workflows) y que scripts llama.
 - Clasificar tests: unit / integration / e2e / load.
 - Detectar flake patterns: waits, timeouts, random data, dependencia de red/keys.
 
-PASO 2 — FIXES PERMITIDOS (determinismo)
+PASO 2 - FIXES PERMITIDOS (determinismo)
+
 - E2E:
   - waits por readiness real (healthz/readyz) y condiciones visibles
   - selectors estables (data-testid si ya existe; si no existe, NO tocar UI en este prompt)
@@ -331,407 +278,307 @@ PASO 2 — FIXES PERMITIDOS (determinismo)
   - seeds/fixtures deterministas (FAKE_LLM/FAKE_EMBEDDINGS si existen)
 - Backend tests:
   - aislar dependencias externas (fake flags si existen)
-  - limpiar datos entre tests (fixtures) sin tocar lógica app
-- Asegurar artifacts útiles (screenshots/videos/logs) si ya está configurado.
+  - limpiar datos entre tests (fixtures) sin tocar logica app
+- Asegurar artifacts utiles (screenshots/videos/logs) si ya esta configurado.
 
-VALIDACIÓN
+VALIDACION
+
 - Backend: `cd apps/backend && pytest -q`
 - Frontend: `cd apps/frontend && pnpm lint && pnpm tsc --noEmit` (si el workflow lo corre)
 - E2E: `pnpm -C tests/e2e test` (si existe script)
 
-COMMIT
-- `test(ci): stabilize test suite (baseline)`
-
 SALIDA FINAL
+
 - Archivos tocados
-- Qué flakes se mitigaron (≤8 bullets)
+- Flakes mitigados (<=8 bullets)
 - TODOs que requieren cambios de producto (para CI3)
 
 ---
 
 @workspace
-# PRON baseline-CI3 — BUGFIXES FOR CI FAILURES (1 COMMIT)
-Objetivo: arreglar bugs reales detectados por CI (tests rojos), con cambios mínimos y verificados. 1 commit.
+
+# PRON CI3 - BUGFIXES POR CI ROJO (1 COMMIT)
+
+Objetivo: arreglar bugs reales detectados por CI (tests rojos), con cambios minimos y verificados.
 
 REGLAS
+
 - 1 COMMIT, sin rama/PR. Commit: `fix(ci): resolve failing tests (baseline)`
-- Cambios mínimos: tocar solo lo necesario para que tests pasen.
-- No refactors grandes. No cambios de API/contratos/migraciones salvo que el test ya lo exija explícitamente y haya evidencia.
+- Cambios minimos: tocar solo lo necesario para que tests pasen.
+- No refactors grandes. No cambios de API/contratos/migraciones salvo que el test lo exija explicitamente y haya evidencia.
 - Cada fix debe incluir:
-  - causa raíz (1–2 líneas)
+  - causa raiz (1-2 lineas)
   - evidencia (log/test + ruta)
-  - cambio mínimo (diff)
+  - cambio minimo (diff)
 - Output: unified diff/patch.
 
-PASO 1 — IDENTIFICAR FALLAS
+PASO 1 - IDENTIFICAR FALLAS
+
 - Tomar fallas actuales (logs de CI o correr tests local).
 - Agrupar por causa: backend/runtime/config/frontend/e2e.
 
-PASO 2 — APLICAR FIXES
-- Fixes pequeños, específicos, con pruebas.
+PASO 2 - APLICAR FIXES
+
+- Fixes pequenos, especificos, con pruebas.
 - Si la falla es por dependencia externa (keys/red):
   - preferir fakes/flags ya existentes antes que integrar servicios reales.
 - Si la falla es por readiness/race:
-  - preferir arreglar el readiness del servicio o el contrato del test, según evidencia.
+  - preferir arreglar el readiness del servicio o el contrato del test, segun evidencia.
 
-VALIDACIÓN
+VALIDACION
+
 - Re-correr exactamente los comandos que fallaban.
 - Verificar `git diff` solo incluye cambios necesarios.
 
-COMMIT
-- `fix(ci): resolve failing tests (baseline)`
-
 SALIDA FINAL
+
 - Archivos tocados
-- Lista de fallas corregidas (≤10)
+- Lista de fallas corregidas (<=10)
 - Comandos corridos + resultado
 
 ---
 
 @workspace
-# PRON DOCS — AUDIT + APPLY (Docs only)
+
+# PRON DOCS - AUDIT + APPLY (Docs only)
+
 Objetivo: (1) auditar docs+READMEs y detectar drift contra el repo real; (2) opcionalmente aplicar fixes SOLO en docs, en 1 commit.
 Modo: elegir UNO al inicio: AUDIT (SIN CAMBIOS) o APPLY (1 COMMIT).
 
 MODO (seleccionar)
+
 - AUDIT = SIN CAMBIOS (0 edits/0 commits). Solo reporte.
-- APPLY = SOLO DOCS (README.md + docs/**) y 1 commit final: `docs(baseline): align documentation with repo state`
-Regla: Si el modo no está explícito -> asumir AUDIT.
+- APPLY = SOLO DOCS (README.md + docs/\*\*) y 1 commit final: `docs(baseline): align documentation with repo state`
+  Regla: si el modo no esta explicito -> asumir AUDIT.
 
 REGLAS GENERALES
-- CERO INVENCIÓN: comandos/endpoints/env/scripts deben venir de fuentes reales. Si no verificable: `TODO(verify)`.
-- Scope docs: solo `README.md`, `docs/**`, y todos los `**/README.md` trackeados (para inventario). En APPLY solo tocar `README.md` y `docs/**`.
+
+- CERO INVENCION: comandos/endpoints/env/scripts deben venir de fuentes reales. Si no verificable: TODO(verify).
+- Scope docs: solo README.md, docs/**, y todos los **/README.md trackeados (para inventario). En APPLY solo tocar README.md y docs/\*\*.
 - Evidencia: cada drift/hallazgo debe citar (Doc ruta) + (Fuente real ruta).
 - Salida compacta: tablas/listas, sin texto largo.
 
-FUENTES DE VERDAD (comparación)
-1) shared/contracts/openapi.json
-2) apps/backend/alembic/versions/**
-3) compose*.yaml + infra/**
-4) .github/workflows/**
-5) package.json / pnpm-workspace.yaml / turbo.json
-6) apps/backend/** y apps/frontend/** (solo para verificar paths mencionados en docs)
+FUENTES DE VERDAD (comparacion)
 
-PASO 1 — INVENTARIO (siempre, AUDIT y APPLY)
+1. shared/contracts/openapi.json
+2. apps/backend/alembic/versions/\*\*
+3. compose\*.yaml + infra/\*\*
+4. .github/workflows/\*\*
+5. package.json / pnpm-workspace.yaml / turbo.json
+6. apps/backend/** y apps/frontend/** (solo para verificar paths mencionados en docs)
+
+PASO 1 - INVENTARIO (siempre, AUDIT y APPLY)
 A) Enumerar:
-- root README.md
-- todos los **/README.md trackeados
-- docs/** (por carpetas)
-- .github/** docs (si existen)
-B) Clasificar cada doc: Canonical | Supporting | Historical | Deprecated
-C) Marcar estado: ✅ existe y consistente | ⚠️ existe con drift | ❌ falta pero debería existir
 
-PASO 2 — DRIFT REPORT (siempre, 15–30 hallazgos)
-Formato fijo por hallazgo (3 líneas):
-- Doc: <ruta>#<sección>
-- Contradicción: <afirma X> vs <fuente real + ruta>
-- Fix esperado: 1 línea (sin inventar)
+- root README.md
+- todos los \*\*/README.md trackeados
+- docs/\*\* (por carpetas)
+- .github/\*\* docs (si existen)
+  B) Clasificar cada doc: Canonical | Supporting | Historical | Deprecated
+  C) Marcar estado: ✅ existe y consistente | ⚠️ existe con drift | ❌ falta pero deberia existir
+
+PASO 2 - DRIFT REPORT (siempre, 15-30 hallazgos)
+Formato fijo por hallazgo (3 lineas):
+
+- Doc: <ruta>#<seccion>
+- Contradiccion: <afirma X> vs <fuente real + ruta>
+- Fix esperado: 1 linea (sin inventar)
 
 Prioridad de drift:
-1) comandos que no existen (scripts)
-2) servicios/puertos/perfiles incorrectos (compose)
-3) endpoints no presentes en OpenAPI
-4) DB schema no coincide con migraciones
-5) paths inexistentes
-6) features prometidas pero no implementadas (pasar a TODO/Roadmap)
 
-PASO 3 — DOCS OBJETIVO baseline (siempre)
-Listar 8–14 docs “mínimos canónicos” (path + propósito 1 línea) y estado ✅/⚠️/❌.
-Incluye mínimo:
+1. comandos que no existen (scripts)
+2. servicios/puertos/perfiles incorrectos (compose)
+3. endpoints no presentes en OpenAPI
+4. DB schema no coincide con migraciones
+5. paths inexistentes
+6. features prometidas pero no implementadas (pasar a TODO/Roadmap)
+
+PASO 3 - DOCS OBJETIVO baseline (siempre)
+Listar 8-14 docs minimos canonicos (path + proposito 1 linea) y estado ✅/⚠️/❌.
+Incluye minimo:
+
 - README.md (portal)
-- docs/README.md (índice)
+- docs/README.md (indice)
 - docs/runbook/local-dev.md
 - docs/api/http-api.md
 - docs/data/postgres-schema.md
 - docs/architecture/overview.md
 - docs/quality/testing.md
-- docs/system/** (contrato baseline)
-- docs/observability/** (si aplica)
+- docs/system/\*\* (contrato baseline)
+- docs/observability/\*\* (si aplica)
 
-PASO 4 — APPLY (solo si MODO=APPLY)
-Restricción para ahorrar tokens y evitar expansión:
-- Max archivos tocados: 12–16 (si hay más, priorizar y dejar TODO listados).
-- No crear docs nuevas excepto: docs/README.md si falta, y 1–2 docs canónicas faltantes.
-- No tocar código ni configs fuera de docs.
+PASO 4 - APPLY (solo si MODO=APPLY)
+Restriccion para ahorrar tokens y evitar expansion:
+
+- Max archivos tocados: 12-16 (si hay mas, priorizar y dejar TODO listados).
+- No crear docs nuevas excepto: docs/README.md si falta, y 1-2 docs canonicas faltantes.
+- No tocar codigo ni configs fuera de docs.
 
 Tareas de APPLY (orden):
-1) README.md como portal (corto y real):
-   - qué es (3–6 bullets verificables)
+
+1. README.md como portal (corto y real):
+   - que es (3-6 bullets verificables)
    - features implementadas (solo lo que exista)
    - stack (tabla)
-   - quickstart: env mínima + comandos reales + 1 verificación curl
-   - estructura repo (1 línea por carpeta)
+   - quickstart: env minima + comandos reales + 1 verificacion curl
+   - estructura repo (1 linea por carpeta)
    - links a docs/README.md
-   - roadmap (5–10 TODOs verificables)
-2) docs/README.md índice canónico (links vivos)
-3) Alinear docs canónicas con evidencia:
+   - roadmap (5-10 TODOs verificables)
+2. docs/README.md indice canonico (links vivos)
+3. Alinear docs canonicas con evidencia:
    - local-dev (compose/scripts)
    - http-api (OpenAPI)
    - postgres-schema (migraciones)
    - testing (workflows/scripts)
    - architecture overview (sin inventar; TODO si falta)
-4) Diagramas Mermaid: máximo 2 (component + 1 sequence clave). Si falta info: TODO(verify).
+4. Diagramas Mermaid: max 2 (component + 1 sequence clave). Si falta info: TODO(verify).
 
-VALIDACIÓN (en APPLY)
+VALIDACION (en APPLY)
+
 - Check links: que todos los paths referenciados existan.
-- `pnpm contracts:gen` (si existe) y no rompe.
-- Si no se puede correr algo: explicar 1 línea.
+- pnpm contracts:gen (si existe) y no rompe.
+- Si no se puede correr algo: explicar 1 linea.
 
 SALIDA FINAL (formato fijo)
-1) INVENTARIO (tabla: ruta | tipo | estado | nota 1 línea)
-2) DRIFT TOP 15–30
-3) DOCS OBJETIVO baseline
-4) PRIORIZACIÓN (Top 10 acciones)
-5) Si APPLY:
+
+1. INVENTARIO (tabla: ruta | tipo | estado | nota 1 linea)
+2. DRIFT TOP 15-30
+3. DOCS OBJETIVO baseline
+4. PRIORIZACION (Top 10 acciones)
+5. Si APPLY:
    - diff/patch (no archivos completos)
    - archivos tocados
-   - resumen ≤10 bullets
+   - resumen <=10 bullets
    - commit: `docs(baseline): align documentation with repo state`
    - TODOs que quedaron
 
 ---
 
 @workspace
-# PRON CRC APPLY (INSERTAR EN ARCHIVOS) (1 COMMIT)
-Objetivo: insertar CRC Cards baseline (EN INGLÉS) en archivos críticos BE/FE que NO las tengan. Sin cambios funcionales. 1 commit.
 
-REGLAS
-- MODO: 1 COMMIT (sin rama/PR). Commit final: `docs(crc): add CRC cards to critical modules (baseline)`
-- PROHIBIDO: cambios funcionales. Solo comentarios/docstrings/JSDoc.
-- CERO INVENCIÓN: cada CRC debe reflejar responsabilidades reales del archivo (leer código).
-- Idioma: CRC comments en INGLÉS.
-- NO DUPLICAR: si ya existe CRC (Name/Responsibilities/Collaborators/Notes), NO insertar otra. Solo normalizar mínimo (typos/format) si está claramente mal, sin tocar lógica.
-- Output: NO pegar archivos completos. Entregar unified diff/patch + lista de archivos tocados.
+# PRON vCLEAN - LIMPIEZA TOTAL DEL REPO (higiene + consistencia) - 1 COMMIT
 
-SELECCIÓN (N=12..16, sin despreciar)
-- Elegir 12–16 archivos críticos (BE 6–8, FE 6–8) basados en centralidad:
-  - Backend: entrypoint, routing/API, DI/container, auth, worker/pipeline, DB boundary.
-  - Frontend: app layout/providers, middleware/auth gating, API client, features core (chat/docs/workspaces).
-- Para cada archivo seleccionado: 1 línea de justificación y confirmar que existe.
-- Una vez seleccionada la lista final, NO OMITIR ninguno: aplicar CRC a todos (si falta).
+Objetivo: dejar el repo ordenado, consistente y CI-ready sin cambiar behavior.
+Regla clave: todo en 1 commit final: `chore(repo): cleanup hygiene (baseline)`.
 
-DETECCIÓN CRC EXISTENTE (antes de editar)
-- Para cada archivo: buscar si ya tiene bloque CRC con estos campos:
-  Name: / Responsibilities: / Collaborators: / Notes/Constraints:
-- Si existe -> NO insertar (y marcar en el reporte como “SKIPPED: already has CRC”).
-- Si no existe -> insertar CRC.
+NO HACER
 
-INSERCIÓN (dónde va el CRC)
-- Python:
-  - Si el archivo NO tiene docstring de módulo: insertar al inicio del archivo como module docstring `""" ... """`.
-  - Si ya tiene docstring de módulo pero no CRC: append del CRC dentro de la misma docstring o insertar una segunda docstring SOLO si no rompe (preferir primera).
-- TS/React:
-  - Insertar bloque JSDoc `/** ... */` inmediatamente arriba del export principal (componente/hook/función) o, si es módulo utilitario, arriba del primer export relevante.
-- No modificar imports ni lógica.
-
-FORMATO CRC (EN INGLÉS, compacto)
-Estructura obligatoria dentro del bloque:
-- Name: <File or primary symbol>
-- Responsibilities:
-  - 3–7 bullets (verbos de acción)
-- Collaborators:
-  - 3–8 items (módulos/servicios reales importados/usados)
-- Notes/Constraints:
-  - 2–6 bullets (invariantes, seguridad, performance, boundaries)
-Límites:
-- 120–180 palabras por CRC.
-- No incluir teoría genérica; solo lo que el archivo realmente hace.
-
-VALIDACIÓN (obligatoria)
-Backend:
-- cd apps/backend && ruff check .
-- cd apps/backend && ruff format --check .
-- cd apps/backend && pytest -q
-
-Frontend:
-- cd apps/frontend && pnpm install --frozen-lockfile
-- cd apps/frontend && pnpm lint
-- cd apps/frontend && pnpm tsc --noEmit
-
-COMMIT ÚNICO
-- `docs(crc): add CRC cards to critical modules (baseline)`
-
-SALIDA FINAL (formato corto)
-- Estado: ✅/⚠️
-- Archivos tocados (rutas)
-- Archivos SKIPPED (ya tenían CRC)
-- Resumen (≤8 bullets)
-- Comandos corridos + resultado
-- TODOs (si hubo casos dudosos)
-
----
-
-@workspace
-# PRON vClean — LIMPIEZA TOTAL DEL REPO (higiene + consistencia) (1 COMMIT)
-Objetivo: dejar el repo ordenado, consistente y CI-ready SIN CAMBIAR lógica/behavior.
-REGLA CLAVE: todo en 1 solo commit final: `chore(repo): cleanup hygiene (baseline)`.
-
-NO HACER:
 - No cambios funcionales (endpoints, payloads, authz, queries, pipeline, UI behavior).
 - No refactors grandes, no re-arquitectura, no tocar migraciones.
 - No crear ramas/PR.
 
-SÍ HACER (solo higiene):
+SI HACER (solo higiene)
+
 - Eliminar basura trackeada, endurecer ignores, ordenar configs, docs menores, consistencia.
-- Quitar debug obvio (prints/logs) SOLO si es inequívocamente debug y no parte del sistema.
+- Quitar debug obvio (prints/logs) SOLO si es inequivocamente debug y no parte del sistema.
 - Eliminar dead code SOLO con evidencia de 0 uso (rg + imports + scripts).
 
----
+FASE 1 - INVENTARIO (solo lectura, sin borrar)
 
-FASE 1 — INVENTARIO (SOLO LECTURA, sin borrar todavía)
-1) Listar archivos trackeados “candidatos basura”:
-   - caches: __pycache__ .pytest_cache .ruff_cache .mypy_cache
-   - cobertura: .coverage* coverage/ coverage.xml
+1. Listar archivos trackeados candidatos basura:
+   - caches: **pycache** .pytest_cache .ruff_cache .mypy_cache
+   - cobertura: .coverage\* coverage/ coverage.xml
    - build: dist/ build/ .next/ node_modules/
    - tests: playwright-report/ test-results/
-   - logs/tmp: *.log *.tmp *.bak *.DS_Store
-
-   Comandos (guardar output en notas internas):
-   - git ls-files | rg -n "__pycache__|\.pytest_cache|\.ruff_cache|\.mypy_cache|(^|/)\.coverage|(^|/)coverage/|coverage\.xml|(^|/)dist/|(^|/)build/|(^|/)\.next/|node_modules|playwright-report|test-results|\.log$|\.tmp$|\.bak$|\.DS_Store$"
-   - git ls-files -z | xargs -0 -I{} bash -lc 'test -f "{}" && wc -c "{}" | awk "$1>1000000"' | head
-
-2) Detectar “obsoleto” (candidatos a BORRAR):
-   Definición de obsoleto (en este repo):
-   - Cualquier carpeta o doc claramente viejo: paths que contengan
-     `old`, `deprecated`, `archive`, `history` (docs)
-   - PDFs/exports antiguos en docs si existen y no se usan para build/tests.
-   - Archivos “duplicados” de docs que ya tengan reemplazo en baseline.
+   - logs/tmp: _.log _.tmp _.bak _.DS_Store
 
    Comandos:
-   - git ls-files | rg -n "(^docs/.*(old|deprecated|archive|history)|(^|/)(old|deprecated)/)"
-   - git ls-files | rg -n "(deprecated)"  # nombres
+   - git ls-files | rg -n "**pycache**|\.pytest_cache|\.ruff_cache|\.mypy_cache|(^|/)\.coverage|(^|/)coverage/|coverage\.xml|(^|/)dist/|(^|/)build/|(^|/)\.next/|node_modules|playwright-report|test-results|\.log$|\.tmp$|\.bak$|\.DS_Store$"
+   - git ls-files -z | xargs -0 -I{} bash -lc 'test -f "{}" && wc -c "{}" | awk "$1>1000000"' | head
+
+2. Detectar obsoleto (candidatos a borrar):
+   - carpetas/docs con old|deprecated|archive|history
+   - PDFs/exports antiguos en docs si no se usan
+   - duplicados de docs reemplazados por baseline
+
+   Comandos:
+   - git ls-files | rg -n "(^docs/.\*(old|deprecated|archive|history)|(^|/)(old|deprecated)/)"
+   - git ls-files | rg -n "(deprecated)"
    - rg -n "(docs/(archive|history)|deprecated)" docs || true
 
-3) Para CADA candidato a borrar, antes de tocarlo, demostrar NO-USO:
+3. Para cada candidato a borrar, demostrar NO-USO:
    - rg -n "<nombre_archivo_o_path>" .
-   - revisar imports (python/ts), scripts/package.json, workflows, compose, docs links.
-   Si hay 1 match relevante -> NO BORRAR (marcar TODO).
+   - revisar imports, scripts/package.json, workflows, compose, docs links.
+     Si hay 1 match relevante -> NO BORRAR (marcar TODO).
 
-Producción de evidencia:
-- Crear un archivo corto: `docs/runbook/repo-cleanup-baseline.md` con:
+Evidencia:
+
+- Crear docs/runbook/repo-cleanup-baseline.md con:
   - Hallazgos (rutas exactas)
-  - Evidencia de no-uso (1–3 líneas por ítem: “rg … → 0 results”)
-  - TODOs dudosos (si hubo)
+  - Evidencia de no-uso (1-3 lineas por item: "rg ... -> 0 results")
+  - TODOs dudosos
 
----
+FASE 2 - PLAN (max 10 bullets, en el mismo runbook)
 
-FASE 2 — PLAN (máx 10 bullets, en el mismo `docs/runbook/repo-cleanup-baseline.md`)
-Plan ultra acotado:
-- 1) remover basura trackeada + git rm
-- 2) reforzar .gitignore y .dockerignore (sin afectar runtime)
-- 3) limpieza obsoleta (solo si no hay referencias)
-- 4) normalizar docs links (solo links/typos; no cambiar contenido contractual)
-- 5) correr checks mínimos
+- remover basura trackeada + git rm
+- reforzar .gitignore y .dockerignore (sin afectar runtime)
+- limpieza obsoleta (solo si no hay referencias)
+- normalizar docs links (solo links/typos; no cambiar contenido contractual)
+- correr checks minimos
 
----
+FASE 3 - EJECUCION (cambios reales, 1 commit)
+A) Basura/artefactos (solo si trackeados):
 
-FASE 3 — EJECUCIÓN (cambios reales, pero TODO va al mismo commit final)
-A) Basura/artefactos (SOLO si están trackeados):
-- Eliminar (git rm) cualquier candidato confirmado.
-- Ejemplo: cookies/token files => SIEMPRE borrar si trackeados.
-  Buscar y borrar:
-  - cookies.txt / cookies*.txt / *.cookies / *token* (si es claramente secreto)
+- Eliminar (git rm) candidatos confirmados.
+- Cookies/token files: SIEMPRE borrar si trackeados (cookies.txt, cookies*.txt, *.cookies, _token_ si es claramente secreto).
 
-B) `.gitignore` / `.dockerignore` (higiene)
+B) .gitignore / .dockerignore (higiene)
+
 - Asegurar ignore de:
-  __pycache__/ .pytest_cache/ .ruff_cache/ .mypy_cache/
+  **pycache**/ .pytest_cache/ .ruff_cache/ .mypy_cache/
   .coverage* coverage/ coverage.xml
   dist/ build/ .next/ node_modules/
   playwright-report/ test-results/
-  *.log *.tmp *.bak .DS_Store
-  cookies.txt cookies*.txt
-- Si hay `.dockerignore` faltante, crear uno mínimo (sin romper builds):
+  *.log _.tmp _.bak .DS_Store
+  cookies.txt cookies\*.txt
+- Si falta .dockerignore, crear uno minimo (sin romper builds):
   ignorar node_modules, .next, dist, build, caches, test artifacts, docs pesados opcional.
 
-C) Obsoleto — BORRADO TOTAL (lo que el usuario pide), PERO con guardrails:
-- Borrar TODO lo obsoleto que cumpla:
-  1) esté en `docs/archive` o `docs/history`
-     O tenga nombre claramente viejo y sea docs/config no usado
-  2) `rg` no muestre referencias reales desde:
-     - docs/INDEX.md README.md docs/** (links)
-     - .github/workflows/** package.json turbo.json pnpm-workspace.yaml
-     - compose*.yaml infra/** tests/**
-  Si hay duda: NO BORRAR. Agregar TODO en el runbook.
+C) Obsoleto (borrado total con guardrails)
 
-D) Tooling “sin cambiar behavior”
-- Backend: ordenar imports/format SOLO si ya está configurado en repo (ruff).
-- Frontend: no tocar lógica; solo lint/ts fixes que no cambien behavior (ej: unused imports).
+- Borrar solo si:
+  1.  esta en docs/archive o docs/history, o tiene nombre claramente viejo y es docs/config no usado
+  2.  rg no muestra referencias reales desde docs, workflows, package.json, compose/infra, tests
+- Si hay duda: NO BORRAR. Agregar TODO en el runbook.
+
+D) Tooling sin cambiar behavior
+
+- Backend: ordenar imports/format SOLO si ya esta configurado (ruff).
+- Frontend: no tocar logica; solo lint/ts fixes que no cambien behavior.
 - Contracts: correr generator si existe y asegurar 0 diff.
 
----
-
-FASE 4 — VALIDACIÓN (obligatoria; si algo no se puede correr, explicar por qué)
-Correr y dejar resumen (en el runbook o comentario final):
-
+FASE 4 - VALIDACION (obligatoria)
 Backend:
+
 - cd apps/backend && ruff check .
 - cd apps/backend && ruff format --check .
 - cd apps/backend && pytest -q
 
 Frontend:
+
 - cd apps/frontend && pnpm install --frozen-lockfile
 - cd apps/frontend && pnpm lint
 - cd apps/frontend && pnpm tsc --noEmit
 
 Contracts (si aplica):
+
 - pnpm contracts:gen
-- git diff --exit-code shared/contracts/ || true  # si el directorio existe
+- git diff --exit-code shared/contracts/ || true
 
 E2E (opcional si es pesado; si no corre, justificar):
+
 - pnpm -C tests/e2e test
 
----
+FASE 5 - COMMIT UNICO
 
-FASE 5 — COMMIT ÚNICO
-- Asegurar `git status` con SOLO cambios esperados.
-- 1 commit final:
-  `chore(repo): cleanup hygiene (baseline)`
+- Asegurar git status con SOLO cambios esperados.
+- Commit: `chore(repo): cleanup hygiene (baseline)`
 
-SALIDA FINAL (en `docs/runbook/repo-cleanup-baseline.md`):
-- ✅/⚠️ estado
-- archivos tocados (rutas)
-- resumen (≤10 bullets)
-- qué eliminaste y evidencia (rg 0 results)
-- comandos corridos + resultado
+SALIDA FINAL (en docs/runbook/repo-cleanup-baseline.md)
+
+- Estado: ✅/⚠️
+- Archivos tocados
+- Resumen (<=10 bullets)
+- Que eliminaste y evidencia (rg 0 results)
+- Comandos corridos + resultado
 - TODOs que quedaron
-
----
-
-Actuá como ingeniero senior de frontend (Next.js App Router) y aplicá estrictamente estas normas:
-
-NORMAS OBLIGATORIAS
-- Cada archivo .ts/.tsx/.js/.mjs/.css/.yaml/.yml/.dockerignore/.gitignore debe comenzar con TARJETA CRC (excepto *.json y README.md).
-- Comentarios en español, explicando intención y decisiones. Evitar comentarios obvios.
-- Arquitectura: app/ solo routing+wiring; lógica de API en src/shared/api.
-- No agregar dependencias nuevas.
-- Mantener compatibilidad: si hay shims, re-exportar sin mencionar versiones internas.
-
-OBJETIVO (P0 FIXES)
-1) Corregir Jest para que imports `@/shared/...` apunten a `src/` y no fallen los tests.
-2) Corregir compose.yaml para que por defecto `RAG_BACKEND_URL` dentro del contenedor apunte a `http://rag-api:8000` (no localhost).
-3) Endurecer `src/shared/api/api.ts`: parseo seguro (no JSON.parse ciego), timeout con AbortController, normalización de error RFC7807 y un ApiError como clase.
-
-TAREAS DETALLADAS
-
-A) Jest (config real + shims)
-- Asegurar que haya UN solo “source of truth” para la config real (preferir config/jest.config.js o jest.config.js, pero no duplicar lógica).
-- Si hay shims en la raíz (jest.config.js y jest.setup.ts) deben delegar a la config real.
-- En la config real:
-  - moduleNameMapper:
-      '^@/(.*)$' => '<rootDir>/src/$1'
-  - collectCoverageFrom debe incluir:
-      'src/**/*.{ts,tsx}'
-      'app/**/*.{ts,tsx}'
-    y excluir:
-      '**/*.d.ts'
-      '**/__tests__/**'
-      '**/*.test.{ts,tsx}'
-      '**/*.spec.{ts,tsx}'
-  - testEnvironment: 'jsdom'
-  - setupFilesAfterEnv: que apunte al setup real.
-- Alinear tsconfig.json (archivo JSON, NO requiere CRC) para que:
-  - compilerOptions.paths incluya:
-      "@/*": ["src/*"]
-- Actualizar package.json scripts para usar el config real de jest (si corresponde), e incluir:
-  - "typecheck"
-  - "
