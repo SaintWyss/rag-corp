@@ -97,6 +97,11 @@ _retrieval_fallback_total: Optional["Counter"] = None
 # DB (baja cardinalidad)
 _db_query_duration: Optional["Histogram"] = None
 
+# Connector sync
+_connector_files_created_total: Optional["Counter"] = None
+_connector_files_updated_total: Optional["Counter"] = None
+_connector_files_skipped_unchanged_total: Optional["Counter"] = None
+
 
 def _init_metrics() -> None:
     """Inicializa métricas (una sola vez)."""
@@ -110,6 +115,8 @@ def _init_metrics() -> None:
     global _db_query_duration
     global _dense_latency, _sparse_latency, _fusion_latency
     global _rerank_latency, _retrieval_fallback_total
+    global _connector_files_created_total, _connector_files_updated_total
+    global _connector_files_skipped_unchanged_total
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -296,6 +303,27 @@ def _init_metrics() -> None:
         "Duración de queries DB (segundos)",
         ["kind"],
         buckets=(0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+        registry=_registry,
+    )
+
+    # ------------------------
+    # Connector sync
+    # ------------------------
+    _connector_files_created_total = Counter(
+        "rag_connector_files_created_total",
+        "Archivos creados (nuevos) por sync de conectores",
+        registry=_registry,
+    )
+
+    _connector_files_updated_total = Counter(
+        "rag_connector_files_updated_total",
+        "Archivos actualizados (re-ingestados) por sync de conectores",
+        registry=_registry,
+    )
+
+    _connector_files_skipped_unchanged_total = Counter(
+        "rag_connector_files_skipped_unchanged_total",
+        "Archivos omitidos (sin cambios) por sync de conectores",
         registry=_registry,
     )
 
@@ -513,6 +541,30 @@ def record_retrieval_fallback(stage: str) -> None:
         return
     if _retrieval_fallback_total:
         _retrieval_fallback_total.labels(stage=stage).inc()
+
+
+def record_connector_file_created(count: int = 1) -> None:
+    """Cuenta archivos creados (nuevos) por sync de conectores."""
+    if not _prometheus_available:
+        return
+    if _connector_files_created_total:
+        _connector_files_created_total.inc(count)
+
+
+def record_connector_file_updated(count: int = 1) -> None:
+    """Cuenta archivos actualizados (re-ingestados) por sync de conectores."""
+    if not _prometheus_available:
+        return
+    if _connector_files_updated_total:
+        _connector_files_updated_total.inc(count)
+
+
+def record_connector_file_skipped_unchanged(count: int = 1) -> None:
+    """Cuenta archivos omitidos (sin cambios) por sync de conectores."""
+    if not _prometheus_available:
+        return
+    if _connector_files_skipped_unchanged_total:
+        _connector_files_skipped_unchanged_total.inc(count)
 
 
 # -----------------------------------------------------------------------------

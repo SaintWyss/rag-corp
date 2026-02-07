@@ -69,7 +69,7 @@ class GoogleDriveClient:
         """Lista archivos de una carpeta de Google Drive."""
         params: Dict[str, Any] = {
             "q": f"'{folder_id}' in parents and trashed = false",
-            "fields": "files(id,name,mimeType,modifiedTime),nextPageToken",
+            "fields": "files(id,name,mimeType,modifiedTime,md5Checksum),nextPageToken",
             "pageSize": 100,
         }
         if page_token:
@@ -108,6 +108,7 @@ class GoogleDriveClient:
                     name=item["name"],
                     mime_type=item.get("mimeType", ""),
                     modified_time=modified,
+                    etag=item.get("md5Checksum"),  # Usamos md5Checksum como etag
                 )
             )
         return files
@@ -172,7 +173,7 @@ class GoogleDriveClient:
                     _DRIVE_CHANGES_URL,
                     params={
                         "pageToken": page_token,
-                        "fields": "changes(file(id,name,mimeType,modifiedTime),removed),newStartPageToken,nextPageToken",
+                        "fields": "changes(file(id,name,mimeType,modifiedTime,md5Checksum),removed),newStartPageToken,nextPageToken",
                         "spaces": "drive",
                         "includeRemoved": "false",
                     },
@@ -204,6 +205,7 @@ class GoogleDriveClient:
                             name=file_data.get("name", ""),
                             mime_type=file_data.get("mimeType", ""),
                             modified_time=modified,
+                            etag=file_data.get("md5Checksum"),
                         )
                     )
 

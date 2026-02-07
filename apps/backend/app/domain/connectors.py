@@ -152,6 +152,7 @@ class ConnectorFile:
     name: str
     mime_type: str
     modified_time: Optional[datetime] = None
+    etag: Optional[str] = None  # Fingerprint para detección de cambios
 
 
 @dataclass
