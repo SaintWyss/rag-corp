@@ -128,6 +128,14 @@ class Settings(BaseSettings):
     jwt_cookie_secure: bool = False
 
     # -------------------------------------------------------------------------
+    # Google OAuth (Connector)
+    # -------------------------------------------------------------------------
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    google_oauth_redirect_uri: str = ""
+    connector_encryption_key: str = ""
+
+    # -------------------------------------------------------------------------
     # S3/MinIO
     # -------------------------------------------------------------------------
     s3_endpoint_url: str = ""

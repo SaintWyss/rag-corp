@@ -28,6 +28,7 @@ from fastapi import APIRouter
 
 from ....crosscutting.error_responses import OPENAPI_ERROR_RESPONSES
 from .routers.admin import router as admin_router
+from .routers.connectors import router as connectors_router
 from .routers.documents import router as documents_router
 from .routers.query import router as query_router
 from .routers.workspaces import router as workspaces_router
@@ -47,6 +48,7 @@ def build_router() -> APIRouter:
     api_router.include_router(workspaces_router)
     api_router.include_router(documents_router)
     api_router.include_router(query_router)
+    api_router.include_router(connectors_router)
     api_router.include_router(admin_router)
 
     return api_router

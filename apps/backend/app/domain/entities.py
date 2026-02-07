@@ -76,6 +76,9 @@ class Document:
     # Deduplicación de contenido
     content_hash: Optional[str] = None
 
+    # Identificador externo (connector-ingested docs)
+    external_source_id: Optional[str] = None
+
     @property
     def is_deleted(self) -> bool:
         """True si está soft-deleted."""

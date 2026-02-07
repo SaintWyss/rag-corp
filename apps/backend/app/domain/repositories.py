@@ -163,6 +163,12 @@ class DocumentRepository(Protocol):
         """Busca documento por hash de contenido dentro de un workspace."""
         ...
 
+    def get_by_external_source_id(
+        self, workspace_id: UUID, external_source_id: str
+    ) -> Document | None:
+        """Busca documento por external_source_id dentro de un workspace."""
+        ...
+
     def soft_delete_document(
         self, document_id: UUID, *, workspace_id: UUID | None = None
     ) -> bool:
