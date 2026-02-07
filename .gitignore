@@ -201,3 +201,37 @@ cookies*.txt
 # Audit Reports
 # -----------------------------------------------------------------------------
 *audit*.md
+
+# -----------------------------------------------------------------------------
+# Google Drive & Auth (Local Dev Safety)
+# -----------------------------------------------------------------------------
+# Credenciales locales generadas por scripts de prueba/quickstart de Google
+token.json
+storage.json
+client_secrets.json
+credentials.json
+
+# -----------------------------------------------------------------------------
+# Local DBs & Data Analysis
+# -----------------------------------------------------------------------------
+# Evitar subir bases de datos locales de prueba (SQLite, etc)
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+# Carpetas comunes para descargas manuales/temporales
+downloads/
+data/
+tmp/
+temp/
+
+# -----------------------------------------------------------------------------
+# IDE & Tooling Extras
+# -----------------------------------------------------------------------------
+# Cache de ESLint (mejora performance en frontend)
+.eslintcache
+# Archivos de VS Code REST Client (pueden contener vars de entorno/tokens en texto plano)
+*.http
+*.rest
+# Historia local de VS Code (si usan el plugin Local History)
+.history/
