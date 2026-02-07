@@ -138,6 +138,10 @@ class ConnectorSourceRepository(Protocol):
         """Elimina un ConnectorSource. Devuelve True si existía."""
         ...
 
+    def try_set_syncing(self, source_id: UUID) -> bool:
+        """Intenta marcar como SYNCING (CAS). False si ya está en SYNCING."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Puerto: Cliente de conector (interacción con provider externo)

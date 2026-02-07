@@ -51,6 +51,7 @@ from app.crosscutting.metrics import (
     record_connector_file_created,
     record_connector_file_skipped_unchanged,
     record_connector_file_updated,
+    record_connector_sync_locked,
 )
 from app.domain.connectors import (
     ConnectorAccountRepository,
@@ -215,8 +216,21 @@ class SyncConnectorSourceUseCase:
 
             client = GoogleDriveClient(access_token)  # defaults de Settings
 
-        # 5) Mark as syncing
-        self._connector_repo.update_status(source_id, ConnectorSourceStatus.SYNCING)
+        # 5) Acquire per-source sync lock (CAS)
+        locked = self._connector_repo.try_set_syncing(source_id)
+        if not locked:
+            record_connector_sync_locked()
+            logger.info(
+                "sync: skipped (already syncing)",
+                extra={
+                    "source_id": str(source_id),
+                    "workspace_id": str(workspace_id),
+                },
+            )
+            return SyncConnectorSourceResult(
+                source_id=source_id,
+                stats=SyncStats(),  # empty — nothing processed
+            )
 
         # 6) Delta sync
         try:
