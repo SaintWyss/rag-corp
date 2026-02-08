@@ -223,7 +223,7 @@ def create_workspace(
         name=req.name,
         visibility=req.visibility,
         owner_user_id=principal.user.user_id if principal and principal.user else None,
-        description=None,
+        description=req.description,
         actor=actor,
     )
 

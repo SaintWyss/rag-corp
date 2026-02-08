@@ -586,3 +586,137 @@ def test_publish_share_and_archive_use_cases():
     assert archived.error is None
     assert archived.archived is True
     assert doc_repo.soft_deleted_workspace_ids == [workspace.id]
+
+
+# =============================================================================
+# Cross-tenant safety tests
+# =============================================================================
+
+
+class TestCrossTenantSafety:
+    """
+    Verificar que un usuario no puede acceder/modificar workspaces de otro.
+
+    Contexto:
+      - Dos owners (tenant_a, tenant_b) con workspaces PRIVATE.
+      - Un employee ajeno no puede GET / UPDATE / DELETE el workspace de otro.
+      - Solo Admin puede cruzar tenant boundaries.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Prepara dos tenants con workspaces PRIVATE aislados."""
+        self.tenant_a = uuid4()
+        self.tenant_b = uuid4()
+        self.outsider = uuid4()
+
+        self.ws_a = _workspace(
+            name="Tenant-A",
+            owner_user_id=self.tenant_a,
+            visibility=WorkspaceVisibility.PRIVATE,
+        )
+        self.ws_b = _workspace(
+            name="Tenant-B",
+            owner_user_id=self.tenant_b,
+            visibility=WorkspaceVisibility.PRIVATE,
+        )
+
+        self.repo = FakeWorkspaceRepository([self.ws_a, self.ws_b])
+        self.acl_repo = FakeWorkspaceAclRepository()
+        self.doc_repo = FakeDocumentRepository()
+
+    def test_get_cross_tenant_forbidden(self):
+        """Employee no puede leer workspace PRIVATE de otro owner."""
+        use_case = GetWorkspaceUseCase(self.repo, self.acl_repo)
+
+        # tenant_b intenta leer ws_a
+        result = use_case.execute(
+            self.ws_a.id, _actor(self.tenant_b, UserRole.EMPLOYEE)
+        )
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+
+        # outsider intenta leer ws_a
+        result = use_case.execute(
+            self.ws_a.id, _actor(self.outsider, UserRole.EMPLOYEE)
+        )
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+
+    def test_update_cross_tenant_forbidden(self):
+        """Employee no puede actualizar workspace PRIVATE de otro owner."""
+        use_case = UpdateWorkspaceUseCase(workspace_repository=self.repo)
+
+        result = use_case.execute(
+            self.ws_a.id,
+            _actor(self.tenant_b, UserRole.EMPLOYEE),
+            name="Hacked",
+        )
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+
+    def test_archive_cross_tenant_forbidden(self):
+        """Employee no puede archivar/borrar workspace PRIVATE de otro owner."""
+        use_case = ArchiveWorkspaceUseCase(
+            workspace_repository=self.repo,
+            document_repository=self.doc_repo,
+        )
+
+        result = use_case.execute(
+            self.ws_a.id, _actor(self.tenant_b, UserRole.EMPLOYEE)
+        )
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+        # El workspace no debe estar archivado
+        assert self.repo.get_workspace(self.ws_a.id).archived_at is None
+
+    def test_list_cross_tenant_isolation(self):
+        """Employee solo ve sus propios workspaces PRIVATE, no los de otro."""
+        use_case = ListWorkspacesUseCase(self.repo, self.acl_repo)
+
+        result_a = use_case.execute(actor=_actor(self.tenant_a, UserRole.EMPLOYEE))
+        assert result_a.error is None
+        ws_ids_a = {ws.id for ws in result_a.workspaces}
+        assert self.ws_a.id in ws_ids_a
+        assert self.ws_b.id not in ws_ids_a
+
+        result_b = use_case.execute(actor=_actor(self.tenant_b, UserRole.EMPLOYEE))
+        assert result_b.error is None
+        ws_ids_b = {ws.id for ws in result_b.workspaces}
+        assert self.ws_b.id in ws_ids_b
+        assert self.ws_a.id not in ws_ids_b
+
+    def test_admin_can_cross_tenant_read(self):
+        """Admin puede leer workspaces de cualquier tenant."""
+        admin_id = uuid4()
+        use_case = GetWorkspaceUseCase(self.repo, self.acl_repo)
+
+        result = use_case.execute(self.ws_a.id, _actor(admin_id, UserRole.ADMIN))
+        assert result.error is None
+        assert result.workspace is not None
+        assert result.workspace.id == self.ws_a.id
+
+    def test_admin_can_cross_tenant_update(self):
+        """Admin puede actualizar workspaces de cualquier tenant."""
+        admin_id = uuid4()
+        use_case = UpdateWorkspaceUseCase(workspace_repository=self.repo)
+
+        result = use_case.execute(
+            self.ws_b.id,
+            _actor(admin_id, UserRole.ADMIN),
+            name="Updated-by-admin",
+        )
+        assert result.error is None
+        assert result.workspace is not None
+        assert result.workspace.name == "Updated-by-admin"
+
+    def test_no_actor_forbidden_everywhere(self):
+        """Sin actor, todas las operaciones devuelven FORBIDDEN."""
+        get_uc = GetWorkspaceUseCase(self.repo, self.acl_repo)
+        list_uc = ListWorkspacesUseCase(self.repo, self.acl_repo)
+
+        assert (
+            get_uc.execute(self.ws_a.id, None).error.code
+            == WorkspaceErrorCode.FORBIDDEN
+        )
+        assert list_uc.execute(actor=None).error.code == WorkspaceErrorCode.FORBIDDEN
