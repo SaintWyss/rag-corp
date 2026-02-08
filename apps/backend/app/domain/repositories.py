@@ -30,6 +30,8 @@ from uuid import UUID
 
 from .audit import AuditEvent
 from .entities import (
+    AclEntry,
+    AclRole,
     Chunk,
     ConversationMessage,
     Document,
@@ -310,6 +312,8 @@ class WorkspaceRepository(Protocol):
 class WorkspaceAclRepository(Protocol):
     """Contrato para ACL de workspaces (modo SHARED)."""
 
+    # ----- Legacy (usado por share_workspace y queries existentes) -----
+
     def list_workspace_acl(self, workspace_id: UUID) -> list[UUID]:
         """Lista user_ids con acceso."""
         ...
@@ -320,6 +324,27 @@ class WorkspaceAclRepository(Protocol):
 
     def list_workspaces_for_user(self, user_id: UUID) -> list[UUID]:
         """Reverse lookup: workspaces compartidos a un usuario."""
+        ...
+
+    # ----- ACL management (grant/revoke/list con rol) -----
+
+    def grant_access(
+        self,
+        workspace_id: UUID,
+        user_id: UUID,
+        role: AclRole = AclRole.VIEWER,
+        *,
+        granted_by: UUID | None = None,
+    ) -> AclEntry:
+        """Otorga acceso (upsert: si ya existe, actualiza rol)."""
+        ...
+
+    def revoke_access(self, workspace_id: UUID, user_id: UUID) -> bool:
+        """Revoca acceso. Retorna True si existía."""
+        ...
+
+    def list_acl_entries(self, workspace_id: UUID) -> list[AclEntry]:
+        """Lista entradas ACL con rol y metadata."""
         ...
 
 

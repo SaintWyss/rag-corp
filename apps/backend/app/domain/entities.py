@@ -125,6 +125,24 @@ class WorkspaceVisibility(str, Enum):
     SHARED = "SHARED"
 
 
+class AclRole(str, Enum):
+    """Rol de acceso en un ACL de workspace."""
+
+    VIEWER = "VIEWER"
+    EDITOR = "EDITOR"
+
+
+@dataclass(frozen=True)
+class AclEntry:
+    """Entrada individual de ACL: quién, con qué rol, en qué workspace."""
+
+    workspace_id: UUID
+    user_id: UUID
+    role: AclRole = AclRole.VIEWER
+    granted_by: Optional[UUID] = None
+    created_at: Optional[datetime] = None
+
+
 @dataclass
 class Workspace:
     """Workspace: contenedor lógico de documentos."""
