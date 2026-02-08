@@ -290,15 +290,15 @@ Luego ejecutar sync manualmente.
 
 Funcionalidades de resiliencia implementadas para producción:
 
-| Feature | Descripción | Config |
-| --- | --- | --- |
-| **Retry + Backoff** | Reintentos exponenciales con jitter para 429/5xx/timeouts. Respeta `Retry-After`. | `CONNECTOR_RETRY_*` |
-| **Error Classification** | Errores permanentes (401/403/404) no reintentan. Transitorios (429/5xx/timeout) sí. | — |
-| **Streaming Download** | Descarga en chunks de 64KB, no carga archivo completo en RAM. | — |
-| **Max Size Guard** | Archivos > `MAX_CONNECTOR_FILE_MB` se skipean (anti-OOM). | `MAX_CONNECTOR_FILE_MB` |
-| **Incremental SHA-256** | Hash calculado durante streaming sin carga extra de RAM. | — |
-| **Per-source Sync Lock** | CAS atómico: solo un sync por source simultáneo. `try_set_syncing()`. | — |
-| **Métricas Prometheus** | `rag_connector_api_retries_total`, `rag_connector_api_failures_total`, `rag_connector_sync_locked_total` | — |
+| Feature                  | Descripción                                                                                              | Config                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **Retry + Backoff**      | Reintentos exponenciales con jitter para 429/5xx/timeouts. Respeta `Retry-After`.                        | `CONNECTOR_RETRY_*`     |
+| **Error Classification** | Errores permanentes (401/403/404) no reintentan. Transitorios (429/5xx/timeout) sí.                      | —                       |
+| **Streaming Download**   | Descarga en chunks de 64KB, no carga archivo completo en RAM.                                            | —                       |
+| **Max Size Guard**       | Archivos > `MAX_CONNECTOR_FILE_MB` se skipean (anti-OOM).                                                | `MAX_CONNECTOR_FILE_MB` |
+| **Incremental SHA-256**  | Hash calculado durante streaming sin carga extra de RAM.                                                 | —                       |
+| **Per-source Sync Lock** | CAS atómico: solo un sync por source simultáneo. `try_set_syncing()`.                                    | —                       |
+| **Métricas Prometheus**  | `rag_connector_api_retries_total`, `rag_connector_api_failures_total`, `rag_connector_sync_locked_total` | —                       |
 
 ### Métricas de observabilidad
 
