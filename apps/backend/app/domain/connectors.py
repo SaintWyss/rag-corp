@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 from uuid import UUID
 
 # ---------------------------------------------------------------------------
@@ -138,6 +138,10 @@ class ConnectorSourceRepository(Protocol):
         """Elimina un ConnectorSource. Devuelve True si existía."""
         ...
 
+    def try_set_syncing(self, source_id: UUID) -> bool:
+        """Intenta marcar como SYNCING (CAS). False si ya está en SYNCING."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Puerto: Cliente de conector (interacción con provider externo)
@@ -176,8 +180,10 @@ class ConnectorClient(Protocol):
         """Lista archivos de una carpeta."""
         ...
 
-    def fetch_file_content(self, file_id: str) -> bytes:
-        """Descarga el contenido de un archivo."""
+    def fetch_file_content(
+        self, file_id: str, *, mime_type: str = ""
+    ) -> Tuple[bytes, str]:
+        """Descarga contenido de un archivo. Retorna (bytes, sha256_hex)."""
         ...
 
     def get_delta(

@@ -45,13 +45,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from uuid import UUID, uuid4
 
 from app.crosscutting.metrics import (
     record_connector_file_created,
     record_connector_file_skipped_unchanged,
     record_connector_file_updated,
+    record_connector_sync_locked,
 )
 from app.domain.connectors import (
     ConnectorAccountRepository,
@@ -64,6 +64,11 @@ from app.domain.connectors import (
 )
 from app.domain.entities import Document
 from app.domain.repositories import DocumentRepository
+from app.infrastructure.services.google_drive_client import (
+    ConnectorFileTooLargeError,
+    ConnectorPermanentError,
+    ConnectorTransientError,
+)
 
 from . import ConnectorError, ConnectorErrorCode
 
@@ -209,15 +214,40 @@ class SyncConnectorSourceUseCase:
                 GoogleDriveClient,
             )
 
-            client = GoogleDriveClient(access_token)
+            client = GoogleDriveClient(access_token)  # defaults de Settings
 
-        # 5) Mark as syncing
-        self._connector_repo.update_status(source_id, ConnectorSourceStatus.SYNCING)
+        # 5) Acquire per-source sync lock (CAS)
+        locked = self._connector_repo.try_set_syncing(source_id)
+        if not locked:
+            record_connector_sync_locked()
+            logger.info(
+                "sync: skipped (already syncing)",
+                extra={
+                    "source_id": str(source_id),
+                    "workspace_id": str(workspace_id),
+                },
+            )
+            return SyncConnectorSourceResult(
+                source_id=source_id,
+                stats=SyncStats(),  # empty — nothing processed
+            )
 
         # 6) Delta sync
         try:
             delta = client.get_delta(
                 source.folder_id, cursor=source.cursor_json or None
+            )
+        except (ConnectorPermanentError, ConnectorTransientError) as exc:
+            logger.error(
+                "sync: get_delta failed",
+                extra={"source_id": str(source_id), "error": str(exc)},
+            )
+            self._connector_repo.update_status(source_id, ConnectorSourceStatus.ERROR)
+            return SyncConnectorSourceResult(
+                error=ConnectorError(
+                    code=ConnectorErrorCode.VALIDATION_ERROR,
+                    message=f"Drive delta failed: {exc}",
+                )
             )
         except ValueError as exc:
             logger.error(
@@ -367,16 +397,32 @@ class SyncConnectorSourceUseCase:
         """Crea un nuevo documento (primera ingesta)."""
         # Download content
         try:
-            content_bytes = client.fetch_file_content(
+            content_bytes, content_hash = client.fetch_file_content(
                 file.file_id, mime_type=file.mime_type
             )
             text = content_bytes.decode("utf-8", errors="replace")
-        except (ValueError, UnicodeDecodeError) as exc:
+        except ConnectorFileTooLargeError as exc:
+            logger.warning(
+                "sync: file too large, skipping",
+                extra={
+                    "file_id": file.file_id,
+                    "file_name": file.name,
+                    "size_bytes": exc.size_bytes,
+                    "max_bytes": exc.max_bytes,
+                },
+            )
+            return SyncAction.SKIP_UNSUPPORTED
+        except (
+            ConnectorPermanentError,
+            ConnectorTransientError,
+            ValueError,
+            UnicodeDecodeError,
+        ) as exc:
             logger.warning(
                 "sync: file download failed",
                 extra={
                     "file_id": file.file_id,
-                    "name": file.name,
+                    "file_name": file.name,
                     "error": str(exc),
                 },
             )
@@ -385,7 +431,7 @@ class SyncConnectorSourceUseCase:
         if not text.strip():
             logger.debug(
                 "sync: empty file, skipping",
-                extra={"file_id": file.file_id, "name": file.name},
+                extra={"file_id": file.file_id, "file_name": file.name},
             )
             return SyncAction.SKIP_EMPTY
 
@@ -400,6 +446,7 @@ class SyncConnectorSourceUseCase:
             external_modified_time=file.modified_time,
             external_etag=file.etag,
             external_mime_type=file.mime_type,
+            content_hash=content_hash,
             metadata={
                 "connector_source_id": str(source_id),
                 "drive_file_id": file.file_id,
@@ -415,7 +462,7 @@ class SyncConnectorSourceUseCase:
             "sync: file created",
             extra={
                 "file_id": file.file_id,
-                "name": file.name,
+                "file_name": file.name,
                 "document_id": str(doc.id),
                 "action": SyncAction.CREATE,
             },
@@ -444,11 +491,27 @@ class SyncConnectorSourceUseCase:
 
         # Download content
         try:
-            content_bytes = client.fetch_file_content(
+            content_bytes, content_hash = client.fetch_file_content(
                 file.file_id, mime_type=file.mime_type
             )
             text = content_bytes.decode("utf-8", errors="replace")
-        except (ValueError, UnicodeDecodeError) as exc:
+        except ConnectorFileTooLargeError as exc:
+            logger.warning(
+                "sync: file too large during update, skipping",
+                extra={
+                    "file_id": file.file_id,
+                    "document_id": str(document_id),
+                    "size_bytes": exc.size_bytes,
+                    "max_bytes": exc.max_bytes,
+                },
+            )
+            return SyncAction.SKIP_UNSUPPORTED
+        except (
+            ConnectorPermanentError,
+            ConnectorTransientError,
+            ValueError,
+            UnicodeDecodeError,
+        ) as exc:
             logger.warning(
                 "sync: file download failed during update",
                 extra={
@@ -494,6 +557,7 @@ class SyncConnectorSourceUseCase:
         existing_doc.external_modified_time = file.modified_time
         existing_doc.external_etag = file.etag
         existing_doc.external_mime_type = file.mime_type
+        existing_doc.content_hash = content_hash
         if file.modified_time:
             existing_doc.metadata["drive_modified_time"] = (
                 file.modified_time.isoformat()
@@ -514,7 +578,7 @@ class SyncConnectorSourceUseCase:
             "sync: file updated",
             extra={
                 "file_id": file.file_id,
-                "name": file.name,
+                "file_name": file.name,
                 "document_id": str(document_id),
                 "action": SyncAction.UPDATE,
             },

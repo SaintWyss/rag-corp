@@ -102,7 +102,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspacesListRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspacesListRes"
                 }
               }
             }
@@ -7153,7 +7153,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__admin_routes__WorkspacesListRes"
+                  "$ref": "#/components/schemas/WorkspacesListRes"
                 }
               }
             }
@@ -7401,7 +7401,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspacesListRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspacesListRes"
                 }
               }
             }
@@ -14513,11 +14513,11 @@
         "title": "WorkspaceRes",
         "description": "Respuesta: workspace (vista admin)."
       },
-      "app__api__admin_routes__WorkspacesListRes": {
+      "app__interfaces__api__http__schemas__workspaces__WorkspacesListRes": {
         "properties": {
           "workspaces": {
             "items": {
-              "$ref": "#/components/schemas/app__api__admin_routes__WorkspaceRes"
+              "$ref": "#/components/schemas/WorkspaceRes"
             },
             "type": "array",
             "title": "Workspaces"
@@ -14527,7 +14527,8 @@
         "required": [
           "workspaces"
         ],
-        "title": "WorkspacesListRes"
+        "title": "WorkspacesListRes",
+        "description": "Listado de workspaces."
       }
     },
     "securitySchemes": {

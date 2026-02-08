@@ -102,6 +102,11 @@ _connector_files_created_total: Optional["Counter"] = None
 _connector_files_updated_total: Optional["Counter"] = None
 _connector_files_skipped_unchanged_total: Optional["Counter"] = None
 
+# Connector API resiliencia
+_connector_api_retries_total: Optional["Counter"] = None
+_connector_api_failures_total: Optional["Counter"] = None
+_connector_sync_locked_total: Optional["Counter"] = None
+
 
 def _init_metrics() -> None:
     """Inicializa métricas (una sola vez)."""
@@ -117,6 +122,8 @@ def _init_metrics() -> None:
     global _rerank_latency, _retrieval_fallback_total
     global _connector_files_created_total, _connector_files_updated_total
     global _connector_files_skipped_unchanged_total
+    global _connector_api_retries_total, _connector_api_failures_total
+    global _connector_sync_locked_total
 
     if not _prometheus_available or _requests_total is not None:
         return
@@ -324,6 +331,26 @@ def _init_metrics() -> None:
     _connector_files_skipped_unchanged_total = Counter(
         "rag_connector_files_skipped_unchanged_total",
         "Archivos omitidos (sin cambios) por sync de conectores",
+        registry=_registry,
+    )
+
+    _connector_api_retries_total = Counter(
+        "rag_connector_api_retries_total",
+        "Reintentos contra APIs de proveedores de conectores",
+        ["provider", "reason"],
+        registry=_registry,
+    )
+
+    _connector_api_failures_total = Counter(
+        "rag_connector_api_failures_total",
+        "Fallos permanentes contra APIs de proveedores de conectores",
+        ["provider", "reason"],
+        registry=_registry,
+    )
+
+    _connector_sync_locked_total = Counter(
+        "rag_connector_sync_locked_total",
+        "Syncs omitidos por lock concurrente",
         registry=_registry,
     )
 
@@ -565,6 +592,30 @@ def record_connector_file_skipped_unchanged(count: int = 1) -> None:
         return
     if _connector_files_skipped_unchanged_total:
         _connector_files_skipped_unchanged_total.inc(count)
+
+
+def record_connector_api_retry(provider: str, reason: str) -> None:
+    """Cuenta reintentos contra API de proveedor (cardinalidad baja)."""
+    if not _prometheus_available:
+        return
+    if _connector_api_retries_total:
+        _connector_api_retries_total.labels(provider=provider, reason=reason).inc()
+
+
+def record_connector_api_failure(provider: str, reason: str) -> None:
+    """Cuenta fallos permanentes contra API de proveedor."""
+    if not _prometheus_available:
+        return
+    if _connector_api_failures_total:
+        _connector_api_failures_total.labels(provider=provider, reason=reason).inc()
+
+
+def record_connector_sync_locked(count: int = 1) -> None:
+    """Cuenta syncs omitidos por lock concurrente."""
+    if not _prometheus_available:
+        return
+    if _connector_sync_locked_total:
+        _connector_sync_locked_total.inc(count)
 
 
 # -----------------------------------------------------------------------------

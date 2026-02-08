@@ -194,3 +194,34 @@ class PostgresConnectorSourceRepository:
                 extra={"source_id": str(source_id), "error": str(exc)},
             )
             raise DatabaseError(f"connector_source.delete: {exc}") from exc
+
+    def try_set_syncing(self, source_id: UUID) -> bool:
+        """
+        Intenta marcar el source como SYNCING (CAS atómico).
+
+        Retorna True si se pudo adquirir el lock (status cambió a SYNCING).
+        Retorna False si ya estaba SYNCING (otro sync en curso).
+        """
+        sql = f"""
+            UPDATE {_TABLE}
+            SET status = %s, updated_at = now()
+            WHERE id = %s AND status != %s
+        """
+        try:
+            pool = self._get_pool()
+            with pool.connection() as conn:
+                result = conn.execute(
+                    sql,
+                    (
+                        ConnectorSourceStatus.SYNCING.value,
+                        source_id,
+                        ConnectorSourceStatus.SYNCING.value,
+                    ),
+                )
+                return (result.rowcount or 0) > 0
+        except Exception as exc:
+            logger.exception(
+                "connector_source.try_set_syncing failed",
+                extra={"source_id": str(source_id), "error": str(exc)},
+            )
+            raise DatabaseError(f"connector_source.try_set_syncing: {exc}") from exc
