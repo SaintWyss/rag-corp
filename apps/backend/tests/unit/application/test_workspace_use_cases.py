@@ -35,12 +35,15 @@ from app.application.usecases.workspace.create_workspace import (
     CreateWorkspaceUseCase,
 )
 from app.application.usecases.workspace.get_workspace import GetWorkspaceUseCase
+from app.application.usecases.workspace.grant_acl import GrantAclUseCase
+from app.application.usecases.workspace.list_acl import ListAclUseCase
 from app.application.usecases.workspace.list_workspaces import ListWorkspacesUseCase
 from app.application.usecases.workspace.publish_workspace import PublishWorkspaceUseCase
+from app.application.usecases.workspace.revoke_acl import RevokeAclUseCase
 from app.application.usecases.workspace.share_workspace import ShareWorkspaceUseCase
 from app.application.usecases.workspace.update_workspace import UpdateWorkspaceUseCase
 from app.application.usecases.workspace.workspace_results import WorkspaceErrorCode
-from app.domain.entities import Workspace, WorkspaceVisibility
+from app.domain.entities import AclEntry, AclRole, Workspace, WorkspaceVisibility
 from app.domain.workspace_policy import WorkspaceActor
 from app.identity.users import UserRole
 
@@ -211,6 +214,7 @@ class FakeWorkspaceAclRepository:
 
     def __init__(self, acl: dict[UUID, list[UUID]] | None = None):
         self._acl = acl or {}
+        self._entries: dict[UUID, dict[UUID, AclEntry]] = {}
 
     def list_workspace_acl(self, workspace_id: UUID) -> list[UUID]:
         return list(self._acl.get(workspace_id, []))
@@ -228,6 +232,41 @@ class FakeWorkspaceAclRepository:
     def replace_workspace_acl(self, workspace_id: UUID, user_ids: list[UUID]) -> None:
         unique = list(dict.fromkeys(user_ids))
         self._acl[workspace_id] = unique
+
+    def grant_access(
+        self,
+        workspace_id: UUID,
+        user_id: UUID,
+        role: AclRole = AclRole.VIEWER,
+        *,
+        granted_by: UUID | None = None,
+    ) -> AclEntry:
+        ws_entries = self._entries.setdefault(workspace_id, {})
+        ws_acl = self._acl.setdefault(workspace_id, [])
+        entry = AclEntry(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            role=role,
+            granted_by=granted_by,
+            created_at=datetime.now(timezone.utc),
+        )
+        ws_entries[user_id] = entry
+        if user_id not in ws_acl:
+            ws_acl.append(user_id)
+        return entry
+
+    def revoke_access(self, workspace_id: UUID, user_id: UUID) -> bool:
+        ws_entries = self._entries.get(workspace_id, {})
+        existed = user_id in ws_entries
+        ws_entries.pop(user_id, None)
+        ws_acl = self._acl.get(workspace_id, [])
+        if user_id in ws_acl:
+            ws_acl.remove(user_id)
+        return existed
+
+    def list_acl_entries(self, workspace_id: UUID) -> list[AclEntry]:
+        ws_entries = self._entries.get(workspace_id, {})
+        return list(ws_entries.values())
 
 
 class FakeDocumentRepository:
@@ -720,3 +759,211 @@ class TestCrossTenantSafety:
             == WorkspaceErrorCode.FORBIDDEN
         )
         assert list_uc.execute(actor=None).error.code == WorkspaceErrorCode.FORBIDDEN
+
+
+# =============================================================================
+# ACL Management Tests
+# =============================================================================
+
+
+class TestAclManagement:
+    """Tests para grant/revoke/list ACL use cases."""
+
+    def setup_method(self):
+        self.owner_id = uuid4()
+        self.admin_id = uuid4()
+        self.employee_id = uuid4()
+        self.target_user_id = uuid4()
+
+        self.ws = _workspace(
+            name="acl-test",
+            owner_user_id=self.owner_id,
+            visibility=WorkspaceVisibility.PRIVATE,
+        )
+
+        self.ws_repo = FakeWorkspaceRepository(workspaces=[self.ws])
+        self.acl_repo = FakeWorkspaceAclRepository()
+
+        self.grant_uc = GrantAclUseCase(
+            workspace_repository=self.ws_repo,
+            acl_repository=self.acl_repo,
+        )
+        self.revoke_uc = RevokeAclUseCase(
+            workspace_repository=self.ws_repo,
+            acl_repository=self.acl_repo,
+        )
+        self.list_uc = ListAclUseCase(
+            workspace_repository=self.ws_repo,
+            acl_repository=self.acl_repo,
+        )
+
+    # --- Grant ---
+
+    def test_grant_viewer_by_owner(self):
+        """Owner puede otorgar acceso VIEWER."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        result = self.grant_uc.execute(
+            self.ws.id, actor, user_id=self.target_user_id, role=AclRole.VIEWER
+        )
+        assert result.error is None
+        assert result.entry is not None
+        assert result.entry.user_id == self.target_user_id
+        assert result.entry.role == AclRole.VIEWER
+        assert result.entry.granted_by == self.owner_id
+
+    def test_grant_editor_by_admin(self):
+        """Admin puede otorgar acceso EDITOR."""
+        actor = _actor(self.admin_id, UserRole.ADMIN)
+        result = self.grant_uc.execute(
+            self.ws.id, actor, user_id=self.target_user_id, role=AclRole.EDITOR
+        )
+        assert result.error is None
+        assert result.entry.role == AclRole.EDITOR
+
+    def test_grant_idempotent_updates_role(self):
+        """Grant repetido actualiza el rol (idempotente)."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+
+        # Primer grant: VIEWER
+        self.grant_uc.execute(
+            self.ws.id, actor, user_id=self.target_user_id, role=AclRole.VIEWER
+        )
+
+        # Segundo grant: EDITOR (actualiza)
+        result = self.grant_uc.execute(
+            self.ws.id, actor, user_id=self.target_user_id, role=AclRole.EDITOR
+        )
+        assert result.error is None
+        assert result.entry.role == AclRole.EDITOR
+
+        # Solo una entrada en la lista
+        entries = self.acl_repo.list_acl_entries(self.ws.id)
+        assert len(entries) == 1
+
+    def test_grant_forbidden_for_employee(self):
+        """Employee sin ownership no puede gestionar ACL."""
+        actor = _actor(self.employee_id, UserRole.EMPLOYEE)
+        result = self.grant_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+
+    def test_grant_not_found_archived(self):
+        """No se puede otorgar acceso a workspace archivado."""
+        self.ws.archive()
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        result = self.grant_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+        assert result.error.code == WorkspaceErrorCode.NOT_FOUND
+
+    def test_grant_not_found_nonexistent(self):
+        """No se puede otorgar acceso a workspace inexistente."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        result = self.grant_uc.execute(uuid4(), actor, user_id=self.target_user_id)
+        assert result.error.code == WorkspaceErrorCode.NOT_FOUND
+
+    # --- Revoke ---
+
+    def test_revoke_existing_entry(self):
+        """Revocar una entrada existente retorna revoked=True."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+
+        # Primero otorgar
+        self.grant_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+
+        # Luego revocar
+        result = self.revoke_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+        assert result.error is None
+        assert result.revoked is True
+
+        # Verificar que ya no está
+        entries = self.acl_repo.list_acl_entries(self.ws.id)
+        assert len(entries) == 0
+
+    def test_revoke_nonexistent_entry(self):
+        """Revocar entrada que no existe retorna NOT_FOUND."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        result = self.revoke_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+        assert result.error is not None
+        assert result.error.code == WorkspaceErrorCode.NOT_FOUND
+
+    def test_revoke_forbidden_for_employee(self):
+        """Employee sin ownership no puede revocar."""
+        actor = _actor(self.employee_id, UserRole.EMPLOYEE)
+        result = self.revoke_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+
+    # --- List ---
+
+    def test_list_empty_acl(self):
+        """Lista vacía para workspace sin entradas ACL."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        result = self.list_uc.execute(self.ws.id, actor)
+        assert result.error is None
+        assert result.entries == []
+
+    def test_list_after_grants(self):
+        """Lista refleja grants realizados."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        user_a = uuid4()
+        user_b = uuid4()
+
+        self.grant_uc.execute(self.ws.id, actor, user_id=user_a, role=AclRole.VIEWER)
+        self.grant_uc.execute(self.ws.id, actor, user_id=user_b, role=AclRole.EDITOR)
+
+        result = self.list_uc.execute(self.ws.id, actor)
+        assert result.error is None
+        assert len(result.entries) == 2
+
+        roles = {e.user_id: e.role for e in result.entries}
+        assert roles[user_a] == AclRole.VIEWER
+        assert roles[user_b] == AclRole.EDITOR
+
+    def test_list_forbidden_for_employee(self):
+        """Employee sin ownership no puede listar ACL."""
+        actor = _actor(self.employee_id, UserRole.EMPLOYEE)
+        result = self.list_uc.execute(self.ws.id, actor)
+        assert result.error.code == WorkspaceErrorCode.FORBIDDEN
+
+    def test_list_not_found_nonexistent_workspace(self):
+        """List ACL de workspace inexistente retorna NOT_FOUND."""
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+        result = self.list_uc.execute(uuid4(), actor)
+        assert result.error.code == WorkspaceErrorCode.NOT_FOUND
+
+    # --- Cross-workspace isolation ---
+
+    def test_grant_isolated_by_workspace(self):
+        """Grants en un workspace no afectan a otro."""
+        ws_other = _workspace(
+            name="other",
+            owner_user_id=self.owner_id,
+            visibility=WorkspaceVisibility.PRIVATE,
+        )
+        self.ws_repo._workspaces[ws_other.id] = ws_other
+
+        actor = _actor(self.owner_id, UserRole.ADMIN)
+
+        # Grant en ws original
+        self.grant_uc.execute(self.ws.id, actor, user_id=self.target_user_id)
+
+        # List en ws_other debe estar vacío
+        result = self.list_uc.execute(ws_other.id, actor)
+        assert result.entries == []
+
+    def test_no_actor_forbidden(self):
+        """Sin actor, todas las operaciones ACL retornan FORBIDDEN."""
+        assert (
+            self.grant_uc.execute(
+                self.ws.id, None, user_id=self.target_user_id
+            ).error.code
+            == WorkspaceErrorCode.FORBIDDEN
+        )
+        assert (
+            self.revoke_uc.execute(
+                self.ws.id, None, user_id=self.target_user_id
+            ).error.code
+            == WorkspaceErrorCode.FORBIDDEN
+        )
+        assert (
+            self.list_uc.execute(self.ws.id, None).error.code
+            == WorkspaceErrorCode.FORBIDDEN
+        )
