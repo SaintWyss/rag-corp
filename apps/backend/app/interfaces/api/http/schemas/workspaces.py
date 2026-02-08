@@ -24,7 +24,7 @@ from typing import Annotated
 from uuid import UUID
 
 from app.crosscutting.config import get_settings
-from app.domain.entities import WorkspaceVisibility
+from app.domain.entities import AclRole, WorkspaceVisibility
 from pydantic import BaseModel, Field, field_validator
 
 _settings = get_settings()
@@ -154,3 +154,36 @@ class ArchiveWorkspaceRes(BaseModel):
 
     workspace_id: UUID
     archived: bool
+
+
+# -----------------------------------------------------------------------------
+# ACL Management
+# -----------------------------------------------------------------------------
+class GrantAclReq(BaseModel):
+    """Request para otorgar acceso a un usuario en un workspace."""
+
+    user_id: UUID = Field(..., description="ID del usuario al que se otorga acceso")
+    role: AclRole = Field(
+        default=AclRole.VIEWER, description="Rol de acceso (VIEWER | EDITOR)"
+    )
+
+
+class AclEntryRes(BaseModel):
+    """Respuesta: entrada individual de ACL."""
+
+    user_id: UUID
+    role: AclRole
+    granted_by: UUID | None = None
+    created_at: datetime | None = None
+
+
+class AclListRes(BaseModel):
+    """Respuesta: listado de entradas ACL de un workspace."""
+
+    entries: list[AclEntryRes]
+
+
+class AclRevokeRes(BaseModel):
+    """Respuesta: resultado de revocación de acceso."""
+
+    revoked: bool

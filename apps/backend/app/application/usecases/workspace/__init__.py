@@ -48,8 +48,11 @@ from __future__ import annotations
 from .archive_workspace import ArchiveWorkspaceUseCase
 from .create_workspace import CreateWorkspaceInput, CreateWorkspaceUseCase
 from .get_workspace import GetWorkspaceUseCase
+from .grant_acl import AclEntryResult, GrantAclUseCase
+from .list_acl import AclListResult, ListAclUseCase
 from .list_workspaces import ListWorkspacesUseCase
 from .publish_workspace import PublishWorkspaceUseCase
+from .revoke_acl import AclRevokeResult, RevokeAclUseCase
 from .share_workspace import ShareWorkspaceUseCase
 from .update_workspace import UpdateWorkspaceUseCase
 
@@ -82,6 +85,9 @@ __all__ = [
     "ArchiveWorkspaceUseCase",
     "PublishWorkspaceUseCase",
     "ShareWorkspaceUseCase",
+    "GrantAclUseCase",
+    "RevokeAclUseCase",
+    "ListAclUseCase",
     # Helpers
     "resolve_workspace_for_read",
     "resolve_workspace_for_write",
@@ -89,6 +95,9 @@ __all__ = [
     "WorkspaceResult",
     "WorkspaceListResult",
     "ArchiveWorkspaceResult",
+    "AclEntryResult",
+    "AclListResult",
+    "AclRevokeResult",
     "WorkspaceError",
     "WorkspaceErrorCode",
 ]

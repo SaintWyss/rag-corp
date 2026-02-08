@@ -37,8 +37,11 @@ from app.application.usecases import (
     CreateWorkspaceInput,
     CreateWorkspaceUseCase,
     GetWorkspaceUseCase,
+    GrantAclUseCase,
+    ListAclUseCase,
     ListWorkspacesUseCase,
     PublishWorkspaceUseCase,
+    RevokeAclUseCase,
     ShareWorkspaceUseCase,
     UpdateWorkspaceUseCase,
     WorkspaceError,
@@ -50,8 +53,11 @@ from app.container import (
     get_audit_repository,
     get_create_workspace_use_case,
     get_get_workspace_use_case,
+    get_grant_acl_use_case,
+    get_list_acl_use_case,
     get_list_workspaces_use_case,
     get_publish_workspace_use_case,
+    get_revoke_acl_use_case,
     get_share_workspace_use_case,
     get_update_workspace_use_case,
 )
@@ -76,8 +82,12 @@ from app.identity.rbac import Permission
 from fastapi import APIRouter, Depends, Query
 
 from ..schemas.workspaces import (
+    AclEntryRes,
+    AclListRes,
+    AclRevokeRes,
     ArchiveWorkspaceRes,
     CreateWorkspaceReq,
+    GrantAclReq,
     ShareWorkspaceReq,
     UpdateWorkspaceReq,
     WorkspaceACL,
@@ -439,3 +449,114 @@ def delete_workspace(
         workspace_id=workspace_id,
     )
     return ArchiveWorkspaceRes(workspace_id=workspace_id, archived=True)
+
+
+# =============================================================================
+# ACL Management Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/workspaces/{workspace_id}/acl",
+    response_model=AclListRes,
+    tags=["workspaces"],
+)
+def list_workspace_acl(
+    workspace_id: UUID,
+    use_case: ListAclUseCase = Depends(get_list_acl_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.ADMIN_CONFIG)),
+    _role: None = Depends(require_admin()),
+):
+    """Lista las entradas de ACL de un workspace."""
+    actor = _to_workspace_actor(principal)
+
+    result = use_case.execute(workspace_id, actor=actor)
+    if result.error is not None:
+        _raise_workspace_error(result.error, workspace_id=workspace_id)
+
+    return AclListRes(
+        entries=[
+            AclEntryRes(
+                user_id=e.user_id,
+                role=e.role,
+                granted_by=e.granted_by,
+                created_at=e.created_at,
+            )
+            for e in result.entries
+        ]
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/acl",
+    response_model=AclEntryRes,
+    status_code=201,
+    tags=["workspaces"],
+)
+def grant_workspace_acl(
+    workspace_id: UUID,
+    req: GrantAclReq,
+    use_case: GrantAclUseCase = Depends(get_grant_acl_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.ADMIN_CONFIG)),
+    _role: None = Depends(require_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    """Otorga acceso a un usuario (upsert: si ya existe, actualiza rol)."""
+    actor = _to_workspace_actor(principal)
+
+    result = use_case.execute(
+        workspace_id, actor=actor, user_id=req.user_id, role=req.role
+    )
+    if result.error is not None:
+        _raise_workspace_error(result.error, workspace_id=workspace_id)
+
+    entry = result.entry
+    assert entry is not None  # noqa: S101 — garantizado cuando error is None
+
+    emit_audit_event(
+        audit_repo,
+        action="workspace.acl.grant",
+        principal=principal,
+        target_id=workspace_id,
+        workspace_id=workspace_id,
+        metadata={"user_id": str(req.user_id), "role": req.role.value},
+    )
+
+    return AclEntryRes(
+        user_id=entry.user_id,
+        role=entry.role,
+        granted_by=entry.granted_by,
+        created_at=entry.created_at,
+    )
+
+
+@router.delete(
+    "/workspaces/{workspace_id}/acl/{user_id}",
+    response_model=AclRevokeRes,
+    tags=["workspaces"],
+)
+def revoke_workspace_acl(
+    workspace_id: UUID,
+    user_id: UUID,
+    use_case: RevokeAclUseCase = Depends(get_revoke_acl_use_case),
+    principal: Principal | None = Depends(require_principal(Permission.ADMIN_CONFIG)),
+    _role: None = Depends(require_admin()),
+    audit_repo: AuditEventRepository | None = Depends(get_audit_repository),
+):
+    """Revoca el acceso de un usuario al workspace."""
+    actor = _to_workspace_actor(principal)
+
+    result = use_case.execute(workspace_id, actor=actor, user_id=user_id)
+    if result.error is not None:
+        _raise_workspace_error(result.error, workspace_id=workspace_id)
+
+    emit_audit_event(
+        audit_repo,
+        action="workspace.acl.revoke",
+        principal=principal,
+        target_id=workspace_id,
+        workspace_id=workspace_id,
+        metadata={"user_id": str(user_id)},
+    )
+
+    return AclRevokeRes(revoked=result.revoked)

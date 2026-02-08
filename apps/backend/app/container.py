@@ -42,11 +42,14 @@ from .application.usecases import (
     DeleteDocumentUseCase,
     GetDocumentUseCase,
     GetWorkspaceUseCase,
+    GrantAclUseCase,
     IngestDocumentUseCase,
+    ListAclUseCase,
     ListDocumentsUseCase,
     ListWorkspacesUseCase,
     PublishWorkspaceUseCase,
     ReprocessDocumentUseCase,
+    RevokeAclUseCase,
     SearchChunksUseCase,
     ShareWorkspaceUseCase,
     UpdateWorkspaceUseCase,
@@ -464,6 +467,30 @@ def get_share_workspace_use_case() -> ShareWorkspaceUseCase:
     """Caso de uso: compartir workspace (ACL)."""
     return ShareWorkspaceUseCase(
         repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
+
+
+def get_grant_acl_use_case() -> GrantAclUseCase:
+    """Caso de uso: otorgar acceso ACL."""
+    return GrantAclUseCase(
+        workspace_repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
+
+
+def get_revoke_acl_use_case() -> RevokeAclUseCase:
+    """Caso de uso: revocar acceso ACL."""
+    return RevokeAclUseCase(
+        workspace_repository=get_workspace_repository(),
+        acl_repository=get_workspace_acl_repository(),
+    )
+
+
+def get_list_acl_use_case() -> ListAclUseCase:
+    """Caso de uso: listar ACL de un workspace."""
+    return ListAclUseCase(
+        workspace_repository=get_workspace_repository(),
         acl_repository=get_workspace_acl_repository(),
     )
 
