@@ -229,9 +229,42 @@ En syncs posteriores solo se procesan los cambios desde el último cursor.
 
 **Solución**:
 
-1. Implementar backoff exponencial (ya incluido en el cliente).
+1. Backoff exponencial con jitter ya implementado en `GoogleDriveClient` (hasta 4 reintentos, respeta `Retry-After`).
 2. Espaciar syncs (mínimo 5 minutos entre ejecuciones).
 3. Solicitar aumento de cuota en Google Cloud Console.
+4. Ajustar settings si es necesario:
+   - `CONNECTOR_RETRY_MAX_ATTEMPTS` (default: 4)
+   - `CONNECTOR_RETRY_BASE_DELAY_S` (default: 1.0)
+   - `CONNECTOR_RETRY_MAX_DELAY_S` (default: 30.0)
+
+### Sync lock stuck (source stuck en SYNCING)
+
+**Síntoma**: Source permanece en status `syncing` indefinidamente, syncs posteriores se skipean.
+
+**Causa**: El sync anterior crasheó sin liberar el lock (CAS status-based).
+
+**Solución**:
+
+```sql
+-- Resetear status manualmente
+UPDATE connector_sources
+SET status = 'error', updated_at = now()
+WHERE id = '<source_id>' AND status = 'syncing';
+```
+
+Luego re-ejecutar sync. Monitorear métrica `rag_connector_sync_locked_total` para detectar colisiones recurrentes.
+
+### Archivo demasiado grande (ConnectorFileTooLargeError)
+
+**Síntoma**: Algunos archivos no se sincronizan, log muestra "file too large, skipping".
+
+**Causa**: El archivo excede `MAX_CONNECTOR_FILE_MB` (default: 25 MB).
+
+**Solución**:
+
+1. Esto es un safety guard anti-OOM. Los archivos grandes se skipean silenciosamente.
+2. Ajustar `MAX_CONNECTOR_FILE_MB` si se requiere ingestar archivos más grandes.
+3. Verificar que los archivos ignorados no son críticos para el workspace.
 
 ### Re-sync forzado (clear state)
 
@@ -253,6 +286,35 @@ Luego ejecutar sync manualmente.
 
 ---
 
+## Hardening P0
+
+Funcionalidades de resiliencia implementadas para producción:
+
+| Feature | Descripción | Config |
+| --- | --- | --- |
+| **Retry + Backoff** | Reintentos exponenciales con jitter para 429/5xx/timeouts. Respeta `Retry-After`. | `CONNECTOR_RETRY_*` |
+| **Error Classification** | Errores permanentes (401/403/404) no reintentan. Transitorios (429/5xx/timeout) sí. | — |
+| **Streaming Download** | Descarga en chunks de 64KB, no carga archivo completo en RAM. | — |
+| **Max Size Guard** | Archivos > `MAX_CONNECTOR_FILE_MB` se skipean (anti-OOM). | `MAX_CONNECTOR_FILE_MB` |
+| **Incremental SHA-256** | Hash calculado durante streaming sin carga extra de RAM. | — |
+| **Per-source Sync Lock** | CAS atómico: solo un sync por source simultáneo. `try_set_syncing()`. | — |
+| **Métricas Prometheus** | `rag_connector_api_retries_total`, `rag_connector_api_failures_total`, `rag_connector_sync_locked_total` | — |
+
+### Métricas de observabilidad
+
+```promql
+# Tasa de retries por provider
+rate(rag_connector_api_retries_total{provider="google_drive"}[5m])
+
+# Failures por razón
+sum by (reason) (increase(rag_connector_api_failures_total{provider="google_drive"}[1h]))
+
+# Colisiones de sync lock
+increase(rag_connector_sync_locked_total[1h])
+```
+
+---
+
 ## Schema de metadatos externos
 
 Los documentos sincronizados desde Google Drive almacenan metadata adicional:
@@ -264,9 +326,11 @@ Los documentos sincronizados desde Google Drive almacenan metadata adicional:
 | `external_modified_time`   | TIMESTAMPTZ | Timestamp de Drive                       |
 | `external_etag`            | TEXT        | `md5Checksum` de Drive (si disponible)   |
 | `external_mime_type`       | TEXT        | MIME type reportado por Drive            |
+| `content_hash`             | TEXT        | SHA-256 del contenido descargado         |
 
 Estos campos se usan para:
 
 1. Idempotencia (evitar duplicados).
 2. Detección de cambios (update-aware sync).
 3. Trazabilidad (origen del documento).
+4. Verificación de integridad (`content_hash`).

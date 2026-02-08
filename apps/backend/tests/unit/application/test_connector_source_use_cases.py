@@ -35,7 +35,6 @@ from app.application.usecases.connectors.list_connector_sources import (
     ListConnectorSourcesUseCase,
 )
 from app.application.usecases.connectors.sync_connector_source import (
-    SyncAction,
     SyncConnectorSourceUseCase,
 )
 from app.domain.connectors import (
@@ -106,6 +105,15 @@ class FakeConnectorSourceRepository:
             del self._sources[source_id]
             return True
         return False
+
+    def try_set_syncing(self, source_id: UUID) -> bool:
+        src = self._sources.get(source_id)
+        if src is None:
+            return False
+        if src.status == ConnectorSourceStatus.SYNCING:
+            return False
+        src.status = ConnectorSourceStatus.SYNCING
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -448,9 +456,14 @@ class FakeDriveClient:
         return self._files
 
     def fetch_file_content(self, file_id, *, mime_type=""):
+        import hashlib
+
         if file_id in self._content:
-            return self._content[file_id]
-        return b"file content for " + file_id.encode()
+            data = self._content[file_id]
+        else:
+            data = b"file content for " + file_id.encode()
+        sha = hashlib.sha256(data).hexdigest()
+        return data, sha
 
     def get_delta(self, folder_id, *, cursor=None):
         return ConnectorDelta(
@@ -983,3 +996,232 @@ class TestSyncUpdateAware:
         assert doc.external_modified_time == file_time
         assert doc.external_etag == "md5-hash-123"
         assert doc.external_mime_type == "text/plain"
+
+
+# ===========================================================================
+# Hardening P0: Sync Lock
+# ===========================================================================
+
+
+class TestSyncLock:
+    """Tests para per-source sync lock (CAS status-based)."""
+
+    def test_concurrent_sync_skipped(self, workspace, workspace_repo, connector_repo):
+        """
+        Si un source ya está en SYNCING, el segundo sync debe
+        ser rechazado sin duplicar procesamiento.
+        """
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="lock-folder"
+            )
+        )
+        source_id = r.source.id
+
+        # Marcar como SYNCING manualmente (simula sync en curso)
+        connector_repo.update_status(source_id, ConnectorSourceStatus.SYNCING)
+
+        files = [
+            ConnectorFile(file_id="f1", name="doc.txt", mime_type="text/plain"),
+        ]
+        client = FakeDriveClient(files=files)
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            drive_client=client,
+        )
+        result = sync_uc.execute(workspace.id, source_id)
+
+        # Debe skip sin error (stats vacías, no procesó nada)
+        assert result.error is None
+        assert result.stats is not None
+        assert result.stats.files_found == 0
+        assert result.stats.files_ingested == 0
+
+    def test_sync_lock_released_on_success(
+        self, workspace, workspace_repo, connector_repo
+    ):
+        """
+        Post-sync el status debe volver a ACTIVE (lock liberado).
+        """
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="release-folder"
+            )
+        )
+        source_id = r.source.id
+
+        files = [
+            ConnectorFile(file_id="f1", name="doc.txt", mime_type="text/plain"),
+        ]
+        client = FakeDriveClient(files=files)
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            drive_client=client,
+        )
+        result = sync_uc.execute(workspace.id, source_id)
+
+        assert result.error is None
+        src = connector_repo.get(source_id)
+        assert src.status == ConnectorSourceStatus.ACTIVE
+
+
+# ===========================================================================
+# Hardening P0: File Too Large (vía FakeDriveClient que lanza exc)
+# ===========================================================================
+
+
+class FakeDriveClientFileTooLarge(FakeDriveClient):
+    """Drive client que lanza ConnectorFileTooLargeError para archivos específicos."""
+
+    def __init__(self, files, *, too_large_ids: set[str] | None = None):
+        super().__init__(files=files)
+        self._too_large_ids = too_large_ids or set()
+
+    def fetch_file_content(self, file_id, *, mime_type=""):
+        from app.infrastructure.services.google_drive_client import (
+            ConnectorFileTooLargeError,
+        )
+
+        if file_id in self._too_large_ids:
+            raise ConnectorFileTooLargeError(
+                file_id=file_id,
+                size_bytes=100 * 1024 * 1024,
+                max_bytes=25 * 1024 * 1024,
+            )
+        return super().fetch_file_content(file_id, mime_type=mime_type)
+
+
+class TestFileTooLarge:
+    """Tests para max file size guard."""
+
+    def test_oversized_file_skipped(self, workspace, workspace_repo, connector_repo):
+        """Archivos demasiado grandes deben skippearse sin error fatal."""
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="big-folder"
+            )
+        )
+        source_id = r.source.id
+
+        files = [
+            ConnectorFile(file_id="big", name="huge.pdf", mime_type="text/plain"),
+            ConnectorFile(file_id="small", name="tiny.txt", mime_type="text/plain"),
+        ]
+        client = FakeDriveClientFileTooLarge(files=files, too_large_ids={"big"})
+        doc_repo = FakeDocumentRepository()
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client,
+        )
+        result = sync_uc.execute(workspace.id, source_id)
+
+        # big → skipped, small → created
+        assert result.stats.files_ingested == 1
+        assert result.stats.files_skipped == 1
+        assert result.error is None
+
+        # Solo small fue persistido
+        assert (
+            doc_repo.get_by_external_source_id(workspace.id, "gdrive:small") is not None
+        )
+        assert doc_repo.get_by_external_source_id(workspace.id, "gdrive:big") is None
+
+    def test_all_files_oversized_still_active(
+        self, workspace, workspace_repo, connector_repo
+    ):
+        """Si todos los archivos son demasiado grandes, status final = ACTIVE."""
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(workspace_id=workspace.id, folder_id="all-big")
+        )
+        source_id = r.source.id
+
+        files = [
+            ConnectorFile(file_id="b1", name="big1.txt", mime_type="text/plain"),
+        ]
+        client = FakeDriveClientFileTooLarge(files=files, too_large_ids={"b1"})
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            drive_client=client,
+        )
+        result = sync_uc.execute(workspace.id, source_id)
+        assert result.error is None
+        src = connector_repo.get(source_id)
+        assert src.status == ConnectorSourceStatus.ACTIVE
+
+
+# ===========================================================================
+# Hardening P0: Content hash persisted
+# ===========================================================================
+
+
+class TestContentHash:
+    """Tests para hashing SHA-256 incremental integrado en sync."""
+
+    def test_content_hash_stored_on_create(
+        self, workspace, workspace_repo, connector_repo
+    ):
+        """El content_hash SHA-256 debe guardarse en el documento creado."""
+        import hashlib
+
+        create_uc = CreateConnectorSourceUseCase(
+            connector_repo=connector_repo,
+            workspace_repo=workspace_repo,
+        )
+        r = create_uc.execute(
+            CreateConnectorSourceInput(
+                workspace_id=workspace.id, folder_id="hash-folder"
+            )
+        )
+        source_id = r.source.id
+
+        content = b"deterministic content"
+        expected_hash = hashlib.sha256(content).hexdigest()
+
+        files = [
+            ConnectorFile(file_id="hf1", name="hash.txt", mime_type="text/plain"),
+        ]
+        client = FakeDriveClient(files=files)
+        client.set_content("hf1", content)
+        doc_repo = FakeDocumentRepository()
+
+        sync_uc = _make_sync_uc(
+            workspace,
+            connector_repo,
+            workspace_repo,
+            document_repo=doc_repo,
+            drive_client=client,
+        )
+        sync_uc.execute(workspace.id, source_id)
+
+        doc = doc_repo.get_by_external_source_id(workspace.id, "gdrive:hf1")
+        assert doc is not None
+        assert doc.content_hash == expected_hash

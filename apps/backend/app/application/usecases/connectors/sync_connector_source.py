@@ -406,7 +406,7 @@ class SyncConnectorSourceUseCase:
                 "sync: file too large, skipping",
                 extra={
                     "file_id": file.file_id,
-                    "name": file.name,
+                    "file_name": file.name,
                     "size_bytes": exc.size_bytes,
                     "max_bytes": exc.max_bytes,
                 },
@@ -422,7 +422,7 @@ class SyncConnectorSourceUseCase:
                 "sync: file download failed",
                 extra={
                     "file_id": file.file_id,
-                    "name": file.name,
+                    "file_name": file.name,
                     "error": str(exc),
                 },
             )
@@ -431,7 +431,7 @@ class SyncConnectorSourceUseCase:
         if not text.strip():
             logger.debug(
                 "sync: empty file, skipping",
-                extra={"file_id": file.file_id, "name": file.name},
+                extra={"file_id": file.file_id, "file_name": file.name},
             )
             return SyncAction.SKIP_EMPTY
 
@@ -462,7 +462,7 @@ class SyncConnectorSourceUseCase:
             "sync: file created",
             extra={
                 "file_id": file.file_id,
-                "name": file.name,
+                "file_name": file.name,
                 "document_id": str(doc.id),
                 "action": SyncAction.CREATE,
             },
@@ -578,7 +578,7 @@ class SyncConnectorSourceUseCase:
             "sync: file updated",
             extra={
                 "file_id": file.file_id,
-                "name": file.name,
+                "file_name": file.name,
                 "document_id": str(document_id),
                 "action": SyncAction.UPDATE,
             },
