@@ -308,7 +308,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -516,7 +516,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -732,7 +732,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -1147,7 +1147,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -1365,7 +1365,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -6934,7 +6934,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__admin_routes__WorkspaceRes"
+                  "$ref": "#/components/schemas/WorkspaceRes"
                 }
               }
             }
@@ -7607,7 +7607,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -7815,7 +7815,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -8031,7 +8031,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -8446,7 +8446,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -8664,7 +8664,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRes"
+                  "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
                 }
               }
             }
@@ -14326,6 +14326,117 @@
             "type": "string",
             "title": "Name"
           },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/WorkspaceVisibility"
+          },
+          "owner_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner User Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "visibility",
+          "owner_user_id",
+          "created_at",
+          "updated_at",
+          "archived_at"
+        ],
+        "title": "WorkspaceRes",
+        "description": "Respuesta: workspace (vista admin)."
+      },
+      "WorkspaceVisibility": {
+        "type": "string",
+        "enum": [
+          "PRIVATE",
+          "ORG_READ",
+          "SHARED"
+        ],
+        "title": "WorkspaceVisibility",
+        "description": "Visibilidad del workspace."
+      },
+      "WorkspacesListRes": {
+        "properties": {
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceRes"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspaces"
+        ],
+        "title": "WorkspacesListRes"
+      },
+      "app__interfaces__api__http__schemas__workspaces__WorkspaceRes": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
           "visibility": {
             "$ref": "#/components/schemas/WorkspaceVisibility"
           },
@@ -14401,123 +14512,11 @@
         "title": "WorkspaceRes",
         "description": "Response de workspace."
       },
-      "WorkspaceVisibility": {
-        "type": "string",
-        "enum": [
-          "PRIVATE",
-          "ORG_READ",
-          "SHARED"
-        ],
-        "title": "WorkspaceVisibility",
-        "description": "Visibilidad del workspace."
-      },
-      "WorkspacesListRes": {
-        "properties": {
-          "workspaces": {
-            "items": {
-              "$ref": "#/components/schemas/WorkspaceRes"
-            },
-            "type": "array",
-            "title": "Workspaces"
-          }
-        },
-        "type": "object",
-        "required": [
-          "workspaces"
-        ],
-        "title": "WorkspacesListRes",
-        "description": "Listado de workspaces."
-      },
-      "app__api__admin_routes__WorkspaceRes": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "visibility": {
-            "$ref": "#/components/schemas/WorkspaceVisibility"
-          },
-          "owner_user_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner User Id"
-          },
-          "created_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
-          },
-          "updated_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
-          },
-          "archived_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Archived At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "description",
-          "visibility",
-          "owner_user_id",
-          "created_at",
-          "updated_at",
-          "archived_at"
-        ],
-        "title": "WorkspaceRes",
-        "description": "Respuesta: workspace (vista admin)."
-      },
       "app__interfaces__api__http__schemas__workspaces__WorkspacesListRes": {
         "properties": {
           "workspaces": {
             "items": {
-              "$ref": "#/components/schemas/WorkspaceRes"
+              "$ref": "#/components/schemas/app__interfaces__api__http__schemas__workspaces__WorkspaceRes"
             },
             "type": "array",
             "title": "Workspaces"
