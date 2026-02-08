@@ -67,6 +67,11 @@ class CreateWorkspaceReq(BaseModel):
             description="Nombre del workspace",
         ),
     ]
+    description: str | None = Field(
+        default=None,
+        max_length=_settings.max_source_chars,
+        description="Descripción del workspace",
+    )
     visibility: WorkspaceVisibility = Field(default=WorkspaceVisibility.PRIVATE)
     owner_user_id: UUID | None = Field(
         default=None, description="Owner explícito (si aplica)"
@@ -77,6 +82,11 @@ class CreateWorkspaceReq(BaseModel):
     @classmethod
     def strip_name(cls, v: str) -> str:
         return v.strip()
+
+    @field_validator("description")
+    @classmethod
+    def strip_description(cls, v: str | None) -> str | None:
+        return v.strip() if v is not None else None
 
 
 class UpdateWorkspaceReq(BaseModel):
@@ -136,9 +146,11 @@ class WorkspacesListRes(BaseModel):
     """Listado de workspaces."""
 
     workspaces: list[WorkspaceRes]
+    next_offset: int | None = None
 
 
 class ArchiveWorkspaceRes(BaseModel):
-    """Resultado de archivado."""
+    """Resultado de archivado / delete lógico."""
 
+    workspace_id: UUID
     archived: bool
